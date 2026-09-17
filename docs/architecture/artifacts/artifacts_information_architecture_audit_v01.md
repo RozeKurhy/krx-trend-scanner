@@ -2,8 +2,8 @@ artifacts_information_architecture_audit_v01.md
 
 # Artifact 정보 구조 감사 (Artifacts Information Architecture Audit V01)
 
-이 문서는 `artifacts/` 폴더 전체에 대한 AUDIT + DESIGN 문서다(STEP 1). 실제 `git mv`,
-rename, 삭제, regeneration은 수행하지 않았다. 근거는 `find`/`rg`/`git log`를 통한
+이 문서는 `artifacts/` 폴더 전체에 대한 감사 및 설계 문서다(STEP 1). 실제 `git mv`,
+이름 변경, 삭제, 재생성은 수행하지 않았다. 근거는 `find`/`rg`/`git log`를 통한
 직접 조사이며, 판단이 불가능한 항목은 추측 대신 `UNKNOWN_REQUIRES_REVIEW`로
 남기는 원칙으로 조사했다. STEP 1 FIX(Architect Review 반영)를 거친 현재,
 `UNKNOWN_REQUIRES_REVIEW`/`BLOCKED`로 남은 항목은 없다 — §4/§18 전 항목이
@@ -19,7 +19,7 @@ parquet 3), **12개 top-level 폴더**가 있다. 그중 `pattern_a_fast/`(584 �
 
 핵심 발견:
 
-1. **production runtime이 "research" 이름의 폴더에서 파일을 직접 읽는다.**
+1. **운영 실행 시점(production runtime)이 "research" 이름의 폴더에서 파일을 직접 읽는다.**
    `src/trend_scanner/reporting/stock_report.py`와
    `src/trend_scanner/reporting/pattern_a_fast_report.py`가
    `artifacts/pattern_a_fast/research/pattern_a_fast_{score,stage}_prototype_v01.json`을
@@ -52,12 +52,12 @@ parquet 3), **12개 top-level 폴더**가 있다. 그중 `pattern_a_fast/`(584 �
    유효하지만, path를 하드코딩해 읽는 production/test 코드(§14/§15) 수만큼
    반드시 별도 path migration이 필요하다.
 7. **`ground_truth/charts/`(240개 PNG)는 기존 canonical per-file sha256
-   manifest가 없다는 finding은 유지하되, 이것이 이동 불가를 뜻하지는
+   manifest가 없다는 발견을 유지하되, 이것이 이동 불가를 뜻하지는
    않는다.** STEP 2 이동 시 pre/post migration checksum snapshot(240개
    전체 relative path+size+sha256)으로 byte identity를 직접 증명하면
    된다 — 분류는 BLOCKED가 아니라 HIGH(§15/§21).
 
-이번 STEP 1(FIX 포함)은 AUDIT + DESIGN만 수행했고 실제 이동/rename/삭제/
+이번 STEP 1(FIX 포함)은 감사 및 설계만 수행했고 실제 이동/이름 변경/삭제/
 재생성은 0건이다. Architect Review에서 지적된 Major 3건/Minor 1건을 모두
 반영했으며, `BLOCKED_MOVE_COUNT = 0`으로 확정해 STEP 2 실행 설계로
 승격한다.
@@ -107,7 +107,7 @@ w.md §5가 정의한 카테고리를 그대로 사용한다. 하나의 group이
 | TEMPORARY_OR_DUPLICATE_CANDIDATE | 다른 canonical 파일과 내용이 중복 |
 | UNKNOWN_REQUIRES_REVIEW | 판단 근거 불충분 |
 
-Group 단위 조사 항목(각 group마다): current path / group 설명 / owning
+Group 단위 조사 항목(각 group마다): 현재 경로 / group 설명 / 소유
 domain·pattern / role(Primary/Secondary) / current authority 여부 /
 production dependency / frozen 여부 / hash·seal·manifest 보호 / 코드·테스트·
 docs·scripts 참조 여부 / proposed destination / move risk / 비고.
@@ -117,7 +117,7 @@ docs·scripts 참조 여부 / proposed destination / move risk / 비고.
 파일 단위가 아니라 논리적 group 단위로 기록한다(w.md §5 허용). 전체
 913개 파일이 아래 표의 group 중 하나에 속한다.
 
-| # | Current Path | Files | Role | Owning Domain | Authority | Frozen/Hash | 참조처 |
+| # | 현재 경로 | 파일 수 | 역할 | 소유 도메인 | 기준 여부 | 동결/해시 | 참조처 |
 |---|---|---|---|---|---|---|---|
 | 1 | `analysis/` | 3 | CURRENT_RESEARCH | Pattern A (local stage filter audit) | 아니오 | 없음 | docs 1건 |
 | 2 | `cache_population/` | 2 | CURRENT_VALIDATION(infra) | 공용 infra(캐시 적재 감사) | 아니오 | 없음 | scripts 1건 |
@@ -175,8 +175,8 @@ docs·scripts 참조 여부 / proposed destination / move risk / 비고.
 
 Pattern A artifact set은 현재 다음과 같은 lifecycle 영역으로 명확히 구분된다:
 
-- **Production Evidence**: `scanner/`(canonical Full Universe Scan 결과), `investability/` top-level 10개 파일(Phase10 CLOSED 결과), `flow/`(Phase11 CLOSED 외국인 수급 결과)
-- **Production Runtime Source**: `investability/source/`(canonical PIT snapshot 2개, production scanner가 매번 직접 로드)
+- **운영 증적(Production Evidence)**: `scanner/`(canonical Full Universe Scan 결과), `investability/` top-level 10개 파일(Phase10 CLOSED 결과), `flow/`(Phase11 CLOSED 외국인 수급 결과)
+- **운영 실행 원천(Production Runtime Source)**: `investability/source/`(canonical PIT snapshot 2개, 운영 scanner가 매번 직접 로드)
 - **Validation / Hold**: `relative_strength/`(Phase12 `HOLD_RELATIVE_STRENGTH_INFRA` — infra 및 validation evidence, Sector RS 미해결로 production 미승격), `investability/history/`(KRX 과거 시총 백필, row-level sha256 보호), `stage_v03_research/`, `stage_v04_multi_year_research/`(결정론적 재생성 검증 대상)
 - **Closure Evidence**: `pattern_a_final_closure/`(10-gate closure 감사 결과), `chart_review/`(인간 수동 차트 리뷰 — closure 체인의 입력이자 production dependency)
 - **Research**: `analysis/`(local stage filter 감사 연구), `investability/`의 threshold design 계열
@@ -210,7 +210,7 @@ PIT snapshot)와 **다른 역할**이다: `history/`는 22개 active + 4개 supe
 Report 런타임이 직접 로드(§1 발견 1번). `research/`라는 이름 아래 있지만
 실제로는 이 폴더에서 유일하게 "research"가 아니다.
 
-**B. Current Research(약 26파일, `research/` 나머지)**
+**B. 현재 연구(Current Research, 약 26파일, `research/` 나머지)**
 Phase13H feature-role 연구(monthly/weekly/daily timing feature matrix,
 correlation, threshold candidate, lead-time summary 등). 순수 연구
 재현성만 test로 검증된다.
@@ -386,10 +386,10 @@ production/test/frozen-integrity dependency 코드들은 path 문자열을
 frozen-integrity가 계속 통과한다. "hash가 같으므로 이동해도 안전"이라는
 결론은 **코드 갱신을 전제로 할 때만** 성립한다.
 
-## 16. 제안하는 canonical artifact 정보 구조
+## 16. 제안하는 canonical 산출물 정보 구조
 
 docs IA 철학(상위 영역 → Pattern/Domain → 역할)을 artifact lifecycle에 맞게
-적용한다. docs와 달리 artifact는 "언제 계산됐는가"가 중요하므로 역할
+적용한다. docs와 달리 산출물은 "언제 계산됐는가"가 중요하므로 역할
 레벨에 `production` / `validation` / `research` / `archive`를 명시적으로
 둔다.
 
@@ -500,7 +500,7 @@ Pattern B는 `patterns/pattern_b/`로 동일 4분류를 복제하면 확장 가�
 
 ## 18. Migration 표
 
-| Current Path | Role | Authority | Proposed Path | Risk | Path Dependencies | Action |
+| 현재 경로 | 역할 | 기준 여부 | 제안 경로 | 위험 | 경로 의존성 | 조치 |
 |---|---|---|---|---|---|---|
 | `scanner/` | CURRENT_PRODUCTION_EVIDENCE | 예 | `patterns/pattern_a/production/scanner/` | MEDIUM | src 1, docs 다수 | MOVE |
 | `investability/`(top-level 10) | CURRENT_PRODUCTION_EVIDENCE | 예 | `patterns/pattern_a/production/investability/` | HIGH | src 6+, tests 다수, docs 다수 | MOVE |
@@ -621,12 +621,12 @@ DIRECTORY MOVE FIRST 원칙에 따라 STEP 2에서도 rename보다 이동을 우
 
 ## 23. STEP 2 재구성 계획
 
-**Phase A — Authority Index 준비**
+**Phase A — 기준 색인 준비**
 `artifacts/README.md` 작성 — Current Production Evidence / Current
 Validation / Active Research / Reporting Outputs / Historical Baselines /
 Archive / Naming-Lifecycle Rules 섹션.
 
-**Phase B — HIGH risk production path migration**
+**Phase B — HIGH 위험 운영 경로 전환**
 Pattern A FAST contract prototype(score+stage 2개, `stock_report.py`/
 `pattern_a_fast_report.py` 경로 갱신 포함) → Investability
 source/current evidence → Chart Review → Foreign Flow → Pattern A FAST
@@ -666,7 +666,7 @@ strategy_finalization_v01_legacy).
 **Phase G — Stock Reports**
 가장 마지막, 필요 시 별도 commit/task로 분리(Web Viewer 영향 재확인 후).
 
-**Phase H — Final integrity**
+**Phase H — 최종 무결성**
 repository 전역 stale artifact path 검색 → 관련 targeted test 실행 →
 artifact 파일 수 reconciliation 공식 검증:
 - `PRE_EXISTING_ARTIFACT_FILES` = 913
@@ -686,7 +686,7 @@ Full Suite는 이번에도 사용자가 직접 실행하는 정책을 유지한�
 **정확한 집계(§4 Artifact Inventory / §18 Migration Table을 single
 source of truth로 기계적 재계산, 범위/추정 표현 없음).**
 
-Classification counts — Primary Role 기준, 36 group 전수(§4):
+분류 집계 — Primary Role 기준, 36 group 전수(§4):
 
 | Primary Role | Count |
 |---|---:|
@@ -703,7 +703,7 @@ Classification counts — Primary Role 기준, 36 group 전수(§4):
 | TEMPORARY_OR_DUPLICATE_CANDIDATE | 1 |
 | **합계** | **36** |
 
-Migration risk counts — 36 group 전수(§18):
+전환 위험 집계 — 36 group 전수(§18):
 
 | Risk | Count |
 |---|---:|

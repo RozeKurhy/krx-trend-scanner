@@ -3,7 +3,7 @@ survivorship_safe_denominator_freeze_v01.md
 # 생존편향 방지 과거 분모 동결 (Survivorship-Safe Historical Denominator Freeze v01)
 
 `SURVIVORSHIP_SAFE_DENOMINATOR_FREEZE_V01`은 생존편향을 방지하는 표준
-universe 계약을 동결한다. 앞으로의 모든 E2E consumer(AdjustedPriceStore,
+universe 계약을 동결한다. 앞으로의 모든 E2E 사용 코드(AdjustedPriceStore,
 FastCore/Julia backtest, Market Breadth)는 자체 universe를 다시 계산하지
 않고 이 계약을 사용해야 한다.
 
@@ -11,12 +11,12 @@ FastCore/Julia backtest, Market Breadth)는 자체 universe를 다시 계산하�
 
 **Population Universe**: 2010-01-04부터 2026-08-21 사이에 한 번이라도
 `COMMON`이었던 모든 identity다. "이 identity가 한 번이라도 범위에 들어오는가"
-라는 질문에 답하며, population 수준 consumer(AdjustedPriceStore population
+라는 질문에 답하며, population 수준 사용 코드(AdjustedPriceStore population
 target, coverage denominator, validation sampling universe)가 사용한다.
 
 **Point-In-Time (PIT) Common Denominator**: 각 과거 거래일에 실제로 해당
 날짜의 `COMMON`이었던 identity다. "날짜 D의 투자 가능한 보통주 universe는
-무엇인가"라는 질문에 답하며, 생존편향 방지 backtest와 날짜별 시장 통계
+무엇인가"라는 질문에 답하며, 생존편향 방지 백테스트와 날짜별 시장 통계
 (breadth, advance/decline, new-high/new-low)가 사용한다.
 
 두 개념은 하나의 정적 ticker 목록으로 합치지 않는다. 예를 들어 2013~2015년에
@@ -24,7 +24,7 @@ COMMON이었다가 2016~2018년에 NOT_COMMON이 된 ticker는 한때 common이�
 Population Universe에는 포함하지만, 2016~2018의 PIT denominator에서는 반드시
 제외한다.
 
-## 2. 분리해야 하는 이유 — survivorship bias
+## 2. 분리해야 하는 이유 — 생존편향(survivorship bias)
 
 현재 common-stock 목록으로 "날짜 D의 universe"를 재구성하는 backtest는 그
 이후 상장폐지·합병·재분류된 identity를 조용히 누락한다. 이것이 바로
@@ -33,10 +33,10 @@ survivorship bias다. PIT denominator는 과거 날짜의 denominator가 오늘�
 
 이 계약은 다음 두 가지 실패를 방지한다.
 
-- **Current-list broadcast**: 오늘 현재 common인 약 2,557개 ticker를 모든
+- **현재 목록 전파(Current-list broadcast)**: 오늘 현재 common인 약 2,557개 ticker를 모든
   과거 날짜의 universe로 사용하는 방식이다. 이 방식은 과거에만 존재했던
   상장폐지 common 605개 identity를 누락한다.
-- **Historical-label broadcast**: ticker의 *최종* 분류 label을 전체 이력에
+- **과거 라벨 전파(Historical-label broadcast)**: ticker의 *최종* 분류 label을 전체 이력에
   적용하는 방식이다. 전체적으로 `COMMON_REQUIRED`인 ticker도 과거에는
   `NOT_COMMON` 구간(예: SPAC 단계)이 있었을 수 있다. 그 구간에 COMMON을
   소급 적용하는 것은 이 동결이 방지하려는 look-ahead bias다.
@@ -73,20 +73,20 @@ filter만 제거한다. Population과 PIT를 독립적으로 계산하지 않기
 Section 6의 union invariant는 우연히 두 경로가 일치한 결과가 아니라 실제
 파생 규칙이 된다.
 
-이 모듈은 별도로 유지되는 live `InstrumentMetadataResolver`
+이 모듈은 별도로 유지되는 실시간 live `InstrumentMetadataResolver`
 (`src/trend_scanner/universe/instrument_metadata.py`,
 `instrument_metadata_authority.md` §1-17)와 의도적으로 조정하지 않는다. 해당
 시스템은 Basic Info가 아닌 KRX MDC를 상위 원천으로 사용하고 분류 규칙도
 다르다. 2026-08-21 snapshot에서 현재 COMMON을 2,666개
 (numeric 2,641 / alpha 25)로 보고하는데, 이는 이 동결이 독립적으로 계산한
 현재 common 2,557개(numeric 2,534 / alpha 23)와 다르다. 이 차이는 예상된
-것이며 어느 시스템의 결함도 아니다. 두 pipeline은 서로 다른 질문에 답한다
+것이며 어느 시스템의 결함도 아니다. 두 작업 흐름은 서로 다른 질문에 답한다
 (현재 live MDC 검증 asset type과 전체 이력 Basic-Info 기반 PIT 분류)며,
 ticker별 결과가 일치할 필요도 없다. 이 동결의 Population/PIT 수치는 **오직**
 Basic Info와 보완 authority chain에서 산출하며 live resolver 결과를 사용하거나
 강제로 일치시키지 않는다.
 
-## 5. Historical-only reconciliation 하위 집합
+## 5. 과거 전용(Historical-only) 조정 하위 집합
 
 1,116개 ticker로 동결된 historical-only reconciliation target
 (`HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION_V01` 및 residual resolution
@@ -94,9 +94,9 @@ rounds)은 full-universe 파생 결과에서 다음과 같이 나뉜다.
 
 | 구분 | count | Population 포함 여부 |
 |---|---|---|
-| Frozen target, `HISTORICAL_COMMON_REQUIRED` | 605 | yes (historical-only, not currently common) |
-| Frozen target, `HISTORICAL_NOT_COMMON` | 511 | no |
-| Outside frozen target (row-pure resolves cleanly without needing supplemental review) | 2,557 | yes (all currently common) |
+| 동결 대상, `HISTORICAL_COMMON_REQUIRED` | 605 | 예 (과거 전용, 현재 common 아님) |
+| 동결 대상, `HISTORICAL_NOT_COMMON` | 511 | 아니오 |
+| 동결 대상 외부(보완 검토 없이 행 단위로 정상 해소) | 2,557 | 예 (현재 common 전체) |
 
 `605 + 2,557 = 3,162`로 Population Universe total과 정확히 일치한다. 이는
 파생 후 검증된 결과이며, 파생 과정이 이 수치에 맞도록 조정된 것은 아니다
@@ -163,14 +163,14 @@ survivorship 인접 bug가 된다. 수정주가 원천 적격성은
 §20 참조). COMMON interval의 `effective_from`은 실제 COMMON으로 관측된
 날짜보다 과거로 소급해 확장될 수 없다.
 
-## 9. Consumer가 자체 universe를 계산하지 않는다
+## 9. 사용 코드가 자체 universe를 계산하지 않는다
 
-과거 사용 코드(backtest engine, market-breadth calculator)는 각자 보유한
+과거 사용 코드(백테스트 엔진, market-breadth calculator)는 각자 보유한
 "current" 데이터 원천에서 ticker 목록을 파생하지 말고 이 동결의 artifact(산출물)를
 로드해야 한다. Consumer별 재계산은 어떤 과거 날짜에 survivorship-bias 보호를
 적용할지 서로 달라지는 위험을 만든다.
 
-## 10. Artifact와 loader 계약
+## 10. 산출물과 loader 계약
 
 - `artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01/historical_common_population_v01.json`
   — Population Universe records + `population_manifest_sha256`.

@@ -4,7 +4,7 @@
 ----------------------------------------------------------------------
 
 이 문서는 수정주가 이력이 기준 원천 변화로 오래된 상태가 될 가능성이 있을 때
-이를 감지하고 안전하게 full refresh하는 primitive 계약을 정의한다.
+이를 감지하고 안전하게 전체 갱신(full refresh)하는 기본 요소 계약을 정의한다.
 이번 phase의 최종 상태는
 `READY_FOR_ARCHITECT_CORPORATE_ACTION_DIRTY_REFRESH_V01_REVIEW`이며,
 Architect 승인 전에는 `CORPORATE_ACTION_DIRTY_REFRESH_V01 = CLOSED`로
@@ -13,7 +13,7 @@ Architect 승인 전에는 `CORPORATE_ACTION_DIRTY_REFRESH_V01 = CLOSED`로
 현재 authority 경계
 ----------------------------------------------------------------------
 
-이 문서의 V01 상태와 PyKRX `adjusted=True` 표기는 dirty-refresh primitive를
+이 문서의 V01 상태와 PyKRX `adjusted=True` 표기는 dirty-refresh 기본 요소를
 검증하던 당시의 과거 데이터 제공자 경계다. 현재 수정주가 OHLC 기준 원천은
 `NaverDirectAdjustedPriceDataProvider`의 Naver direct date-range
 (`requestType=1`)와 `AdjustedPriceStore V02`다. 이 문서의
@@ -40,11 +40,11 @@ Architect 승인 전에는 `CORPORATE_ACTION_DIRTY_REFRESH_V01 = CLOSED`로
 numeric이며 missing은 허용하지만 음수와 파싱 실패는 거부한다.
 
 비교 순서는 `previous.as_of < current.as_of`여야 한다. 동일 날짜의 동일 값은
-idempotent observation으로 처리하고, 동일 날짜의 다른 authority 값은
+멱등 관측(idempotent observation)으로 처리하고, 동일 날짜의 다른 기준 값은
 `SOURCE_CONFLICT`로 fail closed한다. 역순은 `OUT_OF_ORDER`로 거부한다.
 
 dirty primary signal은 동일 semantic namespace 안에서 normalized `LIST_SHRS`의 실제 변화다. `PARVAL`은
-corroborating signal이며 양쪽 값이 모두 존재할 때만 비교한다. 따라서 missing
+보강 신호(corroborating signal)이며 양쪽 값이 모두 존재할 때만 비교한다. 따라서 missing
 PARVAL만으로는 dirty를 선언하지 않지만 LIST_SHRS 변화는 항상 dirty다.
 
 `RAW_DAILY_LISTED_SHARES`와 `MASTER_SNAPSHOT_LISTED_SHARES`처럼
@@ -83,7 +83,7 @@ refresh claim은 SQLite `BEGIN IMMEDIATE` transaction으로 수행한다. 같은
 동시 claim은 compare-and-set으로 하나만 성공하며, transition log는
 `corporate_action_transition_log`에 append한다.
 
-허용 transition
+허용 상태 전이
 ----------------------------------------------------------------------
 
 ABSENT -> CLEAN / DIRTY
@@ -99,7 +99,7 @@ transition log를 수행하며 persisted `as_of`는 절대 감소하지 않는�
 새 authority observation은 `OBSERVATION_DURING_REFRESH`로 fail closed하고 state row를
 변경하지 않는다. refresh 종료 후 caller가 observation을 재제출한다.
 
-관찰값을 기록하는 canonical 운영 진입점은 `evaluate_and_record(snapshot)`다.
+관찰값을 기록하는 정식 운영 진입점은 `evaluate_and_record(snapshot)`다.
 기존 호환성을 위해 `record_observation(snapshot, decision)`을 유지하더라도
 `CorporateActionDecision`은 persisted state를 직접 갱신하는 authority가 아니다.
 public method는 transaction 안에서 현재 persisted snapshot과 incoming snapshot으로
@@ -121,12 +121,12 @@ CLEAN, fake DIRTY 또는 dirty reason을 주입해 state를 우회할 수 없다
 
 1) DIRTY 또는 FAILED를 REFRESHING으로 atomic claim
 2) 기존 AdjustedPriceStore pair와 metadata load
-3) metadata `requested_start`를 full-history 시작점으로 사용하고 없으면
-   `actual_date_min` fallback
+3) metadata `requested_start`를 전체 이력 시작점으로 사용하고 없으면
+   `actual_date_min` 대체 경로
 4) caller의 `refresh_end`를 사용하되 기존 `actual_date_max`보다 이전이면 거부
 5) adjusted=True 데이터 제공자 fetch
 6) typed empty, schema, OHLC 검증
-7) 기존 모든 trading date가 새 frame에 존재하는지 subset 검증
+7) 기존 모든 trading date가 새 frame에 존재하는지 부분집합 검증
 8) new actual min <= old actual min, new actual max >= old actual max 검증
 9) allowlist metadata context로 `AdjustedPriceStore.save_full()` full replacement
 10) reload, metadata/hash integrity 검증
@@ -144,9 +144,9 @@ hash가 refresh 전후 동일해도 실패가 아니다. dirty evidence가 false
 4. 복구
 ----------------------------------------------------------------------
 
-process crash로 REFRESHING이 남으면 다음 실행의 explicit recovery가 stale
+프로세스 중단으로 REFRESHING이 남으면 다음 실행의 명시적 복구가 오래된
 REFRESHING을 `INTERRUPTED_REFRESH` 사유의 FAILED로 전환한다. FAILED는 caller가
-다시 claim하여 retry할 수 있지만 service 내부 무한 retry는 수행하지 않는다.
+다시 claim하여 재시도할 수 있지만 service 내부 무한 재시도는 수행하지 않는다.
 
 5. 기준과 운영 경계
 ----------------------------------------------------------------------

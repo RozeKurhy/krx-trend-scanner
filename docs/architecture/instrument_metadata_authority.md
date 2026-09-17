@@ -2,43 +2,43 @@ krx_instrument_metadata_authority.md
 
 # KRX 종목 메타데이터 권위 — 계보·신뢰 규칙 (Fix Round 07)
 
-이 문서는 `InstrumentMetadataResolver`가 Production Asset Type Authority로 사용하는
-frozen local artifact의 실제 lineage를 기록한다. 확인 불가능한 부분은 "확인 불가"로
+이 문서는 `InstrumentMetadataResolver`가 운영 자산 유형 기준으로 사용하는
+동결된 로컬 산출물의 실제 계보를 기록한다. 확인 불가능한 부분은 "확인 불가"로
 명시하며, 근거 없이 정당화 문구를 채우지 않는다 (w.md Fix Round 04 §4.4, Fix Round
 05 §4.4).
 
-Fix Round 04까지는 이 artifact 전체(72,786 row)가 실제로는 어디서 왔는지 저장소
+Fix Round 04까지는 이 산출물 전체(72,786개 행)가 실제로는 어디서 왔는지 저장소
 안에서 재현할 수 없는 상태였다(§3 "Fix Round 04 이전 상태" 참고). Fix Round 05는
-처음으로 실제 verified upstream formal source에 연결된 build workflow를 만들었으나
-verified snapshot의 `effective_date`를 CLI 인자로 임의 과거 날짜에 지정할 수 있어
-PIT lookahead corruption을 냈다. Fix Round 06은 이 backdating 경로를 구조적으로
+처음으로 실제 검증된 상위 공식 원천에 연결된 생성 작업 흐름을 만들었으나
+검증된 스냅샷의 `effective_date`를 CLI 인자로 임의의 과거 날짜에 지정할 수 있어
+PIT 미래 정보 누출을 일으켰다. Fix Round 06은 이 과거 날짜 소급 주입 경로를 구조적으로
 제거하고, checksum 필드 라벨링을 바로잡고, SPAC identity를 SECT_TP_NM 외에
 ISU_ENG_NM/ISU_NM 문자열로도 확인하도록 확장했다. Fix Round 07은 세 가지를 다시
-고친다: (1) HISTORICAL_LEGACY_RESEARCH eligibility가 미래 시점 정보를 사용하던
-survivorship bias, (2) verified snapshot이 이전 baseline ticker 집합의 재분류에
-불과해 신규 상장을 누락하던 문제, (3) Round 06의 ISU_ENG_NM/ISU_NM 기반 SPAC
-판정이 formal 필드 출처였음에도 방식 자체는 여전히 이름 substring matching이었던
+고친다: (1) HISTORICAL_LEGACY_RESEARCH 적격성이 미래 시점 정보를 사용하던
+생존편향, (2) 검증된 스냅샷이 이전 기준 종목 집합의 재분류에 불과해 신규 상장을
+누락하던 문제, (3) Round 06의 ISU_ENG_NM/ISU_NM 기반 SPAC 판정이 공식 필드
+출처였음에도 방식 자체는 여전히 이름 부분 문자열 일치였던
 문제.
 
 
-## 1. 기준 artifact
+## 1. 기준 산출물
 
-- `data/reference/krx_instrument_metadata.parquet` (1차 read 대상)
-- `data/reference/krx_instrument_metadata.csv` (parquet 없을 때 fallback, 동일 스키마)
-- `data/reference/krx_instrument_metadata_manifest.json` (매 build 실행마다 갱신되는
-  generation manifest)
+- `data/reference/krx_instrument_metadata.parquet` (1차 읽기 대상)
+- `data/reference/krx_instrument_metadata.csv` (parquet 없을 때 대체 경로, 동일 스키마)
+- `data/reference/krx_instrument_metadata_manifest.json` (매 생성 실행마다 갱신되는
+  생성 기록)
 - `data/reference/source/krx_instrument_metadata_source_snapshot_<date>.json` — 실제
-  upstream 응답을 canonical 직렬화해 보존한 snapshot. manifest의
+  상위 원천 응답을 canonical 직렬화해 보존한 스냅샷. manifest의
   `source_snapshot_sha256`을 재계산으로 검증할 수 있는 근거 파일
 
-네 파일은 매 갱신마다 (ticker, effective_date) 기준으로 row-aligned 동일 내용을
+네 파일은 매 갱신마다 (ticker, effective_date) 기준으로 행 정렬이 일치하는 동일 내용을
 유지해야 한다.
 
 
 ## 2. 목적
 
-Production Instrument Metadata Authority.
-Strict PIT(Point-In-Time) local frozen snapshot — 여러 `effective_date` 시점의
+운영 종목 메타데이터 기준.
+엄격한 PIT(Point-In-Time) 로컬 동결 스냅샷 — 여러 `effective_date` 시점의
 스냅샷을 누적 보관하고, 조회 시점(`requested_as_of`)보다 미래인 스냅샷은
 사용하지 않는다.
 
@@ -73,11 +73,11 @@ row조차 동일한 라벨을 갖고 있어 이 라벨이 row별 실제 검증�
 **SOURCE_LOCATION** = `https://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd`
 (POST, `bld` 파라미터로 구분)
 
-**ACQUISITION_METHOD** = 인증된 HTTPS 세션(KRX_ID/KRX_PW, `.env`)으로 build-time에만
+**ACQUISITION_METHOD** = 인증된 HTTPS 세션(KRX_ID/KRX_PW, `.env`)으로 생성 시점에만
 접근. `dbms/comm/finder/finder_stkisu`(단순 ticker 검색) 같은 공개 endpoint와
 달리, `MDCSTAT01901`은 익명 요청 시 본문이 문자 그대로 `"LOGOUT"`인 400 응답을
 반환한다 — 즉 이 특정 bld는 실제로 로그인 세션을 요구한다. `KRX_ID`/`KRX_PW`가
-없으면 이 build script는 `RuntimeError`로 즉시 실패한다(추측성 fallback 없음).
+없으면 이 생성 스크립트는 `RuntimeError`로 즉시 실패한다(추측성 대체 경로 없음).
 
 **SOURCE_OBSERVATION_DATE** = `pd.Timestamp.now(tz="Asia/Seoul")`에서만
 파생되는 값으로, CLI로 다른 값을 주입할 방법이 코드에 없다. 새로 검증되는 row의
@@ -86,7 +86,7 @@ row조차 동일한 라벨을 갖고 있어 이 라벨이 row별 실제 검증�
 
 **CHECKSUM 3분리** — manifest는 세 값을 분리한다:
 - `source_snapshot_sha256`: `data/reference/source/`에 저장된 canonical(정렬,
-  고정 구분자) source snapshot bytes의 SHA-256 — 실제 upstream 응답(equity+ETF+ETN+
+  고정 구분자) 원천 스냅샷 바이트의 SHA-256 — 실제 상위 원천 응답(equity+ETF+ETN+
   delisted)의 fingerprint.
 - `artifact_csv_sha256` / `artifact_parquet_sha256`: 생성된 산출물 파일 자체의 SHA-256.
 
@@ -111,12 +111,12 @@ ETF_전종목기본종목 / ETN_전종목기본종목:
   ISU_SRT_CD, ISU_ABBRV  - ticker/name (market 필드 없음 — §11 참고)
 ```
 
-이 원본 필드들은 canonical artifact에 `source_security_type` 컬럼으로 압축
+이 원본 필드들은 canonical 산출물에 `source_security_type` 컬럼으로 압축
 보존된다 (형식: `SECUGRP_NM=...|SECT_TP_NM=...|KIND_STKCERT_TP_NM=...|ISU_NM=...|ISU_ENG_NM=...`)
-— 단 Verified rows(§8)에 한해서만 채워지며, 과거 legacy row는 빈 값이다 (§9).
+— 단 검증된 행(§8)에 한해서만 채워지며, 과거 legacy 행은 빈 값이다 (§9).
 
 
-## 6. Source Category → AssetType 결정적 매핑 (Fix Round 08 갱신)
+## 6. 원천 분류 → AssetType 결정적 매핑 (Fix Round 08 갱신)
 
 `scripts/build_krx_instrument_metadata.py`의 `map_row_to_asset_type()` 실제 로직,
 우선순위 순서(w.md Fix Round 08 §1/§2/§3):
@@ -146,11 +146,11 @@ formal source에서 ticker 자체를 못 찾음                → UNKNOWN
                                                            asset_type_source=UNKNOWN)
 ```
 
-### 6.1 Production AssetType에서 이름 substring matching 완전 제거 (Fix Round 08 Major 1)
+### 6.1 운영 AssetType에서 이름 부분 문자열 일치 완전 제거 (Fix Round 08 Major 1)
 
-Fix Round 07에서 SPAC에 대해 종목명 substring matching을 제거한 것에 이어, Fix Round 08에서는
-`종류주권` 판정(`if kind == "종류주권" and "우선주" in isu_nm:`)을 포함한 **모든 종목명 substring matching
-휴리스틱을 production authority에서 완전히 제거했다 (`NAME_HEURISTIC_USED_FOR_PRODUCTION_ASSET_TYPE = NO`).**
+Fix Round 07에서 SPAC에 대해 종목명 부분 문자열 일치를 제거한 것에 이어, Fix Round 08에서는
+`종류주권` 판정(`if kind == "종류주권" and "우선주" in isu_nm:`)을 포함한 **모든 종목명 부분 문자열 일치
+휴리스틱을 운영 기준에서 완전히 제거했다 (`NAME_HEURISTIC_USED_FOR_PRODUCTION_ASSET_TYPE = NO`).**
 
 - `KIND_STKCERT_TP_NM in ("구형우선주", "신형우선주")` (101건): KRX 공식 주권종류구분 코드 자체가
   우선주를 명시하므로 이름과 무관하게 `PREFERRED`로 정식 분류된다.
@@ -184,21 +184,21 @@ KRX formal taxonomy 전수 검증 결과, 관리 관련 `SECT_TP_NM` 값은 오�
 - 정상적으로 합병 전환된 369370(현재 SECT_TP_NM="벤처기업부")은 관리종목이 아니므로 깨끗한 COMMON 전환이 유지된다.
 
 
-## 7. Builder 스크립트
+## 7. 생성 스크립트
 
 ```
 BUILDER_SCRIPT   = scripts/build_krx_instrument_metadata.py
 MAPPING_VERSION  = v4
 ```
 
-역할 (Fix Round 07/08 — live universe 전체에서 생성, 이름 휴리스틱 0건):
+역할 (Fix Round 07/08 — 실시간 전체 집합에서 생성, 이름 휴리스틱 0건):
 
 ```
 FETCH LIVE FORMAL SOURCES (equity + ETF + ETN)
         ↓
-BUILD CURRENT LIVE SUPPORTED UNIVERSE (live 전체의 union, dedup, market 정규화)
+BUILD CURRENT LIVE SUPPORTED UNIVERSE (실시간 전체의 union, dedup, market 정규화)
         ↓
-CLASSIFY EACH LIVE INSTRUMENT (code field 단독 판정, 이름 substring 완전 배제)
+CLASSIFY EACH LIVE INSTRUMENT (code field 단독 판정, 이름 부분 문자열 완전 배제)
         ↓
 CREATE NEW CURRENT SNAPSHOT (effective_date = SOURCE_OBSERVATION_DATE)
         ↓
@@ -209,11 +209,11 @@ APPEND CURRENT SNAPSHOT, PRESERVE ALL HISTORICAL ROWS (market 정규화)
 WRITE CSV + PARQUET + RAW SOURCE SNAPSHOT + MANIFEST
 ```
 
-Fix Round 06까지는 "가장 최근 기존 snapshot(baseline)의 ticker 집합을 live
-source에서 재분류"하는 구조였다 — baseline에 없는 신규 상장 종목은 verified
-snapshot에 절대 들어갈 수 없었고, name/market도 baseline에서 그대로 복사해
-왔다. 이제 baseline은 diff(신규상장/상장폐지 감지)와 §6.2 SPAC ambiguity 감지
-용도로만 쓰이며, current snapshot membership의 authority가 아니다.
+Fix Round 06까지는 "가장 최근 기존 스냅샷(baseline)의 ticker 집합을 실시간
+원천에서 재분류"하는 구조였다 — baseline에 없는 신규 상장 종목은 검증된
+스냅샷에 절대 들어갈 수 없었고, name/market도 baseline에서 그대로 복사해
+왔다. 이제 baseline은 diff(신규상장/상장폐지 감지)와 §6.2 SPAC 모호성 감지
+용도로만 쓰이며, 현재 스냅샷 구성의 기준이 아니다.
 
 **`--as-of-date` 같은 날짜 주입 CLI 인자는 존재하지 않는다** (Fix Round 06
 Critical 1, 유지). `--dry-run`으로 파일을 쓰지 않고 변경 미리보기 가능. 같은 날
@@ -221,31 +221,31 @@ Critical 1, 유지). `--dry-run`으로 파일을 쓰지 않고 변경 미리보�
 동작한다.
 
 
-## 8. 검증된 snapshot 범위
+## 8. 검증된 스냅샷 범위
 
-이번 build가 실제로 검증한 것은 **build 실행 시점(SOURCE_OBSERVATION_DATE)의 KRX
-실시간 상장 상태** 하나뿐이다. 이제 이 snapshot은 이전 baseline ticker 집합이
-아니라 live formal universe(equity + ETF + ETN) 전체를 포괄한다. 과거로 거슬러
-올라가는 historical formal snapshot을 제공하는 API는 확인하지 못했다(§17).
+이번 생성이 실제로 검증한 것은 **생성 실행 시점(SOURCE_OBSERVATION_DATE)의 KRX
+실시간 상장 상태** 하나뿐이다. 이제 이 스냅샷은 이전 baseline ticker 집합이
+아니라 실시간 공식 전체 집합(equity + ETF + ETN)을 포괄한다. 과거로 거슬러
+올라가는 과거 공식 스냅샷을 제공하는 API는 확인하지 못했다(§17).
 
-이 값은 고정 상수가 아니라 매 build 실행마다 달라진다 — 최신 값은
+이 값은 고정 상수가 아니라 매 생성 실행마다 달라진다 — 최신 값은
 `data/reference/krx_instrument_metadata_manifest.json`의
 `verified_snapshot_effective_date`를 확인한다. 테스트 코드 역시 이 값을
 manifest에서 동적으로 읽는다(하드코딩 날짜를 쓰지 않는다).
 
 
-## 9. 과거 row 정책 (PIT 이력 rewrite 금지 및 market 정규화)
+## 9. 과거 행 정책 (PIT 이력 rewrite 금지 및 market 정규화)
 
-**과거 effective_date row의 AssetType 값은 소급 재작성(history rewrite)하지 않고 그대로 보존한다 (`asset_type_history_rewrite = "NOT_PERFORMED"`).**
-오늘 시점 조회 결과로 과거 snapshot의 asset_type을 소급 덮어쓰는 것은 절대 금지되어 있으며, historical row는 기존 asset_type 값을 유지한다.
+**과거 effective_date 행의 AssetType 값은 소급 재작성(history rewrite)하지 않고 그대로 보존한다 (`asset_type_history_rewrite = "NOT_PERFORMED"`).**
+오늘 시점 조회 결과로 과거 스냅샷의 asset_type을 소급 덮어쓰는 것은 절대 금지되어 있으며, 과거 행은 기존 asset_type 값을 유지한다.
 단, 시장 구분의 canonical 정규화(`KOSDAQ GLOBAL` -> `KOSDAQ`, 696건)는 프로젝트 일관성을 위해 수행되었다 (`historical_market_normalization = "PERFORMED"`, `historical_market_normalized_row_count = 696`).
 
-다만 provenance는 정직하게 낮춘다: SOURCE_OBSERVATION_DATE가 아닌 모든 row의
+다만 원천 계보(provenance)는 정직하게 낮춘다: SOURCE_OBSERVATION_DATE가 아닌 모든 row의
 `classification_authority`/`asset_type_source`를 `"LEGACY_UNVERIFIED"`로
 설정한다.
 
 `InstrumentMetadata.is_trusted_for_production`은 이 값이 아니면
-(`FORMAL_SECURITY_TYPE`이어야만) trusted로 인정하므로, historical row는 항상
+( `FORMAL_SECURITY_TYPE`이어야만) trusted로 인정하므로, 과거 행은 항상
 자동으로 fail closed된다 — asset_type 자체(COMMON/SPAC 등)는 여전히 기존 PIT
 로직으로 정확히 조회된다(§10).
 
@@ -254,11 +254,11 @@ manifest에서 동적으로 읽는다(하드코딩 날짜를 쓰지 않는다).
 
 Fix Round 06은 `InstrumentMetadata.is_eligible_for_historical_legacy_research`를
 "이 ticker가 requested_as_of *이후*에 실제로 formal 재검증된 적이 있는가"
-(`has_later_verified_snapshot`)로 판단했다. 이는 **survivorship bias**였다:
-미래까지 살아남아 다시 검증된 ticker만 retrospective 분석이 가능해지고, 상장
+(`has_later_verified_snapshot`)로 판단했다. 이는 **생존편향(survivorship bias)**이었다:
+미래까지 살아남아 다시 검증된 ticker만 과거 회고(retrospective) 분석이 가능해지고, 상장
 폐지되어 다시 검증될 기회가 없었던 ticker(예: 380440)는 동일한 품질의
-historical metadata를 가지고도 부당하게 배제됐다. 또한 이 판단 자체가 미래
-시점의 정보를 과거 시점 조회의 eligibility 결정에 사용하는 것이라 Strict PIT
+과거 메타데이터(historical metadata)를 가지고도 부당하게 배제됐다. 또한 이 판단 자체가 미래
+시점의 정보를 과거 시점 조회의 적격성(eligibility) 결정에 사용하는 것이라 Strict PIT
 정신에도 어긋난다.
 
 Fix Round 07부터 이 판단은 **오직 선택된(selected) PIT row 자체의 값**만 본다
@@ -270,7 +270,7 @@ selected requested_as_of PIT row가:
   AND classification_authority == "LEGACY_UNVERIFIED"
   AND asset_type_source == "LEGACY_UNVERIFIED"
   AND asset_type != "UNKNOWN"
-→ metadata_provenance_mode = HISTORICAL_LEGACY_RESEARCH (전략 retrospective 계산 허용)
+→ metadata_provenance_mode = HISTORICAL_LEGACY_RESEARCH (전략 과거 회고 계산 허용)
 
 selected row가 FORMAL_SECURITY_TYPE
 → metadata_provenance_mode = CURRENT_VERIFIED
@@ -280,22 +280,22 @@ selected row가 UNKNOWN / LEGACY_HEURISTIC / NAME_BASED_HEURISTIC / asset_type U
 ```
 
 중요: `LEGACY_HEURISTIC`/`NAME_BASED_HEURISTIC`은 `HISTORICAL_LEGACY_RESEARCH`로
-승격되지 않는다 — canonical frozen PIT snapshot이 아니라 그보다 신뢰도가 낮은
+승격되지 않는다 — 정식 동결 PIT 스냅샷(canonical frozen PIT snapshot)이 아니라 그보다 신뢰도가 낮은
 별도 종류의 추정치이기 때문이다.
 
 `HISTORICAL_LEGACY_RESEARCH`는 A FAST Core 전략 계산을 정상적으로 수행하되(가격/
 계약 데이터는 실제 그대로), Stock Report의 `a_fast_core.metadata_provenance_mode`
-필드로 이 판정이 production 신뢰가 아니라 retrospective 연구용임을 명시적으로
+필드로 이 판정이 운영(production) 신뢰가 아니라 과거 회고(retrospective) 연구용임을 명시적으로
 구분해 표시한다. w.md §4.5가 금지하는 것은 "오늘 시점" 판단에 legacy metadata를
-trusted로 쓰는 것이지, 과거 조회 자체를 계산하는 것이 아니다.
+신뢰(trusted)하는 것이지, 과거 조회 자체를 계산하는 것이 아니다.
 
 380440(상장폐지, 재검증 기회 자체가 없음)은 이제 정상적으로
-HISTORICAL_LEGACY_RESEARCH 자격을 얻는다 — future survival 여부와 무관하다.
+HISTORICAL_LEGACY_RESEARCH 자격을 얻는다 — 미래 생존(future survival) 여부와 무관하다.
 
 이 모드는 `tests/test_a_fast_core_stock_report.py`의 PIT/execution-boundary
 전략 테스트(`test_a_fast_core_uses_requested_as_of_only`,
 `test_a_fast_core_pending_entry_next_open`, `test_a_fast_core_execution_boundary`)를
-metadata trust를 강제로 override하는 테스트 헬퍼 없이 실제 production 경로
+메타데이터 신뢰를 강제로 override하는 테스트 헬퍼 없이 실제 운영(production) 경로
 (`generate_stock_report`)로 직접 검증한다.
 
 

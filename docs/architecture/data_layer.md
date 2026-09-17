@@ -9,7 +9,7 @@
 현재 구현 경계
 ----------------------------------------------------------------------
 
-이 문서는 legacy Data Layer v0.1의 계약·구현 기록이다. 현재 운영 데이터
+이 문서는 legacy 공용 데이터 레이어 v0.1의 계약·구현 기록이다. 현재 운영 데이터
 기준과 사용 코드 경로는
 [KRX Production Data Architecture](krx_production_data_architecture_v01.md)와
 [Market Data Repository V2](market_data_repository_v02.md)를 따른다. 아래의
@@ -22,8 +22,8 @@ PyKRX, `MarketDataRepository`, `ParquetCache`, `adjusted=True` 설명은 legacy
 MarketDataRepository        (repository.py)
   - cache 조회
   - 부족한 기간 판단
-  - provider 호출 + validate
-  - 기존 cache와 merge (증분 업데이트)
+  - provider 호출 + 검증
+  - 기존 cache와 병합 (증분 업데이트)
   - 요청 기간 slice 반환
         │
         ├── MarketDataProvider   (provider.py, Protocol)
@@ -151,7 +151,7 @@ trading_value   float64   # adjusted=True 경로에서는 NaN일 수 있음
 2. **캐시에서 읽은 기존 데이터**(non-empty일 때, provider 호출 여부와 무관하게)
 3. **캐시와 병합한 결과**(캐시에 다시 저장하기 직전)
 
-2번이 있어서, 요청 구간이 이미 안정된 과거 캐시로 완전히 커버돼 provider를 호출하지
+2번이 있어서, 요청 구간이 이미 안정된 과거 캐시로 완전히 덮여 provider를 호출하지
 않는 "stable cache hit" 경로에서도 깨진 Parquet·예전 schema·중복 index 같은 문제가
 검증 없이 Pattern 계층까지 그대로 흘러가지 않는다.
 

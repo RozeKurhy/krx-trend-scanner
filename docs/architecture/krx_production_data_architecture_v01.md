@@ -63,7 +63,7 @@ Machine-readable 원본은
 |                             | `/sto/ksq_bydd_trd`                       |
 | volume/trading_value        | KRX Open API raw                         |
 | market_cap/listed_shares    | KRX Open API raw daily                   |
-| 수정주가 OHLC               | Naver direct date-range (`requestType=1`) |
+| 수정주가 OHLC (`ADJUSTED`)  | Naver direct date-range (`requestType=1`) |
 | 수정주가 거래량              | NONE; 제공한다고 선언하지 않음           |
 | stock master raw facts     | KRX Basic Info + request basDd          |
 | stock master canonical market | `normalize_krx_market(raw_market)`    |
@@ -126,7 +126,7 @@ Native sector index response의 raw identity는
 | Store                         | 핵심 소유권                           |
 ---------------------------------------------------------------------
 | KRXRawStockStore              | 미수정 OHLC + 원천 ancillary              |
-| AdjustedPriceStore            | 수정주가 OHLC only; schema `ADJUSTED_PRICE_V02` / store `ADJUSTED_PRICE_STORE_V02` |
+| AdjustedPriceStore            | 수정주가 OHLC (`ADJUSTED`) only; schema `ADJUSTED_PRICE_V02` / store `ADJUSTED_PRICE_STORE_V02` |
 | StockMasterStore              | as_of 포함 PIT raw/canonical master; final asset_type 제외 |
 | InstrumentClassificationStore| PIT asset_type/applicability + provenance |
 | IndexStore                    | market/native-sector/taxonomy family; key=(family,index_code) |
@@ -172,8 +172,8 @@ FIX03 당시 Pattern A, FastCore, Julia 등 기존 소비자는 당분간 legacy
 FIX03 당시 문서상 개념 대상은
 `MarketDataRepositoryV2(adjusted_price_store, raw_stock_store, ...)`였다.
 
-- `get_daily()`의 open/high/low/close는 수정주가
-- `get_daily()`의 volume/trading_value는 원천
+- `get_daily()`의 open/high/low/close는 `ADJUSTED` (수정주가)
+- `get_daily()`의 volume/trading_value는 `RAW` (원천)
 - join key는 `(ticker, date)`
 - join은 `INNER_CONSISTENT_TRADING_SESSION_JOIN`
 - 한쪽 layer가 없으면 `DATA_UNAVAILABLE` 또는 명시적 오류

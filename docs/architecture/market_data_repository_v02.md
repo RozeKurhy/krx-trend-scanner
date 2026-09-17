@@ -6,10 +6,10 @@ AdjustedPriceStore의 수정주가 OHLC와 KrxRawStockStore의 원천 일별 사
 읽기 전용 결합 계층에서 결합한다. Repository V2는 기준이 아니며
 가격 조정, 원천 보정, corporate action 처리, 네트워크 조회를 수행하지 않는다.
 
-소스 authority
+원천 기준
 --------------
-* open/high/low/close: AdjustedPriceStore, NAVER_DIRECT_DATE_RANGE_ADJUSTED, 수정주가
-* volume/trading_value: KrxRawStockStore, KRX_OPEN_API_STOCK_DAILY, RAW
+* open/high/low/close: AdjustedPriceStore, NAVER_DIRECT_DATE_RANGE_ADJUSTED, `ADJUSTED` (수정주가)
+* volume/trading_value: KrxRawStockStore, KRX_OPEN_API_STOCK_DAILY, `RAW` (원천)
 * market_cap/listed_shares: KrxRawStockStore의 raw ancillary만 제공
 
 현재 구현 경계
@@ -23,9 +23,9 @@ Pattern A scanner는 `build_production_repository_v2`를 통해 rolling authorit
 
 공식 지원 instrument 계약
 ---------------------------------
-Repository V2는 formally classified `COMMON`과 `ETF`를 동일한 composed
-interface로 지원한다. ETF 여부는 `InstrumentMetadataResolver`의 PIT formal
-product-master classification으로만 결정하며 ticker 모양/이름/17종 allowlist를
+Repository V2는 공식 분류된(formally classified) `COMMON`과 `ETF`를 동일한 결합
+interface로 지원한다. ETF 여부는 `InstrumentMetadataResolver`의 PIT 공식
+상품 마스터 분류로만 결정하며 ticker 모양/이름/17종 allowlist를
 사용하지 않는다.
 
 * COMMON 수정주가 기준 원천: `AdjustedPriceStore` / Naver direct adjusted V02
@@ -34,11 +34,11 @@ product-master classification으로만 결정하며 ticker 모양/이름/17종 a
 * ETF raw authority: `KrxRawStockStore` / KRX Open API ETF daily (`/etp/etf_bydd_trd`)
 * ETF volume/trading_value는 ETF 원천 field를 그대로 보존한다. 수정주가
   OHLC로 재구성하거나 trading_value를 계산하지 않는다.
-* 두 instrument type 모두 exact source date range, explicit session projection,
-  PIT lifecycle semantics를 사용한다. forward-fill/backfill/consumer-specific
+* 두 instrument type 모두 정확히 일치하는 원천 날짜 범위, 명시적 세션 투영,
+  PIT lifecycle 의미를 사용한다. forward-fill/backfill/사용 주체별
   bypass는 금지한다.
 
-ETF source access가 인증/활용 승인되지 않은 경우 Repository V2는 성공을
+ETF 원천 접근이 인증/활용 승인되지 않은 경우 Repository V2는 성공을
 가장하지 않고 `DATA_UNAVAILABLE: RAW_MISSING`으로 fail-closed한다. 레거시
 `data/raw/stocks` ETF cache는 이 계약의 source authority가 아니다.
 
@@ -50,14 +50,22 @@ Ticker 범위
 
 API schema
 ---------
+공식 필드 의미 토큰은 다음과 같이 고정한다.
+
+```text
+price_semantics = "ADJUSTED"
+volume_semantics = "RAW"
+trading_value_semantics = "RAW"
+```
+
 get_daily(ticker, start, end)
   index: timezone-naive, ascending, unique DatetimeIndex
   columns: open, high, low, close, volume, trading_value
-  OHLC는 수정주가, volume/trading_value는 원천.
+  OHLC는 `ADJUSTED` (수정주가), volume/trading_value는 `RAW` (원천).
 
 get_raw_daily(ticker, start, end)
   columns: open, high, low, close, volume, trading_value, market_cap, listed_shares
-  모든 값은 raw이며 raw KRX ticker domain을 사용한다.
+  모든 값은 `RAW`이며 원천 KRX ticker domain을 사용한다.
 
 get_daily_ancillary(ticker, start, end)
   columns: volume, trading_value, market_cap, listed_shares
@@ -68,13 +76,13 @@ get_stock_snapshot(ticker, date)
 
 Join 및 missing 의미
 -------------------------
-수정주가/원천 양쪽의 non-empty trading session set은 정확히 같아야 한다.
+수정주가/원천 양쪽의 비어 있지 않은 거래 세션 집합은 정확히 같아야 한다.
 한쪽 날짜를 조용히 drop하거나 forward-fill/bfill/0-fill하지 않는다.
 session set mismatch는 REPOSITORY_V2_TRADING_SESSION_MISMATCH로 fail-closed한다.
 양쪽이 모두 empty인 요청 범위는 typed empty daily frame을 반환할 수 있다.
 한쪽만 empty이거나 ticker store가 없으면 DATA_UNAVAILABLE로 종료한다.
 
-Read-only 및 호환성
+읽기 전용 및 호환성
 --------------------------
 Repository V2는 store를 생성자 주입받고 write/refresh를 호출하지 않는다.
 기존 MarketDataRepository와 tests/test_repository.py는 변경하지 않는다.
@@ -92,7 +100,7 @@ storage redesign은 이 phase 범위에 포함하지 않는다.
 
 검증 증거
 -------------------
-* tests/test_repository_v2.py: source authority, strict join, domain, missing,
+* tests/test_repository_v2.py: 원천 기준, 엄격한 결합, domain, missing,
   mutation, cross-market, duplicate-date 및 network isolation 관련 검증
 * tests/test_market_data_repository_v02_validation.py: FIX01의 샘플 수,
   metadata-derived 범위, empty comparison, 예외 구조화 및 diff-check gate 검증

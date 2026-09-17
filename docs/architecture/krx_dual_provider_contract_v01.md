@@ -1,4 +1,4 @@
-# KRX 이중 provider 계약 (KRX Dual Provider Contract v0.1)
+# KRX 이중 데이터 제공자 계약 (KRX Dual Provider Contract v0.1)
 
 목적
 --------------------------------------------------
@@ -64,7 +64,7 @@ NOT CONNECTED IN FIX01
 
 현재 기준 경계
 --------------------------------------------------
-위 표와 `NOT CONNECTED IN FIX01`은 V01 dual-provider 설계·검증 단계의
+위 표와 `NOT CONNECTED IN FIX01`은 V01 이중 제공자 설계·검증 단계의
 과거 상태다. 당시 수정주가 OHLC 경계는 PyKRX `adjusted=True`였지만,
 현재 수정주가 기준 원천은 `NaverDirectAdjustedPriceDataProvider`의 Naver
 direct date-range (`requestType=1`)와 `AdjustedPriceStore V02`다. KRX raw

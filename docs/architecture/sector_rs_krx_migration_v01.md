@@ -13,12 +13,12 @@ PyKRX 구성 종목 정보는 금지한다.
 운영 계약
 ----------------------------------------------------------------------
 - `trend_scanner.data.krx_sector_index.KRX_NATIVE_SECTOR_INDEX_MAP`
-  - immutable 46-entry mapping
+  - 변경 불가 46-entry mapping
   - KOSPI 24 / KOSDAQ 22
-  - source-qualified `(source_api, idx_class, idx_name)` identity
+  - 원천이 포함된 `(source_api, idx_class, idx_name)` identity
 - 검증 산출물은 contract의 실행 시점 의존성이 아니다.
 
-Cache 흐름
+캐시 흐름
 ----------------------------------------------------------------------
 KRX `/idx/kospi_dd_trd` + `/idx/kosdaq_dd_trd`
         ↓ (최대 2 snapshot calls / date)
@@ -30,8 +30,8 @@ normalized 46-sector Parquet cache
 
 현재 구성 종목 정보 흐름
 ----------------------------------------------------------------------
-KRX Data Marketplace official index constituents CSV
-        ↓ (manual login → 지수 → 주가지수 → 지수구성종목 → effective date)
+KRX Data Marketplace 공식 지수 구성 종목 CSV
+        ↓ (수동 로그인 → 지수 → 주가지수 → 지수구성종목 → 기준일)
 46개 업종 검증 (KOSPI 24 + KOSDAQ 22)
         ↓ MOST_SPECIFIC_NATIVE_SECTOR_V01 resolution
 `SectorMembershipStore` exact-date snapshots
@@ -46,7 +46,7 @@ KRX Data Marketplace official index constituents CSV
 Market RS는 기존 market index cache/원천을 계속 사용한다.
 KRX `/idx/krx_dd_trd` branded taxonomy는 native Sector RS에 사용하지 않는다.
 
-Cache 불변식
+캐시 불변식
 ----------------------------------------------------------------------
 - 표준 컬럼은 date/index_code/index_name/open/high/low/close/volume/trading_value.
 - 정상 거래일은 KOSPI 24 + KOSDAQ 22 rows를 갖는다.
@@ -57,9 +57,9 @@ Cache 불변식
 - 한 시장만 성공하면 운영 cache를 갱신하지 않는다.
 - 초기 cache는 최소 270 complete trading sessions를 요구한다.
 
-Membership 불변식
+구성 종목 불변식
 ----------------------------------------------------------------------
-- approved exact-date snapshot만 사용한다.
+- 승인된 정확한 날짜의 snapshot만 사용한다.
 - 현재 보유 스냅샷은 `2026-08-14` 과거 승인 스냅샷과
   `2026-09-04` 현재 최신 승인 스냅샷이다.
 - requested `as_of`와 exact match하는 snapshot이 없으면 fail closed하고
@@ -77,11 +77,11 @@ Sector index cache 증분 갱신
 두 snapshot 검증이 모두 끝난 뒤 임시 Parquet와 metadata를 atomic replace한다.
 동일 날짜 재실행은 해당 날짜를 deterministic replace하며 duplicate를 만들지 않는다.
 
-현재 membership 취득 및 계보
+현재 구성 종목 취득 및 계보
 ----------------------------------------------------------------------
-- 원천: `KRX Data Marketplace official index constituents`
-- UI path: 수동 로그인 → 지수 → 주가지수 → 지수구성종목 → 기준일 선택
-- 운영 취득: direct scripted HTTP 없이 공식 CSV 다운로드
+- 원천: `KRX Data Marketplace 공식 지수 구성 종목`
+- UI 경로: 수동 로그인 → 지수 → 주가지수 → 지수구성종목 → 기준일 선택
+- 운영 취득: 직접 scripted HTTP 없이 공식 CSV 다운로드
 - 운영 게시 게이트: KOSPI 24 + KOSDAQ 22 = 46 / 46 required
 - CSV는 로컬 원천으로 보존한 뒤 exact-date `SectorMembershipStore` 스냅샷을 생성한다.
 - Sector index cache metadata에는 source_name, fetch_mode, source_apis, mapping
@@ -89,7 +89,7 @@ Sector index cache 증분 갱신
 - 검증 결과는 `artifacts/data/krx_openapi/sector_rs_migration/v01/`에 저장하고,
   운영 cache 자체는 `.cache/` 아래에 둔다.
 
-과거 검증 증거 (현재 production 취득 경로 아님)
+과거 검증 근거 (현재 운영 취득 경로 아님)
 ----------------------------------------------------------------------
 과거 parity/transport 검증에서 PyKRX 구성 종목 정보 probe를 사용했다는 기록은
 과거 검증 근거로 보존한다. 해당 probe와 replay는 현재 운영 구성 종목 수집 또는

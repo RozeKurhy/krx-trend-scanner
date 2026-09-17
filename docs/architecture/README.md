@@ -2,7 +2,7 @@ README.md
 
 # 아키텍처 (Architecture)
 
-특정 Pattern에 종속되지 않는 공용 infrastructure 문서.
+특정 Pattern에 종속되지 않는 공용 인프라 문서.
 
 | 문서 | 역할 |
 |---|---|
@@ -19,6 +19,6 @@ README.md
 | [sector_rs_krx_migration_v01.md](sector_rs_krx_migration_v01.md) | native Sector RS 지수·기준일별 구성 종목 기준 |
 | [survivorship_safe_denominator_freeze_v01.md](survivorship_safe_denominator_freeze_v01.md) | 생존편향 방지 PIT 분모 동결 계약 |
 | [errata/krx_identifier_contract_errata_v01.md](errata/krx_identifier_contract_errata_v01.md) | KRX 식별자 계약 보정 overlay |
-| [artifacts/artifacts_information_architecture_audit_v01.md](artifacts/artifacts_information_architecture_audit_v01.md) | artifact(산출물) 정보 구조 및 계보 감사 |
+| [artifacts/artifacts_information_architecture_audit_v01.md](artifacts/artifacts_information_architecture_audit_v01.md) | 산출물 정보 구조 및 계보 감사 |
 | [validation/](validation/) | 현재 사용하는 아키텍처 검증·테스트 기반 문서 |
-| [archive/validation/](archive/validation/) | KRX 공용 데이터 소스의 과거 검증·조사 기록(cache population, market cap backfill, sector benchmark source investigation 등) |
+| [archive/validation/](archive/validation/) | KRX 공용 데이터 원천의 과거 검증·조사 기록(cache population, market cap backfill, sector benchmark source investigation 등) |

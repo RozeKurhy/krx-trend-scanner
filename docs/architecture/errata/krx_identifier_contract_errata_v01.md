@@ -2,9 +2,9 @@
 
 목적
 ----
-2018-04-27 KRX Open API live whole-response census에서 Daily `ISU_CD`와 Basic
+2018-04-27 KRX Open API 실시간 전체 응답 조사에서 Daily `ISU_CD`와 Basic
 Info `ISU_SRT_CD`가 숫자만이 아닌 `03473K`, `08537M` 형태를 포함함을 확인했다.
-기존 CLOSED architecture를 다시 쓰지 않고, 실제 source identifier 의미만
+기존 CLOSED 아키텍처를 다시 쓰지 않고, 실제 원천 식별자 의미만
 ERRATA overlay로 교정한다.
 
 검증된 계약
@@ -19,9 +19,9 @@ ERRATA overlay로 교정한다.
 
 경계
 ----
-- Raw KRX authority는 source code를 그대로 보존한다. suffix 제거, 숫자 변환,
+- Raw KRX 기준은 원천 code를 그대로 보존한다. suffix 제거, 숫자 변환,
   대문자 자동 변환, row drop을 하지 않는다.
-- `AdjustedPriceProvider`와 숫자 전용 downstream consumer는 이번 ERRATA에서
+- `AdjustedPriceProvider`와 숫자 전용 downstream 사용 코드는 이번 ERRATA에서
   자동 확장하지 않는다. raw whole-market completeness와 strategy eligibility는
   별도 계층이다.
 - 기존 `KRX_PRODUCTION_DATA_ARCHITECTURE_V01` CLOSED artifacts/history는
@@ -34,7 +34,7 @@ ERRATA overlay로 교정한다.
   영문 포함 1), invalid length/charset 0.
 - Basic Info: Daily와 동일한 892/1,272건 shape이며 `03473K`=`SK우`,
   `08537M`=`루트로닉3우C`가 `ISU_SRT_CD`에 존재한다.
-- 전체 census와 corrected diagnostic은 raw full response를 artifact에 저장하지
+- 전체 조사와 corrected diagnostic은 raw full response를 산출물에 저장하지
   않고 bounded summary만 남긴다.
 
 후속 단계

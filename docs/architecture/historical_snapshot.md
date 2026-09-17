@@ -1,4 +1,4 @@
-# 과거 시점 검증 (Historical Snapshot Validation v0.1)
+# 과거 시점 검증 (Historical Snapshot 검증 v0.1)
 
 ## 상태
 
@@ -38,10 +38,10 @@ sliced = daily[daily.index <= requested]
 수 있습니다. validator나 resampler는 건드리지 않고, 이 잘라내기는 전부
 Historical Snapshot 계층(`build_historical_snapshot` 내부)에서만 일어납니다.
 
-* `True`(live, 기본값): `snapshot_date`까지의 daily로 만든 주봉/월봉을
+* `True`(실시간(live), 기본값): `snapshot_date`까지의 daily로 만든 주봉/월봉을
   그대로 사용한다. `snapshot_date`가 월/주 중간이면 마지막 월봉/주봉은
   미완성이다.
-* `False`(completed): 마지막 월봉이 진행 중인 달이면 제거하고, 마지막
+* `False`(완료(completed)): 마지막 월봉이 진행 중인 달이면 제거하고, 마지막
   주봉도 아직 완성되지 않았으면 제거한다.
 
 **monthly 기준(한계)**: "진행 중인 달인지"를 실제 거래소 캘린더가 아니라
@@ -77,7 +77,7 @@ monthly_as_of(completed) = 2026-07-31   # 8월 봉은 진행 중이라 제외
 weekly_as_of(completed)  = 2026-08-14   # 그 주 금요일이 곧 effective_as_of라 제외 안 됨
 ```
 
-## Snapshot 날짜 선정
+## 스냅샷 날짜 선정
 
 `scripts/historical_snapshot_validate.py`의 `SNAPSHOTS` 상수에 사람이 직접
 적은 날짜 목록입니다. 자동 탐지 로직은 없습니다. 4종목 각각에 대해 캐시된
@@ -99,7 +99,7 @@ snapshot_date를 캐시의 가장 최근 날짜(보통 월/주 중간)로 둬서
 live가 실제로 다른 결과를 내는 걸 눈으로 확인할 수 있게 한 참고용
 snapshot입니다.
 
-## Holdout set (exploration/holdout 분리)
+## 보류 집합 (exploration/holdout 분리)
 
 `SNAPSHOTS`(068270/035420/005930/000660)는 monthly close/MA24 slope/spread/
 compression 등 실제 Feature 값을 직접 보고 날짜를 골랐기 때문에 **선택

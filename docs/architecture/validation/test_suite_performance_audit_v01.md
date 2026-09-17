@@ -2,15 +2,15 @@ test_suite_performance_audit_v01.md
 
 # 테스트 모음 성능 감사·정리 (Test Suite Performance Audit & Refactor v0.1)
 
-이 문서는 test infrastructure audit 문서이며, Pattern A / Pattern A FAST strategy
-authority가 아니다. 검증 강도(coverage)나 production semantics를 바꾸지 않고,
+이 문서는 테스트 기반 감사 문서이며, Pattern A / Pattern A FAST strategy
+authority가 아니다. 검증 범위(coverage)나 운영 의미(production semantics)를 바꾸지 않고,
 테스트 실행 구조(중복 계산 제거, fixture 재사용, slow 격리)만 개선한 기록이다.
 
 ## 1. 문제 배경
 
 Full Test Suite가 약 66분(3962.13초, 865 passed / 6 skipped / 3 deselected)
 소요되는 것이 확인되었다. 근본 원인은 "테스트 개수가 많아서"가 아니라, 작은
-invariant 하나를 확인하기 위해 대형 production computation(2,528종목 Full
+불변식(invariant) 하나를 확인하기 위해 대형 운영 계산(production computation)(2,528종목 Full
 Universe Scan, Stock Report 생성 등)을 반복 실행하는 구조였다.
 
 대표 사례: `tests/test_pattern_a_relative_strength_infrastructure.py`의
@@ -49,12 +49,12 @@ Investability 파일 tests_scanner_candidate_summary_breakdown 단독
 
 ## 3. 테스트 분류
 
-- LEVEL 1 (UNIT/FAST): pure function, synthetic/소수 row, tmp_path, network 없음.
-- LEVEL 2 (FAST INTEGRATION): 실제 production code path, 소수 ticker(예:
+- LEVEL 1 (UNIT/FAST): 순수 함수, synthetic/소수 row, tmp_path, 네트워크 없음.
+- LEVEL 2 (FAST INTEGRATION): 실제 운영 코드 경로, 소수 ticker(예:
   `scan_pattern_a_universe(target_tickers=[...])`), network 없음, Full Universe
   없음.
-- LEVEL 3 (FULL UNIVERSE / SLOW VALIDATION): 2,528 COMMON 전수, large
-  historical replay — `@pytest.mark.slow` 필수, normal suite에서 제외.
+- LEVEL 3 (FULL UNIVERSE / SLOW VALIDATION): 2,528 COMMON 전수, 대규모
+  과거 재생 — `@pytest.mark.slow` 필수, 일반 모음에서 제외.
 
 ## 4. 발견된 P0/P1/P2
 
@@ -82,7 +82,7 @@ P1_FOUND = 3
 
 P2_FOUND = 1
   - tests/test_pattern_a_foreign_flow_infrastructure.py: base_scan_result
-    (module-scoped fixture)가 normal suite에서 실제 2,528종목 Full Universe
+    (module-scoped fixture)가 일반 모음에서 실제 2,528종목 Full Universe
     Scan을 1회 수행해 약 178초 소요. 이미 5개 negative test가 재사용하는
     올바른 "1번 계산 → 여러 test 검증" 패턴이라 삭제/축소 대상은 아니지만,
     실행 시간 자체는 Remaining Performance Debt로 분류한다.

@@ -10,7 +10,7 @@ KRX Open API의 /idx/kospi_dd_trd, /idx/kosdaq_dd_trd로 전환한다.
 현재 상태 경계
 ----------------
 
-이 문서의 전환 계약과 아래 known-limitations token은 당시 phase 기록이다.
+이 문서의 전환 계약과 아래 known-limitations token은 당시 단계 기록이다.
 현재 Pattern A 운영 scanner는 기본 market-index 입력으로
 `data/market/index/v01`의 `IndexStore(MARKET_INDEX)`를 읽고, 기존 relative-strength
 artifact(산출물)는 parity/comparison 검증 근거로만 유지한다. 현재 수정주가 원천 기준은
@@ -30,7 +30,7 @@ IDX_NM은 정확히 코스피/코스닥이어야 한다. 코스피 (외국주포
 
 IndexStore 저장소
 -----------------
-IndexStore는 network/PyKRX/artifact 의존성이 없는 INDEX_STORE_V01 local store다.
+IndexStore는 network/PyKRX/artifact 의존성이 없는 INDEX_STORE_V01 로컬 저장소다.
 파일은 data/market/index/v01/market_index.parquet와
 data/market/index/v01/market_index.meta.json이며, (date, family, index_code)를
 유일 키로 사용한다. full replacement는 schema, family, code, 날짜, numeric,
@@ -47,14 +47,14 @@ staging에 저장한다. partial staging은 운영 IndexStore로 publish하지 �
 
 staging·publish
 --------------
-staging은 .cache/krx_openapi/market_index_migration/v01에 둔다. 모든 target
+staging은 .cache/krx_openapi/market_index_migration/v01에 둔다. 모든 대상
 날짜가 두 row(1001, 2001)로 검증되고 legacy OHLC parity, market RS parity,
 quota audit, secret scan, integrity gate가 통과한 경우에만 운영 store를
 한 번 publish한다. consumer는 END_TO_END_DATA_PARITY_V01에서 전환한다.
 
 legacy parity·RS parity
 -----------------------
-PyKRX live parity fetch는 금지한다. 기존
+PyKRX 실시간 parity fetch는 금지한다. 기존
 artifacts/patterns/pattern_a/validation/relative_strength/source/
 market_index_daily_20260814.parquet를 고정 SHA-256으로 검증하고 Decimal exact
 OHLC 비교를 수행한다. RS 수식은 기존 relative_strength.py를 그대로 사용해
