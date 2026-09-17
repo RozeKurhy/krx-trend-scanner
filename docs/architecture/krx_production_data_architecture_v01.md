@@ -12,6 +12,18 @@ PIT/provenance, data health 계약을 고정한다. 이번 단계의 최종 상�
 `READY_FOR_ARCHITECT_KRX_PRODUCTION_DATA_ARCHITECTURE_V01_FIX03_REVIEW`이며,
 Architect 승인 전에는 `CLOSED`로 선언하지 않는다.
 
+현재 구현 경계
+----------------------------------------------------------------------
+
+위 상태와 아래 FIX03 범위·migration 표는 해당 architecture phase의 snapshot이다.
+현재 adjusted OHLC authority는 Naver direct date-range (`requestType=1`)와
+`AdjustedPriceStore V02`이며, production Stock Report와 Pattern A scanner는
+`build_production_repository_v2`를 통해 Repository V2 production wiring을 사용한다.
+Pattern A production scanner의 market-index 기본 경로는
+`data/market/index/v01`의 `IndexStore(MARKET_INDEX)`이며, 과거 parity artifact는
+비교 증적으로만 유지된다. 따라서 아래의 “후속 phase”, “개념 target”, legacy
+consumer 문구는 이 문서가 작성된 당시의 상태로 읽는다.
+
 이번 단계의 범위
 ----------------------------------------------------------------------
 
@@ -59,7 +71,7 @@ Machine-readable 원본은
 | stock master canonical market | `normalize_krx_market(raw_market)`    |
 | instrument asset type      | InstrumentMetadataResolver/formal product-master classification |
 | native sector index         | KRX Open API native sector index       |
-| market index                | 현재 PyKRX legacy, 목표 KRX Open API    |
+| market index                | FIX03 snapshot: PyKRX legacy, 목표 KRX Open API |
 | ticker→sector membership    | KRX Data Marketplace official index constituents CSV → exact-date SectorMembershipStore snapshots |
 | fundamentals                | OpenDART                               |
 | foreign/institution flow    | PyKRX Foreign Flow                      |
@@ -125,8 +137,8 @@ Native sector index response의 raw identity는
 | CorporateActionStateStore     | adjusted cache dirty/refresh state   |
 ---------------------------------------------------------------------
 
-이번 phase에서는 protocol/dataclass 수준의 계약만 정의한다. 실제 모든 store의
-구현과 대량 데이터 이동은 후속 phase다.
+FIX03 당시에는 protocol/dataclass 수준의 계약만 정의했다. 실제 모든 store의
+구현과 대량 데이터 이동은 당시 후속 phase로 남겨 두었다.
 
 InstrumentClassificationStore
 ----------------------------------------------------------------------
@@ -152,12 +164,15 @@ raw trading_value가 결합된 기존 소비자 호환 캐시다. 이 파일을
 `KRXRawStockStore`라고 부르지 않는다.
 
 이번 phase에서 해당 경로의 파일을 rewrite, move, delete, bulk rename하지 않는다.
-Pattern A, FastCore, Julia 등 기존 소비자는 당분간 legacy cache를 그대로 사용한다.
+FIX03 당시 Pattern A, FastCore, Julia 등 기존 소비자는 당분간 legacy cache를
+그대로 사용하도록 기록했다. 현재 production consumer wiring은 위의 현재 구현
+경계에 적은 후속 Repository V2 경로를 따른다.
 
 5. Repository V2
 ----------------------------------------------------------------------
 
-개념 target은 `MarketDataRepositoryV2(adjusted_price_store, raw_stock_store, ...)`다.
+FIX03 당시 문서상 개념 target은
+`MarketDataRepositoryV2(adjusted_price_store, raw_stock_store, ...)`였다.
 
 - `get_daily()`의 open/high/low/close는 ADJUSTED
 - `get_daily()`의 volume/trading_value는 RAW
@@ -231,7 +246,7 @@ layer/source/date/row/ticker/missing/stale/error와
 last success/attempt/message를 공통으로 노출한다. quota observability는
 `usage_date_kst`, `used`, `limit`, `remaining`, `percentage`, `endpoint_usage`다.
 
-8. Migration state
+8. Migration state — FIX03 당시 snapshot
 ----------------------------------------------------------------------
 
 ---------------------------------------------------------------------
@@ -246,7 +261,8 @@ last success/attempt/message를 공통으로 노출한다. quota observability�
 | FUNDAMENTALS_OPENDART      | CLOSED / AVAILABLE                   |
 ---------------------------------------------------------------------
 
-API validation 완료만으로 production migrated/READY라고 표시하지 않는다.
+아래 표는 FIX03 당시의 migration snapshot이며, token/value는 역사 기록으로
+보존한다. API validation 완료만으로 production migrated/READY라고 표시하지 않는다.
 이번 FIX03에서 `STOCK_RAW_KRX`는 실제 production source가 아니라
 `LEGACY_COMPOSITE_STOCK_CACHE`를 current source로 명시하고, 검증 source와
 target store를 별도 기록한다. `STOCK_MASTER_KRX`의 current source는 현재

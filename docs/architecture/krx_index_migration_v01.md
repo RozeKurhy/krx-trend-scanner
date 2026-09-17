@@ -10,6 +10,17 @@ KRX Open API의 /idx/kospi_dd_trd, /idx/kosdaq_dd_trd로 전환한다.
 이번 문서는 MARKET_INDEX만 다루며 native sector index, membership, RS 수식과
 consumer 기본 wiring은 변경하지 않는다.
 
+현재 상태 경계
+----------------
+
+이 문서의 migration 계약과 아래 known-limitations token은 당시 phase 기록이다.
+현재 Pattern A production scanner는 기본 market-index 입력으로
+`data/market/index/v01`의 `IndexStore(MARKET_INDEX)`를 읽고, 기존 relative-strength
+artifact는 parity/comparison evidence로만 유지한다. 현재 adjusted source authority는
+Naver direct date-range와 `AdjustedPriceStore V02`이며, V02 production population
+구현도 후속 단계에서 반영되었다. 다만 full end-to-end parity 전체 상태는 이 문서에서
+새로 해소되었다고 확정하지 않는다.
+
 정적 mapping
 ------------
 KRX_MARKET_INDEX_MAP_V01은 정확히 두 항목을 가진 immutable mapping이다.
@@ -52,7 +63,7 @@ market_index_daily_20260814.parquet를 고정 SHA-256으로 검증하고 Decimal
 OHLC 비교를 수행한다. RS 수식은 기존 relative_strength.py를 그대로 사용해
 KOSPI/KOSDAQ old/new 결과를 비교한다.
 
-known limitations
+FIX01 당시 known limitations
 -----------------
 CONSUMER_MARKET_INDEX_RUNTIME_SWITCH_NOT_PERFORMED
 RELATIVE_STRENGTH_ARTIFACT_CACHE_NOT_YET_REMOVED

@@ -6,6 +6,16 @@
 저장·증분 업데이트하는 최소 구현입니다. Pattern A 점수 로직과는 무관합니다
 (Pattern A는 [docs/patterns/pattern_a/README.md](../patterns/pattern_a/README.md) 참고).
 
+현재 구현 경계
+----------------------------------------------------------------------
+
+이 문서는 legacy Data Layer v0.1의 계약·구현 기록이다. 현재 production data
+authority와 consumer path는
+[KRX Production Data Architecture](krx_production_data_architecture_v01.md)와
+[Market Data Repository V2](market_data_repository_v02.md)를 따른다. 아래의
+PyKRX, `MarketDataRepository`, `ParquetCache`, `adjusted=True` 설명은 legacy
+compatibility/history로 읽으며, 현재 production authority를 정의하지 않는다.
+
 ## 계층 구조
 
 ```text
