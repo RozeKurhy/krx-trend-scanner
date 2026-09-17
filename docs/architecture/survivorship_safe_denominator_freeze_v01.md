@@ -10,24 +10,24 @@ FastCore/Julia 백테스트, Market Breadth)는 자체 종목 집합을 다시 �
 ## 1. 서로 다른 두 개념 — 하나의 종목코드 목록으로 합치지 않는다
 
 **Population Universe(전체 모집단)**: 2010-01-04부터 2026-08-21 사이에 한 번이라도
-`COMMON`이었던 모든 identity다. "이 identity가 한 번이라도 범위에 들어오는가"
+`COMMON`이었던 모든 종목 정체성이다. "이 종목 정체성이 한 번이라도 범위에 들어오는가"
 라는 질문에 답하며, 모집단 수준 사용 코드(AdjustedPriceStore 모집단 대상,
-coverage 분모, 검증 표본 종목 집합)가 사용한다.
+적용 범위 분모, 검증 표본 종목 집합)가 사용한다.
 
 **Point-In-Time (PIT) Common Denominator(시점별 보통주 분모)**: 각 과거 거래일에 실제로 해당
-날짜의 `COMMON`이었던 identity다. "날짜 D의 투자 가능한 보통주 종목 집합은
+날짜의 `COMMON`이었던 종목 정체성이다. "날짜 D의 투자 가능한 보통주 종목 집합은
 무엇인가"라는 질문에 답하며, 생존편향 방지 백테스트와 날짜별 시장 통계
 (breadth, advance/decline, new-high/new-low)가 사용한다.
 
 두 개념은 하나의 정적 종목코드 목록으로 합치지 않는다. 예를 들어 2013~2015년에
 COMMON이었다가 2016~2018년에 NOT_COMMON이 된 종목코드는 한때 보통주였으므로
-Population Universe에는 포함하지만, 2016~2018의 PIT denominator에서는 반드시
+전체 모집단에는 포함하지만, 2016~2018의 PIT 분모에서는 반드시
 제외한다.
 
 ## 2. 분리해야 하는 이유 — 생존편향
 
 현재 보통주 목록으로 "날짜 D의 종목 집합"을 재구성하는 백테스트는 그
-이후 상장폐지·합병·재분류된 identity를 조용히 누락한다. 이것이 바로
+이후 상장폐지·합병·재분류된 종목 정체성을 조용히 누락한다. 이것이 바로
 생존편향이다. PIT 분모는 과거 날짜의 분모가 오늘의
 상태에 의존하지 않도록 하기 위해 존재한다.
 
@@ -45,8 +45,8 @@ Population Universe에는 포함하지만, 2016~2018의 PIT denominator에서는
 
 두 산출물은 종목 정체성을 항상 `(ticker, ISU_CD, market)`으로 식별하며
 `ticker`만 사용하지 않는다. 종목코드 문자열은 전체 이력에서 유일하다고 보장할
-수 없기 때문이다(현재 archive에서 ticker 재사용은 0건이었지만, 계약은 향후
-archive 버전에서도 이를 가정하지 않는다. `historical_authority_reconciliation`
+수 없기 때문이다(현재 보관 영역에서 ticker 재사용은 0건이었지만, 계약은 향후
+보관 버전에서도 이를 가정하지 않는다. `historical_authority_reconciliation`
 Section 6 참조). 모든 COMMON 구간은 동결된 거래일 달력
 (`historical_trading_calendar.json`, 4,095일, 2010-01-04..2026-08-21,
 `trading_dates_sha256` 고정)을 기준으로 `effective_from`/`effective_to`를
@@ -58,7 +58,7 @@ Section 6 참조). 모든 COMMON 구간은 동결된 거래일 달력
 
 ```
 load_basic_info_snapshots()                       # 원천 KRX Basic Info 파일 8,190개
-  -> build_pit_identity_timeline()                # identity별 시간순 관측값
+  -> build_pit_identity_timeline()                # 종목 정체성별 시간순 관측값
   -> classify_full_universe()                     # 행 단위 분류 + 보완 기준 덮어쓰기
                                                     #   동결된 1,116개 대상만이 아니라
                                                     #   관측된 모든 identity에 적용
@@ -92,26 +92,26 @@ Basic Info와 보완 기준 체인에서 산출하며 운영 resolver 결과를 
 (`HISTORICAL_UNIVERSE_AUTHORITY_RECONCILIATION_V01` 및 잔여 해소
 단계)은 전체 종목 집합 파생 결과에서 다음과 같이 나뉜다.
 
-| 구분 | 건수 | Population 포함 여부 |
+| 구분 | 건수 | 전체 모집단 포함 여부 |
 |---|---|---|
 | 동결 대상, `HISTORICAL_COMMON_REQUIRED` | 605 | 예 (과거 전용, 현재 common 아님) |
 | 동결 대상, `HISTORICAL_NOT_COMMON` | 511 | 아니오 |
 | 동결 대상 외부(보완 검토 없이 행 단위로 정상 해소) | 2,557 | 예 (현재 common 전체) |
 
-`605 + 2,557 = 3,162`로 Population Universe 총계와 정확히 일치한다. 이는
+`605 + 2,557 = 3,162`로 전체 모집단 총계와 정확히 일치한다. 이는
 파생 후 검증된 결과이며, 파생 과정이 이 수치에 맞도록 조정된 것은 아니다
 (Section 9의 주의사항 참조).
 
 ### 5.1. 시장별 집계와 시장 간 전환
 
-Population Universe의 시장별 집계는 다음과 같다.
+전체 모집단의 시장별 집계는 다음과 같다.
 
 - `kospi_ever_common_identity_count`: 982
 - `kosdaq_ever_common_identity_count`: 2,202
 - `cross_market_common_identity_count`: 22
 - 고유 identity 합계: `982 + 2,202 - 22 = 3,162`
 
-단순 합계(`3,184`)와 Population total(`3,162`)의 차이 22는 과거 기간에
+단순 합계(`3,184`)와 전체 모집단 총계(`3,162`)의 차이 22는 과거 기간에
 KOSDAQ에서 KOSPI로 이동한 22개 시장 간 기업의 정확한 집합이다
 (예: `035720` Kakao, `068270` Celltrion, `022100` POSCO DX).
 
@@ -120,14 +120,14 @@ KOSDAQ에서 KOSPI로 이동한 22개 시장 간 기업의 정확한 집합이�
   COMMON 구간을 가진 종목 정체성의 "시장별 과거 COMMON 여부" 건수다. **현재
   스냅샷 구간 간 상호 배타적 건수가 아니다.**
 - 4,095개 거래일 전체에서 같은 날짜의 양시장 소속은 엄격히 0이다.
-  어떤 identity도 같은 날짜에 KOSPI COMMON과 KOSDAQ COMMON에 동시에 속하지 않는다.
+  어떤 종목 정체성도 같은 날짜에 KOSPI COMMON과 KOSDAQ COMMON에 동시에 속하지 않는다.
 - 전환 경계는 연속적이다. 모든 이동 identity에서 이전 시장의 마지막 거래일과
   새 시장의 첫 거래일은 정확히 연속된 거래일이다(거래일 차이 = 1,
   겹침 0, 공백 0).
 
 ## 6. Population ⋃ PIT 불변식
 
-어떤 PIT COMMON interval에든 나타나는 identity는 Population Universe에도
+어떤 PIT COMMON 구간에든 나타나는 종목 정체성은 전체 모집단에도
 반드시 나타나야 하며, 반대도 성립해야 한다.
 `evaluate_population_pit_union_invariant`가 `(ticker, ISU_CD)` 단위로 이를
 검사하며, 필수이고 면제할 수 없는 게이트다(그렇지 않으면
@@ -137,19 +137,19 @@ KOSDAQ에서 KOSPI로 이동한 22개 시장 간 기업의 정확한 집합이�
 ## 7. Alpha 구성 종목과 수정주가 적격성 — 별개의 질문
 
 23개의 영숫자 종목코드(예: `0008Z0`, `0009K0`, `0010F0` 형태)는
-정상적인 과거 COMMON 종목 정체성으로서 Population Universe에 포함된다. 모두
+정상적인 과거 COMMON 종목 정체성으로서 전체 모집단에 포함된다. 모두
 KRX의 영숫자 종목코드 발행 규칙에 따라 도입된 현재 활성 보통주다.
 
 반대로 기존 보완 기준은 종류주권 영숫자 종목코드
 (예: `00781K` 코리아써키트2우선주(신형), 14개 preferred-class residual item
 전체, 58개 과거 NOT_COMMON 영숫자 항목 전체)가 `HISTORICAL_NOT_COMMON`임을
-확인했다. 이들은 Population Universe와 PIT COMMON interval 모두에서 엄격히
+확인했다. 이들은 전체 모집단과 PIT COMMON 구간 모두에서 엄격히
 **제외된다**(교집합 건수 = 0).
 
 이 정상적인 영숫자 COMMON 종목코드에 대해 `PyKRX adjusted=True`가
 실제로 수정주가 OHLC를 제공할 수 있는지는 **별도로 검증되지 않은** 질문이다.
 이 동결은 이를 테스트하지 않으며, 원천 적격성이 불명확하다는 이유로
-영숫자 identity를 제외하지 않는다. 여기서 영숫자 구성 종목을 조용히 누락하면
+영숫자 종목 정체성을 제외하지 않는다. 여기서 영숫자 구성 종목을 조용히 누락하면
 실제로 보통주였는지와 무관한 이유로 과거 종목 집합을 축소하는
 생존편향 인접 버그가 된다. 수정주가 원천 적격성은
 `ADJUSTED_PRICE_STORE_BOUNDED_LIVE_PILOT_V01`로 명시적으로 미룬다.
@@ -166,29 +166,29 @@ KRX의 영숫자 종목코드 발행 규칙에 따라 도입된 현재 활성 �
 ## 9. 사용 코드가 자체 종목 집합을 계산하지 않는다
 
 과거 사용 코드(백테스트 엔진, 시장 breadth 계산기)는 각자 보유한
-"current" 데이터 원천에서 종목코드 목록을 파생하지 말고 이 동결의 산출물을
+"현재" 데이터 원천에서 종목코드 목록을 파생하지 말고 이 동결의 산출물을
 로드해야 한다. 사용 코드별 재계산은 어떤 과거 날짜에 생존편향 보호를
 적용할지 서로 달라지는 위험을 만든다.
 
-## 10. 산출물과 loader 계약
+## 10. 산출물과 로더 계약
 
 - `artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01/historical_common_population_v01.json`
-  — Population Universe 레코드 + `population_manifest_sha256`.
+  — 전체 모집단 레코드 + `population_manifest_sha256`.
 - `.../pit_common_denominator_v01.json` — 표준 COMMON 구간 레코드
-  (날짜별 manifest가 아님 — Section 3의 구간 우선 설계) +
+  (날짜별 생성 기록이 아님 — Section 3의 구간 우선 설계) +
   `pit_common_denominator_sha256` + 거래 달력의 `trading_dates_sha256`.
 - `.../survivorship_safe_denominator_freeze_v01.json` — 종료 요약:
   상태, 기준 checkpoint SHA, 보완 기준 계보,
   거래 달력 정체성, population/PIT 요약 수치와 해시,
   과거 전용 조정 건수, 게이트 결과, `created_from_head`.
 
-Loader API (`src/trend_scanner/universe/survivorship_safe_denominator_freeze.py`):
+로더 API (`src/trend_scanner/universe/survivorship_safe_denominator_freeze.py`):
 
-- `load_historical_common_population(path=...)` — Population Universe 레코드 목록.
+- `load_historical_common_population(path=...)` — 전체 모집단 레코드 목록.
 - `load_pit_common_intervals(path=...)` — 표준 COMMON 구간 레코드 목록.
 - `get_common_universe_as_of(date, market=None, *, intervals=None)` —
   정확히 동결된 거래일 기준의 종목 정체성 기반 COMMON 집합을 반환한다.
-  Fail-closed: 동결 달력 범위 밖 날짜나 비거래일이면 `FreezeContractError`를
+  Fail-closed(실패 시 차단): 동결 달력 범위 밖 날짜나 비거래일이면 `FreezeContractError`를
   발생시키며, 가장 가까운 거래일이나 현재 전체 집합으로 대체하지 않는다.
 
 AdjustedPriceStore/FastCore/Julia/Market Breadth를 이 로더로 실제 전환하는

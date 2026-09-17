@@ -1,7 +1,7 @@
 # 수정주가 저장소 (AdjustedPriceStore v01)
 
 > 이 문서는 과거 V01 수정주가 저장소의 구현·검증 계약 기록이다.
-> 현재 운영 계약은 [adjusted_price_store_v02.md](adjusted_price_store_v02.md)를 따른다.
+> 현재 운영 계약은 [../adjusted_price_store_v02.md](../adjusted_price_store_v02.md)를 따른다.
 > 아래의 V01 수치, 기술 토큰, 검증 결과와 역사적 실행 기록은 삭제하지 않는다.
 
 상태
@@ -17,7 +17,7 @@
 
 위 상태와 PyKRX `adjusted=True` 원천 표기는 V01 구현·검증 단계의 과거
 기록이다. 현재 수정주가 OHLC 기준 원천과 저장소 계약은
-`adjusted_price_store_v02.md`에 정의된 패키지 소유
+`../adjusted_price_store_v02.md`에 정의된 패키지 소유
 `NaverDirectAdjustedPriceDataProvider`의 Naver direct date-range
 (`requestType=1`)과 `AdjustedPriceStore`의 V02 계약이다.
 따라서 아래 V01 데이터 제공자/저장소 세부사항은 당시 기본 요소와 일치성(parity) 검증 근거를

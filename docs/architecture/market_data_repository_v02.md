@@ -1,4 +1,4 @@
-# 수정주가·원천 시장데이터 저장소 (MARKET_DATA_REPOSITORY_V02)
+# 수정주가·원천 시장데이터 결합 계층 (MARKET_DATA_REPOSITORY_V02)
 
 목적
 ----
@@ -16,7 +16,7 @@ Repository V2는 권위 기준이 아니며 가격 조정, 원천 보정, 기업
 현재 구현 경계
 --------------
 이 문서의 FIX01/FIX02 단계 설명은 당시 검증 범위를 보존한다. 현재
-수정주가 원천은 Naver direct date-range 수정주가 V02이며, 운영 Stock Report와
+수정주가 원천은 Naver 직접 날짜 범위 조회 수정주가 V02이며, 운영 종목 보고서와
 Pattern A 스캐너는 `build_production_repository_v2`를 통해 현재 기준을 계속 적용하는
 경계를 적용한다. 고정된 과거 평가·검증 진입점은
 `build_repository_v2`를 계속 사용하므로, 두 생성 함수의 과거 고정 모드와
@@ -29,25 +29,25 @@ Repository V2는 공식 분류된 `COMMON`과 `ETF`를 동일한 결합
 상품 마스터 분류로만 결정하며 ticker 모양·이름·17종 허용 목록을
 사용하지 않는다.
 
-* COMMON 수정주가 기준 원천: `AdjustedPriceStore` (`ADJUSTED_PRICE_STORE_V02`) / Naver direct date-range 수정주가 V02
-* COMMON 원천 기준: `KrxRawStockStore` / KRX Open API stock daily
-* ETF 수정주가 기준 원천: `AdjustedPriceStore` (`ADJUSTED_PRICE_STORE_V02`) / Naver direct date-range 수정주가 V02
-* ETF 원천 기준: `KrxRawStockStore` / KRX Open API ETF daily (`/etp/etf_bydd_trd`)
+* COMMON 수정주가 기준 원천: `AdjustedPriceStore` (`ADJUSTED_PRICE_STORE_V02`) / Naver 직접 날짜 범위 조회 수정주가 V02
+* COMMON 원천 기준: `KrxRawStockStore` / KRX Open API 종목 일별 원천
+* ETF 수정주가 기준 원천: `AdjustedPriceStore` (`ADJUSTED_PRICE_STORE_V02`) / Naver 직접 날짜 범위 조회 수정주가 V02
+* ETF 원천 기준: `KrxRawStockStore` / KRX Open API ETF 일별 원천 (`/etp/etf_bydd_trd`)
 * ETF volume/trading_value는 ETF 원천 필드를 그대로 보존한다. 수정주가
   OHLC로 재구성하거나 trading_value를 계산하지 않는다.
 * 두 종목 유형 모두 정확히 일치하는 원천 날짜 범위, 명시적 세션 투영,
-  PIT 생명주기 의미를 사용한다. forward-fill/backfill과 사용 주체별
+  PIT 생명주기 의미를 사용한다. 이전 값 이월·과거 값 보강과 사용 주체별
   우회는 금지한다.
 
 ETF 원천 접근이 인증/활용 승인되지 않은 경우 Repository V2는 성공을
-가장하지 않고 `DATA_UNAVAILABLE: RAW_MISSING`으로 fail-closed한다. 레거시
+가장하지 않고 `DATA_UNAVAILABLE: RAW_MISSING`으로 fail-closed(실패 시 차단)한다. 레거시
 `data/raw/stocks` ETF 캐시는 이 계약의 원천 기준이 아니다.
 
 종목 코드 범위
 -------------
 * 수정주가 API: 기존 `SIX_DIGIT_TICKER` 숫자 영역 유지
 * 원천 API: `KRX_SHORT_CODE` 정규식 `^[0-9A-Z]{6}$`를 원천 보존 방식으로 지원
-* 원천 suffix 제거, 대문자 변환, 숫자 강제 변환, 복구·보정은 하지 않는다.
+* 원천 접미사 제거, 대문자 변환, 숫자 강제 변환, 복구·보정은 하지 않는다.
 
 API 스키마
 ---------
@@ -78,7 +78,7 @@ trading_value_semantics = "RAW"
 결합 및 누락 데이터 의미
 -------------------------
 수정주가/원천 양쪽의 비어 있지 않은 거래 세션 집합은 정확히 같아야 한다.
-한쪽 날짜를 조용히 제거하거나 forward-fill/bfill/0-fill하지 않는다.
+한쪽 날짜를 조용히 제거하거나 이전 값 이월·bfill·0-fill하지 않는다.
 거래 세션 집합 불일치는 REPOSITORY_V2_TRADING_SESSION_MISMATCH로 fail-closed한다.
 양쪽이 모두 빈 결과인 요청 범위는 형식이 지정된 빈 일봉 데이터 프레임을 반환할 수 있다.
 한쪽만 빈 결과이거나 종목 저장소가 없으면 DATA_UNAVAILABLE로 종료한다.
@@ -88,14 +88,14 @@ trading_value_semantics = "RAW"
 Repository V2는 저장소를 생성자 주입받고 쓰기·갱신을 호출하지 않는다.
 기존 MarketDataRepository와 tests/test_repository.py는 변경하지 않는다.
 FIX01 당시에는 사용 코드 자동 전환이 0건이었고 Pattern A, FastCore, Julia,
-RS, Stock Report 등의 전환을 END_TO_END_DATA_PARITY_V01 이후 별도 결정하도록
+RS, 종목 보고서 등의 전환을 END_TO_END_DATA_PARITY_V01 이후 별도 결정하도록
 기록했다. 현재 운영 진입점의 Repository V2 연결은 후속 사용 코드
 전환 완료 이후 반영되었으며, 과거 평가 진입점은
 여전히 동결된 생성 함수 경계를 사용한다.
 
 성능 한계
 ----------------------
-`KrxRawStockStore.load_ticker`의 market/date partition scan 비용은
+`KrxRawStockStore.load_ticker`의 시장/날짜 파티션 탐색 비용은
 운영 점검 계측 정보로 관찰한다. 전수 구체화, 대량 캐시 생성,
 저장소 재설계는 이 단계 범위에 포함하지 않는다.
 
@@ -104,10 +104,10 @@ RS, Stock Report 등의 전환을 END_TO_END_DATA_PARITY_V01 이후 별도 결�
 * `tests/test_repository_v2.py`: 원천 기준, 엄격한 결합, 영역, 누락, 변형,
   시장 간, 중복 날짜 및 네트워크 격리 검증
 * `tests/test_market_data_repository_v02_validation.py`: FIX01의 표본 수,
-  메타데이터 파생 범위, 빈 결과 비교, 예외 구조화 및 diff-check gate 검증
+  메타데이터 파생 범위, 빈 결과 비교, 예외 구조화 및 diff-check 게이트 검증
 * `scripts/validate_market_data_repository_v02.py`: FIX01 검증 게이트와 임시
   `AdjustedPriceStore` 기반 제한적 실제 기준 점검
-* `artifacts/data/market_data_repository/v02/`: contract, 계보, 점검,
+* `artifacts/data/market_data_repository/v02/`: 계약, 계보, 점검,
   호환성, 성능 및 회귀 검증 증적
 
 FIX01 실행 경계
@@ -167,7 +167,7 @@ FIX03 거래 세션 투영
 * 위 predicate는
   ADJUSTED_PRICE_PROVIDER_PHANTOM_COMPATIBILITY 근거로만 사용한다.
   volume == 0 단독 조건, OHLC 전체 0 조건, trading_value 조건 일부, 또는
-  임의의 inner join은 허용하지 않는다.
+  임의의 내부 결합은 허용하지 않는다.
 * 수정주가 전용 날짜는 BLOCKED_ADJUSTED_SESSION_WITHOUT_RAW_FACTS로,
   조건식을 만족하지 않는 원천 전용 날짜는
   BLOCKED_UNCLASSIFIED_RAW_ONLY_SESSION으로 fail-closed한다. 외부 관측치의
@@ -197,6 +197,6 @@ FIX04 공통 날짜 의미 충돌
   분류한다. 동일 날짜의 정상 원천 행(volume=0 포함)은 자리표시자 조건식과
   일치하지 않으면 정상적으로 PASS한다.
 * closure 근거의 accepted_placeholder_projection_count,
-  rejected_raw_only_count, shared_placeholder_conflict_count는 composition
+  rejected_raw_only_count, shared_placeholder_conflict_count는 결합
   레코드에서 검증기가 직접 집계하고 항상 숫자여야 한다.
   null 또는 집계 불일치는 BLOCKED_EVIDENCE_INCONSISTENCY다.

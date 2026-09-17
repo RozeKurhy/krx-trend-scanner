@@ -14,7 +14,7 @@ krx_production_data_architecture_v01.md
 현재 데이터 흐름은 다음과 같다.
 
 ```text
-Naver direct date-range 수정주가
+Naver 직접 날짜 범위 조회 수정주가
     -> AdjustedPriceStore (ADJUSTED_PRICE_STORE_V02 계약)
 
 KRX Open API 원천 일별 데이터
@@ -22,7 +22,7 @@ KRX Open API 원천 일별 데이터
 
 AdjustedPriceStore (ADJUSTED_PRICE_STORE_V02 계약) + KrxRawStockStore
     -> MarketDataRepositoryV2
-    -> Stock Report / Pattern A 운영 사용 코드
+    -> 종목 보고서 / Pattern A 운영 사용 코드
 
 시장·업종 지수
     -> data/market/index/v01의 IndexStore(MARKET_INDEX)
@@ -38,7 +38,7 @@ AdjustedPriceStore (ADJUSTED_PRICE_STORE_V02 계약) + KrxRawStockStore
     -> OpenDART
 ```
 
-Stock Report와 Pattern A 운영 스캐너는 `build_production_repository_v2`를
+종목 보고서와 Pattern A 운영 스캐너는 `build_production_repository_v2`를
 통해 현재 Repository V2 운영 연결을 사용한다. Pattern A의 시장 대표지수
 기본 경로는 `IndexStore(MARKET_INDEX)`이며 과거 일치성 산출물은 비교 증적으로만
 남는다. `InstrumentMetadataResolver`의 운영 실행 시점은 로컬 산출물만 읽고
@@ -51,16 +51,16 @@ Stock Report와 Pattern A 운영 스캐너는 `build_production_repository_v2`�
 
 | 데이터 의미 | 현재 실제 기준 원천 | 저장·사용 경로 |
 |---|---|---|
-| 수정주가 OHLC | Naver direct date-range (`requestType=1`), `ADJUSTED` | `AdjustedPriceStore` (`ADJUSTED_PRICE_STORE_V02`) → `MarketDataRepositoryV2` |
+| 수정주가 OHLC | Naver 직접 날짜 범위 조회 (`requestType=1`), `ADJUSTED` | `AdjustedPriceStore` (`ADJUSTED_PRICE_STORE_V02`) → `MarketDataRepositoryV2` |
 | 원천 OHLC | KRX Open API `/sto/stk_bydd_trd`, `/sto/ksq_bydd_trd`, `RAW` | `KrxRawStockStore` → `MarketDataRepositoryV2` |
 | 거래량·거래대금 | KRX Open API 원천 일별 데이터, `RAW` | `KrxRawStockStore`의 원천 부가 데이터 |
 | 시가총액·상장주식수 | KRX Open API 원천 일별 데이터 | `KrxRawStockStore`의 원천 부가 데이터 및 스냅샷 계약 |
 | 종목 메타데이터·자산 유형 | KRX MDC 공식 원천으로 생성된 로컬 PIT 산출물 | `InstrumentMetadataResolver` |
 | 시장 대표지수 | `data/market/index/v01`의 현재 `IndexStore(MARKET_INDEX)` 경로 | Pattern A 운영 스캐너 |
-| native 업종지수 | KRX native sector index 원천 | `IndexStore`의 `NATIVE_SECTOR_INDEX` 계열 |
+| KRX 기본 업종지수 | KRX 기본 업종지수 원천 | `IndexStore`의 `NATIVE_SECTOR_INDEX` 계열 |
 | 업종 구성 종목 | KRX Data Marketplace 공식 구성 종목 CSV의 승인된 정확한 기준일 스냅샷 | `SectorMembershipStore` |
-| 펀더멘털 | OpenDART 보고 사실 | fundamentals 계층 |
-| 외국인·기관 수급 | PyKRX Foreign Flow 원천을 사용하는 지표 계산 경로 | 스캐너·Stock Report 지표 |
+| 펀더멘털 | OpenDART 보고 사실 | 펀더멘털 계층 |
+| 외국인·기관 수급 | PyKRX Foreign Flow 원천을 사용하는 지표 계산 경로 | 스캐너·종목 보고서 지표 |
 
 수정주가와 원천 데이터의 의미는 하나의 기준으로 합치지 않는다. `AdjustedPriceStore`
 는 OHLC만 소유하고 volume, trading_value, market_cap, listed_shares를 저장하지
@@ -70,12 +70,12 @@ Stock Report와 Pattern A 운영 스캐너는 `build_production_repository_v2`�
 
 | 구성요소 | 현재 운영 역할 |
 |---|---|
-| `AdjustedPriceStore` (`ADJUSTED_PRICE_STORE_V02`) | Naver direct date-range 기반 수정주가 OHLC 저장소 |
+| `AdjustedPriceStore` (`ADJUSTED_PRICE_STORE_V02`) | Naver 직접 날짜 범위 조회 기반 수정주가 OHLC 저장소 |
 | `KrxRawStockStore` | KRX 원천 OHLC와 거래량·거래대금·시가총액·상장주식수 보관 |
 | `MarketDataRepositoryV2` | 두 저장소를 `(ticker, date)`로 결합하고 세션 불일치 시 fail-closed |
-| `IndexStore` | 시장·native 업종·taxonomy 지수를 family와 표준 key로 제공 |
+| `IndexStore` | 시장·기본 업종·분류 체계 지수를 논리 분류군과 표준 key로 제공 |
 | `InstrumentMetadataResolver` | 종목 메타데이터와 PIT 자산 유형을 로컬 산출물에서 결정 |
-| `SectorMembershipStore` | 기준일별 업종 구성 종목을 PIT snapshot으로 제공 |
+| `SectorMembershipStore` | 기준일별 업종 구성 종목을 PIT 스냅샷으로 제공 |
 
 `FundamentalsStore`와 `CorporateActionStateStore`의 세부 계약은 기존 권위
 문서에 남기며, 이 문서에서는 현재 운영 흐름에 필요한 역할만 요약한다.
@@ -86,23 +86,23 @@ Stock Report와 Pattern A 운영 스캐너는 `build_production_repository_v2`�
    `AdjustedPriceStore` (`ADJUSTED_PRICE_STORE_V02`)에 기록한다.
 2. KRX 원천 일별 데이터는 `KrxRawStockStore`에서 원천 의미를 유지한다.
 3. `build_production_repository_v2`가 두 저장소를 `MarketDataRepositoryV2`로
-   연결하고 Stock Report와 Pattern A 운영 사용 코드에 제공한다.
+   연결하고 종목 보고서와 Pattern A 운영 사용 코드에 제공한다.
 4. 과거 평가·검증용 `build_repository_v2`가 별도 동결 경계로 유지되는 경우에는
    운영용 factory와 혼동하지 않는다.
 5. Pattern A 운영 스캐너는 `data/market/index/v01`의
    `IndexStore(MARKET_INDEX)`를 시장 대표지수 경로로 사용한다.
-6. 업종 구성 종목은 승인된 exact-date `SectorMembershipStore` snapshot을
-   사용하며 이전 스냅샷 carry-forward나 이후 스냅샷의 소급 적용을 하지 않는다.
-7. Stock Report의 메타데이터 판단은 `InstrumentMetadataResolver`의 로컬 PIT
+6. 업종 구성 종목은 승인된 정확한 기준일 `SectorMembershipStore` 스냅샷을
+   사용하며 이전 스냅샷의 값 이월이나 이후 스냅샷의 소급 적용을 하지 않는다.
+7. 종목 보고서의 메타데이터 판단은 `InstrumentMetadataResolver`의 로컬 PIT
    산출물을 사용하고, 펀더멘털은 OpenDART 계층에서 별도로 제공한다.
 
 ## 6. 현재 PIT·계보·fail-closed 핵심 규칙
 
 - `as_of` 또는 `effective_date`보다 미래인 메타데이터·가격·보고 사실을 사용하지 않는다.
-- 수정주가 OHLC는 `ADJUSTED`, 원천 ancillary는 `RAW`로 의미를 분리한다.
+- 수정주가 OHLC는 `ADJUSTED`, 원천 부가 데이터는 `RAW`로 의미를 분리한다.
 - Repository 결합은 `(ticker, date)`와 거래 세션 의미를 함께 확인하며, 세션 불일치·원천 누락·명시되지 않은 자리표시자는 fail-closed한다.
 - `InstrumentMetadataResolver`는 요청 시점 이하의 가장 최신 PIT 행을 고르고, 신뢰 규칙을 충족하지 못하면 자산 유형을 fail-closed한다.
-- 과거 종목 집합은 [생존편향 방지 분모 동결 계약](survivorship_safe_denominator_freeze_v01.md)의 Population Universe와 PIT Common Denominator를 구분해 사용한다.
+- 과거 종목 집합은 [생존편향 방지 분모 동결 계약](survivorship_safe_denominator_freeze_v01.md)의 Population Universe(전체 모집단)와 PIT Common Denominator(시점별 보통주 분모)를 구분해 사용한다.
 - 운영 Store/Repository는 `artifacts/`를 실행 시점 원천으로 사용하지 않는다.
 - 원천·요청 매개변수·정적 매핑·파생값·상태·계보 메타데이터를 계보 정보에서 구분한다.
 
@@ -116,7 +116,7 @@ Stock Report와 Pattern A 운영 스캐너는 `build_production_repository_v2`�
 
 - [data_layer.md](data_layer.md)는 과거 공용 Data Layer v0.1 기록이며 현재 운영 데이터 레이어가 아니다.
 - `data/raw/stocks/<ticker>.parquet`는 PyKRX 수정주가와 원천 부가 데이터가 섞인 `LEGACY_COMPOSITE_STOCK_CACHE`다. 이를 `KRXRawStockStore`로 부르지 않는다.
-- 과거 PyKRX 수정주가 경로와 `ADJUSTED_PRICE_V01` cache는 레거시 호환 또는 검증 비교기로만 읽을 수 있으며 현재 수정주가 기준이 아니다.
+- 과거 PyKRX 수정주가 경로와 `ADJUSTED_PRICE_V01` 캐시는 레거시 호환 또는 검증 비교기로만 읽을 수 있으며 현재 수정주가 기준이 아니다.
 - 일부 기존 분석/보고서 흐름의 `artifacts/` 소비는 `LEGACY_RUNTIME_DEPENDENCIES`에 전환 기술 부채로 추적한다. 이는 현재 운영 Store/Repository의 권위가 아니다.
 
 ## 8. 세부 계약 문서 연결
@@ -152,9 +152,9 @@ Architect 승인 전에는 `CLOSED`로 선언하지 않는다.
 ### 10.2 FIX03 당시 구현 경계 기록
 ----------------------------------------------------------------------
 
-위 상태와 아래 FIX03 범위·전환 표는 해당 architecture phase의 스냅샷이다.
-현재 수정주가 OHLC 기준 원천은 Naver direct date-range (`requestType=1`)와
-`AdjustedPriceStore`의 V02 계약이며, 운영 Stock Report와 Pattern A 스캐너는
+위 상태와 아래 FIX03 범위·전환 표는 해당 아키텍처 단계의 스냅샷이다.
+현재 수정주가 OHLC 기준 원천은 Naver 직접 날짜 범위 조회 (`requestType=1`)와
+`AdjustedPriceStore`의 V02 계약이며, 운영 종목 보고서와 Pattern A 스캐너는
 `build_production_repository_v2`를 통해 Repository V2 운영 연결을 사용한다.
 Pattern A 운영 스캐너의 시장 지수 기본 경로는
 `data/market/index/v01`의 `IndexStore(MARKET_INDEX)`이며, 과거 일치성 산출물은
@@ -165,15 +165,15 @@ Pattern A 운영 스캐너의 시장 지수 기본 경로는
 ----------------------------------------------------------------------
 
 - 기준과 원천 의미를 기계 판독 가능한 계약으로 고정한다.
-- 원천/수정주가/master/index/구성 종목/fundamentals/dirty-state 저장소 역할을 분리한다.
+- 원천/수정주가/마스터/지수/구성 종목/펀더멘털/dirty-state 저장소 역할을 분리한다.
 - 기존 `data/raw/stocks/<ticker>.parquet`는 `LEGACY_COMPOSITE_STOCK_CACHE`로 분류한다.
 - Repository V2의 수정주가 OHLC + 원천 부가 데이터 결합 의미를 고정한다.
 - 모든 시간 인식 계층의 PIT/as_of 및 계보 필드를 정의한다.
 - Operations Dashboard가 소비할 상태 계약을 정의한다.
-- 오프라인 static validator와 contract tests로 계약을 검증한다.
+- 오프라인 정적 검증기와 계약 테스트로 계약을 검증한다.
 - 실제 원천 스키마와 request/mapping-derived 계보를 구분한다.
 - StockMaster 원천 사실, 표준 시장, 종목 분류의 경계를 구분한다.
-- KRX `IDX_CLSS` 원천 분류와 논리적 지수 family를 분리한다.
+- KRX `IDX_CLSS` 원천 분류와 논리적 지수 분류군을 분리한다.
 - 현재 레거시 실행 시점의 `artifacts/` 소비를 기술 부채 목록으로 추적한다.
 
 ### 10.4 FIX03 당시 제외 범위
@@ -200,12 +200,12 @@ Machine-readable 원본은
 | 원천 OHLC | KRX Open API `/sto/stk_bydd_trd`, `/sto/ksq_bydd_trd` |
 | 거래량·거래대금 | KRX Open API 원천 |
 | 시가총액·상장주식수 | KRX Open API 일별 원천 |
-| 수정주가 OHLC (`ADJUSTED`) | Naver direct date-range (`requestType=1`) |
+| 수정주가 OHLC (`ADJUSTED`) | Naver 직접 날짜 범위 조회 (`requestType=1`) |
 | 수정주가 거래량 | `NONE`; 제공한다고 선언하지 않음 |
-| 종목 master 원천 사실 | KRX Basic Info + request `basDd` |
-| 종목 master 표준 시장 | `normalize_krx_market(raw_market)` |
-| instrument asset type | `InstrumentMetadataResolver` / 공식 product-master classification |
-| native 업종지수 | KRX Open API native sector index |
+| 종목 마스터 원천 사실 | KRX Basic Info + request `basDd` |
+| 종목 마스터 표준 시장 | `normalize_krx_market(raw_market)` |
+| instrument asset type | `InstrumentMetadataResolver` / 공식 상품 마스터 분류 |
+| KRX 기본 업종지수 | KRX Open API 기본 업종지수 |
 | 시장 대표지수 | FIX03 스냅샷: PyKRX 레거시, 목표 KRX Open API |
 | ticker→sector membership | KRX Data Marketplace 공식 구성 종목 CSV → 정확한 기준일 `SectorMembershipStore` 스냅샷 |
 | 펀더멘털 | OpenDART |
@@ -239,17 +239,17 @@ Basic Info response에는 `BAS_DD`가 없다. `StockMasterStore.as_of`는
 `REQUEST_PARAMETER.basDd`에서 파생된 `REQUESTED_SNAPSHOT_DATE`다.
 
 `StockMasterStore.raw_market`는 `MKT_TP_NM` 원문이다. `StockMasterStore.market`는
-`normalize_krx_market(raw_market)`로 얻는 프로젝트 표준 value이며, 두 필드를
+`normalize_krx_market(raw_market)`로 얻는 프로젝트 표준 값이며, 두 필드를
 같은 의미의 중복 authority로 취급하지 않는다. `StockMasterStore`는
-`security_group`, `listing_section`, `security_kind` 같은 raw/master fact를 보유하지만
+`security_group`, `listing_section`, `security_kind` 같은 원천/마스터 사실을 보유하지만
 최종 `asset_type` authority가 아니다.
 
-Native sector index response의 원천 정체성은
+KRX 기본 업종지수 응답의 원천 정체성은
 `(source_api, IDX_CLSS, IDX_NM)`다. `IndexStore.index_code`는 원천 응답 필드가
 아니라 frozen `KRX_NATIVE_SECTOR_INDEX_MAP`에서 파생된 표준 code이며,
 `IndexStore.family`는 `MARKET_INDEX`, `NATIVE_SECTOR_INDEX`,
-`KRX_BRANDED_TAXONOMY` 중 logical family다. `IDX_CLSS`는 `source_index_class`로
-보존하며 logical family로 사용하지 않는다. 표준 key는 `(family, index_code)`다.
+`KRX_BRANDED_TAXONOMY` 중 논리 분류군이다. `IDX_CLSS`는 `source_index_class`로
+보존하며 논리 분류군으로 사용하지 않는다. 표준 key는 `(family, index_code)`다.
 
 ### 10.7 FIX03 당시 논리 저장소
 ----------------------------------------------------------------------
@@ -264,7 +264,7 @@ Native sector index response의 원천 정체성은
 | `AdjustedPriceStore` | 수정주가 OHLC (`ADJUSTED`)만 보유; 스키마 `ADJUSTED_PRICE_V02`, 저장소 계약 `ADJUSTED_PRICE_STORE_V02` |
 | `StockMasterStore` | `as_of`를 포함한 PIT 원천/표준 master; 최종 `asset_type`은 제외 |
 | `InstrumentClassificationStore` | PIT `asset_type`·적용 가능성·계보 |
-| `IndexStore` | market/native-sector/taxonomy family; key=(family,index_code) |
+| `IndexStore` | 시장/기본 업종/분류 체계 논리 분류군; key=(family,index_code) |
 | `SectorMembershipStore` | `effective_date` 기준 PIT membership |
 | `FundamentalsStore` | OpenDART 보고 사실 |
 | `CorporateActionStateStore` | 수정주가 캐시의 dirty/refresh 상태 |
@@ -279,12 +279,12 @@ required field는 `effective_date`, `ticker`, `asset_type`,
 `classification_authority`, `asset_type_source`다. `(effective_date, ticker)`를
 표준 PIT key로 사용하고 requested `as_of` 이하의 최신 effective date를 조회한다.
 `asset_type`은 `StockMasterStore.security_group/listing_section/security_kind`와
-필요한 공식 product-master 근거를 해석한 DERIVED 결과다. 현재 운영
+필요한 공식 상품 마스터 근거를 해석한 DERIVED 결과다. 현재 운영
 authority인 `InstrumentMetadataResolver -> data/reference/krx_instrument_metadata.parquet`
-와 공식 ETF/ETN product-master 기준은 이번 phase에서 교체하지 않는다.
+와 공식 ETF/ETN 상품 마스터 기준은 이번 phase에서 교체하지 않는다.
 KOSPI/KOSDAQ Basic Info만으로 ETF/ETN까지 분류한다고 선언하지 않는다.
 
-Pattern A, FastCore, Stock Report 등 instrument applicability 판단은 이 classification
+Pattern A, FastCore, 종목 보고서 등 종목 적용 가능성 판단은 이 classification
 layer를 사용해야 하며, consumer가 `KIND_STKCERT_TP_NM`, `SECUGRP_NM`, `SECT_TP_NM`을
 각자 즉석 해석하는 중복 architecture는 금지한다.
 
@@ -311,7 +311,7 @@ FIX03 당시 문서상 개념 대상은
 - 결합 키는 `(ticker, date)`
 - 결합은 `INNER_CONSISTENT_TRADING_SESSION_JOIN`
 - 한쪽 계층이 없으면 `DATA_UNAVAILABLE` 또는 명시적 오류
-- forward-fill과 silent fill은 금지
+- 이전 값 이월과 묵시적 채움은 금지
 - market_cap/listed_shares는 `get_raw_daily()`, `get_daily_ancillary()`,
   `get_stock_snapshot()` 같은 별도 접근 계약으로 노출
 
@@ -326,12 +326,12 @@ FIX03 당시 문서상 개념 대상은
 메타데이터 변화는 2차 근거로 정의한다. 감지기는 정답 판정기가 아니라
 수정주가 캐시 갱신 필요성 신호다.
 
-원천 이력은 변경 불가 기준으로 취급하고, 수정주가 이력은 기업행위
-기업행위 이후 과거 값이 변할 수 있으므로 변경 가능한 갱신 상태를 별도로 둔다.
+원천 이력은 변경 불가 기준으로 취급하고, 수정주가 이력은 기업행위 이후
+과거 값이 변할 수 있으므로 변경 가능한 갱신 상태를 별도로 둔다.
 dirty 범위는 종목별이며 전체 종목 집합 갱신을 기본값으로 하지 않는다.
 
 모든 시간 인식 저장소는 `as_of`/effective date를 갖고, `effective_date > as_of`,
-미래 가격, 허용 availability 이전의 보고서를 사용하지 않는다. 과거 종목 집합은
+미래 가격, 허용 이용 가능 시점 이전의 보고서를 사용하지 않는다. 과거 종목 집합은
 당시 마스터 스냅샷을 사용해 생존편향을 피한다.
 
 ### 10.11 FIX03 당시 계보와 상태
@@ -352,14 +352,14 @@ dirty 범위는 종목별이며 전체 종목 집합 갱신을 기본값으로 �
 `DERIVED`, `STATE`, `PROVENANCE_METADATA`, `DERIVED_SOURCE_TRACE`, `LEGACY_SOURCE`로
 구분한다. `RESPONSE_FIELD`는 커밋된 원천 스키마에 존재해야 하며,
 요청/매핑 파생 필드는 `source_field=null`과
-`source_locator`를 사용한다. `STORE_FIELD_PROVENANCE`의 coverage key는
+`source_locator`를 사용한다. `STORE_FIELD_PROVENANCE`의 적용 범위 키는
 `(owner_store, target_field)`다.
 
 대상 아키텍처 규칙:
 새 운영 Store/Repository는 `artifacts/`를 실행 시점 원천으로 사용하지 않는다.
 
 현재 수정주가 실행 시점 기준 원천은 패키지 소유
-`ADJUSTED_PRICE_AUTHORITY_CONTRACT`의 Naver direct date-range 수정주가 원천이다.
+`ADJUSTED_PRICE_AUTHORITY_CONTRACT`의 Naver 직접 날짜 범위 조회 수정주가 원천이다.
 `NaverDirectAdjustedPriceDataProvider`가 `AdjustedPriceStore`
 (`ADJUSTED_PRICE_STORE_V02` 계약)에 현재 기준 데이터를
 기록하며, Closure V02 파일은 오프라인 감사 근거로만 사용한다. 기존
@@ -412,7 +412,7 @@ KRX Data Marketplace 공식 지수구성종목 CSV를 수동 로그인 브라우
 `data/market/sector_membership/v01/sector_membership_20260904.parquet`다.
 요청 `as_of`는 스냅샷의 `effective_date`와 정확히 일치해야 하며, 이전 스냅샷을
 유지하거나 이후 스냅샷을 소급 적용하지 않는다. Marketplace 실패 시
-PyKRX 구성 종목 대체 경로도 수행하지 않는다. Naver taxonomy와 현재 PyKRX 구성 종목은
+PyKRX 구성 종목 대체 경로도 수행하지 않는다. Naver 분류 체계와 현재 PyKRX 구성 종목은
 현재 구성 종목 기준이 아니다.
 
 ### 10.14 FIX03 당시 Foreign Flow 계보와 운영 diff 보호

@@ -37,7 +37,7 @@
 
 | 문서 | 역할 |
 |---|---|
-| [adjusted_price_store_v01.md](adjusted_price_store_v01.md) | 과거 V01 수정주가 저장소 구현·검증 계약 기록 |
+| [archive/adjusted_price_store_v01.md](archive/adjusted_price_store_v01.md) | 과거 V01 수정주가 저장소 구현·검증 계약 기록 |
 | [data_layer.md](data_layer.md) | 과거 공용 데이터 레이어 v0.1 기록이며 현재 운영 데이터 레이어가 아님 |
 | [krx_dual_provider_contract_v01.md](krx_dual_provider_contract_v01.md) | 과거 데이터 제공자 전환 계약 |
 | [errata/krx_identifier_contract_errata_v01.md](errata/krx_identifier_contract_errata_v01.md) | KRX 식별자 계약 보정 기록 |

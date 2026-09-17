@@ -159,6 +159,6 @@ KRX 원천 일별 데이터
 
 ## 8. V01과의 관계
 
-- [adjusted_price_store_v01.md](adjusted_price_store_v01.md)는 과거 V01 구현·검증 계약 기록이다.
+- [archive/adjusted_price_store_v01.md](archive/adjusted_price_store_v01.md)는 과거 V01 구현·검증 계약 기록이다.
 - V01의 PyKRX `adjusted=True` 원천과 과거 검증 결과는 역사 기록으로 보존한다.
 - 현재 운영 수정주가 저장소 계약의 기준 문서는 이 V02 문서다.
