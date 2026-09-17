@@ -1,6 +1,10 @@
 # Pattern A Final Production Validation & Official Closure
 
 > 이 문서는 Pattern A 운영 확정 시점의 역사 기록이다. `Next Project Phase`는 문서 작성 당시 계획이며 현재 작업 순서를 뜻하지 않는다.
+>
+> 현재 Pattern A의 규칙과 권위는 [현재 공식 규격](../../spec/production_authority.md)을 따른다. 아래 수치·판정·Stage 설명은 Closure Checkpoint 당시의 검증·해석 기록이며 현재 계약을 대체하지 않는다.
+>
+> 현재 프로젝트는 Score v0.2 / Stage v0.1을 유지하고 추가 연구는 진행하지 않는다. 향후 변경이 필요하면 별도 연구·검증·승인 절차로 다룬다. 이 문서의 당시 closure 결정은 미래 변경을 영구히 금지하는 현재 정책이 아니다.
 
 ## 1. Executive Summary
 
@@ -12,7 +16,7 @@
 * **Stage v0.2 Candidate**: **`REJECT FOR PRODUCTION / HOLD AS RESEARCH HISTORY`**
 * **Stage v0.3 Existing Feature Research**: **`공식 종료 (CLOSED, NO_GENERALIZABLE_RULE_FOUND)`**
 * **Stage v0.4 Multi-Year Structural Feature Research**: **`공식 종료 (CLOSED, NO_USEFUL_MULTI_YEAR_FEATURE_FOUND)`**
-* **Pattern A Stage Research Lifecycle**: **`영구 종료 (CLOSED)`**
+* **Pattern A Stage Research Lifecycle**: **`당시 결정: 추가 연구 종료 (CLOSED)`**
 * **당시 다음 프로젝트 단계**: **`SCANNER_OPERATION_AND_CANDIDATE_QUALITY_WORKFLOW`**
 
 ---
@@ -21,7 +25,7 @@
 
 1. **Stage v0.1 Frozen Commit**: `43ee01ca086c5d33bbf195bed67e161f5a315bf5`
 2. **Scanner Phase8 Frozen Commit**: `13ab6f416a0de77e89c7e0412467eb393e07c6dc`
-3. **Production Source Integrity**: 현재 HEAD의 모든 프로덕션 로직(`pattern_a_stage.py`, `pattern_a_score.py`, `full_universe_scanner.py`, `historical_snapshot.py`)은 Frozen Commit과 100% 동일하며 임의 변형(Mutation)이 0건입니다.
+3. **Production Source Integrity**: Closure Checkpoint 당시 검증 시점의 모든 프로덕션 로직(`pattern_a_stage.py`, `pattern_a_score.py`, `full_universe_scanner.py`, `historical_snapshot.py`)은 Frozen Commit과 100% 동일하며 임의 변형(Mutation)이 0건입니다.
 
 ---
 
@@ -36,6 +40,8 @@
 
 ## 4. Stage v0.1 Final Semantic
 
+> 아래 lifecycle 설명은 Closure Checkpoint 당시의 검증·해석 기록이다. 현재 공식 Stage는 `pattern_a_stage.py`의 독립 classifier를 따르며, `score_result.stage`는 legacy heuristic이고 현재 Evaluator의 공식 Stage는 `stage_result.stage`이다.
+
 * **Lifecycle 흐름**: `WEAK / BASE` $\rightarrow$ `TRANSITION` $\rightarrow$ `EARLY_TREND` $\rightarrow$ `PROGRESSED`
 * **동일 Episode Non-Regression**: 동일 에피소드 내에서 PROGRESSED 상태가 하위 단계(TRANSITION, EARLY_TREND)로 역행하지 않음.
 * **진정한 구조 붕괴 시 새 Episode 가능**: 장기 지지선 붕괴 및 MA24 하락(`ma24_slope < -0.045`, `range_position < 0.20`) 후 재구축 시 새로운 에피소드로 판정.
@@ -45,7 +51,7 @@
 
 ## 5. Benchmark Exact Reproduction
 
-현재 HEAD 코드에서 Live Evaluator를 실행한 실측 결과입니다.
+Closure Checkpoint 당시 검증 시점의 코드에서 Live Evaluator를 실행한 실측 결과입니다.
 
 ```text
 +----------------+-------------+---------------+-----------------+----------------+--------------------+
@@ -142,7 +148,7 @@ FINAL PRODUCTION DECISION: KEEP_CURRENT_PRODUCTION
 - Pattern A Score v0.2: PRODUCTION KEEP
 - Pattern A Stage v0.1: PRODUCTION KEEP
 - Pattern A Scanner Phase8: PRODUCTION KEEP
-- Pattern A Stage Research: PERMANENTLY CLOSED
+- Pattern A Stage Research: 당시 결정상 PERMANENTLY CLOSED
 ================================================================================
 ```
 
@@ -150,10 +156,11 @@ FINAL PRODUCTION DECISION: KEEP_CURRENT_PRODUCTION
 
 ## 12. Future Change Policy
 
-* **기본 원칙**: Pattern A 알고리즘은 본 Closure 시점 이후 **영구 동결(Frozen Algorithm)**로 취급한다.
-* **재오픈 불가 사유**:
+* **Closure 시점의 기본 원칙**: Pattern A 알고리즘은 본 Closure 시점 이후 **당시 동결된 기준(Frozen Algorithm)**으로 취급했다.
+* **Closure 시점의 재오픈 제한 사유**:
   - 특정 1~2개 종목(026910, 038390 등)의 오분류 불만
   - 임의의 직관에 기반한 즉흥적 threshold 미세 조정
-* **향후 프로젝트 방향**:
+* **Closure 시점의 다음 프로젝트 방향**:
   - **NEXT_PHASE = `SCANNER_OPERATION_AND_CANDIDATE_QUALITY_WORKFLOW`**
-  - 알고리즘 변경이 아닌, 스캐너 실운용 및 후보 종목 퀄리티 리뷰 워크플로우 개발로 전환한다.
+  - 당시에는 알고리즘 변경이 아닌, 스캐너 실운용 및 후보 종목 퀄리티 리뷰 워크플로우 개발로 전환하는 방향이었다.
+  - 위 `NEXT_PHASE`는 Closure Checkpoint 당시의 다음 단계 기록이며 현재 작업 지시가 아니다.

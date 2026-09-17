@@ -30,8 +30,8 @@
 | `docs/patterns/pattern_a/README.md` | Pattern A 안내 | 예 | 현재 공식 패턴의 상태와 권위 문서 위치를 안내한다. | 현재 위치 | `spec/production_authority.md`의 탐색 안내 | 역사 기록 링크가 현재 문서와 가까이 노출됨 |
 | `docs/patterns/pattern_a/spec/production_authority.md` | 현재 Pattern A 공식 규격 | 예 | 현재 Score·공식 lifecycle Stage·규칙·구현 위치만 남기고 과거 근거는 별도 문서 링크로 연결한다. | 현재 위치 | Pattern A의 최상위 현재 권위 문서 | 역사 근거 링크를 현재 계약과 혼동하지 않게 유지해야 함 |
 | `docs/patterns/pattern_a_fast/README.md` | Pattern A FAST 안내 | 예 | 현재 기준, 문서 구조, V2와 과거 버전의 관계를 안내한다. | 현재 위치 | FAST 명세·전략 안내의 상위 입구 | 현재 문서와 역사 문서의 시각적 분리 보완 필요 |
-| `docs/patterns/pattern_a_fast/specification/README.md` | Pattern A FAST 정의 | 예 | FAST의 의미, 상태, 시간축, PIT 원칙을 정의한다. | 현재 위치 | FAST 패턴의 개념 권위 문서 | 설명과 이력의 길이가 길어 핵심 계약을 더 앞에 둘 수 있음 |
-| `docs/patterns/pattern_a_fast/specification/weekly_lifecycle.md` | FAST 주봉 생애주기 계약 | 예 | WATCH부터 EXTENDED까지의 현재 lifecycle 의미론을 정의한다. | 현재 위치 | FAST 정의의 세부 계약 | 영어 상태 토큰과 일반 설명의 혼용 밀도 개선 여지 |
+| `docs/patterns/pattern_a_fast/spec/README.md` | Pattern A FAST 정의 | 예 | FAST의 의미, 상태, 시간축, PIT 원칙을 정의한다. | 현재 위치 | FAST 패턴의 개념 권위 문서 | 설명과 이력의 길이가 길어 핵심 계약을 더 앞에 둘 수 있음 |
+| `docs/patterns/pattern_a_fast/spec/weekly_lifecycle.md` | FAST 주봉 생애주기 계약 | 예 | WATCH부터 EXTENDED까지의 현재 lifecycle 의미론을 정의한다. | 현재 위치 | FAST 정의의 세부 계약 | 영어 상태 토큰과 일반 설명의 혼용 밀도 개선 여지 |
 | `docs/patterns/pattern_a_fast/strategy/README.md` | FAST 전략 탐색 안내 | 예 | V1~V4의 역할과 현재 V2를 한눈에 구분한다. | 현재 위치 | V2 전략 계약의 상위 입구 | V3·V4 이동 후 링크 갱신 필요 |
 | `docs/patterns/pattern_a_fast/strategy/version_02/README.md` | 현재 일반 종목 기본 전략 계약 | 예 | `PATTERN_A_FAST_FINAL_STRATEGY_V02`의 현재 규칙·상태·제한을 정의한다. | 현재 위치 | 현재 전략의 최상위 권위 문서 | 없음 |
 | `docs/patterns/PATTERNS_DOC_REORGANIZATION_REVIEW_V01.md` | 문서 재정리 통제·검토 기록 | 예 | 현재 단계의 분류와 다음 archive 실행 계획을 기록한다. | 현재 위치 | 현재 문서 구조 정리의 작업 기준 | 정리 완료 후 역사 기록 전환 여부 재검토 |
@@ -154,7 +154,7 @@ docs/patterns/
 │       └── validation/                            Pattern A 검증 기록
 └── pattern_a_fast/
     ├── README.md                                  KEEP
-    ├── specification/                             KEEP
+    ├── spec/                                      KEEP
     ├── strategy/
     │   ├── README.md                              KEEP
     │   └── version_02/README.md                   KEEP: 현재 기본 전략
@@ -179,9 +179,9 @@ docs/patterns/
    링크 경계를 유지하고, 과거 원문을 다시 본문에 복사하지 않는다.
 2. `pattern_a_fast/README.md` 및 `strategy/README.md` — 현재 문서와 archive로
    이동할 역사 문서의 연결을 한눈에 보이게 한다.
-3. `pattern_a_fast/specification/README.md` — 핵심 정의·상태·PIT 계약을 문서
+3. `pattern_a_fast/spec/README.md` — 핵심 정의·상태·PIT 계약을 문서
    앞부분에서 더 빠르게 찾을 수 있게 한다.
-4. `pattern_a_fast/specification/weekly_lifecycle.md` — 영어 상태 토큰은
+4. `pattern_a_fast/spec/weekly_lifecycle.md` — 영어 상태 토큰은
    유지하되 첫 설명과 일반 문장을 한글 중심으로 정리한다.
 5. `docs/validation/investability_policy.md` 및
    `docs/validation/backtest_common_rules.md` — 핵심 현재 기준을 짧게

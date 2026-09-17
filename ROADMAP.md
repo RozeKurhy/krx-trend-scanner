@@ -117,7 +117,7 @@
 
 - 문서 구조와 작성 기준은 [docs/README.md](docs/README.md)에서 확인한다.
 - Pattern A의 세부 규격은 [공식 규격 문서](docs/patterns/pattern_a/spec/production_authority.md)에서 확인한다.
-- Pattern A FAST의 의미와 생애주기는 [FAST 명세](docs/patterns/pattern_a_fast/specification/README.md)에서 확인한다.
+- Pattern A FAST의 의미와 생애주기는 [FAST 명세](docs/patterns/pattern_a_fast/spec/README.md)에서 확인한다.
 - A FAST Core V2의 세부 계약은 [V2 계약](docs/patterns/pattern_a_fast/strategy/version_02/README.md)에서 확인한다.
 - Fundamentals V1의 기준은 [Fundamentals 안내](docs/fundamentals/README.md)에서 확인한다.
 - Stock Report v0.5의 역할과 계약은 [Stock Report 안내](docs/reporting/stock_report/README.md)에서 확인한다.

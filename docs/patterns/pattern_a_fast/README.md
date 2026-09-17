@@ -32,7 +32,7 @@ Pattern A FAST는 Pattern A보다 상승 전환을 빠르게 탐지하기 위한
 
 | 역할 | 위치 | 설명 |
 |---|---|---|
-| 패턴 정의·생애주기 | [specification/](specification/) | Pattern A FAST가 무엇을 의미하고 어떻게 상태가 바뀌는지 |
+| 패턴 정의·생애주기 | [spec/](spec/) | Pattern A FAST가 무엇을 의미하고 어떻게 상태가 바뀌는지 |
 | 전략 | [strategy/](strategy/) | V1~V4의 규칙과 현재·과거 역할 안내 |
 | 연구 | [archive/research/](archive/research/) | 기능, 시간 프레임, Pattern A 비교 등 역사적 연구 기록 |
 | 검증 계획 | [archive/validation_plan/](archive/validation_plan/) | 검증 전에 작성한 계획과 종료된 비교 계획 기록 |
@@ -41,8 +41,8 @@ Pattern A FAST는 Pattern A보다 상승 전환을 빠르게 탐지하기 위한
 
 ## 기준 문서
 
-- [Pattern A FAST 정의](specification/README.md)
-- [Pattern A FAST 생애주기 계약](specification/weekly_lifecycle.md)
+- [Pattern A FAST 정의](spec/README.md)
+- [Pattern A FAST 생애주기 계약](spec/weekly_lifecycle.md)
 - [전략 안내](strategy/README.md)
 - [A FAST Core V1 — 역사적 기준선](archive/strategy/version_01/README.md)
 - [A FAST Core V2 — 현재 기본 전략](strategy/version_02/README.md)

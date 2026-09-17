@@ -41,7 +41,7 @@
 승인되지 않았다.
 
 세부 규칙은 [Pattern A 공식 규격](docs/patterns/pattern_a/spec/production_authority.md),
-[Pattern A FAST 명세](docs/patterns/pattern_a_fast/specification/README.md),
+[Pattern A FAST 명세](docs/patterns/pattern_a_fast/spec/README.md),
 [A FAST Core V2 계약](docs/patterns/pattern_a_fast/strategy/version_02/README.md)에서
 확인한다.
 
@@ -92,7 +92,7 @@ Stock Report는 한 종목의 가격 패턴, 투자 적합성, 전략 상태, �
 - [문서 안내와 작성 원칙](docs/README.md)
 - [향후 작업 계획](ROADMAP.md)
 - [Pattern A 공식 규격](docs/patterns/pattern_a/spec/production_authority.md)
-- [Pattern A FAST 명세](docs/patterns/pattern_a_fast/specification/README.md)
+- [Pattern A FAST 명세](docs/patterns/pattern_a_fast/spec/README.md)
 - [A FAST Core V2 계약](docs/patterns/pattern_a_fast/strategy/version_02/README.md)
 - [Fundamentals 안내](docs/fundamentals/README.md)
 - [Stock Report 안내](docs/reporting/stock_report/README.md)

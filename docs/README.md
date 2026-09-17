@@ -42,7 +42,7 @@ Pattern A FAST와 강하게 결합되어 있으므로 해당 패턴 아래에서
 ## 현재 사용 중인 핵심 문서
 
 - **Pattern A** — 공식 패턴 규격은 [공식 규격 문서](patterns/pattern_a/spec/production_authority.md)를 따른다.
-- **Pattern A FAST** — 의미와 생애주기는 [FAST 명세](patterns/pattern_a_fast/specification/README.md)를 따른다.
+- **Pattern A FAST** — 의미와 생애주기는 [FAST 명세](patterns/pattern_a_fast/spec/README.md)를 따른다.
 - **A FAST Core V2** — 일반 종목의 현재 기본 전략은 [V2 계약](patterns/pattern_a_fast/strategy/version_02/README.md)의 `PATTERN_A_FAST_FINAL_STRATEGY_V02`다.
 - **Fundamentals V1** — 현재 기준은 [Fundamentals 안내](fundamentals/README.md)와 해당 영역의 기준 문서에서 확인한다.
 - **Stock Report v0.5** — 보고서 계약은 [Stock Report 안내](reporting/stock_report/README.md)와 [v0.5 계약](reporting/stock_report/contract_v05.md)을 따른다.
@@ -83,6 +83,7 @@ Pattern A FAST와 강하게 결합되어 있으므로 해당 패턴 아래에서
 - `prereg/` 안에서는 파일명에 `_prereg`나 `_preregistration`을 다시 붙이지 않는다.
 - 문서에 명시되지 않은 버전 번호를 임의로 만들지 않는다.
 - `archive/`에는 현재 기준이 아니고 대체된 문서를 보관한다. 공식 과거 기준선은 해당 역할 폴더에 유지한다.
+- 패턴의 현재 규격 문서는 각 패턴 폴더의 `spec/` 폴더에 둔다.
 - 일반 설명은 한글을 우선한다. 제목, 소제목, 현재 상태, 전략 설명, 사용자에게 보여주는 문구도 한글로 작성한다.
 - 코드 식별자, 파일명, 경로, 함수·클래스·필드명, JSON 키, 공식 전략 ID, 고정 상태 토큰, Git 식별자, API·KRX·OpenDART·XBRL 같은 고유명과 약어는 영어 표기를 유지할 수 있다.
 - 영어 상태 토큰은 최초 등장 시 사람이 이해할 수 있는 한글 설명을 함께 쓴다. 예: 의사결정 지원 운영 상태 (`PRODUCTION_DECISION_SUPPORT`).

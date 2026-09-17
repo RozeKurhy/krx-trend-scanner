@@ -19,7 +19,11 @@
 
 - **Pattern A 공식 규격**: [spec/production_authority.md](spec/production_authority.md)
   — Score/Stage 정의와 누적 검증 근거
+
+## 핵심 역사 기록
+
 - **최종 운영 확정 기록**: [archive/validation/final_production_closure.md](archive/validation/final_production_closure.md)
+  — 현재 규격을 만든 당시의 운영 확정 근거이며 현재 권위 문서는 아니다.
 
 ## 연구·검증·역사 기록 위치
 
