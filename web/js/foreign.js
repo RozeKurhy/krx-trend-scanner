@@ -6,6 +6,7 @@
   const THEME_VALUES = new Set(["light", "dark"]);
   const SYSTEM_THEME_QUERY = "(prefers-color-scheme: dark)";
   const HORIZONS = ["1d", "5d", "10d", "20d", "60d"];
+  const MARKETS = ["ALL", "KOSPI", "KOSDAQ"];
   const HORIZON_LABELS = { "1d": "1일", "5d": "5일", "10d": "10일", "20d": "20일", "60d": "60일" };
   const MARKET_LABELS = { KOSPI: "코스피", KOSDAQ: "코스닥" };
   const byId = (id) => document.getElementById(id);
@@ -182,11 +183,8 @@
       button.classList.toggle("is-active", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
-    document.querySelectorAll("[data-market]").forEach((button) => {
-      const selected = button.dataset.market === activeMarket;
-      button.classList.toggle("is-active", selected);
-      button.setAttribute("aria-pressed", String(selected));
-    });
+    const marketSelect = byId("foreign-market-select");
+    if (marketSelect) marketSelect.value = activeMarket;
   }
 
   function renderRanking() {
@@ -198,18 +196,21 @@
     list.replaceChildren();
     if (!items.length) list.appendChild(createElement("p", "foreign-ranking-empty", "조건에 맞는 외인 순매수 종목이 없습니다."));
     else items.forEach((item) => list.appendChild(createRankingRow(item)));
-    const suffix = searchQuery.trim() ? ` · 검색 결과 ${items.length}종목` : ` · ${items.length}종목`;
-    setText("foreign-ranking-meta", `${HORIZON_LABELS[activeHorizon]} 외인 순매수${suffix}`);
+    const suffix = searchQuery.trim() ? ` · 검색 결과 ${formatNumber(items.length)}종목` : ` · ${formatNumber(items.length)}종목`;
+    setText("foreign-ranking-meta", `${HORIZON_LABELS[activeHorizon]}${suffix}`);
   }
 
   function initInteractions() {
     document.querySelectorAll("[data-horizon]").forEach((button) => button.addEventListener("click", () => {
       if (HORIZONS.includes(button.dataset.horizon)) { activeHorizon = button.dataset.horizon; renderRanking(); }
     }));
-    document.querySelectorAll("[data-market]").forEach((button) => button.addEventListener("click", () => {
-      activeMarket = button.dataset.market || "ALL";
-      renderRanking();
-    }));
+    const marketSelect = byId("foreign-market-select");
+    if (marketSelect) marketSelect.addEventListener("change", () => {
+      if (MARKETS.includes(marketSelect.value)) {
+        activeMarket = marketSelect.value;
+        renderRanking();
+      }
+    });
     const search = byId("foreign-search");
     if (search) search.addEventListener("input", () => { searchQuery = search.value; renderRanking(); });
   }

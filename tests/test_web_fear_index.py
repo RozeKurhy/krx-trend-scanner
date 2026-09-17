@@ -151,8 +151,8 @@ def test_fear_pages_use_new_fix02_asset_versions_and_visible_band_alpha():
     for html in (index_html, fear_html):
         assert "web-fear-fix02-2" in html
         assert "web-02c-toss-1" not in html
-    assert 'href="./css/app.css?v=web-ui-density-3"' in index_html
+    assert 'href="./css/app.css?v=web-ui-density-4"' in index_html
     assert 'src="./js/app.js?v=web-fear-fix02-2"' in index_html
-    assert 'href="./css/app.css?v=web-ui-density-3"' in fear_html
+    assert 'href="./css/app.css?v=web-ui-density-4"' in fear_html
     assert 'src="./js/fear.js?v=web-fear-fix02-2"' in fear_html
     assert 'ctx.globalAlpha = band.regime === "UNKNOWN" ? 0.08 : 0.32;' in fear_js

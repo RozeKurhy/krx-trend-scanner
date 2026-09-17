@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-3">
+    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-4">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -66,26 +66,30 @@
 
       <section class="panel foreign-controls" aria-labelledby="foreign-controls-heading">
         <div class="foreign-controls-heading">
-          <div>
-            <h2 id="foreign-controls-heading">외인 순매수 랭킹</h2>
-            <p id="foreign-ranking-meta" class="report-search-meta" role="status">랭킹 목록 불러오는 중</p>
-          </div>
+          <h2 id="foreign-controls-heading">외인 순매수 랭킹</h2>
           <span id="foreign-as-of" class="foreign-as-of">기준일 —</span>
         </div>
-        <div id="foreign-horizon-controls" class="market-control-group foreign-control-group" role="group" aria-label="랭킹 기간">
-          <button class="market-control" type="button" data-horizon="1d" aria-pressed="false">1일</button>
-          <button class="market-control" type="button" data-horizon="5d" aria-pressed="false">5일</button>
-          <button class="market-control" type="button" data-horizon="10d" aria-pressed="false">10일</button>
-          <button class="market-control is-active" type="button" data-horizon="20d" aria-pressed="true">20일</button>
-          <button class="market-control" type="button" data-horizon="60d" aria-pressed="false">60일</button>
-        </div>
-        <div id="foreign-market-filters" class="market-control-group foreign-control-group" role="group" aria-label="거래소 필터">
-          <button class="market-control is-active" type="button" data-market="ALL" aria-pressed="true">전체</button>
-          <button class="market-control" type="button" data-market="KOSPI" aria-pressed="false">코스피</button>
-          <button class="market-control" type="button" data-market="KOSDAQ" aria-pressed="false">코스닥</button>
+        <div class="market-primary-row">
+          <div class="market-select-wrap">
+            <label class="visually-hidden" for="foreign-market-select">시장 선택</label>
+            <select id="foreign-market-select" class="market-select" aria-label="시장 선택" aria-controls="foreign-ranking-list">
+              <option value="ALL">전체</option>
+              <option value="KOSPI">코스피</option>
+              <option value="KOSDAQ">코스닥</option>
+            </select>
+            <span class="market-select-chevron" aria-hidden="true"></span>
+          </div>
+          <div id="foreign-horizon-controls" class="market-control-group market-horizon-group" role="group" aria-label="랭킹 기간">
+            <button class="market-control" type="button" data-horizon="1d" aria-pressed="false">1일</button>
+            <button class="market-control" type="button" data-horizon="5d" aria-pressed="false">5일</button>
+            <button class="market-control" type="button" data-horizon="10d" aria-pressed="false">10일</button>
+            <button class="market-control is-active" type="button" data-horizon="20d" aria-pressed="true">20일</button>
+            <button class="market-control" type="button" data-horizon="60d" aria-pressed="false">60일</button>
+          </div>
         </div>
         <label class="visually-hidden" for="foreign-search">종목명, 종목코드 또는 업종 검색</label>
         <input id="foreign-search" class="report-search-input foreign-search-input" type="search" placeholder="종목명, 종목코드 또는 업종 검색" autocomplete="off" aria-controls="foreign-ranking-list">
+        <p id="foreign-ranking-meta" class="report-search-meta" role="status">랭킹 목록 불러오는 중</p>
       </section>
 
       <section id="foreign-ranking-list" class="foreign-ranking-list" aria-live="polite" aria-label="외인 순매수 랭킹"></section>
@@ -97,6 +101,6 @@
       </section>
     </main>
 
-    <script src="./js/foreign.js?v=web-foreign-net-buy-3" defer></script>
+    <script src="./js/foreign.js?v=web-foreign-net-buy-4" defer></script>
   </body>
 </html>

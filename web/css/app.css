@@ -569,7 +569,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .pattern-current { margin: 0 0 8px; color: var(--ink); font-size: 13px; font-weight: 750; }
 
 .strategy-overview { margin-bottom: 16px; padding: 18px 20px; }
-.strategy-overview .panel-heading { margin-bottom: 10px; }
+.strategy-overview .panel-heading { align-items: baseline; margin-bottom: 10px; }
 .strategy-selector { display: flex; flex-wrap: wrap; gap: 8px; }
 .strategy-option { display: flex; flex: 1 1 220px; min-width: 0; flex-direction: column; align-items: flex-start; gap: 4px; border: 1px solid var(--line-strong); padding: 10px 12px; color: var(--ink); background: var(--surface); border-radius: 9px; font: inherit; text-align: left; cursor: pointer; }
 .strategy-option:hover { border-color: var(--brand-red); }
@@ -579,7 +579,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .strategy-option[disabled]:hover { border-color: var(--line-strong); }
 .strategy-option-name { font-size: 14px; font-weight: 800; }
 .strategy-option-detail { color: var(--ink-soft); font-size: 11px; }
-.strategy-scope { margin: 10px 0 0; color: var(--ink-soft); font-size: 12px; }
+.strategy-scope { max-width: 100%; margin: 0; color: var(--ink-soft); font-size: 12px; text-align: right; }
 .strategy-controls { margin-bottom: 16px; }
 .strategy-filter-group { display: flex; gap: 7px; overflow-x: auto; padding: 10px 1px 1px; }
 .strategy-filter { flex: 0 0 auto; border: 1px solid var(--line-strong); padding: 8px 11px; color: var(--ink-soft); background: var(--surface); border-radius: 999px; font: inherit; font-size: 12px; font-weight: 750; white-space: nowrap; cursor: pointer; }
@@ -623,6 +623,15 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .market-control:hover { border-color: var(--brand-red); color: var(--brand-red); }
 .market-control:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .market-control.is-active { border-color: var(--brand-red); color: var(--brand-red); background: var(--primary-soft); }
+.market-primary-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.market-select-wrap { position: relative; flex: 0 1 360px; width: min(360px, 100%); min-width: 0; }
+.market-select { display: block; width: 100%; min-height: 46px; appearance: none; -webkit-appearance: none; border: 1px solid var(--line-strong); padding: 10px 44px 10px 16px; color: var(--ink); background: var(--surface); border-radius: 9px; font: inherit; font-size: 13px; line-height: 1.4; cursor: pointer; }
+.market-select::-ms-expand { display: none; }
+.market-select:hover { border-color: var(--brand-red); }
+.market-select:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; border-color: var(--brand-red); }
+.market-select-chevron { position: absolute; top: 50%; right: 16px; width: 8px; height: 8px; border-right: 1.5px solid var(--ink-soft); border-bottom: 1.5px solid var(--ink-soft); transform: translateY(-65%) rotate(45deg); pointer-events: none; }
+.market-horizon-group { flex: 1 1 auto; min-width: 0; overflow-x: auto; padding: 1px; }
+.market-horizon-group .market-control { min-height: 46px; display: inline-flex; align-items: center; }
 .market-ranking-list { display: grid; gap: 8px; }
 .market-ranking-row { display: grid; grid-template-columns: minmax(190px, 1.7fr) repeat(6, minmax(86px, 1fr)) auto; align-items: center; gap: 12px; min-width: 0; min-height: 98px; border: 1px solid var(--line); padding: 16px; color: var(--ink); background: var(--surface); border-radius: 9px; text-decoration: none; }
 .market-ranking-row:hover { border-color: var(--line-strong); background: var(--surface-muted); }
@@ -673,10 +682,9 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 
 .foreign-controls { margin-bottom: 16px; }
 .foreign-controls-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
-.foreign-controls-heading h2 { margin-bottom: 6px; }
+.foreign-controls-heading h2 { margin-bottom: 0; }
 .foreign-as-of { color: var(--ink-soft); font-size: 12px; font-weight: 500; white-space: nowrap; }
-.foreign-control-group { padding-bottom: 10px; }
-.foreign-search-input { display: block; min-height: 46px; margin-top: 2px; padding-block: 10px; }
+.foreign-search-input { display: block; min-height: 46px; margin-top: 14px; padding-block: 10px; }
 .foreign-ranking-list { display: grid; gap: 8px; }
 .foreign-ranking-row { display: grid; grid-template-columns: minmax(190px, 1.7fr) repeat(3, minmax(100px, 1fr)) auto; align-items: center; gap: 12px; min-width: 0; min-height: 94px; border: 1px solid var(--line); padding: 15px 16px; color: var(--ink); background: var(--surface); border-radius: 9px; }
 .foreign-ranking-row:hover { border-color: var(--line-strong); background: var(--surface-muted); }
@@ -731,12 +739,17 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
   .panel { padding: 20px; }
   .signal-grid, .report-card-row, .report-detail-grid { grid-template-columns: 1fr; }
   .strategy-overview { padding: 16px; }
+  .strategy-overview .panel-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .strategy-overview .strategy-scope { text-align: left; }
   .strategy-item { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
   .strategy-item-identity, .strategy-item-link { grid-column: 1 / -1; }
   .strategy-item-link { justify-self: start; }
   .market-ranking-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
   .market-ranking-identity, .market-ranking-report { grid-column: 1 / -1; }
   .market-ranking-report { justify-self: start; }
+  .market-primary-row { align-items: stretch; flex-direction: column; gap: 10px; }
+  .market-select-wrap { width: 100%; max-width: none; flex-basis: auto; }
+  .market-horizon-group { width: 100%; flex-basis: auto; overflow-x: auto; padding: 1px 1px 4px; }
   .market-controls-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
   .market-scope { text-align: left; }
   .sector-controls-heading { align-items: flex-start; flex-direction: column; gap: 4px; }

@@ -32,13 +32,21 @@ def test_foreign_page_exposes_default_20d_filters_search_and_report_contract():
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
     assert '외국인 누적 순매수대금으로 보는 종목 흐름' not in html
-    assert 'href="./css/app.css?v=web-ui-density-3"' in html
-    assert 'src="./js/foreign.js?v=web-foreign-net-buy-3"' in html
+    assert 'href="./css/app.css?v=web-ui-density-4"' in html
+    assert 'src="./js/foreign.js?v=web-foreign-net-buy-4"' in html
     assert 'data-horizon="1d"' in html and 'data-horizon="5d"' in html
     assert 'data-horizon="10d"' in html and 'data-horizon="20d"' in html and 'data-horizon="60d"' in html
     assert 'data-horizon="20d" aria-pressed="true"' in html
-    assert 'data-market="ALL"' in html and 'data-market="KOSPI"' in html and 'data-market="KOSDAQ"' in html
+    assert 'id="foreign-market-select" class="market-select"' in html
+    assert '<option value="ALL">전체</option>' in html
+    assert '<option value="KOSPI">코스피</option>' in html
+    assert '<option value="KOSDAQ">코스닥</option>' in html
+    assert 'id="foreign-market-filters"' not in html
+    assert 'data-market=' not in html
+    assert 'class="market-primary-row"' in html
     assert 'id="foreign-search"' in html
+    assert 'id="foreign-ranking-meta" class="report-search-meta" role="status"' in html
+    assert html.index('id="foreign-search"') < html.index('id="foreign-ranking-meta"')
     assert 'id="foreign-ranking-list"' in html
     assert 'const PAYLOAD_URL = "./data/foreign-net-buy-ranking.json";' in script
     assert 'const HORIZONS = ["1d", "5d", "10d", "20d", "60d"];' in script
@@ -49,7 +57,11 @@ def test_foreign_page_exposes_default_20d_filters_search_and_report_contract():
     assert 'item.sector_name' in script
     assert 'item.report_available' in script
     assert '리포트 준비 중' in script
+    assert 'marketSelect.addEventListener("change"' in script
+    assert 'activeMarket = marketSelect.value' in script
+    assert '`${HORIZON_LABELS[activeHorizon]}${suffix}`' in script
     assert 'foreign-ranking-row' in css
+    assert '.market-select' in css
     assert '.foreign-ranking-report.is-disabled' in css
     assert '@media (max-width: 560px)' in css
 

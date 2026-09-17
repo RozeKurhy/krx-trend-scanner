@@ -96,13 +96,13 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-3"' in strategy_html
-    assert 'href="./css/app.css?v=web-ui-density-3"' in index_html
-    assert 'href="./css/app.css?v=web-ui-density-3"' in report_html
+    assert 'href="./css/app.css?v=web-ui-density-4"' in strategy_html
+    assert 'href="./css/app.css?v=web-ui-density-4"' in index_html
+    assert 'href="./css/app.css?v=web-ui-density-4"' in report_html
     for html in (index_html, report_html):
         assert "web-02a-final-2" not in html
         assert "web-03a-final-1" not in html
-    assert 'src="./js/strategy.js?v=web-02c-toss-3"' in strategy_html
+    assert 'src="./js/strategy.js?v=web-02c-toss-4"' in strategy_html
     assert 'src="./js/app.js?v=web-fear-fix02-2"' in index_html
     assert 'src="./js/report.js?v=web-02d-window-12"' in report_html
     assert 'href="./strategy.html"' in index_html
@@ -113,7 +113,12 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert 'id="page-title"' not in strategy_html
     assert "A FAST Core" in strategy_html
     assert "Julia" in strategy_html and 'id="julia-option"' in strategy_html and "disabled" in strategy_html
-    assert "현재 공개 리포트 기준" in strategy_html
+    assert '<p class="eyebrow">전략</p>' not in strategy_html
+    assert '<h2 id="strategy-overview-heading">현재 전략</h2>' in strategy_html
+    assert 'id="strategy-scope" class="strategy-scope">기준일 —</p>' in strategy_html
+    assert "현재 판단 요약" not in strategy_html
+    assert "현재 공개 리포트 기준" not in strategy_html
+    assert 'setText("strategy-scope", `기준일 ${formatDate(monitor.as_of)}`);' in strategy_js
     assert 'id="strategy-search"' in strategy_html
     assert 'data-filter="hold"' in strategy_html
     assert 'data-filter="entry"' in strategy_html
@@ -157,7 +162,6 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert ".strategy-summary-grid" not in css
     assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in css
     assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in css
-    assert "min-height: 94px" in css
     assert ".strategy-item-field.detail-value-positive .strategy-item-value" in css
     assert ".strategy-item-field.detail-value-negative .strategy-item-value" in css
     assert ".strategy-item-position .strategy-item-value" in css

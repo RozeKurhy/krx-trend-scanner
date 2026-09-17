@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-3">
+    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-4">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -56,10 +56,8 @@
     <main id="main-content" class="shell page-content">
       <section class="panel strategy-overview" aria-labelledby="strategy-overview-heading">
         <div class="panel-heading">
-          <div>
-            <p class="eyebrow">전략</p>
-            <h2 id="strategy-overview-heading">현재 판단 요약</h2>
-          </div>
+          <h2 id="strategy-overview-heading">현재 전략</h2>
+          <p id="strategy-scope" class="strategy-scope">기준일 —</p>
         </div>
         <div class="strategy-selector" role="group" aria-label="전략 선택">
           <button id="fast-core-option" class="strategy-option is-active" type="button" aria-pressed="true">
@@ -71,7 +69,6 @@
             <span class="strategy-option-detail">준비 중</span>
           </button>
         </div>
-        <p id="strategy-scope" class="strategy-scope">기준일 — · 현재 공개 리포트 기준 —종목</p>
       </section>
 
       <section class="panel strategy-controls" aria-label="전략 검색 및 필터">
@@ -117,6 +114,6 @@
       </section>
     </main>
 
-    <script src="./js/strategy.js?v=web-02c-toss-3" defer></script>
+    <script src="./js/strategy.js?v=web-02c-toss-4" defer></script>
   </body>
 </html>

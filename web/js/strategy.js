@@ -270,7 +270,7 @@
   }
 
   function renderScope() {
-    setText("strategy-scope", `기준일 ${formatDate(monitor.as_of)} · ${monitor.scope.label} ${formatNumber(monitor.scope.report_count)}종목`);
+    setText("strategy-scope", `기준일 ${formatDate(monitor.as_of)}`);
   }
 
   function validateMonitor(value) {

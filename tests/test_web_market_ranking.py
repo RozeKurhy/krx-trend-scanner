@@ -114,8 +114,8 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
     assert '<a class="nav-item is-active" href="./market.html" aria-current="page">랭킹</a>' in html
-    assert 'href="./css/app.css?v=web-ui-density-3"' in html
-    assert 'src="./js/market.js?v=web-02c-toss-2"' in html
+    assert 'href="./css/app.css?v=web-ui-density-4"' in html
+    assert 'src="./js/market.js?v=web-02c-toss-3"' in html
     assert '<nav class="ranking-tabs" aria-label="랭킹 종류">' in html
     assert '<a class="ranking-tab is-active" href="./market.html" aria-current="page">마켓 RS</a>' in html
     assert '<a class="ranking-tab" href="./sector.html">섹터 RS</a>' in html
@@ -123,7 +123,14 @@ def test_market_page_has_accessible_controls_and_release_contract():
         assert f'<span class="ranking-tab" aria-disabled="true">{label} <small>준비 중</small></span>' in html
     assert 'data-horizon="2w"' in html and 'data-horizon="1m"' in html
     assert 'data-horizon="3m"' in html and 'data-horizon="6m"' in html and 'data-horizon="12m"' in html
-    assert 'data-market="ALL"' in html and 'data-market="KOSPI"' in html and 'data-market="KOSDAQ"' in html
+    assert 'id="market-select" class="market-select"' in html
+    assert '<option value="ALL">전체</option>' in html
+    assert '<option value="KOSPI">코스피</option>' in html
+    assert '<option value="KOSDAQ">코스닥</option>' in html
+    assert 'id="market-filters"' not in html
+    assert 'data-market=' not in html
+    assert 'class="market-primary-row"' in html
+    assert html.index('id="market-select"') < html.index('id="horizon-controls"')
     assert '<section class="panel market-controls"' in html
     assert 'id="market-scope" class="market-scope"' in html
     assert 'id="market-ranking-meta" class="report-search-meta" role="status"' in html
@@ -147,6 +154,10 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert 'if (percent === 0) return "0.0%";' in js
     assert 'percent > 0 ? "+" : ""' in js
     assert 'activeMarket === "ALL" || item.market === activeMarket' in js
+    assert 'marketSelect.addEventListener("change"' in js
+    assert 'activeMarket = marketSelect.value' in js
+    assert '리포트 기준' in js and 'metric_scope.label' in js
+    assert '`${HORIZON_LABELS[activeHorizon]}${suffix}`' in js
     assert '.market-ranking-row' in css
     assert '.ranking-tabs' in css and '.ranking-tab[aria-disabled="true"]' in css
     assert '.market-control:focus-visible' in css
@@ -155,10 +166,10 @@ def test_market_page_has_accessible_controls_and_release_contract():
 
 def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     page_versions = {
-        ROOT / "web/index.html": ("web-ui-density-3", "app", "web-fear-fix02-2"),
-        ROOT / "web/report.html": ("web-ui-density-3", "report", "web-02d-window-12"),
-        ROOT / "web/strategy.html": ("web-ui-density-3", "strategy", "web-02c-toss-3"),
-        ROOT / "web/market.html": ("web-ui-density-3", "market", "web-02c-toss-2"),
+        ROOT / "web/index.html": ("web-ui-density-4", "app", "web-fear-fix02-2"),
+        ROOT / "web/report.html": ("web-ui-density-4", "report", "web-02d-window-12"),
+        ROOT / "web/strategy.html": ("web-ui-density-4", "strategy", "web-02c-toss-4"),
+        ROOT / "web/market.html": ("web-ui-density-4", "market", "web-02c-toss-3"),
     }
     pages = list(page_versions)
     for path, (css_version, script_name, js_version) in page_versions.items():

@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-3">
+    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-4">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -69,17 +69,23 @@
           <h2 id="market-controls-heading">마켓 RS 랭킹</h2>
           <p id="market-scope" class="market-scope">기준일 —</p>
         </div>
-        <div id="horizon-controls" class="market-control-group" role="group" aria-label="랭킹 기간">
-          <button class="market-control" type="button" data-horizon="2w" aria-pressed="false">2주</button>
-          <button class="market-control is-active" type="button" data-horizon="1m" aria-pressed="true">1개월</button>
-          <button class="market-control" type="button" data-horizon="3m" aria-pressed="false">3개월</button>
-          <button class="market-control" type="button" data-horizon="6m" aria-pressed="false">6개월</button>
-          <button class="market-control" type="button" data-horizon="12m" aria-pressed="false">12개월</button>
-        </div>
-        <div id="market-filters" class="market-control-group" role="group" aria-label="거래소 필터">
-          <button class="market-control is-active" type="button" data-market="ALL" aria-pressed="true">전체</button>
-          <button class="market-control" type="button" data-market="KOSPI" aria-pressed="false">코스피</button>
-          <button class="market-control" type="button" data-market="KOSDAQ" aria-pressed="false">코스닥</button>
+        <div class="market-primary-row">
+          <div class="market-select-wrap">
+            <label class="visually-hidden" for="market-select">시장 선택</label>
+            <select id="market-select" class="market-select" aria-label="시장 선택" aria-controls="market-ranking-list">
+              <option value="ALL">전체</option>
+              <option value="KOSPI">코스피</option>
+              <option value="KOSDAQ">코스닥</option>
+            </select>
+            <span class="market-select-chevron" aria-hidden="true"></span>
+          </div>
+          <div id="horizon-controls" class="market-control-group market-horizon-group" role="group" aria-label="랭킹 기간">
+            <button class="market-control" type="button" data-horizon="2w" aria-pressed="false">2주</button>
+            <button class="market-control is-active" type="button" data-horizon="1m" aria-pressed="true">1개월</button>
+            <button class="market-control" type="button" data-horizon="3m" aria-pressed="false">3개월</button>
+            <button class="market-control" type="button" data-horizon="6m" aria-pressed="false">6개월</button>
+            <button class="market-control" type="button" data-horizon="12m" aria-pressed="false">12개월</button>
+          </div>
         </div>
         <label class="visually-hidden" for="market-search">종목명 또는 종목코드 검색</label>
         <input id="market-search" class="report-search-input" type="search" placeholder="종목명 또는 종목코드 검색" autocomplete="off">
@@ -95,6 +101,6 @@
       </section>
     </main>
 
-    <script src="./js/market.js?v=web-02c-toss-2" defer></script>
+    <script src="./js/market.js?v=web-02c-toss-3" defer></script>
   </body>
 </html>

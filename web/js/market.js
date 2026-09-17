@@ -6,6 +6,7 @@
   const THEME_VALUES = new Set(["light", "dark"]);
   const SYSTEM_THEME_QUERY = "(prefers-color-scheme: dark)";
   const HORIZONS = ["2w", "1m", "3m", "6m", "12m"];
+  const MARKETS = ["ALL", "KOSPI", "KOSDAQ"];
   const HORIZON_LABELS = { "2w": "2주", "1m": "1개월", "3m": "3개월", "6m": "6개월", "12m": "12개월" };
   const MARKET_LABELS = { KOSPI: "코스피", KOSDAQ: "코스닥", KONEX: "코넥스" };
   const STAGE_LABELS = {
@@ -218,7 +219,8 @@
 
   function renderScope() {
     const scope = ranking.scope;
-    setText("market-scope", `기준일 ${formatDate(ranking.as_of)} · ${scope.label} ${formatNumber(scope.report_count)}종목 · ${ranking.metric_scope.label}`);
+    const metricScopeLabel = ranking.metric_scope.label.replace(/^마켓 RS는 전체\s*/, "");
+    setText("market-scope", `기준일 ${formatDate(ranking.as_of)} · 리포트 기준 ${formatNumber(scope.report_count)}종목 · ${metricScopeLabel}`);
   }
 
   function renderControls() {
@@ -227,11 +229,8 @@
       button.classList.toggle("is-active", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
-    document.querySelectorAll("[data-market]").forEach((button) => {
-      const selected = button.dataset.market === activeMarket;
-      button.classList.toggle("is-active", selected);
-      button.setAttribute("aria-pressed", String(selected));
-    });
+    const marketSelect = byId("market-select");
+    if (marketSelect) marketSelect.value = activeMarket;
   }
 
   function renderRanking() {
@@ -246,8 +245,8 @@
     } else {
       items.forEach((item) => list.appendChild(createRankingRow(item)));
     }
-    const suffix = searchQuery.trim() ? ` · 검색 결과 ${items.length}종목` : ` · ${items.length}종목`;
-    setText("market-ranking-meta", `${HORIZON_LABELS[activeHorizon]} 마켓 RS${suffix}`);
+    const suffix = searchQuery.trim() ? ` · 검색 결과 ${formatNumber(items.length)}종목` : ` · ${formatNumber(items.length)}종목`;
+    setText("market-ranking-meta", `${HORIZON_LABELS[activeHorizon]}${suffix}`);
   }
 
   function validateRanking(value) {
@@ -268,11 +267,12 @@
         }
       });
     });
-    document.querySelectorAll("[data-market]").forEach((button) => {
-      button.addEventListener("click", () => {
-        activeMarket = button.dataset.market || "ALL";
+    const marketSelect = byId("market-select");
+    if (marketSelect) marketSelect.addEventListener("change", () => {
+      if (MARKETS.includes(marketSelect.value)) {
+        activeMarket = marketSelect.value;
         renderRanking();
-      });
+      }
     });
     const search = byId("market-search");
     if (search) search.addEventListener("input", () => {
