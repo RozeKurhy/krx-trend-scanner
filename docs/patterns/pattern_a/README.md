@@ -19,6 +19,8 @@
 
 - **Pattern A 공식 규격**: [spec/production_authority.md](spec/production_authority.md)
   — Score/Stage 정의와 누적 검증 근거
+- **투자 적합성 정책**: [validation/investability_policy.md](validation/investability_policy.md)
+  — Pattern A 후보의 현재 투자 적합성·거래 가능성 기준
 
 ## 핵심 역사 기록
 

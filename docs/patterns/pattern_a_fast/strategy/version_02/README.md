@@ -127,13 +127,13 @@
 3. **PROGRESSED 이후 구조적 테일 위험**:
    - PROGRESSED 도달 후 일봉 손실가드가 해제되고 월봉 국면/점수 청산(Exit 3/4)만 남게 되므로, 급격한 가격 하락 시 청산이 지연되거나 Coverage 경로에서 Exit 4 조건을 충족하지 못해 Cutoff까지 미청산 손실(`OPEN_AT_CUTOFF`)로 남는 구조적 테일이 발생할 수 있음 (예: 롯데케미칼 `011170_02`, Terminal Return `-77.72%`).
 
-### 2) 보류된 후속 연구: PROGRESSED 하락 방어
+### 2) 과거 보류 연구 기록: PROGRESSED 하락 방어
 - **연구 사실**: PROGRESSED 실제 보유 328건에 대한 진단(`Phase 1`)에서 대형 손실자(중앙값 -44.62%)와 대형 승자(중앙값 -16.65%) 간에 가격 HWM Drawdown의 기술적 분리가 관측됨.
 - **보류 사유**: 대형 승자(>= +50%) 중에서도 **18.29%(30건)는 -30% 이하의 깊은 조정을 견디고 최종 승자가 된 우측 꼬리 중첩(Right-Tail Overlap)**이 확인됨. 단순 가격 Trailing Stop을 성급히 적용할 경우 대형 승자가 조기 청산되는 심각한 기회손실 위험이 존재함.
 - **처리 방침**:
   - 현재 V02 전략에는 **추가적인 가격 Trailing Stop, Coverage Exit 3 확장, MFE Giveback Guard 등의 규칙을 일체 반영하지 않음**.
   - 25%~30%는 사후 관찰된 후보 범위(`PHASE1_OBSERVED_CANDIDATE_RANGE_ONLY`)일 뿐이며, 정식 전략 규칙이 아님.
-  - 해당 과제는 향후 별도 전진 연구(`PROGRESSED_DOWNSIDE_PROTECTION_PHASE2`)로 보류함.
+  - 해당 과제는 당시 별도 후속 연구 후보(`PROGRESSED_DOWNSIDE_PROTECTION_PHASE2`)로 보류했으며, 현재는 재개하지 않는다.
 
 ## 연구 상태
 

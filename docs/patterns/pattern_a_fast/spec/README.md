@@ -41,9 +41,9 @@ Pattern A FAST는 기존 Pattern A를 대체하거나 수정하지 않는 독립
 
 Pattern A를 정답 Label로 사용하지 않는다. Pattern A가 나중에 신호를 냈는지만으로
 Pattern A FAST의 성공 여부를 정하지 않는다. Pattern A는 Fast Trigger Date와
-Pattern A `TRANSITION`·`EARLY_TREND` Date의 **Lead Time 비교 기준**이다.
+Pattern A `TRANSITION`·`EARLY_TREND` 날짜의 **선행 기간 비교 기준**이다.
 Pattern A가 잡지 못한 상승 종목을 자동으로 Pattern A FAST 실패로 처리하지 않는다.
-실제 구조와 사후 Outcome은 별도로 검토한다.
+실제 구조와 사후 결과는 별도로 검토한다.
 
 ## 시간축 구조
 
@@ -169,12 +169,12 @@ Trigger가 아니라 진행 중인 추세로 본다.
 
 `EXTENDED`는 초기 진입 구간을 상당 부분 지난 상태다. 나쁜 종목, 하락 예상,
 매도 신호를 뜻하지 않는다. Pattern A에서는 `EARLY_TREND`일 수도 있고 장기 투자
-관점에서는 여전히 유효할 수 있다. 다만 Fast 신규 진입 관점에서는 Risk / Reward가
+관점에서는 여전히 유효할 수 있다. 다만 Fast 신규 진입 관점에서는 위험 대비 보상이
 악화된 상태로 해석한다.
 
-`EXTENDED`는 terminal state가 아니다. 건강한 조정이나 횡보 뒤
-`EXTENDED → TREND`가 가능하고, 구조가 충분히 reset되면
-`EXTENDED → WATCH` 또는 `SETUP`도 개념상 가능하다. 실제 Episode reset 규칙은
+`EXTENDED`는 종결 상태가 아니다. 건강한 조정이나 횡보 뒤
+`EXTENDED → TREND`가 가능하고, 구조가 충분히 초기화되면
+`EXTENDED → WATCH` 또는 `SETUP`도 개념상 가능하다. 실제 Episode 초기화 규칙은
 별도 계약에서 다룬다.
 
 ### `FALSE_TRIGGER`
@@ -191,7 +191,7 @@ Trigger가 아니라 진행 중인 추세로 본다.
 경우다. Fast의 가치가 낮아지는 사례를 표현하지만, 개별 사례 하나만으로 실패로
 판정하지 않고 전체 코호트에서 평가한다.
 
-## 성공 신호의 의미
+## 성공적인 FAST 신호의 의미
 
 `SUCCESSFUL FAST SIGNAL`은 다음 조건을 함께 만족하는 신호다.
 
@@ -207,23 +207,23 @@ Trigger가 아니라 진행 중인 추세로 본다.
 
 다음 축을 측정할 수 있다.
 
-- Pattern A `TRANSITION`까지의 Lead Time
-- Pattern A `EARLY_TREND`까지의 Lead Time
-- False Trigger Rate
+- Pattern A `TRANSITION`까지의 선행 기간
+- Pattern A `EARLY_TREND`까지의 선행 기간
+- 잘못된 Trigger 비율
 - Trigger 이후 실패 여부
-- Trigger 이후 Stage progression
-- Trigger 이후 최대 adverse excursion
-- Trigger 이후 최대 favorable excursion
+- Trigger 이후 Stage 진행
+- Trigger 이후 최대 불리 변동
+- Trigger 이후 최대 유리 변동
 
-어떤 수치가 PASS 기준인지 이 문서에서 정하지 않는다. 먼저 실제 Ground Truth의
+어떤 수치가 PASS 기준인지 이 문서에서 정하지 않는다. 먼저 실제 사후 정답의
 분포를 확인한 뒤 별도 검증에서 판단한다.
 
-## Ground Truth Label
+## 사후 정답 라벨
 
-주봉 Lifecycle Stage와 사후 Ground Truth / Outcome Label은 분리한다.
+주봉 Lifecycle Stage와 사후 정답 / 결과 라벨은 분리한다.
 
 - **Lifecycle Stage**: PIT 시점의 주봉 구조 상태
-- **Ground Truth Label**: 이후 구조를 사람이 검토해 붙이는 사후 결과 Label
+- **사후 정답 라벨**: 이후 구조를 사람이 검토해 붙이는 사후 결과 라벨
 
 사람이 사용할 수 있는 Label의 의미는 다음과 같다.
 
@@ -232,7 +232,7 @@ Trigger가 아니라 진행 중인 추세로 본다.
 - `FALSE_TRIGGER`: Trigger 직후 기존 하락·횡보 구조로 복귀하거나 돌파가 실패한 사례
 - `TOO_EARLY`: 구조적 증거 없이 가격만 움직여 아직 Trigger로 볼 수 없는 사례
 - `TOO_LATE`: 주봉 전환이 충분히 진행된 뒤 포착되어 선행 가치가 낮은 사례
-- `TOO_EXTENDED`: 초기 진입 구간을 지나 신규 진입 Risk / Reward가 악화된 사례
+- `TOO_EXTENDED`: 초기 진입 구간을 지나 신규 진입 위험 대비 보상이 악화된 사례
 - `NO_SETUP`: 관찰 시점 기준 `SETUP`에 해당하는 구조 변화조차 없는 사례
 
 Lifecycle Stage의 `EXTENDED`와 사후 Label의 이름이 충돌하지 않도록 사후 Label은
@@ -240,15 +240,15 @@ Lifecycle Stage의 `EXTENDED`와 사후 Label의 이름이 충돌하지 않도�
 
 ## Point-in-Time 원칙
 
-특정 historical week의 판단에는 그 주 시점까지 확정된 데이터만 사용한다.
+특정 과거 주의 판단에는 그 주 시점까지 확정된 데이터만 사용한다.
 
 Trigger 계산에 미래 주가, 미래 거래량, 미래 Stage, 미래 Pattern A 판정, 미래
-수익률을 사용하지 않는다. 미래 데이터는 사후 Validation, Ground Truth, Outcome
-Audit와 Failure Analysis에서만 사용한다.
+수익률을 사용하지 않는다. 미래 데이터는 사후 검증, 사후 정답 확인, 결과 검증과
+실패 분석에서만 사용한다.
 
 ## 다른 분석 축과의 분리
 
-Pattern Detection은 다음 축과 섞지 않는다.
+패턴 탐지는 다음 축과 섞지 않는다.
 
 - Relative Strength (`RS`)
 - Foreign Flow
@@ -311,7 +311,7 @@ Pattern A FAST는 `RS` 데이터가 없어도 계산 가능한 독립 패턴이�
 ## 참고: 정의의 이력
 
 이 문서는 초기 개념 정의(Phase 13A, Base commit
-`9a8013005a28af113fb10607cd493eba8ed32184`)에서 출발했어. 초기 문서가 이후
+`9a8013005a28af113fb10607cd493eba8ed32184`)에서 출발했다. 초기 문서가 이후
 검토 단계를 현재의 진행 예정 작업처럼 보이게 하지 않도록, 현재 적용되는 주봉
 Stage 의미와 전이 원칙은 [weekly_lifecycle.md](weekly_lifecycle.md)에서
 관리한다.

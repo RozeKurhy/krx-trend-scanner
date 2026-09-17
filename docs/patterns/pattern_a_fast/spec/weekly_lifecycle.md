@@ -8,7 +8,7 @@
 
 - **계약 상태**: 주봉 생애주기 의미 동결 (`CLOSED / Weekly Lifecycle Semantics v0.1 Frozen`)
 - **동결된 것**: `WATCH`, `SETUP`, `TRIGGER`, `TREND`, `EXTENDED`의 이름과 의미
-- **동결하지 않은 것**: Classifier Rule, Feature 공식, 숫자 Threshold, Score
+- **동결하지 않은 것**: 분류기 규칙, Feature 공식, 숫자 Threshold, Score
 - **기준 문서**: [Pattern A FAST 정의](README.md)
 - **근거 커밋**: `dd0dec386d1382f9176ec8a876b17fd4bcdeb51e`
 
@@ -29,7 +29,7 @@ Pattern A FAST의 공식 주봉 Stage는 다음 다섯 가지다.
 
 Stage는 현재 PIT 시점의 주봉 구조를 표현한다. 과거에 어느 Stage까지 갔는지나
 이전 주의 Stage만으로 현재 Stage를 결정하지 않는다. 따라서 생애주기는 비가역적
-State Machine이 아니고, 후퇴와 직접 전이를 허용한다.
+상태 기계가 아니고, 후퇴와 직접 전이를 허용한다.
 
 ## 시간축 역할
 
@@ -101,9 +101,9 @@ Pattern A FAST는 서로 다른 시간축의 책임을 섞지 않는다.
 등과 같은 시점에 나타날 수 있지만, 두 패턴의 Stage가 일치할 필요는 없다.
 
 과거 snapshot에서 실제 `TRIGGER`를 관측한 것이 `TREND`의 필수 조건은 아니다.
-`SETUP → TREND`나 `WATCH → TREND`처럼 `TRIGGER`를 건너뛴 direct jump도 정상일 수
-있다. 이 경우 존재하지 않는 과거 `TRIGGER`나 Trigger Event를 추정하거나
-backfill하지 않는다.
+`SETUP → TREND`나 `WATCH → TREND`처럼 `TRIGGER`를 건너뛴 직접 전이도 정상일 수
+있다. 이 경우 존재하지 않는 과거 `TRIGGER`나 Trigger 사건을 추정하거나
+과거 보완하지 않는다.
 
 `TREND`는 초기 `TRIGGER`보다 진행된 위치지만, Pattern A FAST 관점에서 반드시
 늦었다는 뜻은 아니다.
@@ -122,24 +122,24 @@ backfill하지 않는다.
 - 매도 신호
 
 Pattern A에서는 `EARLY_TREND`일 수도 있고 장기 투자 관점에서는 여전히 유효할 수
-있다. 다만 Fast 신규 진입 관점의 초기 Risk / Reward는 악화된 상태로 해석한다.
+있다. 다만 Fast 신규 진입 관점의 초기 위험 대비 보상은 악화된 상태로 해석한다.
 
-`EXTENDED`는 terminal state가 아니다. 건강한 조정·횡보 뒤
-`EXTENDED → TREND`가 가능하고, 구조가 충분히 reset되면
-`EXTENDED → WATCH` 또는 `SETUP`도 개념상 가능하다. 실제 Episode reset semantics는
+`EXTENDED`는 종결 상태가 아니다. 건강한 조정·횡보 뒤
+`EXTENDED → TREND`가 가능하고, 구조가 충분히 초기화되면
+`EXTENDED → WATCH` 또는 `SETUP`도 개념상 가능하다. 실제 Episode 초기화 의미는
 별도 연구에서 다룬다.
 
-## Trigger Stage와 Trigger Event
+## Trigger Stage와 Trigger 사건
 
 둘은 서로 다른 개념이다.
 
 - **`TRIGGER` Stage**: 현재 weekly snapshot이 `TRIGGER` 상태라는 뜻
-- **Trigger Event**: 생애주기가 비-`TRIGGER` 상태에서 `TRIGGER`로 처음 진입한 사건
+- **Trigger 사건**: 생애주기가 비-`TRIGGER` 상태에서 `TRIGGER`로 처음 진입한 사건
 
-예를 들어 `SETUP → TRIGGER → TRIGGER → TREND`라면 Trigger Event Date는 첫
-`TRIGGER` 주다. 이어지는 `TRIGGER` 주를 새 Event로 중복 기록하지 않는다.
+예를 들어 `SETUP → TRIGGER → TRIGGER → TREND`라면 Trigger 사건 날짜는 첫
+`TRIGGER` 주다. 이어지는 `TRIGGER` 주를 새 사건으로 중복 기록하지 않는다.
 
-Lead Time 분석에서 사용하는 날짜도 Stage가 지속된 모든 주가 아니라 Trigger Event
+선행 기간 분석에서 사용하는 날짜도 Stage가 지속된 모든 주가 아니라 Trigger 사건
 진입 시점이다.
 
 ## 단계 전이 원칙
@@ -150,11 +150,11 @@ Lead Time 분석에서 사용하는 날짜도 Stage가 지속된 모든 주가 �
 WATCH → SETUP → TRIGGER → TREND → EXTENDED
 ```
 
-이 경로는 `PRIMARY PATH`이지 강제 State Machine이 아니다.
+이 경로는 주 경로이지 강제 상태 기계가 아니다.
 
 ### 후퇴 허용
 
-Fast 구조는 실패하거나 약화될 수 있으므로 backward transition을 정상적인 현상으로
+Fast 구조는 실패하거나 약화될 수 있으므로 후퇴 전이를 정상적인 현상으로
 인정한다.
 
 예시는 다음과 같다.
@@ -166,11 +166,11 @@ Fast 구조는 실패하거나 약화될 수 있으므로 backward transition을
 - `TREND → SETUP`
 - `EXTENDED → TREND`
 
-Stage regression 자체를 Classifier Error로 간주하지 않는다.
+Stage regression 자체를 분류기 오류로 간주하지 않는다.
 
-### Direct jump 허용
+### 직접 전이 허용
 
-Stage는 이전 Stage에 의해 강제되지 않으므로 다음과 같은 direct jump도 실제 PIT
+Stage는 이전 Stage에 의해 강제되지 않으므로 다음과 같은 직접 전이도 실제 PIT
 구조로 정당화될 수 있다.
 
 - `WATCH → TRIGGER`
@@ -178,14 +178,14 @@ Stage는 이전 Stage에 의해 강제되지 않으므로 다음과 같은 direc
 - `WATCH → TREND`
 - `TREND → WATCH`
 
-Direct jump가 빈번하면 Stage semantics나 Classifier가 너무 거친지 별도로 감사할
-수 있지만, direct jump 자체를 금지하지 않는다.
+직접 전이가 빈번하면 Stage 의미나 분류기가 너무 거친지 별도로 감사할 수 있지만,
+직접 전이 자체를 금지하지 않는다.
 
-### Direct jump와 Trigger Event의 분리
+### 직접 전이와 Trigger 사건의 분리
 
 `SETUP → TRIGGER → TREND`처럼 실제로 `TRIGGER` Stage를 거친 경우에만 Trigger
-Event가 있다. `SETUP → TREND`처럼 `TRIGGER`를 건너뛴 episode에는 과거 Stage를
-추정한 synthetic/inferred Trigger Event Date를 만들지 않는다.
+사건이 있다. `SETUP → TREND`처럼 `TRIGGER`를 건너뛴 에피소드에는 과거 Stage를
+추정한 합성·추정 Trigger 사건 날짜를 만들지 않는다.
 
 ## PIT와 완료된 주봉 원칙
 
@@ -197,14 +197,14 @@ Stage가 일시적으로 왜곡되는 것을 막기 위해서다.
 
 즉 다음과 같이 책임을 나눈다.
 
-- `Weekly Stage = Completed Weekly Structure`
-- `Daily Timing = as_of까지 완료된 Daily Data`
+- `Weekly Stage = 완료된 주봉 구조`
+- `Daily Timing = as_of까지 완료된 일봉 데이터`
 
 ### 완료된 월봉 참고
 
 Monthly Regime은 별도 분류 축이지만 기본적으로 완료된 월봉을 사용한다. 미완성 월봉을
 확정된 Monthly Regime처럼 취급하지 않는다. Current Month 정보를 사용해야 한다면
-완료 월봉 기반 Regime과 섞지 않고 `Current Month Supporting Observation`으로
+완료 월봉 기반 Regime과 섞지 않고 `현재 월 보조 관측`으로
 분리한다.
 
 ### Point-in-Time 계약
@@ -218,7 +218,7 @@ Stage(t)는 t 시점까지 확정된 데이터만 사용한다.
 - 미래 수익률과 미래 거래량
 - 미래 Trigger 성공 여부
 
-미래 데이터는 Ground Truth, Outcome Audit, Failure Analysis에서만 사용한다.
+미래 데이터는 사후 정답, 결과 검증, 실패 분석에서만 사용한다.
 
 ## Stage와 다른 축의 독립성
 
@@ -230,18 +230,18 @@ Stage(t)는 t 시점까지 확정된 데이터만 사용한다.
 
 Stage는 주봉 생애주기의 구조적 의미를 표현하고, Score는 별도의 연속 측정값이다.
 
-### Ground Truth / Outcome Label과의 분리
+### 사후 정답 / 결과 라벨과의 분리
 
 다음 두 종류를 구분한다.
 
 - **Lifecycle Stage**: PIT 시점의 구조적 상태 — `WATCH` / `SETUP` / `TRIGGER` /
   `TREND` / `EXTENDED`
-- **Ground Truth / Outcome Label**: 사후 리뷰 결과 — `GOOD_TRIGGER` /
+- **사후 정답 / 결과 라벨**: 사후 리뷰 결과 — `GOOD_TRIGGER` /
   `BORDERLINE_TRIGGER` / `FALSE_TRIGGER` / `TOO_EARLY` / `TOO_LATE` /
   `TOO_EXTENDED`
 
-`FALSE_TRIGGER`는 Stage가 아니다. 미래 Outcome을 본 뒤 붙이는 Review Label이며,
-당시 PIT Stage를 `FALSE_TRIGGER`로 rewrite하지 않는다. 같은 이유로
+`FALSE_TRIGGER`는 Stage가 아니다. 미래 결과를 본 뒤 붙이는 사후 검토 라벨이며,
+당시 PIT Stage를 `FALSE_TRIGGER`로 다시 쓰지 않는다. 같은 이유로
 `GOOD_TRIGGER`, `TOO_EARLY`, `TOO_LATE`도 Stage가 아니다.
 
 Lifecycle Stage `EXTENDED`와 사후 Label 이름이 충돌하지 않도록 사후 Label은
@@ -253,10 +253,10 @@ Lifecycle Stage `EXTENDED`와 사후 Label 이름이 충돌하지 않도록 사�
 ### `UNAVAILABLE`과 `NOT_EVALUATED`
 
 데이터 부족·손상·PIT weekly snapshot 계산 불가를 정상 Stage에 억지로 배정하지 않는다.
-특히 `WATCH`로 fallback하지 않는다.
+특히 `WATCH`로 대체 처리하지 않는다.
 
 권장 상태는 `weekly_lifecycle_stage = UNAVAILABLE`이다. 다만 `UNAVAILABLE`은
-`WATCH`·`SETUP`·`TRIGGER`·`TREND`·`EXTENDED`와 같은 lifecycle state가 아니라
+`WATCH`·`SETUP`·`TRIGGER`·`TREND`·`EXTENDED`와 같은 생애주기 상태가 아니라
 Data / Evaluation Status다.
 
 `NOT_EVALUATED`는 사용자가 분석을 요청하지 않았거나 필수 upstream 구조를 평가하지
@@ -265,7 +265,7 @@ Stage를 `NOT_EVALUATED`로 숨기지는 않는다.
 
 ### 월봉·일봉과의 독립성
 
-`Monthly: BAD`, `Weekly: TRIGGER`가 발생해도 Weekly Stage를 `WATCH`로 rewrite하지
+`Monthly: BAD`, `Weekly: TRIGGER`가 발생해도 Weekly Stage를 `WATCH`로 다시 쓰지
 않는다. 월봉이 Fast Candidate를 허용하는지는 별도 해석 축이다.
 
 `Weekly: TRIGGER`, `Daily: EXTENDED / WAIT`도 가능하다. 일봉 타이밍이 좋지 않다고
@@ -287,33 +287,33 @@ Stage를 `NOT_EVALUATED`로 숨기지는 않는다.
 
 ## Stage 이력과 Episode
 
-### Transition History
+### 전이 이력
 
-향후 Stock Report나 Scanner에서 Stage Transition History를 만들 경우 실제 Stage가
+향후 Stock Report나 Scanner에서 Stage 전이 이력을 만들 경우 실제 Stage가
 변경된 시점만 기록한다.
 
-`SETUP, SETUP, TRIGGER, TRIGGER, TREND`라면 Transition은
-`SETUP → TRIGGER`, `TRIGGER → TREND`다. 같은 Stage 반복은 Transition Event가
+`SETUP, SETUP, TRIGGER, TRIGGER, TREND`라면 전이는
+`SETUP → TRIGGER`, `TRIGGER → TREND`다. 같은 Stage 반복은 전이 사건이
 아니다.
 
 ### Re-Trigger와 Episode
 
-한 종목에서 여러 Trigger Event가 발생할 수 있다.
+한 종목에서 여러 Trigger 사건이 발생할 수 있다.
 
 예를 들어 `SETUP → TRIGGER → WATCH` 이후 `WATCH → SETUP → TRIGGER`가 되면
-두 번째 `TRIGGER`는 새로운 Trigger Event 후보가 될 수 있다. 다만 새 Episode를
-인정하는 조건이나 reset에 필요한 기간은 이 계약에서 수치로 정하지 않는다.
+두 번째 `TRIGGER`는 새로운 Trigger 사건 후보가 될 수 있다. 다만 새 Episode를
+인정하는 조건이나 초기화에 필요한 기간은 이 계약에서 수치로 정하지 않는다.
 
-여러 Event가 있을 때 first trigger only, best trigger, latest trigger 중 하나를
-임의로 고르지 않는다. 각 Trigger Event를 episode 단위로 관리할 가능성을 열어둔다.
+여러 사건이 있을 때 first trigger only, best trigger, latest trigger 중 하나를
+임의로 고르지 않는다. 각 Trigger 사건을 episode 단위로 관리할 가능성을 열어둔다.
 
-### Lead Time 처리
+### 선행 기간 처리
 
-Pattern A 비교의 기준점은 Trigger Event Date다. 비교 대상은 Pattern A
+Pattern A 비교의 기준점은 Trigger 사건 날짜다. 비교 대상은 Pattern A
 `TRANSITION` first date와 `EARLY_TREND` first date다.
 
 Pattern A가 해당 Stage에 도달하지 않은 종목은 Fast 실패로 자동 처리하지 않는다.
-실제 Trigger Event가 없는 direct jump episode의 Lead Time은
+실제 Trigger 사건이 없는 직접 전이 에피소드의 선행 기간은
 `NOT_EVALUATED` 또는 `NOT_APPLICABLE` 계열 상태로 처리한다.
 
 다음은 금지한다.
@@ -322,16 +322,16 @@ Pattern A가 해당 Stage에 도달하지 않은 종목은 Fast 실패로 자동
 - SETUP과 TREND 사이의 임의 날짜를 Trigger Date로 추정
 - 미래 데이터를 보고 Trigger Date를 역추론
 
-### 관측되지 않은 Trigger Event
+### 관측되지 않은 Trigger 사건
 
-`TRIGGER`를 건너뛰어 `TREND` 이상으로 direct jump한 episode는 Trigger Event를
+`TRIGGER`를 건너뛰어 `TREND` 이상으로 직접 전이한 에피소드는 Trigger 사건을
 임의 생성하지 않는다. 개념적으로 `trigger_event = NOT_OBSERVED`로 기록할 수 있지만,
 정확한 production schema enum은 별도 Schema 계약에서 정한다.
 
-핵심 원칙은 하나다. **관측되지 않은 Trigger Event Date를 추정하거나 backfill하지
+핵심 원칙은 하나다. **관측되지 않은 Trigger 사건 날짜를 추정하거나 과거 보완하지
 않는다.**
 
-Human Ground Truth를 기록할 때도 PIT 구조 상태와 사후 Outcome Label을 분리한다.
+사후 정답을 기록할 때도 PIT 구조 상태와 사후 결과 라벨을 분리한다.
 
 - PIT 구조: `weekly_stage_at_reference` (예: `TRIGGER`)
 - 사후 결과: `human_label` (예: `GOOD_TRIGGER`, `FALSE_TRIGGER`)
@@ -349,12 +349,12 @@ Human Ground Truth를 기록할 때도 PIT 구조 상태와 사후 Outcome Label
 ### False Trigger
 
 `SETUP → TRIGGER → WATCH`
-PIT Stage: `TRIGGER` / Outcome Label: `FALSE_TRIGGER`
+PIT Stage: `TRIGGER` / 결과 라벨: `FALSE_TRIGGER`
 
 ### 성공적인 Trigger
 
 `SETUP → TRIGGER → TREND`
-Trigger Event: `TRIGGER` 진입 주 / Outcome Label: `GOOD_TRIGGER`
+Trigger 사건: `TRIGGER` 진입 주 / 결과 라벨: `GOOD_TRIGGER`
 
 ### 월봉 충돌
 
@@ -366,7 +366,7 @@ Monthly: `BAD`, Weekly: `TRIGGER`
 Weekly: `TRIGGER`, Daily: `WAIT`
 결론: Weekly Stage는 `TRIGGER`로 유지한다.
 
-### De-extension
+### 확장 상태에서의 후퇴
 
 `EXTENDED → TREND`
 건강한 조정 뒤 다시 진행되는 개념적 사례다.
@@ -374,10 +374,10 @@ Weekly: `TRIGGER`, Daily: `WAIT`
 ### Trigger를 건너뛴 TREND
 
 Week 1: `SETUP` / Week 2: `TREND`
-Weekly Stage: `TREND` / Observed Trigger Event: `NO` / Trigger Event Date: 없음 /
-Lead Time from Trigger: `NOT_EVALUATED`
+Weekly Stage: `TREND` / 관측된 Trigger 사건: `NO` / Trigger 사건 날짜: 없음 /
+Trigger 기준 선행 기간: `NOT_EVALUATED`
 
-이 direct jump 자체는 Stage 오류가 아니다. 실제 발생 빈도는 별도 검증에서 감사한다.
+이 직접 전이 자체는 Stage 오류가 아니다. 실제 발생 빈도는 별도 검증에서 감사한다.
 
 ## 이 계약에서 정하지 않는 것
 
@@ -390,7 +390,7 @@ Lead Time from Trigger: `NOT_EVALUATED`
 - Candidate Cutoff와 Daily READY Threshold
 - Monthly GOOD·BAD 공식
 - False Trigger 주수
-- Episode Reset 기간
+- Episode 초기화 기간
 - Return·MDD Threshold
 - Success Rate PASS 기준
 
@@ -400,9 +400,9 @@ Lead Time from Trigger: `NOT_EVALUATED`
 의미를 동결한 기록이다. 다음 질문들은 이 문서에서 임의로 답하지 않은 역사적
 연구 질문이며, 현재 적용 중인 Stage 의미를 뒤집지 않는다.
 
-- Episode / Re-Trigger reset 기준은 어떤 구조 조건인가?
-- Trigger Stage precedence rule을 실제 Feature로 어떻게 구현할 것인가?
-- Direct jump의 실제 발생 빈도가 Stage 의미 재검토를 요구하는 수준인가?
+- Episode / Re-Trigger 초기화 기준은 어떤 구조 조건인가?
+- Trigger Stage 우선순위 규칙을 실제 Feature로 어떻게 구현할 것인가?
+- 직접 전이의 실제 발생 빈도가 Stage 의미 재검토를 요구하는 수준인가?
 - Weekly Lifecycle과 Monthly Regime을 최종적으로 어떻게 함께 해석할 것인가?
 - `NOT_EVALUATED`를 실제로 언제 사용할 것인가?
 - `weekly_stage_at_reference`와 `human_label`을 어떤 UI·스키마로 기록할 것인가?
