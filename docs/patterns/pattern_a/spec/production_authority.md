@@ -209,9 +209,9 @@ Stage 분류의 역사적 검증과 알려진 한계는 아래 역사 문서에�
 현재 계약의 근거는 다음 역사 기록에서 확인할 수 있다. 역사 문서는 현재
 규칙이나 현재 작업 상태를 대체하지 않는다.
 
-- [Pattern A 운영 확정 기록](../validation/final_production_closure.md)
-- [Pattern A Score OOS 사례 기록](../validation/oos2.md)
-- [Pattern A Stage OOS 결과](../validation/stage_oos_v01_result.md)
+- [Pattern A 운영 확정 기록](../archive/validation/final_production_closure.md)
+- [Pattern A Score OOS 사례 기록](../archive/validation/oos2.md)
+- [Pattern A Stage OOS 결과](../archive/validation/stage_oos_v01_result.md)
 - [문서 재정리 분류표](../../PATTERNS_DOC_REORGANIZATION_REVIEW_V01.md)
 
 Score 곡선·가중치·Penalty·Stage threshold·필수 Anchor를 바꾸려면 별도 연구

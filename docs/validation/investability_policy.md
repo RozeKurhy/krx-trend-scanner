@@ -98,8 +98,8 @@ Stage, 후보 수를 재계산하거나 변경하지 않는다.
 다음 문서는 과거 Phase 10의 임계값 비교·통합 검증 기록이다. 현재 정책의
 상세 실험 보고서이지, 별도 현재 계약이나 진행 중인 작업 지시가 아니다.
 
-- [Phase 10B 임계값 설계·검증](../patterns/pattern_a/validation/investability_threshold_design_v01.md)
-- [Phase 10C 후단 통합 검증](../patterns/pattern_a/validation/investability_integration_v01.md)
+- [Phase 10B 임계값 설계·검증](../patterns/pattern_a/archive/validation/investability_threshold_design_v01.md)
+- [Phase 10C 후단 통합 검증](../patterns/pattern_a/archive/validation/investability_integration_v01.md)
 - [문서 재정리 분류표](../patterns/PATTERNS_DOC_REORGANIZATION_REVIEW_V01.md)
 
 현재 구현과 역사 문서가 다르면 현재 구현과 이 현재 기준 문서를 우선 확인하고,

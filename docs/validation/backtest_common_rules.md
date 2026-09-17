@@ -164,7 +164,7 @@ FastCore 비교에서 사용한 값일 뿐 모든 백테스트의 영구 기본�
   생존편향 방지 분모 계약
 - 현재 Pattern A 투자 적합성: [`docs/validation/investability_policy.md`](investability_policy.md)
 - 현재 Pattern A 공식 규격: [`docs/patterns/pattern_a/spec/production_authority.md`](../patterns/pattern_a/spec/production_authority.md)
-- 역사적 V2 ↔ Julia 공통조건: [`docs/patterns/pattern_a_fast/validation_plan/realistic_backtest_common_conditions_v01.md`](../patterns/pattern_a_fast/validation_plan/realistic_backtest_common_conditions_v01.md)
+- 역사적 V2 ↔ Julia 공통조건: [`docs/patterns/pattern_a_fast/archive/validation_plan/realistic_backtest_common_conditions_v01.md`](../patterns/pattern_a_fast/archive/validation_plan/realistic_backtest_common_conditions_v01.md)
 
 마지막 링크의 문서는 당시 실행조건을 보존하는 역사 기록이다. 이 문서는 그
 기록의 `200M / 5M / 40종목` 같은 실행별 숫자를 미래 백테스트의 영구 기본값으로

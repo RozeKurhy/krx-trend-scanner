@@ -19,17 +19,17 @@
 
 | 버전 | 역할 | 상태 | 문서 |
 |---|---|---|---|
-| V1 | 공식 과거 비교 기준선 | 역사 기록 | [V1 README](./version_01/README.md) |
+| V1 | 공식 과거 비교 기준선 | 역사 기록 | [V1 README](../archive/strategy/version_01/README.md) |
 | V2 | 현재 기본 전략 | 의사결정 지원 운영 | [V2 README](./version_02/README.md) |
-| V3 | 종료된 후보 전략 | 역사 기록 | [V3 README](./version_03/README.md) |
-| V4 | 종료된 후보 전략 | 역사 기록 | [V4 README](./version_04/README.md) |
+| V3 | 종료된 후보 전략 | 역사 기록 | [V3 README](../archive/strategy/version_03/README.md) |
+| V4 | 종료된 후보 전략 | 역사 기록 | [V4 README](../archive/strategy/version_04/README.md) |
 
 ## 버전별 안내
 
-- [A FAST Core V1](./version_01/README.md): 최초 1회 진입 기준의 역사적 전략
+- [A FAST Core V1](../archive/strategy/version_01/README.md): 최초 1회 진입 기준의 역사적 전략
 - [A FAST Core V2](./version_02/README.md): V1의 진입·보유·청산 규칙을 유지하면서 독립 재진입을 허용한 현재 기본 전략
-- [A FAST Core V3](./version_03/README.md): 종료된 후보 전략의 규칙과 판단을 보존하는 기록
-- [A FAST Core V4](./version_04/README.md): 종료된 후보 전략의 규칙과 판단을 보존하는 기록
+- [A FAST Core V3](../archive/strategy/version_03/README.md): 종료된 후보 전략의 규칙과 판단을 보존하는 기록
+- [A FAST Core V4](../archive/strategy/version_04/README.md): 종료된 후보 전략의 규칙과 판단을 보존하는 기록
 
 ## 공통 절차
 

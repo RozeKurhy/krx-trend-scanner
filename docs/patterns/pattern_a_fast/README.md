@@ -34,9 +34,9 @@ Pattern A FAST는 Pattern A보다 상승 전환을 빠르게 탐지하기 위한
 |---|---|---|
 | 패턴 정의·생애주기 | [specification/](specification/) | Pattern A FAST가 무엇을 의미하고 어떻게 상태가 바뀌는지 |
 | 전략 | [strategy/](strategy/) | V1~V4의 규칙과 현재·과거 역할 안내 |
-| 연구 | [research/](research/) | 기능, 시간 프레임, Pattern A 비교 등 연구 기록 |
-| 검증 계획 | [validation_plan/](validation_plan/) | 검증 전에 작성한 계획과 종료된 비교 계획 기록 |
-| 검증 결과 | [validation/](validation/) | 실제 수행한 사람 검토와 평가 결과 |
+| 연구 | [archive/research/](archive/research/) | 기능, 시간 프레임, Pattern A 비교 등 역사적 연구 기록 |
+| 검증 계획 | [archive/validation_plan/](archive/validation_plan/) | 검증 전에 작성한 계획과 종료된 비교 계획 기록 |
+| 검증 결과 | [archive/validation/](archive/validation/) | 실제 수행한 사람 검토와 평가 결과 |
 | 과거 문서 | [archive/](archive/) | 현재 기준으로 재사용하지 않는 역사적 계획·아키텍처 |
 
 ## 기준 문서
@@ -44,10 +44,10 @@ Pattern A FAST는 Pattern A보다 상승 전환을 빠르게 탐지하기 위한
 - [Pattern A FAST 정의](specification/README.md)
 - [Pattern A FAST 생애주기 계약](specification/weekly_lifecycle.md)
 - [전략 안내](strategy/README.md)
-- [A FAST Core V1 — 역사적 기준선](strategy/version_01/README.md)
+- [A FAST Core V1 — 역사적 기준선](archive/strategy/version_01/README.md)
 - [A FAST Core V2 — 현재 기본 전략](strategy/version_02/README.md)
-- [A FAST Core V3 — 종료된 후보 기록](strategy/version_03/README.md)
-- [A FAST Core V4 — 종료된 후보 기록](strategy/version_04/README.md)
+- [A FAST Core V3 — 종료된 후보 기록](archive/strategy/version_03/README.md)
+- [A FAST Core V4 — 종료된 후보 기록](archive/strategy/version_04/README.md)
 
 ## 공통 전략 절차
 
