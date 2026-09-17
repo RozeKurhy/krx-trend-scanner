@@ -162,7 +162,7 @@ FastCore 비교에서 사용한 값일 뿐 모든 백테스트의 영구 기본�
 
 - 데이터·PIT 계약: `docs/architecture/market_data_repository_v02.md` 및
   생존편향 방지 분모 계약
-- 현재 Pattern A 투자 적합성: [`docs/validation/investability_policy.md`](investability_policy.md)
+- 현재 Pattern A 투자 적합성: [`docs/patterns/pattern_a/validation/investability_policy.md`](../patterns/pattern_a/validation/investability_policy.md)
 - 현재 Pattern A 공식 규격: [`docs/patterns/pattern_a/spec/production_authority.md`](../patterns/pattern_a/spec/production_authority.md)
 - 역사적 V2 ↔ Julia 공통조건: [`docs/patterns/pattern_a_fast/archive/validation_plan/realistic_backtest_common_conditions_v01.md`](../patterns/pattern_a_fast/archive/validation_plan/realistic_backtest_common_conditions_v01.md)
 

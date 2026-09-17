@@ -1,4 +1,4 @@
-# Pattern A: 장기 베이스 수렴형 (Long Term Base Convergence)
+# Pattern A: 장기 베이스 수렴형
 
 > 이 문서는 현재 Pattern A 공식 규격이다. 현재 계약과 구현 위치를 설명하고,
 > 역사적 연구·검증 근거는 별도 문서 링크로 제공한다.
@@ -35,34 +35,34 @@ Pattern A는 장기 베이스 또는 장기 정체 구간을 거친 뒤 장기 �
 방향으로 전환되기 시작하는 종목을 판단한다. 다음 두 축을 함께 본다.
 
 ```text
-Base / Long-Term Structure
+베이스 / 장기 구조
 +
-Trend Transition
+추세 전환
 ```
 
 MA24 기울기 하나만 양수인 상태나 이미 크게 확장된 상태만으로 Pattern A가
-되는 것은 아니다. Stage / Breakout Context는 현재 생애주기를 해석하는
+되는 것은 아니다. Stage / 돌파 맥락은 현재 생애주기를 해석하는
 참고 축이며 Score와 독립적으로 유지한다.
 
 ### 3.1 Feature 역할과 축
 
 | 역할 | 축 | Feature |
 |---|---|---|
-| Core | Transition | `ma24_slope` |
-| Supporting | Transition | `weekly_ma12_slope`, `ma24_slope_acceleration` |
-| Context | Base | `range_36m`, `avg_price_change_12m`, `ma_spread` |
-| Context | Stage | `range_position`, `range_position_52w`, `distance_to_resistance` |
-| Diagnostic | 없음 | `compression_ratio`, `atr_ratio`, `ma_spread_ratio`, `range_24m`, `range_12m` |
-| Drop | 없음 | `pivot_low_slope` |
+| 핵심 | 추세 전환 | `ma24_slope` |
+| 보조 | 추세 전환 | `weekly_ma12_slope`, `ma24_slope_acceleration` |
+| 맥락 | 베이스 | `range_36m`, `avg_price_change_12m`, `ma_spread` |
+| 맥락 | Stage | `range_position`, `range_position_52w`, `distance_to_resistance` |
+| 진단용 | 없음 | `compression_ratio`, `atr_ratio`, `ma_spread_ratio`, `range_24m`, `range_12m` |
+| 제외 | 없음 | `pivot_low_slope` |
 
 `range_24m`, `range_12m`, `compression_ratio`는 현재 Score에 직접 사용하지
-않는다. Context와 Diagnostic을 Hard Filter로 임의 해석하지 않는다.
+않는다. 맥락과 진단용 Feature를 하드 필터로 임의 해석하지 않는다.
 
 ## 4. 현재 Score 계약
 
-### 4.1 Base Score
+### 4.1 베이스 Score
 
-Base Score는 장기적으로 과도하게 확장되지 않았는지를 본다. 결측이 아닌
+베이스 Score는 장기적으로 과도하게 확장되지 않았는지를 본다. 결측이 아닌
 Feature의 가중치를 재정규화한다.
 
 | Feature | 가중치 | 구간별 점수 |
@@ -71,16 +71,16 @@ Feature의 가중치를 재정규화한다.
 | `avg_price_change_12m` | 0.30 | `(0.10,100) → (0.30,50) → (0.60,0)` |
 | `ma_spread` | 0.15 | `(0.10,100) → (0.25,50) → (0.40,0)` |
 
-### 4.2 Transition Score
+### 4.2 전환 Score
 
-`ma24_slope`만 Core이며, 두 Supporting Feature는 Core를 확인하는 용도로만
+`ma24_slope`만 핵심이며, 두 보조 Feature는 핵심을 확인하는 용도로만
 사용한다.
 
 | Feature | 역할 | 구간별 점수 |
 |---|---|---|
-| `ma24_slope` | Core | `(-0.05,0) → (0.00,50) → (0.05,90) → (0.15,100)` |
-| `weekly_ma12_slope` | Supporting | `(0.00,20) → (0.15,100)` |
-| `ma24_slope_acceleration` | Supporting | `(0.00,30) → (0.05,100)` |
+| `ma24_slope` | 핵심 | `(-0.05,0) → (0.00,50) → (0.05,90) → (0.15,100)` |
+| `weekly_ma12_slope` | 보조 | `(0.00,20) → (0.15,100)` |
+| `ma24_slope_acceleration` | 보조 | `(0.00,30) → (0.05,100)` |
 
 ```text
 support_score = 0.5 * weekly_score + 0.5 * acceleration_score
@@ -89,7 +89,7 @@ confirmation_bonus = 20.0 * (support_score / 100.0) * confirmation_gate
 transition_score = min(100.0, core_score + confirmation_bonus)
 ```
 
-### 4.3 Alignment Bonus
+### 4.3 정렬 보너스
 
 다음 세 조건을 모두 만족할 때만 정렬로 본다.
 
@@ -102,7 +102,7 @@ AND ma24_slope_acceleration > 0
 `core_score >= 60.0`이면 `+8.0`, 그보다 낮으면 `+3.0`을 적용한다. 결측이
 있어 정렬을 확인할 수 없으면 보너스를 적용하지 않는다.
 
-### 4.4 Already Progressed Penalty
+### 4.4 진행 상태 감점
 
 여러 확장 신호가 동시에 나타나는 경우에만 추가 감점을 적용한다. 결측은
 증거로 세지 않는다.
@@ -115,7 +115,7 @@ AND ma24_slope_acceleration > 0
 | `ma24_slope` | `>= 0.10` |
 | `range_position` | `>= 0.85` |
 
-| 증거 수 | Penalty |
+| 증거 수 | 감점 |
 |---:|---:|
 | 0 | 0 |
 | 1 | 0 |
@@ -137,27 +137,27 @@ pattern_a_score = clip(
 
 ## 5. 현재 Stage 계약
 
-공식 lifecycle Stage는 Score 결과가 아니라 현재 Stage Classifier와 raw
-Feature·lifecycle context로 독립 판정한다. 공식 구현은
-`src/trend_scanner/patterns/pattern_a_stage.py`이며, Evaluator는
+공식 생애주기 Stage는 Score 결과가 아니라 현재 Stage 분류기와 원시
+Feature·생애주기 맥락으로 독립 판정한다. 공식 구현은
+`src/trend_scanner/patterns/pattern_a_stage.py`이며, 평가기는
 `src/trend_scanner/patterns/pattern_a_evaluator.py`의
 `PatternAEvaluationResult.stage`와 `PatternAEvaluationResult.lifecycle_stage`에
 `stage_result.stage`를 그대로 노출한다.
 
-`score_result.stage`는 Score v0.2 내부의 legacy heuristic 필드다. 하위 호환을
-위해 보존하지만 Scanner, 필터, 랭킹 또는 공식 lifecycle 판단에는 사용하지
+`score_result.stage`는 Score v0.2 내부의 이전 호환용 휴리스틱 필드다. 하위 호환을
+위해 보존하지만 스캐너, 필터, 랭킹 또는 공식 생애주기 판단에는 사용하지
 않는다. Score와 Stage는 서로의 결과를 덮어쓰거나 변조하지 않는다.
 
-현재 Stage Classifier는 다음 순서로 판정한다. 하나의 합성 점수나 Score cutoff를
+현재 Stage 분류기는 다음 순서로 판정한다. 하나의 합성 점수나 Score 기준값을
 사용하지 않는다.
 
-필수 raw Feature는 `ma24_slope`, `weekly_ma12_slope`,
+필수 원시 Feature는 `ma24_slope`, `weekly_ma12_slope`,
 `ma24_slope_acceleration`, `avg_price_change_12m`, `ma_spread`,
 `range_position`, `distance_to_resistance`다.
 
 | 순서 | 조건 | Stage |
 |---:|---|---|
-| 1 | 필수 raw Feature 중 하나라도 결측 | `None` (`insufficient_data`) |
+| 1 | 필수 원시 Feature 중 하나라도 결측 | `None` (`insufficient_data`) |
 | 2 | `active_decline`: 가파른 하락, 하락 가속·과거 낙폭, 또는 낮은 위치의 미전환 조건 중 하나 | `WEAK` |
 | 3 | `ma24_slope > 0` 및 (`avg_price_change_12m >= 0.30` 또는 `ma_spread >= 0.20`) | `PROGRESSED` |
 | 4 | `ma24_slope > 0`, `weekly_ma12_slope >= 0.03`, `range_position >= 0.60` | `EARLY_TREND` |
@@ -166,12 +166,12 @@ Feature·lifecycle context로 독립 판정한다. 공식 구현은
 
 `active_decline`의 세부 조건은 `ma24_slope <= -0.045`,
 `ma24_slope_acceleration < 0` 및 `avg_price_change_12m <= -0.15`, 또는
-`weekly_ma12_slope <= 0` 및 `range_position <= 0.20`이다. Stage Classifier는
-과거 monthly context도 계산해 `StageLifecycleContext`로 반환하지만, 현재
-최종 Stage를 Score나 별도 override로 다시 쓰지 않는다.
+`weekly_ma12_slope <= 0` 및 `range_position <= 0.20`이다. Stage 분류기는
+과거 월별 맥락도 계산해 `StageLifecycleContext`로 반환하지만, 현재
+최종 Stage를 Score나 별도 덮어쓰기로 다시 쓰지 않는다.
 
 Stage 분류의 역사적 검증과 알려진 한계는 아래 역사 문서에서 확인한다. 현재
-문서에서 Stage threshold를 임의로 조정하지 않는다.
+문서에서 Stage 임계값을 임의로 조정하지 않는다.
 
 ## 6. 결측·PIT·출력 계약
 
@@ -179,21 +179,21 @@ Stage 분류의 역사적 검증과 알려진 한계는 아래 역사 문서에�
 
 - `range_36m`과 `ma24_slope`는 Score의 필수 기준 Feature다. 둘 중 하나라도
   결측이면 `pattern_a_score=None`이다.
-- 이 경우 `score_result.stage=None`이다. 이는 `PatternAResult` 안의 legacy
-  Score heuristic Stage 결측이며, 공식 lifecycle Stage 결측을 뜻하지 않는다.
+- 이 경우 `score_result.stage=None`이다. 이는 `PatternAResult` 안의 이전 호환용
+  Score 휴리스틱 Stage 결측이며, 공식 생애주기 Stage 결측을 뜻하지 않는다.
 
-### 6.2 공식 lifecycle Stage 결측
+### 6.2 공식 생애주기 Stage 결측
 
-- 공식 lifecycle Stage는 Score와 독립적인 `pattern_a_stage.py`의 필수 raw
+- 공식 생애주기 Stage는 Score와 독립적인 `pattern_a_stage.py`의 필수 원시
   Feature 조건을 따른다: `ma24_slope`, `weekly_ma12_slope`,
   `ma24_slope_acceleration`, `avg_price_change_12m`, `ma_spread`,
   `range_position`, `distance_to_resistance` 중 하나라도 결측이면
   `stage_result.stage=None` (`insufficient_data`)이다.
-- `range_36m` 결측만으로 공식 lifecycle Stage가 자동으로 `None`이 되지는
+- `range_36m` 결측만으로 공식 생애주기 Stage가 자동으로 `None`이 되지는
   않는다. 공식 결과는 `PatternAEvaluationResult.stage`와
   `PatternAEvaluationResult.lifecycle_stage`가 `stage_result.stage`를 그대로
   따른다.
-- 그 밖의 Base·Supporting Feature 결측은 가능한 축 안에서 가중치를
+- 그 밖의 베이스·보조 Feature 결측은 가능한 축 안에서 가중치를
   재정규화한다. 축 전체가 계산 불가능하면 해당 결과는 결측이다.
 - 입력 Feature는 해당 기준일 이하의 완료된 관측값으로 계산한다. 미래 관측값,
   미완료 기간, 임의의 다른 날짜 대체값을 사용하지 않는다.
@@ -201,7 +201,7 @@ Stage 분류의 역사적 검증과 알려진 한계는 아래 역사 문서에�
   `confirmation_bonus`, `balanced_core_score`, `alignment_bonus`,
   `progressed_penalty`, `progressed_evidence_count`, `pattern_a_score`,
   `stage`, `flags`를 포함하는 `PatternAResult`로 반환한다.
-- 현재 공식 Score에는 위 계약 밖의 새 Filter·순위·수익률 최적화를 추가하지
+- 현재 공식 Score에는 위 계약 밖의 새 필터·순위·수익률 최적화를 추가하지
   않는다.
 
 ## 7. 역사적 근거와 변경 경계
@@ -214,7 +214,7 @@ Stage 분류의 역사적 검증과 알려진 한계는 아래 역사 문서에�
 - [Pattern A Stage OOS 결과](../archive/validation/stage_oos_v01_result.md)
 - [문서 재정리 분류표](../../PATTERNS_DOC_REORGANIZATION_REVIEW_V01.md)
 
-Score 곡선·가중치·Penalty·Stage threshold·필수 Anchor를 바꾸려면 별도 연구
+Score 곡선·가중치·감점·Stage 임계값·필수 기준점을 바꾸려면 별도 연구
 문서, 검증 범위, 승인과 함께 변경한다. 이 문서는 새 연구를 시작하는 문서가
 아니다.
 

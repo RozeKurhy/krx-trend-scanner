@@ -32,8 +32,15 @@
 ## 3. Score v0.2 최종 의미
 
 * **수식**:
-  $$\text{balanced\_core} = \text{harmonic\_mean}(\text{base\_score}, \text{transition\_score})$$
-  $$\text{pattern\_a\_score} = \text{clip}(\text{balanced\_core} + \text{alignment\_bonus} - \text{progressed\_penalty}, 0, 100)$$
+  ```text
+  balanced_core = harmonic_mean(base_score, transition_score)
+
+  pattern_a_score = clip(
+      balanced_core + alignment_bonus - progressed_penalty,
+      0,
+      100
+  )
+  ```
 * **Stage 독립성**: Score 계산은 Stage 출력값을 전혀 참조하지 않으며, Stage 또한 Score 파생값을 전혀 사용하지 않는 완전한 독립 계층입니다.
 
 ---

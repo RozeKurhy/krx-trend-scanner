@@ -18,7 +18,7 @@
 현재 기준은 `PATTERN_A_FAST_FINAL_STRATEGY_V02`이며, V1도 현행 전략 폴더에
 남길 실질적 이유가 없어 archive 대상이다. V3와 V4 역시 현재 기본 전략이
 아닌 종료된 후보 기록이다. 투자 적합성 현재 기준은
-`docs/validation/investability_policy.md`, 재사용 가능한 백테스트 공통 기준은
+`docs/patterns/pattern_a/validation/investability_policy.md`, 재사용 가능한 백테스트 공통 기준은
 `docs/validation/backtest_common_rules.md`에서 확인한다. Investability 문서는
 `docs/patterns/` 71개 분류 숫자에 포함하지 않는다.
 
@@ -183,7 +183,7 @@ docs/patterns/
    앞부분에서 더 빠르게 찾을 수 있게 한다.
 4. `pattern_a_fast/spec/weekly_lifecycle.md` — 영어 상태 토큰은
    유지하되 첫 설명과 일반 문장을 한글 중심으로 정리한다.
-5. `docs/validation/investability_policy.md` 및
+5. `docs/patterns/pattern_a/validation/investability_policy.md` 및
    `docs/validation/backtest_common_rules.md` — 핵심 현재 기준을 짧게
    유지하고 역사 보고서와 중복 서술하지 않는다.
 

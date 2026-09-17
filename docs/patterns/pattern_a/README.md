@@ -28,6 +28,7 @@
 ## 연구·검증·역사 기록 위치
 
 - `spec/` — 현재 Pattern A 공식 규격
+- `validation/` — 현재 Pattern A 전용 검증·투자 적합성 기준
 - `archive/research/` — Pattern A 자체의 역사적 연구 기록
 - `archive/validation/` — evaluator, 단계 분류, 투자 적합성, 음성 대조군,
   유니버스·데이터 품질, 차트 검토 등의 역사적 검증 기록
