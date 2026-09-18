@@ -94,7 +94,7 @@ def test_common_raw_incomplete_cannot_validate_or_promote(tmp_path):
     result = foundation.execute("2026-09-02", dry_run=False)
 
     assert result["final_status"] == "BLOCKED"
-    assert "common_raw" in result["reason"]
+    assert "common_raw" in result["reason"].lower()
     assert result["authority_promotion"] == 0
     assert result["certified_through"] == "2026-09-01"
     assert (authority / "manifest.json").read_bytes() == before

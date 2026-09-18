@@ -83,7 +83,11 @@ from trend_scanner.data.adjusted_price_semantics import (
 )
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.krx_etf_raw_provider import ETF_ENDPOINT, KrxRawEtfSnapshotProvider
-from trend_scanner.data.krx_historical_backfill import KrxHistoricalBackfillRunner, candidate_dates
+from trend_scanner.data.krx_historical_backfill import (
+    KrxHistoricalBackfillRunner,
+    candidate_dates,
+    prioritize_blockers,
+)
 from trend_scanner.data.krx_historical_instrument_acquisition import load_bounded_basic_info_snapshots
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.universe.historical_authority_reconciliation import (
@@ -1373,9 +1377,95 @@ class RollingRawMarketUpdater:
                 "production_write_performed": False,
                 "new_boundary": max(complete, default=current_boundary),
             }
+
+        # A FAILED manifest is retryable evidence, not a reason to walk every
+        # historical FAILED partition again.  Repair only the currently
+        # required dates, one date at a time, then resume with the ordinary
+        # non-retry path so unrelated historical failures remain untouched.
+        before_states = states
+        failed_required = [
+            day
+            for day in sessions
+            if any(states.get(day, {}).get(market) == "FAILED" for market in ("KOSPI", "KOSDAQ"))
+        ]
+        repair_results: list[dict[str, Any]] = []
+        for day in failed_required:
+            failed_markets = sum(
+                states.get(day, {}).get(market) == "FAILED"
+                for market in ("KOSPI", "KOSDAQ")
+            )
+            repair_kwargs = dict(run_kwargs)
+            repair_kwargs.pop("retry_failures", None)
+            repair_kwargs.pop("max_task_attempts", None)
+            repair_results.append(
+                self.runner.run(
+                    day,
+                    day,
+                    resume=True,
+                    retry_failures=True,
+                    max_task_attempts=max(1, failed_markets),
+                    markets=("KOSPI", "KOSDAQ"),
+                    **repair_kwargs,
+                )
+            )
+            states = self._paired_manifest_states(target_as_of)
+
+        if repair_results:
+            known_missing = [
+                day for day in sessions
+                if not (
+                    states.get(day, {}).get("KOSPI") == "COMPLETE"
+                    and states.get(day, {}).get("KOSDAQ") == "COMPLETE"
+                )
+                and not (
+                    states.get(day, {}).get("KOSPI") == "NO_DATA"
+                    and states.get(day, {}).get("KOSDAQ") == "NO_DATA"
+                    and self._finalized_no_data("KOSPI", day)
+                    and self._finalized_no_data("KOSDAQ", day)
+                )
+            ]
+            blocked_no_data = [
+                day for day in sessions
+                if states.get(day, {}).get("KOSPI") == "NO_DATA"
+                and states.get(day, {}).get("KOSDAQ") == "NO_DATA"
+                and self._finalized_no_data("KOSPI", day)
+                and self._finalized_no_data("KOSDAQ", day)
+            ]
+
         start = min(known_missing, default=_next_day(current_boundary))
         result = self.runner.run(start, target_as_of, resume=True, markets=("KOSPI", "KOSDAQ"), **run_kwargs)
-        before_states = states
+        if repair_results:
+            repair_blockers = [
+                blocker
+                for repair in repair_results
+                for blocker in repair.get("blockers", ())
+            ]
+            merged_blockers = prioritize_blockers(
+                list(result.get("blockers", ())) + repair_blockers
+            )
+            result["blockers"] = merged_blockers
+            if merged_blockers:
+                result["status"] = merged_blockers[0]
+                result["recommendation"] = merged_blockers[0]
+            result["diagnostics"] = [
+                item
+                for repair in repair_results
+                for item in repair.get("diagnostics", ())
+            ] + list(result.get("diagnostics", ()))
+            result["failure_observations"] = [
+                item
+                for repair in repair_results
+                for item in repair.get("failure_observations", ())
+            ] + list(result.get("failure_observations", ()))
+            result["retry_attempt_count"] = int(result.get("retry_attempt_count", 0)) + sum(
+                int(repair.get("retry_attempt_count", 0)) for repair in repair_results
+            )
+            result["krx_open_api_attempt_count"] = max(
+                int(result.get("krx_open_api_attempt_count", 0)),
+                sum(int(repair.get("krx_open_api_attempt_count", 0)) for repair in repair_results),
+            )
+            result["repair_results"] = repair_results
+            result["retry_required_failed_dates"] = failed_required
         states = self._paired_manifest_states(target_as_of)
         complete = self._complete_paired_dates(target_as_of)
         terminal_statuses = {"COMPLETE", "NO_DATA"}
@@ -1416,6 +1506,8 @@ class RollingRawMarketUpdater:
             "physical_write_count": physical_write_count,
             "production_write_performed": bool(physical_write_count),
             "new_boundary": new_boundary,
+            "repair_results": repair_results,
+            "retry_required_failed_dates": failed_required,
         }
 
 

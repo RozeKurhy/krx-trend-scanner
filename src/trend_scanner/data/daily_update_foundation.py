@@ -823,6 +823,55 @@ class DailyUpdateFoundation:
             unique = ",".join(dict.fromkeys(incomplete))
             raise DailyUpdateFoundationError(f"BLOCKED_REQUIRED_LEG_INCOMPLETE:{unique}")
 
+    def _validate_common_raw_before_downstream(
+        self,
+        result: Mapping[str, Any],
+        required_dates: Sequence[str],
+    ) -> None:
+        """Stop the cycle immediately when COMMON raw cannot cover the target."""
+
+        runner_result = result.get("runner_result", {})
+        runner_result = runner_result if isinstance(runner_result, Mapping) else {}
+        blockers = [
+            str(item)
+            for item in list(result.get("blockers", ())) + list(runner_result.get("blockers", ()))
+            if item
+        ]
+        runner_status = str(runner_result.get("status", "")).upper()
+        if runner_status.startswith("BLOCKED_") or runner_status.startswith("BACKFILL_PAUSED_"):
+            blockers.append(runner_status)
+        if blockers:
+            blocker = blockers[0]
+            if blocker.startswith("BLOCKED_COMMON_RAW:"):
+                raise DailyUpdateFoundationError(blocker)
+            raise DailyUpdateFoundationError(f"BLOCKED_COMMON_RAW:{blocker}")
+        if result.get("failures"):
+            raise DailyUpdateFoundationError("BLOCKED_COMMON_RAW:FAILED")
+
+        required = _normalise_session_dates(required_dates)
+
+        def terminal_pair(day: str) -> bool:
+            rows = {
+                market: self.raw_store.get_manifest(market, day)
+                for market in ("KOSPI", "KOSDAQ")
+            }
+            statuses = {
+                market: str((rows[market] or {}).get("status", "")).upper()
+                for market in rows
+            }
+            if all(statuses[market] == "COMPLETE" for market in rows):
+                return True
+            if not all(statuses[market] == "NO_DATA" for market in rows):
+                return False
+            checker = getattr(self.raw_store, "is_finalized_no_data", None)
+            return callable(checker) and all(checker(market, day) for market in rows)
+
+        if required and any(not terminal_pair(day) for day in required):
+            raise DailyUpdateFoundationError("BLOCKED_COMMON_RAW:BLOCKED_COVERAGE")
+        new_boundary = str(result.get("new_boundary", ""))
+        if required and (not new_boundary or new_boundary < max(required)):
+            raise DailyUpdateFoundationError("BLOCKED_COMMON_RAW:BLOCKED_COVERAGE")
+
     def _build_extension(
         self,
         extension_dates: Sequence[str],
@@ -945,6 +994,10 @@ class DailyUpdateFoundation:
                 manifest.leg_boundaries["common_raw"],
                 target,
                 required_dates=required_dates,
+            )
+            self._validate_common_raw_before_downstream(
+                leg_results["common_raw"],
+                required_dates,
             )
             operating_dates = sorted(
                 set(_calendar_dates(self.authority_dir, target))
