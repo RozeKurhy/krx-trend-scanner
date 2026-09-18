@@ -24,7 +24,7 @@ Four independent legs make up one refresh cycle:
   bundled acceptance script so it can run independently
   (see ``scripts/backfill_krx_raw_etf_v01.py``).
 * ``etf_adjusted``   -- adjusted OHLC for the fixed, Repository-V2-validated
-  17-ticker ETF scope. Never routes through a PIT/expected-coverage gate (the
+  28-ticker ETF scope. Never routes through a PIT/expected-coverage gate (the
   original acceptance script fetches the full requested range directly), so
   it rolls forward safely with no calendar dependency.
 * ``common_adjusted`` -- adjusted OHLC for the full COMMON population. This is
@@ -150,7 +150,9 @@ REQUIRED_LEGS = ("common_raw", "common_adjusted", "etf_raw", "etf_adjusted")
 ETF_VALIDATED_ACCEPTANCE_TICKERS = (
     "0115D0", "069500", "091160", "091170", "091180", "102960", "102970",
     "117460", "117680", "117700", "140700", "140710", "229200", "244580",
-    "266410", "300950", "305720",
+    "266410", "300950", "305720", "226490", "139230", "139260",
+    "157490", "143860", "266390", "266360", "133690", "360750",
+    "241180", "192090",
 )
 
 
@@ -2336,7 +2338,7 @@ def classify_adjusted_history_transition(
 
 
 class RollingEtfAdjustedUpdater:
-    """ETF adjusted-price rolling leg for the fixed 17-ticker validated scope.
+    """ETF adjusted-price rolling leg for the fixed 28-ticker validated scope.
 
     Unlike COMMON, this never routed through ``resolve_expected_coverage``/PIT -- the original
     acceptance script fetches the full requested range directly from Naver each cycle -- so it has no

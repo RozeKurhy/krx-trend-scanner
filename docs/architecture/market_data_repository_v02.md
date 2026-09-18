@@ -26,7 +26,7 @@ Pattern A 스캐너는 `build_production_repository_v2`를 통해 현재 기준�
 ---------------------------------
 Repository V2는 공식 분류된 `COMMON`과 `ETF`를 동일한 결합
 인터페이스로 지원한다. ETF 여부는 `InstrumentMetadataResolver`의 PIT 공식
-상품 마스터 분류로만 결정하며 종목코드 형식·이름·17종 허용 목록을
+상품 마스터 분류로만 결정하며 종목코드 형식·이름·28종 허용 목록을
 사용하지 않는다.
 
 * COMMON 수정주가 기준 원천: `AdjustedPriceStore` (`ADJUSTED_PRICE_STORE_V02`) / Naver 직접 날짜 범위 조회 수정주가 V02

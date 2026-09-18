@@ -2,7 +2,7 @@
 """Run the resumable production KRX ETF raw whole-market snapshot backfill.
 
 Independent of any adjusted-price update -- decoupled from
-``backfill_krx_etf_repository_v2_v01.py``'s bundled 17-ticker acceptance
+``backfill_krx_etf_repository_v2_v01.py``'s bundled 28-ticker acceptance
 scope so ETF raw ingestion can roll forward on its own schedule (directive
 ``ROLLING_MARKET_DATA_REFRESH_PATH_V01`` section 18). Session-date
 determination reuses the COMMON raw store's already-established KOSPI
