@@ -8,6 +8,10 @@
   const HORIZONS = ["2w", "1m", "3m", "6m", "12m"];
   const HORIZON_LABELS = { "2w": "2주", "1m": "1개월", "3m": "3개월", "6m": "6개월", "12m": "12개월" };
   const RETURN_FIELDS = { "2w": "return_2w", "1m": "return_1m", "3m": "return_3m", "6m": "return_6m", "12m": "return_12m" };
+  const MFE_FIELDS = { "2w": "mfe_2w", "1m": "mfe_1m", "3m": "mfe_3m", "6m": "mfe_6m", "12m": "mfe_12m" };
+  const MDD_FIELDS = { "2w": "mdd_2w", "1m": "mdd_1m", "3m": "mdd_3m", "6m": "mdd_6m", "12m": "mdd_12m" };
+  const AVG_VOLUME_FIELDS = { "2w": "avg_volume_2w", "1m": "avg_volume_1m", "3m": "avg_volume_3m", "6m": "avg_volume_6m", "12m": "avg_volume_12m" };
+  const AVG_TRADING_VALUE_FIELDS = { "2w": "avg_trading_value_2w", "1m": "avg_trading_value_1m", "3m": "avg_trading_value_3m", "6m": "avg_trading_value_6m", "12m": "avg_trading_value_12m" };
   const EXPECTED_HORIZONS = { "2w": 10, "1m": 21, "3m": 63, "6m": 126, "12m": 252 };
   const byId = (id) => document.getElementById(id);
   let ranking = null;
@@ -32,6 +36,22 @@
 
   function formatPrice(value) {
     return value == null || value === "" || !Number.isFinite(Number(value)) ? "—" : `${formatNumber(value)}원`;
+  }
+
+  function formatQuantity(value) {
+    if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
+    const number = Number(value);
+    if (number >= 100000000) return `${formatNumber(number / 100000000, 1)}억주`;
+    if (number >= 10000) return `${formatNumber(number / 10000, 1)}만주`;
+    return `${formatNumber(number)}주`;
+  }
+
+  function formatTradingValue(value) {
+    if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
+    const number = Number(value);
+    if (number >= 100000000) return `${formatNumber(number / 100000000, 1)}억원`;
+    if (number >= 10000) return `${formatNumber(number / 10000, 0)}만원`;
+    return `${formatNumber(number)}원`;
   }
 
   function formatReturn(value) {
@@ -113,6 +133,20 @@
     return field;
   }
 
+  function createExternalLinks(item) {
+    const links = createElement("span", "etf-ranking-links");
+    const externalLinks = item.external_links || {};
+    [["Npay 증권", "naver_finance"], ["차트", "naver_chart"]].forEach(([label, key]) => {
+      const link = createElement("a", "report-link", label);
+      link.href = externalLinks[key];
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.setAttribute("aria-label", `${item.name || item.ticker} ${label} 새 창`);
+      links.appendChild(link);
+    });
+    return links;
+  }
+
   function rankedItems() {
     const field = RETURN_FIELDS[activeHorizon];
     return (ranking.items || []).slice().sort((left, right) => {
@@ -129,12 +163,21 @@
     row.setAttribute("aria-label", `${rank}위 ${item.name || item.ticker}`);
     const identity = createElement("span", "etf-ranking-identity");
     identity.appendChild(createElement("strong", "etf-ranking-name", item.name || item.ticker));
-    identity.appendChild(createElement("span", "etf-ranking-meta", `${item.ticker} · ${item.category || "ETF"}`));
+    identity.appendChild(createElement("span", "etf-ranking-identity-meta", `${item.ticker} · ${item.category || "ETF"}`));
+    identity.appendChild(createExternalLinks(item));
     const periodReturn = item[RETURN_FIELDS[activeHorizon]];
+    const mfe = item[MFE_FIELDS[activeHorizon]];
+    const mdd = item[MDD_FIELDS[activeHorizon]];
+    const averageTradingValue = item[AVG_TRADING_VALUE_FIELDS[activeHorizon]];
+    const averageVolume = item[AVG_VOLUME_FIELDS[activeHorizon]];
     const position = createField("순위", `${rank}위`, null, "etf-ranking-position");
-    const returnField = createField("기간 수익률", formatReturn(periodReturn), `최근 ${HORIZON_LABELS[activeHorizon]}`, `etf-ranking-return ${returnClass(periodReturn)}`);
+    const returnField = createField("기간 등락", formatReturn(periodReturn), `최근 ${HORIZON_LABELS[activeHorizon]}`, `etf-ranking-return ${returnClass(periodReturn)}`);
+    const mfeField = createField("최대 상승", formatReturn(mfe), `최근 ${HORIZON_LABELS[activeHorizon]}`, `etf-ranking-mfe ${returnClass(mfe)}`);
+    const mddField = createField("최대 낙폭", formatReturn(mdd), `최근 ${HORIZON_LABELS[activeHorizon]}`, `etf-ranking-mdd ${returnClass(mdd)}`);
+    const averageTradingValueField = createField("평균 거래대금", formatTradingValue(averageTradingValue), `최근 ${HORIZON_LABELS[activeHorizon]}`, "etf-ranking-trading-value");
+    const averageVolumeField = createField("평균 거래량", formatQuantity(averageVolume), `최근 ${HORIZON_LABELS[activeHorizon]}`, "etf-ranking-volume");
     const price = createField("현재가", formatPrice(item.latest_close), formatDate(item.latest_close_as_of), "etf-ranking-price");
-    row.append(identity, position, returnField, price);
+    row.append(identity, position, returnField, mfeField, mddField, averageTradingValueField, averageVolumeField, price);
     return row;
   }
 
@@ -157,7 +200,6 @@
     const list = byId("etf-ranking-list");
     while (list.firstChild) list.removeChild(list.firstChild);
     rankedItems().forEach((item, index) => list.appendChild(createRankingRow(item, index + 1)));
-    setText("etf-ranking-meta", `${HORIZON_LABELS[activeHorizon]} · ${formatNumber(ranking.items.length)}개 ETF`);
   }
 
   function validNumber(value) {
@@ -167,7 +209,7 @@
   function validateRanking(value) {
     if (!value || value.schema_version !== 1 || value.as_of !== "2026-09-04" || !value.scope || value.scope.type !== "FIXED_ETF_UNIVERSE" || value.scope.count !== 24 || !Array.isArray(value.items) || value.items.length !== 24) return false;
     if (!value.horizons || HORIZONS.some((horizon) => value.horizons[horizon] !== EXPECTED_HORIZONS[horizon])) return false;
-    return value.items.every((item) => item && typeof item.ticker === "string" && typeof item.name === "string" && typeof item.category === "string" && typeof item.latest_close_as_of === "string" && validNumber(item.latest_close) && item.latest_close > 0 && HORIZONS.every((horizon) => validNumber(item[RETURN_FIELDS[horizon]])));
+    return value.items.every((item) => item && typeof item.ticker === "string" && typeof item.name === "string" && typeof item.category === "string" && typeof item.latest_close_as_of === "string" && validNumber(item.latest_close) && item.latest_close > 0 && item.external_links && typeof item.external_links.naver_finance === "string" && typeof item.external_links.naver_chart === "string" && !Object.prototype.hasOwnProperty.call(item.external_links, "dart") && HORIZONS.every((horizon) => validNumber(item[RETURN_FIELDS[horizon]]) && validNumber(item[MFE_FIELDS[horizon]]) && validNumber(item[MDD_FIELDS[horizon]]) && validNumber(item[AVG_VOLUME_FIELDS[horizon]]) && item[AVG_VOLUME_FIELDS[horizon]] >= 0 && validNumber(item[AVG_TRADING_VALUE_FIELDS[horizon]]) && item[AVG_TRADING_VALUE_FIELDS[horizon]] >= 0 && item[MDD_FIELDS[horizon]] <= 0));
   }
 
   function initInteractions() {

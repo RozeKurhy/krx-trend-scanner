@@ -79,6 +79,49 @@ def _load_metadata(repo_root: Path) -> dict[str, Any]:
     return metadata_by_ticker
 
 
+def _calculate_horizon_metrics(frame: pd.DataFrame, session_count: int, *, ticker: str) -> dict[str, float]:
+    """Calculate all metrics from one exact anchor-plus-window slice."""
+
+    if session_count <= 0 or len(frame) < session_count + 1:
+        raise ValueError(f"ETF ranking window is incomplete: {ticker} {session_count}")
+    anchor = frame.iloc[-(session_count + 1)]
+    window = frame.iloc[-session_count:]
+    if len(window) != session_count:
+        raise ValueError(f"ETF ranking measurement window is incomplete: {ticker} {session_count}")
+
+    anchor_close = float(anchor["close"])
+    close = pd.to_numeric(pd.concat([pd.Series([anchor_close]), window["close"]], ignore_index=True), errors="coerce")
+    high = pd.to_numeric(window["high"], errors="coerce")
+    volume = pd.to_numeric(window["volume"], errors="coerce")
+    trading_value = pd.to_numeric(window["trading_value"], errors="coerce")
+    series_by_name = {
+        "close": close,
+        "high": high,
+        "volume": volume,
+        "trading_value": trading_value,
+    }
+    if not math.isfinite(anchor_close) or anchor_close <= 0:
+        raise ValueError(f"ETF ranking anchor close is invalid: {ticker} {session_count}")
+    for name, series in series_by_name.items():
+        if series.isna().any() or not series.map(math.isfinite).all():
+            raise ValueError(f"ETF ranking {name} is non-finite: {ticker} {session_count}")
+    if (volume < 0).any() or (trading_value < 0).any():
+        raise ValueError(f"ETF ranking raw flow is negative: {ticker} {session_count}")
+
+    running_peak = close.cummax()
+    drawdown = close / running_peak - 1.0
+    metrics = {
+        "return": float(close.iloc[-1] / anchor_close - 1.0),
+        "mfe": float(high.max() / anchor_close - 1.0),
+        "mdd": float(drawdown.min()),
+        "avg_volume": float(volume.mean()),
+        "avg_trading_value": float(trading_value.mean()),
+    }
+    if not all(math.isfinite(value) for value in metrics.values()) or metrics["mdd"] > 0:
+        raise ValueError(f"ETF ranking derived metrics are invalid: {ticker} {session_count}")
+    return metrics
+
+
 def _project_item(repo: Any, ticker: str, group: str, category: str, metadata: Any) -> dict[str, Any]:
     frame = repo.get_daily(ticker, READ_START, AS_OF)
     if frame is None or frame.empty:
@@ -94,28 +137,26 @@ def _project_item(repo: Any, ticker: str, group: str, category: str, metadata: A
         raise ValueError(f"ETF ranking close history is incomplete: {ticker}")
 
     latest_close = float(close.iloc[-1])
-    returns: dict[str, float] = {}
+    horizon_metrics: dict[str, dict[str, float]] = {}
     for horizon, session_count in HORIZONS.items():
-        anchor_position = -(session_count + 1)
-        anchor_close = float(close.iloc[anchor_position])
-        value = latest_close / anchor_close - 1.0
-        if not math.isfinite(value):
-            raise ValueError(f"ETF ranking return is non-finite: {ticker} {horizon}")
-        returns[horizon] = value
+        horizon_metrics[horizon] = _calculate_horizon_metrics(frame, session_count, ticker=ticker)
 
-    return {
+    item = {
         "ticker": ticker,
         "name": metadata.name,
         "group": group,
         "category": category,
         "latest_close": latest_close,
         "latest_close_as_of": AS_OF,
-        "return_2w": returns["2w"],
-        "return_1m": returns["1m"],
-        "return_3m": returns["3m"],
-        "return_6m": returns["6m"],
-        "return_12m": returns["12m"],
+        "external_links": {
+            "naver_finance": f"https://finance.naver.com/item/main.naver?code={ticker}",
+            "naver_chart": f"https://stock.naver.com/fchart/domestic/stock/{ticker}",
+        },
     }
+    for horizon, metrics in horizon_metrics.items():
+        for metric_name, value in metrics.items():
+            item[f"{metric_name}_{horizon}"] = value
+    return item
 
 
 def build_etf_ranking(repo_root: Path | str = ROOT) -> dict[str, Any]:
