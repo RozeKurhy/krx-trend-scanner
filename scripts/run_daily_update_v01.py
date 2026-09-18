@@ -87,8 +87,6 @@ def build_foundation(args: argparse.Namespace, *, execute_live: bool) -> DailyUp
     if not execute_live:
         # These are never called in dry-run mode; keeping the object graph explicit makes the
         # single entrypoint's plan use the same existing components without credentials.
-        from trend_scanner.data.rolling_market_data_refresh import RollingAdjustedPriceUpdater
-
         common_raw = RollingRawMarketUpdater(None, raw_store)
         etf_raw = RollingRawEtfUpdater(None, raw_store)
         common_adjusted = RollingAdjustedPriceUpdater(
