@@ -5,7 +5,7 @@
 
 ## A. 현재 핵심 아키텍처
 
-현재 운영 구조를 파악할 때는 다음 네 문서를 먼저 읽는다.
+현재 운영 구조를 파악할 때는 다음 다섯 문서를 먼저 읽는다.
 
 | 문서 | 현재 역할 |
 |---|---|
@@ -13,10 +13,11 @@
 | [market_data_repository_v02.md](market_data_repository_v02.md) | 수정주가와 원천 일별 데이터를 결합해 실제 사용 코드에 제공하는 현재 시장데이터 계층 |
 | [instrument_metadata_authority.md](instrument_metadata_authority.md) | 종목 메타데이터·자산 유형·PIT 분류의 현재 기준 |
 | [survivorship_safe_denominator_freeze_v01.md](survivorship_safe_denominator_freeze_v01.md) | 과거 백테스트와 PIT 종목 집합의 생존편향 방지 기준 |
+| [daily_update_contract_v01.md](daily_update_contract_v01.md) | 특정 기준일까지 운영 데이터를 일관되게 증분 갱신하는 데일리 업데이트 기준 |
 
 ## B. 현재 세부 데이터 계약
 
-위 네 문서의 세부 저장소·원천·전환 계약은 다음 문서에서 확인한다.
+위 다섯 문서의 세부 저장소·원천·전환 계약은 다음 문서에서 확인한다.
 
 | 문서 | 한 줄 역할 |
 |---|---|
