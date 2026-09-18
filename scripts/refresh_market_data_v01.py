@@ -249,6 +249,7 @@ def main(argv: list[str] | None = None) -> int:
             adjusted_store,
             pit_path=args.pit_path,
             historical_calendar_path=args.historical_calendar_path,
+            production_raw_store=raw_store,
             corporate_action_evidence_lookup=corporate_action_evidence_lookup,
         ),
         common_adjusted_tickers=load_common_adjusted_tickers_from_pit(

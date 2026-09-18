@@ -36,9 +36,9 @@ Four independent legs make up one refresh cycle:
   inventing a rolling extension rule for it is a decision for that
   workstream's owner, not something to improvise here. See
   :class:`RollingAdjustedPriceUpdater` -- it reuses the existing, already
-  parameterized ``resolve_expected_coverage`` unchanged, and fails closed
-  with :class:`InsufficientPitFrontierError` until a suitable PIT artifact is
-  supplied.
+  parameterized ``resolve_expected_coverage`` and overlays the production
+  ``KrxRawStockStore`` coverage for the rolling delta, then fails closed with
+  :class:`InsufficientPitFrontierError` until a suitable PIT artifact is supplied.
 
 Because one leg cannot complete, :class:`RollingRefreshCoordinator` cannot
 promote the boundary today -- and that is the point of the coherence design:
@@ -2827,7 +2827,11 @@ class RollingEtfAdjustedUpdater:
 
 
 class RollingAdjustedPriceUpdater:
-    """COMMON adjusted-price rolling leg. Fails closed unless handed a PIT/calendar authority whose
+    """COMMON adjusted-price rolling leg.
+
+    When a production raw store is supplied, required sessions in the rolling delta are aligned to
+    usable ticker observations in that store; the PIT/calendar resolver remains the fallback and
+    authority-status gate. The updater fails closed unless handed a PIT/calendar authority whose
     frontier already covers ``target_as_of`` -- see the module docstring and
     :class:`InsufficientPitFrontierError`. This class never falls back to the frozen E2E defaults
     (``survivorship_safe_denominator_freeze/v01/pit_common_denominator_v01.json``); callers must pass
@@ -2843,6 +2847,7 @@ class RollingAdjustedPriceUpdater:
         historical_calendar_path: Path,
         corporate_action_evidence_lookup: Callable[[str], Any] | None = None,
         evidence_observation_date: str | None = None,
+        production_raw_store: KrxRawStockStore | None = None,
     ) -> None:
         self.provider = provider
         self.store = store
@@ -2850,6 +2855,7 @@ class RollingAdjustedPriceUpdater:
         self.historical_calendar_path = Path(historical_calendar_path)
         self.corporate_action_evidence_lookup = corporate_action_evidence_lookup
         self.evidence_observation_date = evidence_observation_date
+        self.production_raw_store = production_raw_store
 
     def _frontier(self) -> str:
         calendar = json.loads(self.historical_calendar_path.read_text(encoding="utf-8"))
@@ -2860,6 +2866,54 @@ class RollingAdjustedPriceUpdater:
             raise RollingAuthorityError("PIT_OR_CALENDAR_ARTIFACT_EMPTY")
         return min(max(dates), max(pit_ends))
 
+    def _production_raw_authority(
+        self,
+        current_boundary: str,
+        target_as_of: str,
+    ) -> ProductionRawCoverageAuthority | None:
+        if self.production_raw_store is None or target_as_of <= current_boundary:
+            return None
+        return _load_production_raw_coverage_authority(
+            self.production_raw_store,
+            start_date=_next_day(current_boundary),
+            end_date=target_as_of,
+        )
+
+    def _required_sessions(
+        self,
+        ticker: str,
+        ticker_requested_start: str,
+        current_boundary: str,
+        target_as_of: str,
+        *,
+        current_identity: Mapping[str, Any] | None,
+        pit_path: Path,
+        historical_calendar_path: Path,
+        production_raw_coverage: ProductionRawCoverageAuthority | None,
+    ) -> tuple[Any | None, list[str]]:
+        if self.production_raw_store is not None:
+            if target_as_of <= current_boundary:
+                return None, []
+            ticker_requested_start = max(ticker_requested_start, _next_day(current_boundary))
+        resolution = resolve_expected_coverage(
+            ticker,
+            ticker_requested_start,
+            target_as_of,
+            pit_path=pit_path,
+            historical_calendar_path=historical_calendar_path,
+        )
+        expected = set(_normalise_session_dates(list(resolution.expected_tradable_dates)))
+        if production_raw_coverage is not None and current_identity is not None:
+            market = str(current_identity.get("market", "")).upper()
+            covered_dates = production_raw_coverage.covered_dates_by_market.get(market, frozenset())
+            if covered_dates:
+                observed_dates = production_raw_coverage.observed_dates_by_market_ticker.get(
+                    (market, ticker), frozenset()
+                )
+                expected.difference_update(covered_dates)
+                expected.update(observed_dates.intersection(covered_dates))
+        return resolution, sorted(expected)
+
     def plan(self, tickers: Sequence[str], current_boundary: str, target_as_of: str) -> dict[str, Any]:
         intervals_by_ticker: dict[str, list[dict[str, Any]]] = {}
         raw_pit = json.loads(self.pit_path.read_text(encoding="utf-8"))
@@ -2869,6 +2923,7 @@ class RollingAdjustedPriceUpdater:
                 intervals_by_ticker.setdefault(str(ticker).zfill(6), []).append(interval)
         records: list[dict[str, Any]] = []
         blocked: list[dict[str, Any]] = []
+        production_raw_coverage = self._production_raw_authority(current_boundary, target_as_of)
         for ticker in tickers:
             normalized = str(ticker).zfill(6)
             identity = resolve_current_identity(normalized, target_as_of, intervals_by_ticker)
@@ -2883,15 +2938,35 @@ class RollingAdjustedPriceUpdater:
                 blocked.append(record)
                 continue
             start = str(identity.interval["effective_from"])
-            resolution = resolve_expected_coverage(
-                normalized, start, target_as_of, pit_path=self.pit_path, historical_calendar_path=self.historical_calendar_path
-            )
-            if resolution.authority_status == "NO_EXPECTED_OBSERVATIONS":
+            if str(identity.interval.get("effective_to", "")) < target_as_of:
                 records.append({
                     "ticker": normalized,
                     "missing_dates": [],
                     "missing_date_count": 0,
-                    "reason": resolution.authority_status,
+                    "reason": "HISTORICAL_ONLY_IDENTITY_NOT_REQUIRED_AFTER_LIFECYCLE",
+                    "status": "EXPLAINED_EXCLUSION",
+                })
+                continue
+            resolution, required = self._required_sessions(
+                normalized,
+                start,
+                current_boundary,
+                target_as_of,
+                current_identity=identity.interval,
+                pit_path=self.pit_path,
+                historical_calendar_path=self.historical_calendar_path,
+                production_raw_coverage=production_raw_coverage,
+            )
+            if resolution is None or resolution.authority_status == "NO_EXPECTED_OBSERVATIONS":
+                records.append({
+                    "ticker": normalized,
+                    "missing_dates": [],
+                    "missing_date_count": 0,
+                    "reason": (
+                        "NO_PRODUCTION_RAW_OBSERVATIONS"
+                        if resolution is not None and resolution.authority_status == "VALID" and not required
+                        else resolution.authority_status if resolution is not None else "ALREADY_CERTIFIED"
+                    ),
                     "status": "ZERO_COVERAGE",
                 })
                 continue
@@ -2909,14 +2984,29 @@ class RollingAdjustedPriceUpdater:
                 records.append(record)
                 blocked.append(record)
                 continue
-            required = _normalise_session_dates(list(resolution.expected_tradable_dates))
+            if not required:
+                records.append({
+                    "ticker": normalized,
+                    "missing_dates": [],
+                    "missing_date_count": 0,
+                    "reason": "NO_PRODUCTION_RAW_OBSERVATIONS",
+                    "status": "ZERO_COVERAGE",
+                })
+                continue
             observed = (
                 {pd.Timestamp(value).date().isoformat() for value in self.store.load_daily(normalized).index}
                 if hasattr(self.store, "exists") and self.store.exists(normalized)
                 else set()
             )
             missing = _missing_session_dates(required, sorted(observed))
-            records.append({"ticker": normalized, "missing_dates": missing, "missing_date_count": len(missing)})
+            records.append({
+                "ticker": normalized,
+                "missing_dates": missing,
+                "missing_date_count": len(missing),
+                "required_date_count": len(required),
+                "required_start": required[0],
+                "required_end": required[-1],
+            })
         missing_dates = sorted({day for record in records for day in record["missing_dates"]})
         return {
             "leg": "common_adjusted",
@@ -3002,33 +3092,65 @@ class RollingAdjustedPriceUpdater:
         # values across calls, e.g. a per-run workdir extension file, so a stale cached mapping is a
         # real hazard here too, not just in the MarketDataRepositoryV2 read path).
         intervals_by_ticker: dict[str, list[dict[str, Any]]] | None = None
-        if requested_start is None:
+        if requested_start is None or self.production_raw_store is not None:
             raw_pit = json.loads(Path(pit_path).read_text(encoding="utf-8"))
             intervals_by_ticker = {}
             for iv in raw_pit.get("intervals", []):
                 t = iv.get("ticker")
                 if t:
-                    intervals_by_ticker.setdefault(t, []).append(iv)
+                    intervals_by_ticker.setdefault(str(t).zfill(6), []).append(iv)
 
         results, failures, skipped, blocked, restatement_validation = [], [], [], [], []
         covered_dates: set[str] = set()
         updated_date_count = 0
+        production_raw_coverage = self._production_raw_authority(current_boundary, target_as_of)
         for ticker in tickers:
-            if requested_start is None:
+            normalized = str(ticker).zfill(6)
+            current_identity = None
+            if requested_start is None or self.production_raw_store is not None:
                 identity = resolve_current_identity(ticker, target_as_of, intervals_by_ticker or {})
-                if identity.status != "RESOLVED":
-                    blocked.append({"ticker": ticker, "reason": f"IDENTITY_{identity.status}"})
+                if requested_start is None and identity.status != "RESOLVED":
+                    blocked.append({"ticker": normalized, "reason": f"IDENTITY_{identity.status}"})
                     continue
-                ticker_requested_start = str(identity.interval["effective_from"])
+                if identity.status == "RESOLVED" and identity.interval is not None:
+                    current_identity = identity.interval
+                if requested_start is None:
+                    ticker_requested_start = str(identity.interval["effective_from"])
+                else:
+                    ticker_requested_start = requested_start
             else:
                 ticker_requested_start = requested_start
 
-            resolution = resolve_expected_coverage(
-                ticker, ticker_requested_start, target_as_of, pit_path=pit_path, historical_calendar_path=historical_calendar_path
+            if (
+                current_identity is not None
+                and str(current_identity.get("effective_to", "")) < target_as_of
+            ):
+                skipped.append({
+                    "ticker": normalized,
+                    "reason": "HISTORICAL_ONLY_IDENTITY_NOT_REQUIRED_AFTER_LIFECYCLE",
+                    "missing_date_count": 0,
+                })
+                continue
+            resolution, expected_dates = self._required_sessions(
+                normalized,
+                ticker_requested_start,
+                current_boundary,
+                target_as_of,
+                current_identity=current_identity,
+                pit_path=pit_path,
+                historical_calendar_path=historical_calendar_path,
+                production_raw_coverage=production_raw_coverage,
             )
+            if resolution is None:
+                skipped.append({
+                    "ticker": normalized,
+                    "reason": "ALREADY_CERTIFIED",
+                    "missing_date_count": 0,
+                })
+                continue
             if resolution.authority_status == "NO_EXPECTED_OBSERVATIONS":
                 skipped.append({
-                    "ticker": ticker,
+                    "ticker": normalized,
                     "reason": resolution.authority_status,
                     "missing_date_count": 0,
                     "zero_coverage": True,
@@ -3050,21 +3172,28 @@ class RollingAdjustedPriceUpdater:
                     "unresolved_authority_conflict_dates": list(resolution.unresolved_authority_conflict_dates),
                 })
                 continue
+            if not expected_dates:
+                skipped.append({
+                    "ticker": normalized,
+                    "reason": "NO_PRODUCTION_RAW_OBSERVATIONS",
+                    "missing_date_count": 0,
+                    "zero_coverage": True,
+                })
+                continue
             try:
-                expected_dates = _normalise_session_dates(list(resolution.expected_tradable_dates))
                 covered_dates.update(expected_dates)
-                has_existing_store = hasattr(self.store, "exists") and self.store.exists(ticker)
-                before = self.store.load_daily(ticker) if has_existing_store else None
+                has_existing_store = hasattr(self.store, "exists") and self.store.exists(normalized)
+                before = self.store.load_daily(normalized) if has_existing_store else None
                 existing_dates = set() if before is None else {
                     pd.Timestamp(value).date().isoformat() for value in before.index
                 }
                 missing_dates = _missing_session_dates(expected_dates, sorted(existing_dates))
                 if not missing_dates:
-                    skipped.append({"ticker": ticker, "reason": "ALREADY_COMPLETE", "missing_date_count": 0})
+                    skipped.append({"ticker": normalized, "reason": "ALREADY_COMPLETE", "missing_date_count": 0})
                     continue
                 fetched_frames = []
                 for request_start, request_end in _session_ranges(missing_dates, expected_dates):
-                    fetched = self.provider.load_daily(ticker, request_start, request_end)
+                    fetched = self.provider.load_daily(normalized, request_start, request_end)
                     if fetched.empty:
                         raise RuntimeError(f"EMPTY_ADJUSTED_AUTHORITY:{request_start}:{request_end}")
                     fetched_frames.append(fetched)
@@ -3073,7 +3202,7 @@ class RollingAdjustedPriceUpdater:
                     raise RuntimeError("EMPTY_ADJUSTED_AUTHORITY")
                 _validate_merged_adjusted_coverage(frame, expected_dates)
                 transition = classify_adjusted_history_transition(
-                    ticker,
+                    normalized,
                     before,
                     frame,
                     current_boundary,
@@ -3094,7 +3223,7 @@ class RollingAdjustedPriceUpdater:
                 if transition["status"] == REJECTED_HISTORICAL_RESTATEMENT:
                     failures.append(
                         {
-                            "ticker": ticker,
+                            "ticker": normalized,
                             "error_type": REJECTED_HISTORICAL_RESTATEMENT,
                             "reason": transition["reason"],
                         }
@@ -3103,7 +3232,7 @@ class RollingAdjustedPriceUpdater:
                 # The candidate is already the current official provider response.  Only an
                 # UNCHANGED or evidence-approved candidate may reach the physical store.
                 self.store.save_full(
-                    ticker,
+                    normalized,
                     frame,
                     metadata_context={
                         "requested_start": (
@@ -3112,11 +3241,11 @@ class RollingAdjustedPriceUpdater:
                         "requested_end": target_as_of,
                     },
                 )
-                results.append(ticker)
+                results.append(normalized)
                 updated_date_count += len(missing_dates)
             except Exception as exc:  # noqa: BLE001
                 failures.append(
-                    {"ticker": ticker, "error_type": type(exc).__name__, "error_message": str(exc)}
+                    {"ticker": normalized, "error_type": type(exc).__name__, "error_message": str(exc)}
                 )
         # The boundary only advances to target_as_of when every ticker actually reached it -- a
         # skip or failure means this leg did not fully cover target_as_of, so it must report the

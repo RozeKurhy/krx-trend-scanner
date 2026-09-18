@@ -71,10 +71,11 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _load_common_tickers(pit_path: Path) -> list[str]:
+def _load_common_tickers(pit_path: Path, target_as_of: str) -> list[str]:
     return load_effective_common_adjusted_population(
         pit_path,
         etf_acceptance_tickers=ETF_VALIDATED_ACCEPTANCE_TICKERS,
+        identity_as_of=target_as_of,
     )
 
 
@@ -91,10 +92,14 @@ def build_foundation(args: argparse.Namespace, *, execute_live: bool) -> DailyUp
         common_raw = RollingRawMarketUpdater(None, raw_store)
         etf_raw = RollingRawEtfUpdater(None, raw_store)
         common_adjusted = RollingAdjustedPriceUpdater(
-            None, adjusted_store, pit_path=pit_path, historical_calendar_path=historical_calendar_path
+            None,
+            adjusted_store,
+            pit_path=pit_path,
+            historical_calendar_path=historical_calendar_path,
+            production_raw_store=raw_store,
         )
         etf_adjusted = RollingEtfAdjustedUpdater(None, adjusted_store, raw_store=raw_store)
-        common_tickers = _load_common_tickers(pit_path) if pit_path.exists() else []
+        common_tickers = _load_common_tickers(pit_path, args.target_as_of) if pit_path.exists() else []
         index_store = IndexStore(args.index_root)
 
         def plan_index(target: str):
@@ -139,6 +144,7 @@ def build_foundation(args: argparse.Namespace, *, execute_live: bool) -> DailyUp
         adjusted_store,
         pit_path=pit_path,
         historical_calendar_path=historical_calendar_path,
+        production_raw_store=raw_store,
     )
     etf_adjusted = RollingEtfAdjustedUpdater(
         adjusted_provider,
@@ -189,7 +195,7 @@ def build_foundation(args: argparse.Namespace, *, execute_live: bool) -> DailyUp
         authority_dir=args.authority_dir,
         raw_store=raw_store,
         adjusted_store=adjusted_store,
-        common_adjusted_tickers=_load_common_tickers(pit_path),
+        common_adjusted_tickers=_load_common_tickers(pit_path, args.target_as_of),
         common_raw_updater=common_raw,
         etf_raw_updater=etf_raw,
         common_adjusted_updater=common_adjusted,
