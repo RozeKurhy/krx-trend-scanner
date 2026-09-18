@@ -1386,7 +1386,8 @@ class RollingRawMarketUpdater:
         failed_required = [
             day
             for day in sessions
-            if any(states.get(day, {}).get(market) == "FAILED" for market in ("KOSPI", "KOSDAQ"))
+            if current_boundary < day <= target_as_of
+            and any(states.get(day, {}).get(market) == "FAILED" for market in ("KOSPI", "KOSDAQ"))
         ]
         repair_results: list[dict[str, Any]] = []
         for day in failed_required:

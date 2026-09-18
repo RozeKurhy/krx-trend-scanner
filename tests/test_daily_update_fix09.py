@@ -178,6 +178,39 @@ def test_unrelated_historical_failed_partition_is_not_retried(tmp_path):
     assert raw.get_manifest("KOSPI", unrelated)["status"] == "FAILED"
 
 
+def test_required_dates_historical_failed_is_outside_current_window(tmp_path):
+    historical = "2023-12-21"
+    current = "2026-09-14"
+    raw = KrxRawStockStore(tmp_path / "raw")
+    for day in (historical, current):
+        raw.save_failure("KOSPI", day, "/sto/stk_bydd_trd", "RAW_SNAPSHOT_HTTP_STATUS", "retry")
+        raw.save_snapshot("KOSDAQ", day, _raw_frame(day, "000660"), "/sto/ksq_bydd_trd")
+
+    class Runner:
+        def __init__(self):
+            self.calls = []
+
+        def run(self, start, end, **kwargs):
+            self.calls.append((start, end, dict(kwargs)))
+            if kwargs.get("retry_failures") is True:
+                assert (start, end) == (current, current)
+                raw.save_snapshot("KOSPI", current, _raw_frame(current, "005930"), "/sto/stk_bydd_trd")
+                return {"status": "READY", "blockers": [], "krx_open_api_attempt_count": 1}
+            return {"status": "BLOCKED_COVERAGE", "blockers": [], "krx_open_api_attempt_count": 0}
+
+    runner = Runner()
+    updater = RollingRawMarketUpdater(runner, raw)
+    updater.refresh(
+        "2026-09-11",
+        "2026-09-16",
+        required_dates=[historical, "2026-09-11", current, "2026-09-15", "2026-09-16"],
+    )
+
+    repair_calls = [call for call in runner.calls if call[2].get("retry_failures") is True]
+    assert [(start, end) for start, end, _kwargs in repair_calls] == [(current, current)]
+    assert raw.get_manifest("KOSPI", historical)["status"] == "FAILED"
+
+
 def test_failed_retry_blocker_is_merged_and_remains_fail_fast(tmp_path):
     day = "2026-09-14"
     raw = _retry_fixture(tmp_path, failed_day=day)
