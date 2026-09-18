@@ -75,26 +75,27 @@ def _monthly_status(
     target: pd.Timestamp,
     calendar: MarketCalendarAuthority,
 ) -> str | None:
-    """가장 마지막 월봉 bar의 완료 상태를 운영 완료 월 권위만으로 판정한다.
+    """실제로 반환된 마지막 월봉(``monthly.index[-1]``)의 완료 상태를 판정한다.
 
-    종목의 마지막 관측일이 아니라 요청 기준일(target_as_of)을 사용한다는
-    점은 `historical_snapshot.py`의 `_drop_incomplete_current_month()`와
-    같다. `target_as_of`를 `calendar.max_observed_trading_date`로 낮춰서
-    조회하지 않는다 — 그 값은 마지막 실제 거래일일 뿐, 정상적인 휴장/주말과
-    권위가 오래된 상태를 구분하는 경계가 아니다. `get_actual_month_end()`는
-    (연, 월)이 완료 월 목록에 없으면 예외 없이 `None`을 반환하므로, 비거래일
-    `target_as_of`에서도 별도 클램프 없이 안전하게 조회할 수 있다.
+    판정 대상은 ``target_as_of``가 속한 (연, 월)이 아니라, 실제로 파생된
+    마지막 월봉의 (연, 월)이다. 거래정지·장기 미거래로 마지막 월봉이 과거
+    달에 머물러 있으면(``target_as_of``가 이미 다음 달로 넘어간 경우),
+    ``target_as_of``의 (연, 월)을 조회하면 아직 진행 중인 최신 달을 잘못
+    가리키게 된다. `get_actual_month_end()`는 (연, 월)이 완료 월 목록에
+    없으면 예외 없이 `None`을 반환하므로, 비거래일 `target_as_of`에서도
+    별도 클램프 없이 안전하게 조회할 수 있다.
     """
     if monthly.empty:
         return None
-    actual_month_end = calendar.get_actual_month_end(target.year, target.month)
+    last_month_label = monthly.index[-1]
+    actual_month_end = calendar.get_actual_month_end(last_month_label.year, last_month_label.month)
     return COMPLETE if actual_month_end is not None and target >= actual_month_end else PROVISIONAL
 
 
 def derive_periods(
     daily: pd.DataFrame | None,
     target_as_of: str | pd.Timestamp,
-    calendar: MarketCalendarAuthority,
+    calendar: MarketCalendarAuthority | None,
 ) -> PeriodDerivationResult:
     """1단계 인증 일봉과 하나의 target_as_of로 주봉·월봉을 파생한다.
 
@@ -103,6 +104,11 @@ def derive_periods(
     target_as_of 이하로 한 번 더 슬라이싱해서 방어적으로 사용하지만, 1단계
     인증 경계를 넘어선 데이터가 애초에 들어오지 않았다고 신뢰한다 — 새로운
     일봉 중간 공백 검증은 하지 않는다(daily_gap_authority = INHERITED_FROM_PHASE1).
+
+    ``calendar``는 `load_rolling_production_market_calendar()`가 병합 캘린더
+    산출물이 없을 때 `None`을 반환할 수 있으므로, 월봉 완료 권위가 없는
+    예상 가능한 입력 상태로 보고 `BLOCKED`로 처리한다(예상치 못한 구현
+    오류가 아니므로 `FAILED`로 흘려보내지 않는다).
     """
     target = pd.Timestamp(target_as_of).normalize()
     target_str = target.strftime("%Y-%m-%d")
@@ -134,6 +140,18 @@ def derive_periods(
 
     effective_boundary = sliced.index.max().normalize()
     effective_boundary_str = effective_boundary.strftime("%Y-%m-%d")
+
+    if calendar is None:
+        return PeriodDerivationResult(
+            target_as_of=target_str,
+            effective_daily_boundary=effective_boundary_str,
+            weekly=pd.DataFrame(),
+            monthly=pd.DataFrame(),
+            weekly_status=None,
+            monthly_status=None,
+            final_status=BLOCKED,
+            reason="MONTHLY_AUTHORITY_UNAVAILABLE: CALENDAR_NOT_PROVIDED",
+        )
 
     try:
         weekly = to_weekly(sliced)

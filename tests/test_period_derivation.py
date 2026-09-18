@@ -141,6 +141,28 @@ def test_e_halted_ticker_monthly_is_still_complete():
     assert result.effective_daily_boundary == "2025-12-05"  # 종목 마지막 관측일(거래정지 직전)은 메타데이터로만 남는다
 
 
+def test_e2_halted_ticker_monthly_next_month_target_is_still_complete():
+    """거래정지가 다음 달까지 이어져도, 실제 반환된 마지막 월봉(과거 완료 월)이 COMPLETE여야 한다.
+
+    종목 마지막 거래일은 2025-12-05(거래정지 이전)이고, 마지막 생성 월봉은
+    2025-12-31이다. `target_as_of`=2026-01-15로 다음 달까지 넘어가도 운영
+    권위는 2025-12만 완료 확정(2026-01은 아직 진행 중)이다. `target_as_of`의
+    (연, 월)인 2026-01을 조회하면 잘못 `PROVISIONAL`이 나온다 — 실제 반환된
+    마지막 월봉(2025-12)의 (연, 월)을 기준으로 `COMPLETE`여야 한다.
+    """
+    market_dates = pd.bdate_range("2025-12-01", "2026-01-15")  # 시장: 12월 완료, 1월 진행 중
+    ticker_dates = pd.bdate_range("2025-12-01", "2025-12-05")  # 종목: 12월 첫 주만 거래, 이후 거래정지
+    daily = _daily_frame(ticker_dates)
+    calendar = MarketCalendarAuthority.from_dates(market_dates, last_completed_month="2025-12")
+
+    result = derive_periods(daily, "2026-01-15", calendar)
+
+    assert result.final_status == PASS
+    assert result.monthly.index[-1] == pd.Timestamp("2025-12-31")
+    assert result.monthly_status == COMPLETE
+    assert result.effective_daily_boundary == "2025-12-05"  # 종목 마지막 관측일은 메타데이터로만 남는다
+
+
 def test_completed_month_is_complete():
     dates = pd.bdate_range("2025-12-01", "2026-01-15")
     daily = _daily_frame(dates)
@@ -208,6 +230,22 @@ def test_h_weekly_ignores_calendar_frontier():
     assert result.final_status == PASS
     assert result.weekly_status == COMPLETE
     assert result.reason is None
+
+
+def test_calendar_none_is_blocked():
+    """운영 월 완료 권위(calendar)가 없으면 BLOCKED여야 한다.
+
+    `load_rolling_production_market_calendar()`는 병합 캘린더 산출물이 없을
+    때 `None`을 반환할 수 있다. 이는 예상치 못한 구현 오류가 아니라 계약상
+    예상 가능한 권위 부재이므로 `FAILED`가 아니라 `BLOCKED`로 처리해야 한다.
+    """
+    dates = pd.bdate_range("2026-01-05", "2026-01-16")
+    daily = _daily_frame(dates)
+
+    result = derive_periods(daily, "2026-01-16", None)
+
+    assert result.final_status == BLOCKED
+    assert result.reason == "MONTHLY_AUTHORITY_UNAVAILABLE: CALENDAR_NOT_PROVIDED"
 
 
 def test_no_certified_daily_is_blocked():
