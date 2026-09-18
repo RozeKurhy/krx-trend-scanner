@@ -56,31 +56,32 @@ DAILY_UPDATE_PHASE1 = COMPLETE
 
 ### 4.1 DERIVED_WEEK_COMPLETE
 
-2단계의 일반적인 파생 주봉 완성 의미다. 판정 근거는 KRX 운영 거래일 권위를
-사용한다.
+2단계의 일반적인 파생 주봉 완성 의미다.
 
 핵심 의미:
 
 ```text
-해당 주의 target_as_of 이하 필요한 KRX 거래 세션이 모두 1단계에서 인증되었고,
-그 주의 실제 마지막 거래 세션까지 종료된 경우 COMPLETE
+1. 기존 W-FRI 주봉 집계 규칙을 그대로 사용한다.
+2. 해당 주봉의 W-FRI 라벨이 target_as_of 이하다.
+3. 그 target_as_of 이하 필요한 일봉이 1단계 인증 범위 안에 있다.
+→ COMPLETE
 ```
 
-따라서 금요일이 휴장일인 주간도, 목요일이 그 주의 실제 마지막 거래일이라면
-일반적인 파생 주봉은 `COMPLETE`가 될 수 있어야 한다.
+이 의미는 금요일이 휴장일인 주간도 처리할 수 있어야 한다. 예를 들어 그
+주의 실제 마지막 거래일이 목요일이고 `target_as_of`가 금요일이면, 목요일까지의
+일봉이 이미 1단계 인증 범위 안에 있으므로 일반적인 파생 주봉은 `COMPLETE`로
+볼 수 있다.
 
-**현재 구현과의 관계**: `DERIVED_WEEK_COMPLETE`와 동일한 판정은 현재 코드에
-존재하지 않는다. 월봉에는 `MarketCalendarAuthority.is_completed_month()` /
-`is_completed_market_month()`처럼 운영 거래일 권위를 직접 참조하는 완료 판정
-함수가 있지만, 같은 성격의 주봉용 함수는 없다.
+**현재 구현과의 관계**: 이 판정은 주봉 전용 운영 거래일 권위 함수를 새로 만들지
+않고, 이미 확립된 두 가지 사실만 조합한다 — W-FRI 라벨과 `target_as_of`의 단순
+비교, 그리고 1단계가 이미 보장하는 일봉 인증 경계 확인이다. 어떤 날짜가 실제
+KRX 거래일인지는 1단계 운영 거래일 권위(`merged_trading_calendar.json`)가 이미
+판정해서 일봉 인증 경계에 반영하므로, 2단계에서 "그 주의 실제 마지막 거래일"을
+다시 계산하는 별도 권위 함수를 둘 필요가 없다.
 `src/trend_scanner/validation/historical_snapshot.py`의
-`_drop_incomplete_weekly()`가 가장 가까운 기존 로직이지만, 이 함수는 운영
-거래일 권위를 참조하지 않고 `주봉 라벨(금요일) > 입력 슬라이스의 마지막 실제
-거래일`이라는 단순 비교만 수행하며, 그마저도 가장 마지막(트레일링) 주봉에만
-적용된다. 과거의 완료된 휴장 단축 주간을 운영 거래일 권위 기준으로 재검증하지
-않는다. 따라서 `DERIVED_WEEK_COMPLETE`는 2단계에서 새로 정의하는 판정이며,
-월봉의 `is_completed_market_month()`와 같은 성격의 주봉 전용 판정 함수를
-운영 거래일 권위 위에 새로 두는 것이 2단계의 최소 신규 범위에 포함된다.
+`_drop_incomplete_weekly()`는 목적이 다른 기존 로직(가장 마지막 트레일링
+주봉만 대상)이며, 이 절의 `DERIVED_WEEK_COMPLETE` 판정 자체를 대신하지
+않는다.
 
 ### 4.2 FAST_W_FRI_SIGNAL_ANCHOR
 
@@ -116,16 +117,25 @@ DERIVED_WEEK_COMPLETE != FAST_W_FRI_SIGNAL_ANCHOR
 
 ## 5. 월봉 완료 판정
 
-월봉은 기존 `MarketCalendarAuthority` 기준을 그대로 재사용한다.
+월봉 완료 판정은 현재 운영 `MarketCalendarAuthority`의 완료 월 권위를 그대로
+따른다.
 
 ```text
-해당 월의 실제 KRX 마지막 거래일 도달 → COMPLETE
-그 전이면 → PROVISIONAL
+운영 권위에서 완료 월로 확정된 경우 → COMPLETE
+아직 완료 월로 확정되지 않은 최신 관측 월 → PROVISIONAL
 ```
 
-기존 `_drop_incomplete_current_month()`(`historical_snapshot.py`)의 의미와
-정렬한다. 이 함수는 이미 `is_completed_market_month()`를 통해 운영 거래일
-권위를 참조하므로, 월봉은 주봉과 달리 별도 신규 판정 함수가 필요하지 않다.
+2단계에서 월봉 완료 판정 구조를 새로 만들지 않는다.
+
+**현재 구현과의 관계**: `is_completed_market_month()`(이를 감싸는
+`MarketCalendarAuthority.is_completed_month()`)와 `historical_snapshot.py`의
+`_drop_incomplete_current_month()`를 그대로 재사용한다. 운영에서 이 완료 월
+권위는 `load_rolling_production_market_calendar()`가 만드는데, 이 함수는
+달력 데이터에 관측된 가장 최근 (연, 월)을 완료 월 목록에서 제외하는 방식으로
+동작한다. 즉 그 달의 실제 마지막 거래일이 지난 당일 곧바로 완료로 확정하는
+것이 아니라, 다음 달의 첫 실제 거래일이 캘린더 데이터에 관측되어야 비로소
+그 이전 달이 완료 월로 확정된다. 이 의미를 그대로 따르며, 월봉 완료 판정
+전용 신규 구조는 만들지 않는다.
 
 ## 6. PROVISIONAL 의미
 
@@ -245,7 +255,7 @@ daily_gap_authority = INHERITED_FROM_PHASE1
 ## 13. 현재 구조 재사용 결론
 
 ```text
-2단계 기본 전략 = REUSE_WITH_MINIMAL_WRAPPER
+2단계 기본 전략 = 기존 구조 재사용 + 최소 조율 계층 추가 (`REUSE_WITH_MINIMAL_WRAPPER`)
 ```
 
 재사용:
@@ -258,8 +268,8 @@ daily_gap_authority = INHERITED_FROM_PHASE1
 최소 신규 범위 후보:
 
 - `target_as_of` 조율 계층
-- 파생 기간 상태(`COMPLETE`/`PROVISIONAL`) 판정, 특히 §4.1의 주봉 전용
-  운영 거래일 권위 기반 판정 함수
+- 파생 기간 상태(`COMPLETE`/`PROVISIONAL`) 판정 조율 — §4.1·§5에서 이미
+  확립된 권위를 조합하는 수준이며, 별도 신규 운영 거래일 권위를 만들지 않는다
 - 공통 결과 요약
 
 별도 주봉·월봉 저장소는 기본 범위가 아니다.
