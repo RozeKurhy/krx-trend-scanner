@@ -78,6 +78,7 @@ from trend_scanner.data.adjusted_price_provider import (
 )
 from trend_scanner.data.adjusted_price_semantics import (
     ClosureState,
+    analytic_candle_is_valid,
     classify_source_row,
     validate_source_integrity,
 )
@@ -276,7 +277,11 @@ def _merge_adjusted_frames(existing: pd.DataFrame | None, fetched: Sequence[pd.D
     merged = pd.concat(frames, axis=0)
     merged.index = pd.DatetimeIndex(pd.to_datetime(merged.index, errors="raise")).normalize()
     merged = merged[~merged.index.duplicated(keep="last")]
-    return merged.sort_index(kind="mergesort").loc[:, ["open", "high", "low", "close"]]
+    merged = merged.sort_index(kind="mergesort").loc[:, ["open", "high", "low", "close"]].copy()
+    if any(bool(frame.attrs.get("source_native_adjusted", False)) for frame in frames):
+        merged.attrs["source_native_adjusted"] = True
+        merged.attrs["analytic_invalid_ohlc_count"] = int((~analytic_candle_is_valid(merged)).sum())
+    return merged
 
 
 def _manifest_digest(payload: Mapping[str, Any]) -> str:

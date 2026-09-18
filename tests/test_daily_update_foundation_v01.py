@@ -11,6 +11,7 @@ import pytest
 
 from scripts.refresh_market_index_v01 import derive_incremental_trading_dates
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
+from trend_scanner.data.errors import MarketDataError
 from trend_scanner.data.daily_update_foundation import (
     DailyUpdateFoundation,
     DailyUpdateFoundationError,
@@ -668,6 +669,109 @@ def test_corporate_action_overlap_remains_in_existing_evidence_gate():
     new = _frame(["2026-08-03", "2026-08-04"], base=20)
     merged = _merge_adjusted_frames(old, [new])
     assert merged.loc[pd.Timestamp("2026-08-03"), "close"] == new.loc[pd.Timestamp("2026-08-03"), "close"]
+
+
+def _source_native_relation_anomaly(days: list[str], base: float = 10.0) -> pd.DataFrame:
+    frame = _frame(days, base=base)
+    frame.loc[pd.Timestamp(days[-1]), "high"] = frame.loc[pd.Timestamp(days[-1]), "open"] - 1
+    frame.attrs.update(source_native_adjusted=True, analytic_invalid_ohlc_count=1)
+    return frame
+
+
+def test_adjusted_merge_preserves_source_native_semantics_and_recomputes_anomalies():
+    old = _frame(["2026-08-03"], base=10)
+    fetched = _source_native_relation_anomaly(["2026-08-04"], base=20)
+    merged = _merge_adjusted_frames(old, [fetched])
+
+    assert merged.attrs["source_native_adjusted"] is True
+    assert merged.attrs["analytic_invalid_ohlc_count"] == 1
+    assert merged.loc[pd.Timestamp("2026-08-04"), "high"] == 19
+
+
+def test_non_source_native_invalid_merge_keeps_strict_store_validation(tmp_path):
+    invalid = _frame(["2026-08-03"], base=10)
+    invalid.loc[pd.Timestamp("2026-08-03"), "high"] = 8
+    merged = _merge_adjusted_frames(None, [invalid])
+
+    assert "source_native_adjusted" not in merged.attrs
+    with pytest.raises(MarketDataError):
+        AdjustedPriceStore(tmp_path / "adjusted").save_full("000001", merged)
+
+
+def test_common_adjusted_source_native_merge_saves_source_view_and_rejects_analytic_view(tmp_path):
+    calendar = tmp_path / "calendar.json"
+    required = ["2026-08-03", "2026-08-04", "2026-08-05"]
+    calendar.write_text(json.dumps({"trading_dates": required}))
+    pit = tmp_path / "pit.json"
+    pit.write_text(json.dumps({"intervals": [{
+        "ticker": "000001",
+        "isu_cd": "KR7000000001",
+        "market": "KOSPI",
+        "state": "COMMON",
+        "effective_from": required[0],
+        "effective_to": required[-1],
+    }]}))
+    store = AdjustedPriceStore(tmp_path / "adjusted")
+    store.save_full("000001", _frame([required[0], required[-1]]), {
+        "requested_start": required[0],
+        "requested_end": required[-1],
+    })
+
+    class Provider:
+        def load_daily(self, ticker, start, end):
+            assert (ticker, start, end) == ("000001", required[1], required[1])
+            return _source_native_relation_anomaly([required[1]], base=20)
+
+    from trend_scanner.data.rolling_market_data_refresh import RollingAdjustedPriceUpdater
+
+    result = RollingAdjustedPriceUpdater(
+        Provider(), store, pit_path=pit, historical_calendar_path=calendar
+    ).refresh(["000001"], required[0], required[-1])
+    assert result["updated"] == ["000001"]
+    metadata = store.load_metadata("000001")
+    assert metadata["source_native_adjusted"] is True
+    assert metadata["analytic_invalid_ohlc_count"] == 1
+    source = store.load_daily_source("000001")
+    assert source.loc[pd.Timestamp(required[1]), "high"] == 19
+    with pytest.raises(MarketDataError):
+        store.load_daily_analytic("000001")
+
+
+def test_etf_adjusted_source_native_merge_saves_source_view_and_rejects_analytic_view(monkeypatch, tmp_path):
+    monkeypatch.setattr("trend_scanner.data.rolling_market_data_refresh.ETF_VALIDATED_ACCEPTANCE_TICKERS", ("000001",))
+    required = ["2026-08-06", "2026-08-07", "2026-08-10"]
+
+    class PresenceRawStore:
+        def list_manifest(self, market=None):
+            if market in ("KOSPI", "ETF"):
+                return [{"market": market, "date": day, "status": "COMPLETE"} for day in required]
+            return []
+
+        def load_snapshot(self, market, day):
+            return pd.DataFrame({"ticker": ["000001"]})
+
+    store = AdjustedPriceStore(tmp_path / "adjusted")
+    store.save_full("000001", _frame([required[0], required[-1]]), {
+        "requested_start": required[0],
+        "requested_end": required[-1],
+    })
+
+    class Provider:
+        def load_daily(self, ticker, start, end):
+            assert (ticker, start, end) == ("000001", required[1], required[1])
+            return _source_native_relation_anomaly([required[1]], base=20)
+
+    result = RollingEtfAdjustedUpdater(
+        Provider(), store, raw_store=PresenceRawStore()
+    ).refresh(required[0], required[-1])
+    assert result["updated"] == ["000001"]
+    metadata = store.load_metadata("000001")
+    assert metadata["source_native_adjusted"] is True
+    assert metadata["analytic_invalid_ohlc_count"] == 1
+    source = store.load_daily_source("000001")
+    assert source.loc[pd.Timestamp(required[1]), "high"] == 19
+    with pytest.raises(MarketDataError):
+        store.load_daily_analytic("000001")
 
 
 def test_repository_v2_mismatch_blocks_final_promotion(tmp_path):
