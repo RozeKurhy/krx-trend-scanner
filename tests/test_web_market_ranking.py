@@ -113,10 +113,11 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert '<title>마켓 RS · KRX Trend Scanner</title>' in html
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
-    assert '<a class="nav-item is-active" href="./market.html" aria-current="page">랭킹</a>' in html
-    assert 'href="./css/app.css?v=web-ui-density-9"' in html
+    assert '<a class="nav-item is-active" href="./etf.html" aria-current="page">랭킹</a>' in html
+    assert 'href="./css/app.css?v=web-ui-density-10"' in html
     assert 'src="./js/market.js?v=web-02c-toss-4"' in html
     assert '<nav class="ranking-tabs" aria-label="랭킹 종류">' in html
+    assert '<a class="ranking-tab" href="./etf.html">ETF</a>' in html
     assert '<a class="ranking-tab is-active" href="./market.html" aria-current="page">마켓 RS</a>' in html
     assert '<a class="ranking-tab" href="./sector.html">섹터 RS</a>' in html
     for label in ("섹터 랭킹", "매출액 성장률", "영업이익 성장률", "순이익 성장률"):
@@ -171,10 +172,10 @@ def test_market_page_has_accessible_controls_and_release_contract():
 
 def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     page_versions = {
-        ROOT / "web/index.html": ("web-ui-density-9", "app", "web-fear-fix02-4"),
-        ROOT / "web/report.html": ("web-ui-density-9", "report", "web-02d-window-13"),
-        ROOT / "web/strategy.html": ("web-ui-density-9", "strategy", "web-02c-toss-5"),
-        ROOT / "web/market.html": ("web-ui-density-9", "market", "web-02c-toss-4"),
+        ROOT / "web/index.html": ("web-ui-density-10", "app", "web-fear-fix02-4"),
+        ROOT / "web/report.html": ("web-ui-density-10", "report", "web-02d-window-13"),
+        ROOT / "web/strategy.html": ("web-ui-density-10", "strategy", "web-02c-toss-5"),
+        ROOT / "web/market.html": ("web-ui-density-10", "market", "web-02c-toss-4"),
     }
     pages = list(page_versions)
     for path, (css_version, script_name, js_version) in page_versions.items():
@@ -182,7 +183,7 @@ def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
         assert f"css/app.css?v={css_version}" in html
         assert f"js/{script_name}.js?v={js_version}" in html
         assert "web-03a-final-1" not in html
-        assert 'href="./market.html"' in html
+        assert 'href="./etf.html"' in html
         assert "랭킹" in html
         assert "시장 랭킹" not in html
     assert "시장 강도" not in "\n".join(path.read_text(encoding="utf-8") for path in pages)

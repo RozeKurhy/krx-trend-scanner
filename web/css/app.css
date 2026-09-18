@@ -641,6 +641,28 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .market-ranking-report { flex: 0 0 auto; color: var(--brand-red-dark); font-size: 11px; font-weight: 800; white-space: nowrap; }
 .market-ranking-empty { margin: 0; padding: 24px; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
 
+.etf-controls { margin-bottom: 16px; }
+.etf-primary-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.etf-horizon-group { flex: 0 1 auto; min-width: 0; overflow-x: auto; padding: 1px; }
+.etf-horizon-group .market-control { min-height: 46px; display: inline-flex; align-items: center; }
+.etf-ranking-list { display: grid; gap: 8px; }
+.etf-ranking-row { display: grid; grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(100px, 1fr)); align-items: center; gap: 12px; min-width: 0; min-height: 92px; border: 1px solid var(--line); padding: 15px 16px; color: var(--ink); background: var(--surface); border-radius: 9px; }
+.etf-ranking-row:hover { border-color: var(--line-strong); background: var(--surface-muted); }
+.etf-ranking-row:focus-within { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.etf-ranking-identity, .etf-ranking-field { min-width: 0; }
+.etf-ranking-identity { display: flex; flex-direction: column; gap: 4px; }
+.etf-ranking-name { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.etf-ranking-meta { overflow: hidden; color: var(--ink-faint); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.etf-ranking-field { display: flex; flex-direction: column; gap: 4px; }
+.etf-ranking-label { color: var(--ink-faint); font-size: 10px; }
+.etf-ranking-value { overflow-wrap: anywhere; color: var(--ink-soft); font-size: 12px; font-weight: 750; line-height: 1.3; }
+.etf-ranking-position .etf-ranking-value { color: var(--brand-red-dark); font-size: 14px; }
+.etf-ranking-return .etf-ranking-value { font-size: 15px; }
+.etf-ranking-return.return-positive .etf-ranking-value { color: var(--market-up-red); }
+.etf-ranking-return.return-negative .etf-ranking-value { color: var(--market-down-blue); }
+.etf-ranking-price .etf-ranking-value { color: var(--ink); }
+.etf-ranking-detail { color: var(--ink-faint); font-size: 10px; line-height: 1.25; }
+
 .sector-controls { margin-bottom: 16px; }
 .sector-as-of { flex: 0 1 auto; max-width: 100%; margin-left: auto; color: var(--ink-soft); font-size: 12px; font-weight: 500; text-align: right; white-space: normal; }
 .sector-primary-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -704,6 +726,8 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
   .market-ranking-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .market-ranking-identity { grid-column: 1 / -1; }
   .market-ranking-report { justify-self: end; }
+  .etf-ranking-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .etf-ranking-identity { grid-column: 1 / -1; }
   .sector-ranking-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sector-ranking-row .market-ranking-identity { grid-column: 1 / -1; }
   .sector-ranking-report { justify-self: end; }
@@ -732,6 +756,8 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
   .market-ranking-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
   .market-ranking-identity, .market-ranking-report { grid-column: 1 / -1; }
   .market-ranking-report { justify-self: start; }
+  .etf-ranking-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
+  .etf-ranking-identity { grid-column: 1 / -1; }
   .market-primary-row { align-items: stretch; flex-direction: column; gap: 10px; }
   .market-select-wrap { width: 100%; max-width: none; flex-basis: auto; }
   .market-horizon-group { width: 100%; flex-basis: auto; overflow-x: auto; padding: 1px 1px 4px; }

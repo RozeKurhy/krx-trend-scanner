@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="KRX Trend Scanner의 섹터 RS 랭킹">
-    <title>섹터 RS · KRX Trend Scanner</title>
+    <meta name="description" content="KRX Trend Scanner의 ETF 가격 수익률 랭킹">
+    <title>ETF 랭킹 · KRX Trend Scanner</title>
     <script>
       (() => {
         const saved = (() => {
@@ -43,7 +43,7 @@
           </nav>
           <button id="theme-toggle" class="theme-toggle" type="button" aria-label="어둡게 보기" title="어둡게 보기" aria-pressed="false">
             <span id="theme-icon-sun" class="theme-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
+              <svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l-1.41 1.41M17.66 6.34l1.41-1.41"></path></svg>
             </span>
             <span id="theme-icon-moon" class="theme-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" focusable="false"><path d="M20.4 15.4A8.5 8.5 0 0 1 8.6 3.6 8.5 8.5 0 1 0 20.4 15.4Z"></path></svg>
@@ -55,9 +55,9 @@
 
     <main id="main-content" class="shell page-content">
       <nav class="ranking-tabs" aria-label="랭킹 종류">
-        <a class="ranking-tab" href="./etf.html">ETF</a>
+        <a class="ranking-tab is-active" href="./etf.html" aria-current="page">ETF</a>
         <a class="ranking-tab" href="./market.html">마켓 RS</a>
-        <a class="ranking-tab is-active" href="./sector.html" aria-current="page">섹터 RS</a>
+        <a class="ranking-tab" href="./sector.html">섹터 RS</a>
         <span class="ranking-tab" aria-disabled="true">섹터 랭킹 <small>준비 중</small></span>
         <a class="ranking-tab" href="./foreign.html">외인 순매수</a>
         <span class="ranking-tab" aria-disabled="true">매출액 성장률 <small>준비 중</small></span>
@@ -65,38 +65,29 @@
         <span class="ranking-tab" aria-disabled="true">순이익 성장률 <small>준비 중</small></span>
       </nav>
 
-      <section class="panel sector-controls" aria-label="섹터 RS 필터">
-        <div class="sector-primary-row">
-          <div class="sector-select-wrap">
-            <label class="visually-hidden" for="sector-select">섹터 선택</label>
-            <select id="sector-select" class="sector-select" aria-label="섹터 선택" aria-controls="sector-ranking-list">
-            <option value="">섹터 목록 불러오는 중</option>
-            </select>
-            <span class="sector-select-chevron" aria-hidden="true"></span>
-          </div>
-          <div id="sector-horizon-controls" class="market-control-group sector-horizon-group" role="group" aria-label="랭킹 기간">
+      <section class="panel etf-controls" aria-label="ETF 랭킹 기간">
+        <div class="etf-primary-row">
+          <div id="etf-horizon-controls" class="market-control-group etf-horizon-group" role="group" aria-label="ETF 랭킹 기간">
             <button class="market-control" type="button" data-horizon="2w" aria-pressed="false">2주</button>
             <button class="market-control is-active" type="button" data-horizon="1m" aria-pressed="true">1개월</button>
             <button class="market-control" type="button" data-horizon="3m" aria-pressed="false">3개월</button>
             <button class="market-control" type="button" data-horizon="6m" aria-pressed="false">6개월</button>
             <button class="market-control" type="button" data-horizon="12m" aria-pressed="false">12개월</button>
           </div>
-          <span id="sector-as-of" class="sector-as-of">기준일 —</span>
+          <p id="etf-scope" class="market-scope">기준일 2026.09.04 · 24개 ETF</p>
         </div>
-        <p id="sector-ranking-meta" class="visually-hidden" role="status" aria-live="polite">랭킹 목록 불러오는 중</p>
-        <label class="visually-hidden" for="sector-search">종목명 또는 종목코드 검색</label>
-        <input id="sector-search" class="report-search-input sector-search-input" type="search" placeholder="종목명 또는 종목코드 검색" autocomplete="off" aria-label="선택 섹터 내 종목명 또는 종목코드 검색" aria-controls="sector-ranking-list">
+        <p id="etf-ranking-meta" class="report-search-meta" role="status">ETF 랭킹 목록 불러오는 중</p>
       </section>
 
-      <section id="sector-ranking-list" class="sector-ranking-list" aria-live="polite" aria-label="섹터 RS 랭킹"></section>
+      <section id="etf-ranking-list" class="etf-ranking-list" aria-live="polite" aria-label="ETF 랭킹"></section>
 
-      <section id="sector-error" class="error-card" hidden aria-live="assertive" aria-labelledby="sector-error-heading">
+      <section id="etf-error" class="error-card" hidden aria-live="assertive" aria-labelledby="etf-error-heading">
         <p class="eyebrow">데이터 불러오기 오류</p>
-        <h2 id="sector-error-heading">섹터 RS 랭킹을 불러올 수 없습니다.</h2>
-        <p>섹터 RS 랭킹 데이터 파일을 확인해 주세요.</p>
+        <h2 id="etf-error-heading">ETF 랭킹을 불러올 수 없습니다.</h2>
+        <p>ETF 랭킹 데이터 파일을 확인해 주세요.</p>
       </section>
     </main>
 
-    <script src="./js/sector.js?v=web-sector-rs-final-2" defer></script>
+    <script src="./js/etf.js?v=web-etf-ranking-1" defer></script>
   </body>
 </html>
