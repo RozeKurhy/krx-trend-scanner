@@ -6,7 +6,7 @@ PIT, index, and Repository V2 semantics remain in their existing authoritative c
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import date
 import json
 from pathlib import Path
@@ -18,6 +18,9 @@ from typing import Any, Callable, Mapping, Sequence
 import pandas as pd
 
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
+from trend_scanner.data.corporate_action_detector import CorporateActionSnapshot
+from trend_scanner.data.corporate_action_refresh import CorporateActionRefreshService
+from trend_scanner.data.corporate_action_state_store import CorporateActionStateStore
 from trend_scanner.data.krx_historical_instrument_acquisition import HistoricalInstrumentAcquisitionRunner
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.data.repository_v2 import MarketDataRepositoryV2
@@ -31,6 +34,7 @@ from trend_scanner.data.rolling_market_data_refresh import (
     RollingAuthorityManifest,
     _normalise_session_dates,
     build_rolling_pit_extension,
+    load_effective_common_adjusted_population,
     load_rolling_authority,
     validate_merged_authority_coherence,
     write_merged_pit_extension,
@@ -75,6 +79,48 @@ def _paired_complete_dates(raw_store: KrxRawStockStore, target_as_of: str) -> li
         day for day, pair in states.items()
         if pair.get("KOSPI") == "COMPLETE" and pair.get("KOSDAQ") == "COMPLETE"
     )
+
+
+def _paired_no_data_dates(raw_store: KrxRawStockStore, target_as_of: str) -> list[str]:
+    states: dict[str, dict[str, str]] = {}
+    for market in ("KOSPI", "KOSDAQ"):
+        for row in raw_store.list_manifest(market):
+            day = str(row["date"])
+            if day <= target_as_of:
+                states.setdefault(day, {})[market] = str(row.get("status", "")).upper()
+    is_finalized = getattr(raw_store, "is_finalized_no_data", None)
+    if not callable(is_finalized):
+        # Older test doubles and integrations do not expose the raw-store
+        # terminal-observation contract.  Their NO_DATA-shaped placeholders
+        # must not suppress a required fetch.
+        return []
+    return sorted(
+        day
+        for day, pair in states.items()
+        if pair.get("KOSPI") == "NO_DATA"
+        and pair.get("KOSDAQ") == "NO_DATA"
+        and bool(is_finalized("KOSPI", day))
+        and bool(is_finalized("KOSDAQ", day))
+    )
+
+
+def _metric_request_count(result: Mapping[str, Any]) -> int:
+    return int(
+        result.get(
+            "request_count",
+            result.get("network_attempts", result.get("runner_result", {}).get("krx_open_api_attempt_count", 0)),
+        )
+    )
+
+
+def _physical_write_count(result: Mapping[str, Any]) -> int:
+    if "physical_write_count" in result:
+        return int(result.get("physical_write_count", 0))
+    if result.get("production_write_performed") is True:
+        return max(1, int(result.get("updated_date_count", 0)))
+    if result.get("status") == "PROMOTED" and result.get("leg") == "market_index":
+        return 1
+    return 0
 
 
 def _calendar_dates(authority_dir: Path, target_as_of: str) -> list[str]:
@@ -132,6 +178,9 @@ class DailyUpdateFoundation:
         basic_info_runner: HistoricalInstrumentAcquisitionRunner | None = None,
         pit_extension_builder: Callable[..., PitExtensionResult] = build_rolling_pit_extension,
         pit_extension_writer: Callable[..., Any] = write_merged_pit_extension,
+        corporate_action_state_store: CorporateActionStateStore | None = None,
+        corporate_action_refresh_service: CorporateActionRefreshService | None = None,
+        corporate_action_snapshot_loader: Callable[[str], Sequence[CorporateActionSnapshot]] | None = None,
     ) -> None:
         self.authority_dir = Path(authority_dir)
         self.raw_store = raw_store
@@ -147,6 +196,9 @@ class DailyUpdateFoundation:
         self.basic_info_runner = basic_info_runner
         self.pit_extension_builder = pit_extension_builder
         self.pit_extension_writer = pit_extension_writer
+        self.corporate_action_state_store = corporate_action_state_store
+        self.corporate_action_refresh_service = corporate_action_refresh_service
+        self.corporate_action_snapshot_loader = corporate_action_snapshot_loader
 
     def _load_state(self, target_as_of: str) -> tuple[RollingAuthorityManifest, dict[str, Any]]:
         manifest = load_rolling_authority(self.authority_dir)
@@ -166,9 +218,15 @@ class DailyUpdateFoundation:
         target = normalize_target_as_of(target_as_of)
         manifest, authority = self._load_state(target)
         known_dates = authority["calendar_dates"]
-        tail_candidates = _candidate_tail(known_dates, target)
+        finalized_no_data = set(_paired_no_data_dates(self.raw_store, target))
+        tail_candidates = [
+            day for day in _candidate_tail(known_dates, target)
+            if day not in finalized_no_data
+        ]
         required_candidates = sorted(set(known_dates) | set(tail_candidates))
-        complete_raw = _paired_complete_dates(self.raw_store, target)
+        complete_raw = sorted(
+            set(_paired_complete_dates(self.raw_store, target)) | finalized_no_data
+        )
         common_missing = sorted(set(required_candidates) - set(complete_raw))
         etf_missing = [
             day for day in required_candidates
@@ -200,6 +258,12 @@ class DailyUpdateFoundation:
         else:
             market_index_plan = _leg_summary("PLAN", reason="INDEX_STORE_CHECK_DEFERRED_TO_LIVE_LEG")
         extension_needed = bool(tail_candidates)
+        dirty_state_count = 0
+        if self.corporate_action_state_store is not None:
+            dirty_state_count = sum(
+                state.status in {"DIRTY", "FAILED"}
+                for state in self.corporate_action_state_store.list_states()
+            )
         return {
             "target_as_of": target,
             "current_certified_through": manifest.certified_through,
@@ -214,8 +278,13 @@ class DailyUpdateFoundation:
             "authority_extension_candidates": tail_candidates,
             "network_request_count": 0,
             "production_write_count": 0,
+            "production_write_performed": False,
             "authority_promotion": 0,
             "manifest": manifest,
+            "corporate_action": {
+                "status": "NOT_BOUND" if self.corporate_action_state_store is None else "PLANNED",
+                "dirty_ticker_count": dirty_state_count,
+            },
         }
 
     @staticmethod
@@ -252,6 +321,7 @@ class DailyUpdateFoundation:
                 stage_dir,
                 built_against_certified_through=manifest.certified_through,
                 target_as_of=target,
+                source_basic_info_frontier=extension.extension_end,
             )
             refs = {
                 key: getattr(publish, key)
@@ -277,14 +347,145 @@ class DailyUpdateFoundation:
             self.raw_store,
             rolling_authority_dir=authority_dir,
         )
-        tickers: set[str] = set()
-        for leg in ("common_adjusted", "etf_adjusted"):
-            tickers.update(str(t).zfill(6) for t in leg_results.get(leg, {}).get("updated", []))
+        tickers: set[str] = {
+            str(t).zfill(6)
+            for leg in ("common_adjusted", "etf_adjusted")
+            for t in leg_results.get(leg, {}).get("validation_tickers", ())
+        }
+        # Compatibility for callers/fakes that predate the expanded validation
+        # target contract.  This is deliberately additive; updated-only is no
+        # longer the production default.
+        if not tickers:
+            for leg in ("common_adjusted", "etf_adjusted"):
+                tickers.update(str(t).zfill(6) for t in leg_results.get(leg, {}).get("updated", []))
         checked = 0
+        failures: list[dict[str, str]] = []
         for ticker in sorted(tickers):
-            repo.get_daily(ticker, "1900-01-01", target)
-            checked += 1
-        return {"status": "PASS", "checked_ticker_count": checked, "query_audit": repo.query_audit}
+            try:
+                repo.get_daily(ticker, "1900-01-01", target)
+                checked += 1
+            except Exception as exc:  # noqa: BLE001 - final repository gate is fail-closed
+                failures.append({"ticker": ticker, "error": str(exc)})
+        return {
+            "status": "PASS" if not failures else "BLOCKED",
+            "checked_ticker_count": checked,
+            "validation_tickers": sorted(tickers),
+            "failures": failures,
+            "query_audit": repo.query_audit,
+        }
+
+    @staticmethod
+    def _pit_population(path: Path, target: str) -> set[str]:
+        payload = _read_json(path)
+        return {
+            str(interval.get("ticker")).zfill(6)
+            for interval in payload.get("intervals", [])
+            if interval.get("state") == "COMMON"
+            and str(interval.get("effective_from", "")) <= target <= str(interval.get("effective_to", ""))
+        }
+
+    @staticmethod
+    def _pit_identity_keys(path: Path, target: str) -> set[tuple[str, str | None, str | None]]:
+        payload = _read_json(path)
+        return {
+            (
+                str(interval.get("ticker")).zfill(6),
+                None if interval.get("isu_cd") is None else str(interval.get("isu_cd")),
+                None if interval.get("market") is None else str(interval.get("market")),
+            )
+            for interval in payload.get("intervals", [])
+            if interval.get("state") == "COMMON"
+            and str(interval.get("effective_from", "")) <= target <= str(interval.get("effective_to", ""))
+        }
+
+    def _corporate_action_snapshots(self, dates: Sequence[str]) -> list[CorporateActionSnapshot]:
+        if self.corporate_action_snapshot_loader is not None:
+            snapshots: list[CorporateActionSnapshot] = []
+            for day in dates:
+                snapshots.extend(self.corporate_action_snapshot_loader(day))
+            return snapshots
+        if not hasattr(self.raw_store, "load_snapshot"):
+            return []
+        by_key: dict[tuple[str, str], CorporateActionSnapshot] = {}
+        for day in sorted(set(dates)):
+            for market in ("KOSPI", "KOSDAQ", "ETF"):
+                try:
+                    frame = self.raw_store.load_snapshot(market, day)
+                except (FileNotFoundError, OSError, KeyError):
+                    continue
+                if not isinstance(frame, pd.DataFrame) or frame.empty:
+                    continue
+                for row in frame.itertuples(index=False):
+                    ticker = str(getattr(row, "ticker", "")).strip()
+                    listed_shares = getattr(row, "listed_shares", None)
+                    if not ticker or listed_shares is None:
+                        continue
+                    snapshot = CorporateActionSnapshot(
+                        ticker=ticker,
+                        as_of=day,
+                        listed_shares=listed_shares,
+                        par_value=None,
+                        listed_shares_semantics="RAW_DAILY_LISTED_SHARES",
+                        source_name=f"KRX_RAW_{market}",
+                    )
+                    key = (snapshot.ticker, snapshot.as_of.isoformat())
+                    previous = by_key.get(key)
+                    if previous is not None and previous.listed_shares != snapshot.listed_shares:
+                        raise DailyUpdateFoundationError(
+                            f"BLOCKED_CORPORATE_ACTION_SOURCE_CONFLICT:{snapshot.ticker}:{day}"
+                        )
+                    by_key[key] = snapshot
+        return [by_key[key] for key in sorted(by_key)]
+
+    def _run_corporate_action_phase(
+        self,
+        target: str,
+        observation_dates: Sequence[str],
+    ) -> dict[str, Any]:
+        state_store = self.corporate_action_state_store
+        service = self.corporate_action_refresh_service
+        if state_store is None and service is None:
+            return {"status": "NOT_BOUND", "observed_count": 0, "dirty_tickers": [], "refreshes": []}
+        if state_store is None and service is not None:
+            state_store = service.state_store
+        if state_store is None or service is None:
+            raise DailyUpdateFoundationError("BLOCKED_CORPORATE_ACTION_SERVICE_NOT_BOUND")
+        observed = 0
+        for snapshot in self._corporate_action_snapshots(observation_dates):
+            try:
+                state_store.evaluate_and_record(snapshot)
+                observed += 1
+            except Exception as exc:  # noqa: BLE001 - detector/state contract is expected blocker
+                raise DailyUpdateFoundationError(
+                    f"BLOCKED_CORPORATE_ACTION_OBSERVATION:{snapshot.ticker}:{type(exc).__name__}:{exc}"
+                ) from exc
+        dirty_tickers = sorted(
+            state.ticker
+            for state in state_store.list_states()
+            if state.status in {"DIRTY", "FAILED"}
+        )
+        refreshes: list[dict[str, Any]] = []
+        for ticker in dirty_tickers:
+            result = service.refresh_dirty(ticker, target)
+            refreshes.append(asdict(result))
+        remaining = [
+            state.ticker
+            for state in state_store.list_states()
+            if state.status in {"DIRTY", "FAILED"}
+        ]
+        if remaining:
+            raise DailyUpdateFoundationError(
+                f"BLOCKED_CORPORATE_ACTION_DIRTY_REMAINS:{sorted(remaining)}"
+            )
+        physical_writes = sum(1 for result in refreshes if result.get("status") == "CLEAN")
+        return {
+            "status": "PASS",
+            "observed_count": observed,
+            "dirty_tickers": dirty_tickers,
+            "refreshes": refreshes,
+            "physical_write_count": physical_writes,
+            "production_write_performed": bool(physical_writes),
+        }
 
     def _build_extension(
         self,
@@ -300,7 +501,23 @@ class DailyUpdateFoundation:
         acquisition = self.basic_info_runner.run_bounded(extension_dates, resume=True, execute_live=execute_live)
         if execute_live and acquisition.get("status") != "COMPLETE":
             raise DailyUpdateFoundationError(f"BLOCKED_BASIC_INFO_ACQUISITION:{acquisition.get('status')}")
-        extension = self.pit_extension_builder(extension_calendar_dates=extension_dates)
+        builder_kwargs: dict[str, Any] = {
+            "extension_calendar_dates": extension_dates,
+            # Continue from the already-published merged authority.  The historical
+            # frozen artifacts remain the immutable base of that chain; reusing only
+            # the original frozen file here would silently discard prior rolling
+            # extensions on the second daily run.
+            "frozen_pit_path": self.authority_dir / DEFAULT_MERGED_PIT_PATH.name,
+            "historical_calendar_path": self.authority_dir / DEFAULT_MERGED_CALENDAR_PATH.name,
+        }
+        if self.basic_info_runner is not None:
+            raw_root = getattr(self.basic_info_runner, "raw_root", None)
+            checkpoint_path = getattr(self.basic_info_runner, "checkpoint_path", None)
+            if raw_root is not None:
+                builder_kwargs["basic_info_raw_root"] = Path(raw_root)
+            if checkpoint_path is not None:
+                builder_kwargs["acquisition_checkpoint_path"] = Path(checkpoint_path)
+        extension = self.pit_extension_builder(**builder_kwargs)
         return extension, _leg_summary(
             "STAGED",
             updated=len(extension_dates),
@@ -315,14 +532,18 @@ class DailyUpdateFoundation:
         try:
             plan = self.plan(target)
         except (DailyUpdateFoundationError, RollingAuthorityError) as exc:
+            raw_reason = str(exc)
+            migration_required = "ROLLING_MANIFEST_MISSING_MERGED_" in raw_reason
             return {
                 "target_as_of": target,
                 "final_status": "BLOCKED",
                 "status": "BLOCKED",
                 "boundary_unchanged": True,
-                "reason": str(exc),
+                "reason": "BLOCKED_AUTHORITY_MIGRATION_REQUIRED" if migration_required else raw_reason,
+                "authority_migration_required": migration_required,
                 "network_request_count": 0,
                 "production_write_count": 0,
+                "production_write_performed": False,
                 "authority_promotion": 0,
             }
         manifest: RollingAuthorityManifest = plan.pop("manifest")
@@ -330,7 +551,7 @@ class DailyUpdateFoundation:
             complete_plan = not any(
                 plan.get(leg, {}).get("missing_dates")
                 for leg in ("common_raw", "common_adjusted", "etf_raw", "etf_adjusted", "market_index")
-            ) and not plan["authority_extension_needed"]
+            ) and not plan["authority_extension_needed"] and not plan["corporate_action"]["dirty_ticker_count"]
             return {
                 **plan,
                 "final_status": "NOOP" if complete_plan else "BLOCKED",
@@ -338,6 +559,7 @@ class DailyUpdateFoundation:
                 "reason": None if complete_plan else "DRY_RUN_NO_NETWORK_OR_PRODUCTION_WRITE",
                 "network_request_count": 0,
                 "production_write_count": 0,
+                "production_write_performed": False,
                 "authority_promotion": 0,
             }
         if (
@@ -347,6 +569,7 @@ class DailyUpdateFoundation:
             and not plan["etf_adjusted"].get("missing_dates")
             and not plan["market_index"].get("missing_dates")
             and not plan["authority_extension_needed"]
+            and not plan["corporate_action"]["dirty_ticker_count"]
             and (target <= manifest.certified_through or target not in plan["required_candidate_dates"])
         ):
             return {
@@ -355,6 +578,7 @@ class DailyUpdateFoundation:
                 "status": "NOOP_ALREADY_COMPLETE",
                 "network_request_count": 0,
                 "production_write_count": 0,
+                "production_write_performed": False,
                 "authority_promotion": 0,
             }
 
@@ -385,9 +609,38 @@ class DailyUpdateFoundation:
                     target,
                     required_dates=operating_dates,
                 )
+                observation_dates = sorted(
+                    set(leg_results["common_raw"].get("updated_dates", ()))
+                    | set(leg_results["etf_raw"].get("updated_dates", ()))
+                )
+                leg_results["corporate_action"] = self._run_corporate_action_phase(
+                    target,
+                    observation_dates,
+                )
+                staged_pit_path = stage_dir / DEFAULT_MERGED_PIT_PATH.name
+                common_tickers = list(self.common_adjusted_tickers)
+                population_added: set[str] = set()
+                identity_added: set[str] = set()
+                if staged_pit_path.exists():
+                    common_tickers = load_effective_common_adjusted_population(
+                        staged_pit_path,
+                        etf_acceptance_tickers=ETF_VALIDATED_ACCEPTANCE_TICKERS,
+                        identity_as_of=target,
+                    )
+                    previous_pit_path = self.authority_dir / DEFAULT_MERGED_PIT_PATH.name
+                    if previous_pit_path.exists():
+                        population_added = self._pit_population(staged_pit_path, target) - self._pit_population(previous_pit_path, target)
+                        staged_identity_keys = self._pit_identity_keys(staged_pit_path, target)
+                        previous_identity_keys = self._pit_identity_keys(previous_pit_path, target)
+                        identity_added = {
+                            ticker
+                            for ticker, _isu_cd, _market in staged_identity_keys - previous_identity_keys
+                        }
+                leg_results["pit_authority"]["population_added_tickers"] = sorted(population_added)
+                leg_results["pit_authority"]["identity_added_tickers"] = sorted(identity_added)
                 if extension is not None and hasattr(self.common_adjusted_updater, "refresh_with_extension"):
                     leg_results["common_adjusted"] = self.common_adjusted_updater.refresh_with_extension(
-                        self.common_adjusted_tickers,
+                        common_tickers,
                         manifest.leg_boundaries["common_adjusted"],
                         target,
                         extension,
@@ -395,12 +648,23 @@ class DailyUpdateFoundation:
                     )
                 else:
                     leg_results["common_adjusted"] = self.common_adjusted_updater.refresh(
-                        self.common_adjusted_tickers,
+                        common_tickers,
                         manifest.leg_boundaries["common_adjusted"],
                         target,
                     )
                 leg_results["etf_adjusted"] = self.etf_adjusted_updater.refresh(
                     manifest.leg_boundaries["etf_adjusted"], target
+                )
+                leg_results["common_adjusted"]["validation_tickers"] = sorted(
+                    {
+                        str(ticker).zfill(6)
+                        for ticker in leg_results["common_adjusted"].get("updated", ())
+                    }
+                    | population_added
+                    | identity_added
+                )
+                leg_results["etf_adjusted"]["validation_tickers"] = list(
+                    leg_results["etf_adjusted"].get("expected_tickers", ())
                 )
                 if self.market_index_refresh is not None:
                     leg_results["market_index"] = dict(self.market_index_refresh(target))
@@ -444,8 +708,9 @@ class DailyUpdateFoundation:
                         "certified_through": old_boundary,
                         "boundary_unchanged": True,
                         "leg_results": leg_results,
-                        "network_request_count": sum(int(v.get("request_count", 0)) for v in leg_results.values() if isinstance(v, Mapping)),
-                        "production_write_count": 0,
+                        "network_request_count": sum(_metric_request_count(v) for v in leg_results.values() if isinstance(v, Mapping)),
+                        "production_write_count": sum(_physical_write_count(v) for v in leg_results.values() if isinstance(v, Mapping)),
+                        "production_write_performed": any(_physical_write_count(v) > 0 for v in leg_results.values() if isinstance(v, Mapping)),
                         "authority_promotion": 0,
                     }
                 # Final authority promotion is deliberately last.  The canonical merged files are
@@ -456,6 +721,7 @@ class DailyUpdateFoundation:
                         self.authority_dir,
                         built_against_certified_through=old_boundary,
                         target_as_of=target,
+                        source_basic_info_frontier=extension.extension_end,
                     )
                     staged_manifest = replace(
                         staged_manifest,
@@ -475,8 +741,9 @@ class DailyUpdateFoundation:
                     "certified_through": new_certified,
                     "previous_boundary": old_boundary,
                     "leg_results": leg_results,
-                    "network_request_count": sum(int(v.get("request_count", v.get("runner_result", {}).get("krx_open_api_attempt_count", 0))) for v in leg_results.values() if isinstance(v, Mapping)),
-                    "production_write_count": 1,
+                    "network_request_count": sum(_metric_request_count(v) for v in leg_results.values() if isinstance(v, Mapping)),
+                    "production_write_count": sum(_physical_write_count(v) for v in leg_results.values() if isinstance(v, Mapping)),
+                    "production_write_performed": any(_physical_write_count(v) > 0 for v in leg_results.values() if isinstance(v, Mapping)),
                     "authority_promotion": 1,
                 }
         except Exception as exc:  # noqa: BLE001 - normalize expected and unexpected failures alike
@@ -488,8 +755,9 @@ class DailyUpdateFoundation:
                 "boundary_unchanged": True,
                 "leg_results": leg_results,
                 "reason": str(exc),
-                "network_request_count": sum(int(v.get("request_count", v.get("runner_result", {}).get("krx_open_api_attempt_count", 0))) for v in leg_results.values() if isinstance(v, Mapping)),
-                "production_write_count": 0,
+                "network_request_count": sum(_metric_request_count(v) for v in leg_results.values() if isinstance(v, Mapping)),
+                "production_write_count": sum(_physical_write_count(v) for v in leg_results.values() if isinstance(v, Mapping)),
+                "production_write_performed": any(_physical_write_count(v) > 0 for v in leg_results.values() if isinstance(v, Mapping)),
                 "authority_promotion": 0,
             }
 

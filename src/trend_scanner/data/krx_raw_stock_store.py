@@ -144,6 +144,17 @@ class KrxRawStockStore:
     def get_manifest(self, market: str, bas_dd: Any) -> dict[str, Any] | None:
         return self._manifest_row(market, bas_dd)
 
+    def is_finalized_no_data(self, market: str, bas_dd: Any) -> bool:
+        """Return whether a partition is a valid terminal NO_DATA observation."""
+
+        row = self._manifest_row(market, bas_dd)
+        return bool(
+            row is not None
+            and row.get("status") == "NO_DATA"
+            and row.get("schema_version") == SCHEMA_VERSION
+            and int(row.get("row_count", 0)) == 0
+        )
+
     def list_manifest(self, market: str | None = None) -> list[dict[str, Any]]:
         query = "SELECT * FROM raw_snapshot_manifest"
         params: tuple[Any, ...] = ()

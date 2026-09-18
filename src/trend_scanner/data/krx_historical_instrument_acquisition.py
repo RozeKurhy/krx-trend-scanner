@@ -126,6 +126,129 @@ def load_historical_trading_calendar(path: str | Path = HISTORICAL_CALENDAR_PATH
     return {**payload, **validated, "path": str(calendar_path)}
 
 
+def load_bounded_basic_info_snapshots(
+    raw_root: str | Path,
+    trading_dates: Iterable[str],
+    *,
+    checkpoint_path: str | Path,
+) -> Any:
+    """Validate only a bounded rolling Basic Info window.
+
+    The historical reconciliation loader intentionally requires the complete frozen
+    acquisition universe and rejects every file outside the requested date set.  A
+    rolling extension has a different contract: the old files are already frozen
+    authority and only the newly acquired dates must be checked.  This helper keeps
+    that strictness for the bounded dates (file, checkpoint status, schema, identity,
+    row count, and raw hash) without treating preserved historical files as extras.
+
+    The return shape is the existing ``BasicInfoInput`` contract so the existing
+    classification logic can be reused unchanged.
+    """
+
+    from trend_scanner.universe.historical_authority_reconciliation import BasicInfoInput
+
+    root = Path(raw_root)
+    checkpoint = Path(checkpoint_path)
+    dates = sorted({_date(value) for value in trading_dates})
+    expected_pairs = [
+        (day, market, MARKET_ENDPOINTS[market])
+        for day in dates
+        for market in MARKETS
+    ]
+    expected_files = {
+        root / day[:4] / day.replace("-", "") / f"{market}.json"
+        for day, market, _endpoint in expected_pairs
+    }
+    errors: list[str] = []
+    if not root.exists():
+        errors.append(f"missing_bounded_basic_info_root:{root}")
+    try:
+        checkpoint_payload = json.loads(checkpoint.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        checkpoint_payload = None
+        errors.append(f"bounded_checkpoint_unreadable:{type(exc).__name__}")
+    entries = checkpoint_payload.get("entries") if isinstance(checkpoint_payload, Mapping) else None
+    if not isinstance(entries, Mapping):
+        entries = {}
+        errors.append("bounded_checkpoint_shape_invalid")
+
+    snapshots: list[dict[str, Any]] = []
+    for day, market, endpoint in expected_pairs:
+        bas_dd = day.replace("-", "")
+        key = f"{bas_dd}|{market}|{endpoint}"
+        entry = entries.get(key)
+        path = root / day[:4] / bas_dd / f"{market}.json"
+        if not isinstance(entry, Mapping):
+            errors.append(f"bounded_checkpoint_missing_entry:{key}")
+            continue
+        if entry.get("status") != "COMPLETE":
+            errors.append(f"bounded_checkpoint_not_complete:{key}:{entry.get('status')}")
+            continue
+        if entry.get("schema_validation") != "PASS":
+            errors.append(f"bounded_checkpoint_schema_not_pass:{key}")
+        if entry.get("identity_validation") != "PASS":
+            errors.append(f"bounded_checkpoint_identity_not_pass:{key}")
+        try:
+            content = path.read_bytes()
+            digest = _sha256_bytes(content)
+            if digest != entry.get("raw_content_sha256"):
+                raise InstrumentAcquisitionContractError("INTEGRITY_INVALID", f"raw hash mismatch: {key}")
+            payload = json.loads(content.decode("utf-8"))
+            checked = validate_basic_info_response(
+                payload,
+                bas_dd=bas_dd,
+                market=market,
+                endpoint=endpoint,
+            )
+            if checked["row_count"] != int(entry.get("row_count", -1)):
+                raise InstrumentAcquisitionContractError("INTEGRITY_INVALID", f"row count mismatch: {key}")
+            rows = [
+                {
+                    **row,
+                    "effective_date": bas_dd,
+                    "effective_date_source": "REQUEST_BAS_DD",
+                }
+                for row in checked["records"]
+            ]
+            snapshots.append({
+                "effective_date": day,
+                "effective_date_source": "REQUEST_BAS_DD",
+                "market": market,
+                "endpoint": endpoint,
+                "raw_path": str(path),
+                "raw_content_sha256": digest,
+                "rows": rows,
+            })
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError, InstrumentAcquisitionContractError) as exc:
+            errors.append(f"bounded_basic_info_invalid:{key}:{type(exc).__name__}:{exc}")
+
+    if errors:
+        return BasicInfoInput(
+            status="BLOCKED_RECONCILIATION_INPUT_AUTHORITY",
+            raw_root=str(root),
+            expected_files=len(expected_files),
+            current_files=sum(path.is_file() for path in expected_files),
+            files_by_market={
+                market: sum((root / day[:4] / day.replace("-", "") / f"{market}.json").is_file() for day in dates)
+                for market in MARKETS
+            },
+            snapshots=(),
+            raw_manifest_sha256=None,
+            errors=tuple(errors[:20]),
+        )
+
+    return BasicInfoInput(
+        status="READY",
+        raw_root=str(root),
+        expected_files=len(expected_files),
+        current_files=len(expected_files),
+        files_by_market={market: len(dates) for market in MARKETS},
+        snapshots=tuple(snapshots),
+        raw_manifest_sha256=None,
+        derived_raw_manifest_sha256=None,
+    )
+
+
 def build_historical_calendar_payload(trading_dates: Iterable[str]) -> dict[str, Any]:
     """Build deterministic calendar JSON from an already validated local date list."""
 
@@ -278,7 +401,7 @@ class HistoricalInstrumentAcquisitionRunner:
             trading_dates,
             resume=resume,
             execute_live=execute_live,
-            validated_full_scope=bool(execute_live),
+            bounded_live=True,
         )
 
     def run_full_historical(
@@ -299,8 +422,9 @@ class HistoricalInstrumentAcquisitionRunner:
         resume: bool = True,
         execute_live: bool = False,
         validated_full_scope: bool = False,
+        bounded_live: bool = False,
     ) -> dict[str, Any]:
-        if execute_live and not validated_full_scope:
+        if execute_live and not validated_full_scope and not bounded_live:
             raise ValueError("live acquisition requires validated full historical scope")
         pairs = build_target_pairs(trading_dates, expected_count=None)
         if execute_live:
@@ -442,5 +566,5 @@ __all__ = [
     "EXPECTED_PRIMARY_PAIRS", "EXPECTED_TRADING_DATES", "HISTORICAL_CALENDAR_DATE_SHA256", "HISTORICAL_CALENDAR_EVIDENCE_PATH", "HISTORICAL_CALENDAR_PATH", "MARKET_ENDPOINTS", "MARKETS",
     "REQUIRED_BASIC_INFO_FIELDS", "HistoricalInstrumentAcquisitionRunner",
     "InstrumentAcquisitionContractError", "build_historical_calendar_payload", "build_target_pairs", "endpoint_for_market",
-    "load_historical_trading_calendar", "validate_basic_info_response", "validate_historical_trading_dates",
+    "load_bounded_basic_info_snapshots", "load_historical_trading_calendar", "validate_basic_info_response", "validate_historical_trading_dates",
 ]

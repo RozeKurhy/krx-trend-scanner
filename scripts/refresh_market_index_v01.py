@@ -268,6 +268,8 @@ def refresh_market_index(
             "plan": plan,
             "fetched_dates": [],
             "request_count": 0,
+            "physical_write_count": 0,
+            "production_write_performed": False,
             "historical_signature_before": _historical_signature(current, boundary),
             "historical_signature_after": _historical_signature(current, boundary),
         }
@@ -303,6 +305,8 @@ def refresh_market_index(
         "plan": plan,
         "fetched_dates": list(plan["missing_dates"]),
         "request_count": int(getattr(builder.client, "request_count", 0)),
+        "physical_write_count": 1,
+        "production_write_performed": True,
         "build_report": build_report,
         "metadata": metadata,
         "final": {key: value for key, value in final.items() if key != "frame"},

@@ -15,6 +15,8 @@ from refresh_market_data_v01 import load_auth_key
 from refresh_market_index_v01 import derive_incremental_trading_dates, inspect_production_index, refresh_market_index
 from trend_scanner.data.adjusted_price_provider import NaverDirectAdjustedPriceDataProvider
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
+from trend_scanner.data.corporate_action_refresh import CorporateActionRefreshService
+from trend_scanner.data.corporate_action_state_store import DEFAULT_CORPORATE_ACTION_STATE_PATH, CorporateActionStateStore
 from trend_scanner.data.daily_update_foundation import DailyUpdateFoundation
 from trend_scanner.data.index_store import DEFAULT_INDEX_STORE_ROOT, IndexStore
 from trend_scanner.data.krx_etf_raw_provider import KrxRawEtfSnapshotProvider
@@ -40,6 +42,7 @@ from trend_scanner.data.rolling_market_data_refresh import (
     RollingRawEtfUpdater,
     RollingRawMarketUpdater,
     load_effective_common_adjusted_population,
+    migrate_rolling_authority_manifest,
 )
 
 
@@ -52,6 +55,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--target-as-of", required=True, help="inclusive YYYY-MM-DD")
     parser.add_argument("--dry-run", action="store_true", help="plan only; this is the default")
     parser.add_argument("--execute-live", action="store_true", help="enable official network/store mutation")
+    parser.add_argument(
+        "--migrate-authority",
+        action="store_true",
+        help="explicitly bind an existing legacy manifest to already-coherent merged authority files",
+    )
     parser.add_argument("--authority-dir", type=Path, default=ROOT / DEFAULT_ROLLING_AUTHORITY_DIR)
     parser.add_argument("--raw-root", type=Path, default=ROOT / DEFAULT_RAW_STOCK_ROOT)
     parser.add_argument("--adjusted-root", type=Path, default=DEFAULT_ADJUSTED_ROOT)
@@ -115,7 +123,10 @@ def build_foundation(args: argparse.Namespace, *, execute_live: bool) -> DailyUp
     auth_key = load_auth_key()
     if not auth_key:
         raise RuntimeError("BLOCKED_KRX_AUTH")
-    quota = LocalKrxOpenApiQuota(args.quota_db)
+    # Basic Info rolling acquisition has a fixed 500-attempt safety reserve.  The
+    # same quota object is shared with the other KRX legs so their requests remain
+    # visible to one local accounting boundary.
+    quota = LocalKrxOpenApiQuota(args.quota_db, reserve=500)
     client = KrxOpenApiClient(auth_key, max_requests=args.max_requests, max_transient_retries=0, quota=quota)
     common_provider = KrxRawStockSnapshotProvider(client)
     common_raw = RollingRawMarketUpdater(
@@ -168,6 +179,12 @@ def build_foundation(args: argparse.Namespace, *, execute_live: bool) -> DailyUp
         raw_root=ROOT / DEFAULT_BASIC_INFO_RAW_ROOT,
         checkpoint_path=ROOT / DEFAULT_ACQUISITION_CHECKPOINT_PATH,
     )
+    corporate_action_state_store = CorporateActionStateStore(ROOT / DEFAULT_CORPORATE_ACTION_STATE_PATH)
+    corporate_action_refresh_service = CorporateActionRefreshService(
+        corporate_action_state_store,
+        adjusted_provider,
+        adjusted_store,
+    )
     return DailyUpdateFoundation(
         authority_dir=args.authority_dir,
         raw_store=raw_store,
@@ -180,22 +197,34 @@ def build_foundation(args: argparse.Namespace, *, execute_live: bool) -> DailyUp
         market_index_refresh=refresh_index,
         market_index_plan=plan_index,
         basic_info_runner=basic_info_runner,
+        corporate_action_state_store=corporate_action_state_store,
+        corporate_action_refresh_service=corporate_action_refresh_service,
     )
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
+        migration = migrate_rolling_authority_manifest(
+            args.authority_dir,
+            apply=bool(args.migrate_authority),
+        )
         foundation = build_foundation(args, execute_live=args.execute_live)
         result = foundation.execute(args.target_as_of, dry_run=not args.execute_live)
+        result["authority_migration"] = migration
     except Exception as exc:  # noqa: BLE001 - redaction-safe top-level result
+        from trend_scanner.data.daily_update_foundation import DailyUpdateFoundationError
+        from trend_scanner.data.rolling_market_data_refresh import RollingAuthorityError
+
+        expected = isinstance(exc, (DailyUpdateFoundationError, RollingAuthorityError))
         result = {
             "target_as_of": args.target_as_of,
-            "final_status": "BLOCKED",
-            "status": "BLOCKED",
+            "final_status": "BLOCKED" if expected else "FAILED",
+            "status": "BLOCKED" if expected else "FAILED",
             "reason": str(exc),
             "network_request_count": 0,
             "production_write_count": 0,
+            "production_write_performed": False,
             "authority_promotion": 0,
         }
     print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2, default=str))

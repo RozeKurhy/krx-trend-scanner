@@ -54,7 +54,7 @@ import json
 import os
 import re
 import uuid
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timedelta, timezone
 from html import unescape
 from html.parser import HTMLParser
@@ -84,13 +84,13 @@ from trend_scanner.data.adjusted_price_semantics import (
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.krx_etf_raw_provider import ETF_ENDPOINT, KrxRawEtfSnapshotProvider
 from trend_scanner.data.krx_historical_backfill import KrxHistoricalBackfillRunner, candidate_dates
+from trend_scanner.data.krx_historical_instrument_acquisition import load_bounded_basic_info_snapshots
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.universe.historical_authority_reconciliation import (
     DEFAULT_ACQUISITION_CHECKPOINT_PATH,
     DEFAULT_ACQUISITION_FINAL_SUMMARY_PATH,
     DEFAULT_RAW_ROOT as DEFAULT_BASIC_INFO_RAW_ROOT,
     classify_full_universe,
-    load_basic_info_snapshots,
 )
 
 
@@ -217,6 +217,22 @@ def _session_ranges(session_dates: Sequence[str]) -> list[tuple[str, str]]:
         previous = day
     ranges.append((start, previous))
     return ranges
+
+
+def _validate_merged_adjusted_coverage(
+    frame: pd.DataFrame,
+    expected_dates: Sequence[str],
+) -> None:
+    """Require every requested missing session before an adjusted store publish."""
+
+    expected = set(_normalise_session_dates(expected_dates))
+    observed = {
+        pd.Timestamp(value).date().isoformat()
+        for value in pd.DatetimeIndex(frame.index)
+    }
+    missing = sorted(expected - observed)
+    if missing:
+        raise RuntimeError(f"ADJUSTED_MISSING_REQUIRED_SESSION:{','.join(missing)}")
 
 
 def _merge_adjusted_frames(existing: pd.DataFrame | None, fetched: Sequence[pd.DataFrame]) -> pd.DataFrame:
@@ -1255,6 +1271,12 @@ class RollingRawMarketUpdater:
         states = self._paired_manifest_states(target_as_of)
         return sorted(day for day, pair in states.items() if pair.get("KOSPI") == "COMPLETE" and pair.get("KOSDAQ") == "COMPLETE")
 
+    def _finalized_no_data(self, market: str, day: str) -> bool:
+        checker = getattr(self.raw_store, "is_finalized_no_data", None)
+        if callable(checker):
+            return bool(checker(market, day))
+        return False
+
     def refresh(
         self,
         current_boundary: str,
@@ -1274,12 +1296,16 @@ class RollingRawMarketUpdater:
             and not (
                 states.get(day, {}).get("KOSPI") == "NO_DATA"
                 and states.get(day, {}).get("KOSDAQ") == "NO_DATA"
+                and self._finalized_no_data("KOSPI", day)
+                and self._finalized_no_data("KOSDAQ", day)
             )
         ]
         blocked_no_data = [
             day for day in sessions
             if states.get(day, {}).get("KOSPI") == "NO_DATA"
             and states.get(day, {}).get("KOSDAQ") == "NO_DATA"
+            and self._finalized_no_data("KOSPI", day)
+            and self._finalized_no_data("KOSDAQ", day)
         ]
         if sessions and not known_missing and not blocked_no_data:
             complete = self._complete_paired_dates(target_as_of)
@@ -1291,12 +1317,49 @@ class RollingRawMarketUpdater:
                 "missing_date_count": 0,
                 "blocked_no_data_dates": [],
                 "updated_date_count": 0,
+                "updated_dates": [],
+                "physical_write_count": 0,
+                "production_write_performed": False,
+                "new_boundary": max(complete, default=current_boundary),
+            }
+        if sessions and not known_missing and blocked_no_data:
+            complete = self._complete_paired_dates(target_as_of)
+            return {
+                "leg": "common_raw",
+                "runner_result": {"status": "IDEMPOTENT_NOOP", "krx_open_api_attempt_count": 0},
+                "required_dates": sessions,
+                "missing_dates": [],
+                "missing_date_count": 0,
+                "blocked_no_data_dates": blocked_no_data,
+                "updated_date_count": 0,
+                "updated_dates": [],
+                "physical_write_count": 0,
+                "production_write_performed": False,
                 "new_boundary": max(complete, default=current_boundary),
             }
         start = min(known_missing, default=_next_day(current_boundary))
         result = self.runner.run(start, target_as_of, resume=True, markets=("KOSPI", "KOSDAQ"), **run_kwargs)
+        before_states = states
         states = self._paired_manifest_states(target_as_of)
         complete = self._complete_paired_dates(target_as_of)
+        terminal_statuses = {"COMPLETE", "NO_DATA"}
+        updated_dates = sorted(
+            day
+            for day, pair in states.items()
+            if pair.get("KOSPI") in terminal_statuses
+            and pair.get("KOSDAQ") in terminal_statuses
+            and not (
+                before_states.get(day, {}).get("KOSPI") in terminal_statuses
+                and before_states.get(day, {}).get("KOSDAQ") in terminal_statuses
+            )
+        )
+        physical_write_count = sum(
+            1
+            for day, pair in states.items()
+            for market in ("KOSPI", "KOSDAQ")
+            if before_states.get(day, {}).get(market) not in terminal_statuses
+            and pair.get(market) in terminal_statuses
+        )
         if sessions:
             missing_after = _missing_session_dates(
                 sessions,
@@ -1312,7 +1375,10 @@ class RollingRawMarketUpdater:
             "missing_dates": known_missing,
             "missing_date_count": len(known_missing),
             "blocked_no_data_dates": blocked_no_data,
-            "updated_date_count": len(known_missing) - len(_missing_session_dates(sessions, complete)) if sessions else int(result.get("aggregate", {}).get("complete_date_count", 0)),
+            "updated_date_count": len(updated_dates),
+            "updated_dates": updated_dates,
+            "physical_write_count": physical_write_count,
+            "production_write_performed": bool(physical_write_count),
             "new_boundary": new_boundary,
         }
 
@@ -1393,10 +1459,12 @@ class RollingRawEtfUpdater:
         else:
             start = _next_day(current_boundary)
             trading, closed = self._session_dates(start, target_as_of)
+        saved_no_data = 0
         for day in closed:
             if self.raw_store.get_manifest("ETF", day) is None:
                 self.raw_store.save_snapshot("ETF", day, _empty_etf_snapshot(), ETF_ENDPOINT)
-        saved, failures = 0, []
+                saved_no_data += 1
+        saved, saved_dates, failures = 0, [], []
         for day in trading:
             existing = self.raw_store.get_manifest("ETF", day)
             if resume and existing is not None and existing["status"] in {"COMPLETE", "NO_DATA"}:
@@ -1405,6 +1473,7 @@ class RollingRawEtfUpdater:
                 frame = self.provider.fetch_snapshot(day)
                 self.raw_store.save_snapshot("ETF", day, frame, ETF_ENDPOINT)
                 saved += 1
+                saved_dates.append(day)
             except Exception as exc:  # noqa: BLE001 -- bounded, reported, not retried with a new source
                 self.raw_store.save_failure("ETF", day, ETF_ENDPOINT, type(exc).__name__, str(exc))
                 failures.append({"date": day, "error_type": type(exc).__name__})
@@ -1423,6 +1492,9 @@ class RollingRawEtfUpdater:
             "leg": "etf_raw", "saved": saved, "failures": failures,
             "required_dates": required_trading, "missing_dates": missing_after,
             "missing_date_count": len(missing_after), "updated_date_count": saved,
+            "updated_dates": sorted(saved_dates + closed),
+            "physical_write_count": saved + saved_no_data,
+            "production_write_performed": bool(saved or saved_no_data),
             "new_boundary": new_boundary,
         }
 
@@ -2587,8 +2659,9 @@ class RollingEtfAdjustedUpdater:
                         raise RuntimeError(f"EMPTY_ADJUSTED_AUTHORITY:{request_start}:{request_end}")
                     fetched_frames.append(frame)
                 frame = _merge_adjusted_frames(before, fetched_frames)
-                if frame.empty or not requested_session_set.issubset(set(frame.index.strftime("%Y-%m-%d")) | (set(existing_dates) - requested_session_set)):
+                if frame.empty:
                     raise RuntimeError("ADJUSTED_MISSING_REQUIRED_SESSION")
+                _validate_merged_adjusted_coverage(frame, sorted(requested_session_set))
                 transition = classify_adjusted_history_transition(
                     ticker,
                     before,
@@ -2650,6 +2723,8 @@ class RollingEtfAdjustedUpdater:
             "required_dates": required_sessions,
             "missing_date_count": updated_date_count + sum(int(item.get("missing_date_count", 0)) for item in skipped),
             "updated_date_count": updated_date_count,
+            "physical_write_count": len(results),
+            "production_write_performed": bool(results),
             "restatement_validation": restatement_validation,
             "retry_telemetry": _retry_telemetry(self.provider),
             "new_boundary": new_boundary,
@@ -2851,6 +2926,7 @@ class RollingAdjustedPriceUpdater:
                 frame = _merge_adjusted_frames(before, fetched_frames)
                 if frame.empty:
                     raise RuntimeError("EMPTY_ADJUSTED_AUTHORITY")
+                _validate_merged_adjusted_coverage(frame, expected_dates)
                 transition = classify_adjusted_history_transition(
                     ticker,
                     before,
@@ -2911,6 +2987,8 @@ class RollingAdjustedPriceUpdater:
             "failures": failures,
             "missing_date_count": updated_date_count + sum(int(item.get("missing_date_count", 0)) for item in skipped),
             "updated_date_count": updated_date_count,
+            "physical_write_count": len(results),
+            "production_write_performed": bool(results),
             "restatement_validation": restatement_validation,
             "retry_telemetry": _retry_telemetry(self.provider),
             "new_boundary": new_boundary,
@@ -3035,11 +3113,10 @@ def build_rolling_pit_extension(
             f"NO_EXTENSION_CALENDAR_DATES_BEYOND_FROZEN_BOUNDARY: boundary={boundary}"
         )
 
-    basic_info = load_basic_info_snapshots(
+    basic_info = load_bounded_basic_info_snapshots(
         basic_info_raw_root,
-        calendar_dates=new_dates,
-        acquisition_checkpoint_path=acquisition_checkpoint_path,
-        acquisition_final_summary_path=acquisition_final_summary_path,
+        new_dates,
+        checkpoint_path=acquisition_checkpoint_path,
     )
     if not basic_info.ready:
         raise InsufficientPitFrontierError(
@@ -3338,6 +3415,102 @@ def validate_merged_authority_coherence(
         )
 
     return pit_payload, cal_payload
+
+
+def migrate_rolling_authority_manifest(
+    directory: Path = DEFAULT_ROLLING_AUTHORITY_DIR,
+    *,
+    apply: bool = False,
+) -> dict[str, Any]:
+    """Validate and, only when explicitly requested, bind legacy manifest references.
+
+    Older manifests may already sit beside the schema-versioned merged PIT/calendar
+    files but lack the six reference fields.  This is a metadata migration, not a
+    boundary promotion: the four leg boundaries and ``certified_through`` are copied
+    unchanged.  A partial reference set, missing artifacts, digest mismatch, or a
+    future-built artifact is rejected rather than guessed.
+    """
+
+    directory = Path(directory)
+    manifest = load_rolling_authority(directory)
+    refs = (
+        manifest.merged_pit_digest,
+        manifest.merged_pit_frontier,
+        manifest.merged_pit_schema_version,
+        manifest.merged_calendar_digest,
+        manifest.merged_calendar_frontier,
+        manifest.merged_calendar_schema_version,
+    )
+    if all(value is not None for value in refs):
+        validate_merged_authority_coherence(manifest, directory)
+        return {
+            "status": "NOOP",
+            "applied": False,
+            "certified_through": manifest.certified_through,
+            "boundary_unchanged": True,
+        }
+    if any(value is not None for value in refs):
+        raise RollingAuthorityError("ROLLING_MANIFEST_PARTIAL_MERGED_AUTHORITY_REFERENCE")
+
+    pit_path = directory / DEFAULT_MERGED_PIT_PATH.name
+    calendar_path = directory / DEFAULT_MERGED_CALENDAR_PATH.name
+    if not pit_path.is_file() or not calendar_path.is_file():
+        missing = [str(path) for path in (pit_path, calendar_path) if not path.is_file()]
+        raise RollingAuthorityError(f"ROLLING_AUTHORITY_MIGRATION_ARTIFACT_MISSING: {missing}")
+    try:
+        pit_payload = json.loads(pit_path.read_text(encoding="utf-8"))
+        calendar_payload = json.loads(calendar_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise RollingAuthorityError("ROLLING_AUTHORITY_MIGRATION_ARTIFACT_UNREADABLE") from exc
+    if pit_payload.get("authority_version") != ROLLING_AUTHORITY_VERSION or calendar_payload.get("authority_version") != ROLLING_AUTHORITY_VERSION:
+        raise RollingAuthorityError("ROLLING_AUTHORITY_MIGRATION_AUTHORITY_VERSION_MISMATCH")
+    if pit_payload.get("schema_version") != MERGED_PIT_SCHEMA_VERSION:
+        raise RollingAuthorityError("ROLLING_AUTHORITY_MIGRATION_PIT_SCHEMA_VERSION_MISMATCH")
+    if calendar_payload.get("schema_version") != MERGED_CALENDAR_SCHEMA_VERSION:
+        raise RollingAuthorityError("ROLLING_AUTHORITY_MIGRATION_CALENDAR_SCHEMA_VERSION_MISMATCH")
+    pit_intervals = pit_payload.get("intervals")
+    calendar_dates = calendar_payload.get("trading_dates")
+    if not isinstance(pit_intervals, list) or not isinstance(calendar_dates, list):
+        raise RollingAuthorityError("ROLLING_AUTHORITY_MIGRATION_ARTIFACT_SHAPE_INVALID")
+    pit_digest = _content_digest(pit_intervals)
+    calendar_digest = _content_digest(calendar_dates)
+    if pit_payload.get("content_digest") != pit_digest:
+        raise RollingAuthorityError("ROLLING_AUTHORITY_MIGRATION_PIT_DIGEST_MISMATCH")
+    if calendar_payload.get("content_digest") != calendar_digest:
+        raise RollingAuthorityError("ROLLING_AUTHORITY_MIGRATION_CALENDAR_DIGEST_MISMATCH")
+    pit_frontier = max((str(item.get("effective_to")) for item in pit_intervals), default="")
+    calendar_frontier = max((str(value) for value in calendar_dates), default="")
+    if pit_payload.get("pit_frontier") != pit_frontier:
+        raise RollingAuthorityError("ROLLING_AUTHORITY_MIGRATION_PIT_FRONTIER_MISMATCH")
+    if calendar_payload.get("calendar_frontier") != calendar_frontier:
+        raise RollingAuthorityError("ROLLING_AUTHORITY_MIGRATION_CALENDAR_FRONTIER_MISMATCH")
+    for label, payload in (("PIT", pit_payload), ("CALENDAR", calendar_payload)):
+        built_against = str(payload.get("built_against_certified_through") or "")
+        if built_against > manifest.certified_through:
+            raise RollingAuthorityError(
+                f"ROLLING_AUTHORITY_MIGRATION_{label}_BUILT_AGAINST_FUTURE_BOUNDARY"
+            )
+
+    migrated = replace(
+        manifest,
+        merged_pit_digest=pit_digest,
+        merged_pit_frontier=pit_frontier,
+        merged_pit_schema_version=str(pit_payload["schema_version"]),
+        merged_calendar_digest=calendar_digest,
+        merged_calendar_frontier=calendar_frontier,
+        merged_calendar_schema_version=str(calendar_payload["schema_version"]),
+    ).with_digest()
+    if apply:
+        write_rolling_authority(migrated, directory)
+        validate_merged_authority_coherence(migrated, directory)
+    return {
+        "status": "MIGRATED" if apply else "MIGRATION_REQUIRED",
+        "applied": bool(apply),
+        "certified_through": migrated.certified_through,
+        "previous_certified_through": manifest.certified_through,
+        "boundary_unchanged": migrated.certified_through == manifest.certified_through,
+        "manifest_sha256": migrated.manifest_sha256,
+    }
 
 
 @dataclass(frozen=True)
@@ -3751,6 +3924,7 @@ __all__ = [
     "MERGED_CALENDAR_SCHEMA_VERSION",
     "MergedAuthorityPublishResult",
     "write_merged_pit_extension",
+    "migrate_rolling_authority_manifest",
     "validate_basic_info_frontier_field",
     "validate_merged_authority_coherence",
     "IdentityResolution",
