@@ -258,7 +258,17 @@ class DailyUpdateFoundation:
         else:
             etf_adjusted_plan = _leg_summary("PLAN", reason="RAW_AND_STORE_CHECK_DEFERRED_TO_LIVE_LEG")
         if self.market_index_plan is not None:
-            market_index_plan = dict(self.market_index_plan(target))
+            try:
+                market_index_plan = dict(self.market_index_plan(target))
+            except Exception as exc:  # noqa: BLE001 - defer only the known raw-frontier blocker
+                reason = str(exc)
+                if not reason.startswith("BLOCKED_RAW_MANIFEST_INCOMPLETE_PAIR"):
+                    raise
+                market_index_plan = _leg_summary(
+                    "DEFERRED",
+                    reason=reason,
+                    blocked=["BLOCKED_RAW_MANIFEST_INCOMPLETE_PAIR"],
+                )
         else:
             market_index_plan = _leg_summary("PLAN", reason="INDEX_STORE_CHECK_DEFERRED_TO_LIVE_LEG")
         extension_needed = bool(tail_candidates)

@@ -84,6 +84,23 @@ def test_common_raw_incomplete_without_runner_blocker_fails_fast(tmp_path):
     assert not etf_raw.calls and not common_adjusted.calls and not etf_adjusted.calls
 
 
+def test_market_index_plan_defers_known_raw_pair_blocker(tmp_path):
+    foundation, _raw, _authority, *_ = _foundation(
+        tmp_path,
+        calendar=["2026-09-01", "2026-09-02"],
+        complete=["2026-09-01"],
+        certified="2026-09-01",
+    )
+    foundation.market_index_plan = lambda _target: (_ for _ in ()).throw(
+        RuntimeError("BLOCKED_RAW_MANIFEST_INCOMPLETE_PAIR: date=2026-09-02")
+    )
+
+    plan = foundation.plan("2026-09-02")
+
+    assert plan["market_index"]["status"] == "DEFERRED"
+    assert plan["market_index"]["blocked"] == ["BLOCKED_RAW_MANIFEST_INCOMPLETE_PAIR"]
+
+
 def _retry_fixture(tmp_path, *, failed_day: str = "2026-09-14"):
     raw = KrxRawStockStore(tmp_path / "raw")
     raw.save_failure("KOSPI", failed_day, "/sto/stk_bydd_trd", "RAW_SNAPSHOT_HTTP_STATUS", "retry")
