@@ -21,6 +21,7 @@ from trend_scanner.data.index_store import INDEX_STORE_COLUMNS, IndexStore, MARK
 from trend_scanner.data.krx_market_index import KRX_MARKET_INDEX_MAP
 from trend_scanner.data.krx_raw_stock_provider import RAW_COLUMNS
 from trend_scanner.data.rolling_market_data_refresh import (
+    ETF_ADJUSTED_COVERAGE_START,
     ETF_RAW_COVERAGE_START,
     ETF_VALIDATED_ACCEPTANCE_TICKERS,
     PitExtensionResult,
@@ -239,6 +240,98 @@ def test_target_is_single_and_propagated_to_all_legs(tmp_path):
     assert result["final_status"] == "PASS"
     assert common_raw.calls[0][1] == etf_raw.calls[0][1] == common_adjusted.calls[0][1] == etf_adjusted.calls[0][1] == "2026-09-02"
     assert result["leg_results"]["repository_v2"]["target"] == "2026-09-02"
+
+
+def test_repository_validator_uses_etf_adjusted_lower_bound_and_keeps_common_legacy_start(monkeypatch, tmp_path):
+    calls = []
+
+    class RecordingRepository:
+        query_audit = {"calls": 0}
+
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def get_daily(self, ticker, start, end):
+            calls.append((ticker, start, end))
+            return pd.DataFrame()
+
+    monkeypatch.setattr("trend_scanner.data.daily_update_foundation.MarketDataRepositoryV2", RecordingRepository)
+    foundation, _raw, authority, *_ = _foundation(
+        tmp_path,
+        calendar=["2026-09-16"],
+        complete=["2026-09-16"],
+        certified="2026-09-16",
+    )
+    etf = ETF_VALIDATED_ACCEPTANCE_TICKERS[0]
+    result = foundation._default_repository_validator(
+        "2026-09-16",
+        authority,
+        {"common_adjusted": {"validation_tickers": ["005930"]}, "etf_adjusted": {"validation_tickers": [etf]}},
+    )
+
+    assert result["status"] == "PASS"
+    assert ("005930", "1900-01-01", "2026-09-16") in calls
+    assert (etf, ETF_ADJUSTED_COVERAGE_START, "2026-09-16") in calls
+
+
+def test_repository_validator_still_blocks_etf_session_mismatch_after_lower_bound(monkeypatch, tmp_path):
+    class MismatchRepository:
+        query_audit = {"calls": 0}
+
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def get_daily(self, ticker, start, end):
+            raise RuntimeError("REPOSITORY_V2_TRADING_SESSION_MISMATCH")
+
+    monkeypatch.setattr("trend_scanner.data.daily_update_foundation.MarketDataRepositoryV2", MismatchRepository)
+    foundation, _raw, authority, *_ = _foundation(
+        tmp_path,
+        calendar=["2026-09-16"],
+        complete=["2026-09-16"],
+        certified="2026-09-16",
+    )
+    etf = ETF_VALIDATED_ACCEPTANCE_TICKERS[0]
+    result = foundation._default_repository_validator(
+        "2026-09-16",
+        authority,
+        {"etf_adjusted": {"validation_tickers": [etf]}},
+    )
+
+    assert result["status"] == "BLOCKED"
+    assert result["failures"] == [{"ticker": etf, "error": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"}]
+
+
+def test_repository_validator_keeps_all_28_etf_validation_targets(monkeypatch, tmp_path):
+    calls = []
+
+    class RecordingRepository:
+        query_audit = {"calls": 0}
+
+        def __init__(self, *_args, **_kwargs):
+            pass
+
+        def get_daily(self, ticker, start, end):
+            calls.append((ticker, start, end))
+            return pd.DataFrame()
+
+    monkeypatch.setattr("trend_scanner.data.daily_update_foundation.MarketDataRepositoryV2", RecordingRepository)
+    foundation, _raw, authority, *_ = _foundation(
+        tmp_path,
+        calendar=["2026-09-16"],
+        complete=["2026-09-16"],
+        certified="2026-09-16",
+    )
+    result = foundation._default_repository_validator(
+        "2026-09-16",
+        authority,
+        {"etf_adjusted": {"validation_tickers": list(ETF_VALIDATED_ACCEPTANCE_TICKERS)}},
+    )
+
+    assert result["status"] == "PASS"
+    assert result["checked_ticker_count"] == 28
+    assert {ticker for ticker, _start, _end in calls} == set(ETF_VALIDATED_ACCEPTANCE_TICKERS)
+    assert {start for _ticker, start, _end in calls} == {ETF_ADJUSTED_COVERAGE_START}
 
 
 def test_tail_incremental_and_middle_gap_are_required_minus_complete(tmp_path):

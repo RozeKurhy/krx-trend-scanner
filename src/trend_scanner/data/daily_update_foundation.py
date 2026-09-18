@@ -29,6 +29,7 @@ from trend_scanner.data.rolling_market_data_refresh import (
     DEFAULT_MERGED_CALENDAR_PATH,
     DEFAULT_MERGED_PIT_PATH,
     DEFAULT_ROLLING_AUTHORITY_DIR,
+    ETF_ADJUSTED_COVERAGE_START,
     _etf_raw_required_dates,
     ETF_VALIDATED_ACCEPTANCE_TICKERS,
     PitExtensionResult,
@@ -380,11 +381,13 @@ class DailyUpdateFoundation:
         if not tickers:
             for leg in ("common_adjusted", "etf_adjusted"):
                 tickers.update(str(t).zfill(6) for t in leg_results.get(leg, {}).get("updated", []))
+        etf_tickers = {str(ticker).strip().upper() for ticker in ETF_VALIDATED_ACCEPTANCE_TICKERS}
         checked = 0
         failures: list[dict[str, str]] = []
         for ticker in sorted(tickers):
             try:
-                repo.get_daily(ticker, "1900-01-01", target)
+                validation_start = ETF_ADJUSTED_COVERAGE_START if ticker in etf_tickers else "1900-01-01"
+                repo.get_daily(ticker, validation_start, target)
                 checked += 1
             except Exception as exc:  # noqa: BLE001 - final repository gate is fail-closed
                 failures.append({"ticker": ticker, "error": str(exc)})

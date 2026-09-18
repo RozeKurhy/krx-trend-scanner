@@ -106,6 +106,10 @@ FROZEN_FULL_POPULATION_CLOSURE_BOUNDARY = "2026-08-21"
 # project.  It is an operating coverage contract, not a claim about the historical capability
 # of the KRX Open API itself.  Expanding below it is a separately approved historical-scope task.
 ETF_RAW_COVERAGE_START = "2014-01-02"
+# The official lower bound of the adjusted-price history used by the fixed ETF
+# Repository-V2 scope.  This is intentionally distinct from the longer ETF raw
+# authority coverage above.
+ETF_ADJUSTED_COVERAGE_START = "2023-01-02"
 
 # BLOCKER B (directive section 14): closure artifacts already certified, by direct evidence, that
 # PIT COMMON population (3162 tickers) minus these 13 explicitly removed identities equals
@@ -2736,7 +2740,7 @@ class RollingEtfAdjustedUpdater:
         provider: NaverDirectAdjustedPriceDataProvider,
         store: AdjustedPriceStore,
         *,
-        requested_start: str = "2023-01-02",
+        requested_start: str = ETF_ADJUSTED_COVERAGE_START,
         raw_store: KrxRawStockStore | None = None,
         corporate_action_evidence_lookup: Callable[[str], Any] | None = None,
         evidence_observation_date: str | None = None,
@@ -4339,6 +4343,7 @@ __all__ = [
     "DEFAULT_ROLLING_AUTHORITY_DIR",
     "FROZEN_FULL_POPULATION_CLOSURE_BOUNDARY",
     "ETF_RAW_COVERAGE_START",
+    "ETF_ADJUSTED_COVERAGE_START",
     "DEFAULT_REMOVED_IDENTITY_AUDIT_PATH",
     "DEFAULT_ZERO_STORE_CONTRACT_PATH",
     "DEFAULT_FULL_POPULATION_CLOSURE_RESULTS_PATH",
