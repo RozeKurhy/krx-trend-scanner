@@ -413,3 +413,4 @@ Repository V2 정상
 - [현재 수정주가 저장소 계약](adjusted_price_store_v02.md)
 - [종목 메타데이터 권위 기준](instrument_metadata_authority.md)
 - [생존편향 방지 과거 분모 동결](survivorship_safe_denominator_freeze_v01.md)
+- [주봉·월봉 파생 기준 V01](weekly_monthly_derivation_contract_v01.md) — 2단계 상세 계약
