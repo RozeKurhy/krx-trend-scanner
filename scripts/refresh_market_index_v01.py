@@ -140,7 +140,7 @@ def derive_incremental_trading_dates(
         if market not in RAW_MARKETS:
             continue
         day = _date_text(str(row.get("date", "")))
-        if boundary_text < day <= target_text:
+        if day <= target_text:
             states.setdefault(day, {})[market] = str(row.get("status", "")).strip().upper()
 
     complete_dates: list[str] = []
@@ -163,6 +163,8 @@ def derive_incremental_trading_dates(
         "boundary": boundary_text,
         "target_as_of": target_text,
         "candidate_complete_dates": complete_dates,
+        "candidate_complete_dates_after_boundary": [day for day in complete_dates if day > boundary_text],
+        "candidate_complete_dates_before_or_at_boundary": [day for day in complete_dates if day <= boundary_text],
         "already_present_dates": [day for day in complete_dates if day in existing_dates],
         "no_data_dates": no_data_dates,
         "missing_dates": missing_dates,
@@ -201,6 +203,28 @@ def _historical_signature(frame: pd.DataFrame, boundary: str) -> str:
     historical = historical.sort_values(["date", "index_code"], kind="mergesort").reset_index(drop=True)
     historical["date"] = historical["date"].astype(str)
     return __import__("hashlib").sha256(historical.to_csv(index=False, lineterminator="\n").encode("utf-8")).hexdigest()
+
+
+def _existing_historical_signature(
+    current_frame: pd.DataFrame,
+    merged_frame: pd.DataFrame,
+    boundary: str,
+) -> tuple[str, str]:
+    """Compare only rows that already existed; adding a bounded middle gap is allowed."""
+
+    current = current_frame.loc[current_frame["date"].astype(str) <= boundary, list(INDEX_STORE_COLUMNS)].copy()
+    observed = merged_frame.loc[merged_frame["date"].astype(str) <= boundary, list(INDEX_STORE_COLUMNS)].copy()
+    keys = ["date", "family", "index_code"]
+    observed = observed.set_index(keys).sort_index()
+    current = current.set_index(keys).sort_index()
+    if not current.index.isin(observed.index).all():
+        raise MarketIndexRollingRefreshError("BLOCKED_HISTORICAL_ROWS_REMOVED")
+    matched = observed.loc[current.index].reset_index()
+    expected = current.reset_index()
+    return (
+        _historical_signature(expected, boundary),
+        _historical_signature(matched, boundary),
+    )
 
 
 def append_market_index_rows(
@@ -254,7 +278,7 @@ def refresh_market_index(
     validated_increment = validate_market_index_frame(increment, expected_dates=plan["missing_dates"])
     merged = append_market_index_rows(current, validated_increment, expected_dates=plan["missing_dates"])
     historical_before = _historical_signature(current, boundary)
-    historical_after = _historical_signature(merged, boundary)
+    historical_before, historical_after = _existing_historical_signature(current, merged, boundary)
     if historical_before != historical_after:
         raise MarketIndexRollingRefreshError("BLOCKED_HISTORICAL_ROWS_CHANGED")
 

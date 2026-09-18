@@ -259,6 +259,28 @@ class HistoricalInstrumentAcquisitionRunner:
             raise ValueError("public live path requires run_full_historical()")
         return self._execute_pairs(trading_dates, resume=resume, execute_live=False)
 
+    def run_bounded(
+        self,
+        trading_dates: Iterable[str],
+        *,
+        resume: bool = True,
+        execute_live: bool = False,
+    ) -> dict[str, Any]:
+        """Acquire only a bounded rolling window through the existing endpoint/checkpoint path.
+
+        ``run`` intentionally remains network-free for the historical planning API and
+        ``run_full_historical`` remains the established full-scope live entrypoint.  This narrow
+        wrapper is the daily-update bridge: it reuses the exact pair construction, validation,
+        checkpoint, quota, and atomic raw-file logic without introducing a second provider.
+        """
+
+        return self._execute_pairs(
+            trading_dates,
+            resume=resume,
+            execute_live=execute_live,
+            validated_full_scope=bool(execute_live),
+        )
+
     def run_full_historical(
         self,
         calendar_path: str | Path = HISTORICAL_CALENDAR_PATH,

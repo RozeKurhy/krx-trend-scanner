@@ -188,6 +188,55 @@ def _next_day(iso_date: str) -> str:
     return (pd.Timestamp(iso_date).date() + timedelta(days=1)).isoformat()
 
 
+def _normalise_session_dates(values: Sequence[str] | None) -> list[str]:
+    """Return deterministic, date-only session labels without inventing sessions."""
+
+    if not values:
+        return []
+    return sorted({pd.Timestamp(value).date().isoformat() for value in values})
+
+
+def _missing_session_dates(required_dates: Sequence[str], observed_dates: Sequence[str]) -> list[str]:
+    """Implement the daily-update contract's required-minus-complete calculation."""
+
+    return sorted(set(_normalise_session_dates(required_dates)) - set(_normalise_session_dates(observed_dates)))
+
+
+def _session_ranges(session_dates: Sequence[str]) -> list[tuple[str, str]]:
+    """Group adjacent dates in the required-session sequence into bounded requests."""
+
+    dates = _normalise_session_dates(session_dates)
+    if not dates:
+        return []
+    ranges: list[tuple[str, str]] = []
+    start = previous = dates[0]
+    for day in dates[1:]:
+        if (pd.Timestamp(day) - pd.Timestamp(previous)).days > 1:
+            ranges.append((start, previous))
+            start = day
+        previous = day
+    ranges.append((start, previous))
+    return ranges
+
+
+def _merge_adjusted_frames(existing: pd.DataFrame | None, fetched: Sequence[pd.DataFrame]) -> pd.DataFrame:
+    """Merge new provider rows while preserving existing rows and deterministic order.
+
+    A fetched overlap is intentionally allowed through this helper.  That keeps the existing
+    corporate-action/restatement evidence gate active when a provider reports a bounded
+    historical correction, while the normal daily request itself remains missing-only.
+    """
+
+    frames = [frame for frame in ([existing] if existing is not None else []) if frame is not None and not frame.empty]
+    frames.extend(frame for frame in fetched if frame is not None and not frame.empty)
+    if not frames:
+        return pd.DataFrame(columns=["open", "high", "low", "close"], index=pd.DatetimeIndex([]))
+    merged = pd.concat(frames, axis=0)
+    merged.index = pd.DatetimeIndex(pd.to_datetime(merged.index, errors="raise")).normalize()
+    merged = merged[~merged.index.duplicated(keep="last")]
+    return merged.sort_index(kind="mergesort").loc[:, ["open", "high", "low", "close"]]
+
+
 def _manifest_digest(payload: Mapping[str, Any]) -> str:
     """Stable sha256 over every field except the digest itself."""
     canonical = {k: v for k, v in payload.items() if k != "manifest_sha256"}
@@ -1182,23 +1231,90 @@ class RollingRawMarketUpdater:
         self.raw_store = raw_store
 
     @staticmethod
-    def plan(current_boundary: str, target_as_of: str) -> dict[str, Any]:
-        start = _next_day(current_boundary)
-        return {"leg": "common_raw", "start": start, "end": target_as_of, "markets": ["KOSPI", "KOSDAQ"]}
+    def plan(current_boundary: str, target_as_of: str, *, required_dates: Sequence[str] | None = None) -> dict[str, Any]:
+        sessions = _normalise_session_dates(required_dates)
+        start = sessions[0] if sessions else _next_day(current_boundary)
+        return {
+            "leg": "common_raw",
+            "start": start,
+            "end": target_as_of,
+            "markets": ["KOSPI", "KOSDAQ"],
+            "required_dates": sessions,
+        }
 
-    def refresh(self, current_boundary: str, target_as_of: str, **run_kwargs: Any) -> dict[str, Any]:
-        start = _next_day(current_boundary)
+    def _paired_manifest_states(self, target_as_of: str) -> dict[str, dict[str, str]]:
+        states: dict[str, dict[str, str]] = {}
+        for market in ("KOSPI", "KOSDAQ"):
+            for row in self.raw_store.list_manifest(market):
+                day = str(row["date"])
+                if day <= target_as_of:
+                    states.setdefault(day, {})[market] = str(row.get("status", "")).upper()
+        return states
+
+    def _complete_paired_dates(self, target_as_of: str) -> list[str]:
+        states = self._paired_manifest_states(target_as_of)
+        return sorted(day for day, pair in states.items() if pair.get("KOSPI") == "COMPLETE" and pair.get("KOSDAQ") == "COMPLETE")
+
+    def refresh(
+        self,
+        current_boundary: str,
+        target_as_of: str,
+        *,
+        required_dates: Sequence[str] | None = None,
+        **run_kwargs: Any,
+    ) -> dict[str, Any]:
+        sessions = _normalise_session_dates(required_dates)
+        states = self._paired_manifest_states(target_as_of)
+        known_missing = [
+            day for day in sessions
+            if not (
+                states.get(day, {}).get("KOSPI") == "COMPLETE"
+                and states.get(day, {}).get("KOSDAQ") == "COMPLETE"
+            )
+            and not (
+                states.get(day, {}).get("KOSPI") == "NO_DATA"
+                and states.get(day, {}).get("KOSDAQ") == "NO_DATA"
+            )
+        ]
+        blocked_no_data = [
+            day for day in sessions
+            if states.get(day, {}).get("KOSPI") == "NO_DATA"
+            and states.get(day, {}).get("KOSDAQ") == "NO_DATA"
+        ]
+        if sessions and not known_missing and not blocked_no_data:
+            complete = self._complete_paired_dates(target_as_of)
+            return {
+                "leg": "common_raw",
+                "runner_result": {"status": "IDEMPOTENT_NOOP", "krx_open_api_attempt_count": 0},
+                "required_dates": sessions,
+                "missing_dates": [],
+                "missing_date_count": 0,
+                "blocked_no_data_dates": [],
+                "updated_date_count": 0,
+                "new_boundary": max(complete, default=current_boundary),
+            }
+        start = min(known_missing, default=_next_day(current_boundary))
         result = self.runner.run(start, target_as_of, resume=True, markets=("KOSPI", "KOSDAQ"), **run_kwargs)
-        new_boundary = max(
-            (
-                str(row["date"])
-                for market in ("KOSPI", "KOSDAQ")
-                for row in self.raw_store.list_manifest(market)
-                if row.get("status") == "COMPLETE" and str(row["date"]) <= target_as_of
-            ),
-            default=current_boundary,
-        )
-        return {"leg": "common_raw", "runner_result": result, "new_boundary": new_boundary}
+        states = self._paired_manifest_states(target_as_of)
+        complete = self._complete_paired_dates(target_as_of)
+        if sessions:
+            missing_after = _missing_session_dates(
+                sessions,
+                [day for day in sessions if states.get(day, {}).get("KOSPI") == "COMPLETE" and states.get(day, {}).get("KOSDAQ") == "COMPLETE"],
+            )
+            new_boundary = max((day for day in complete if day <= target_as_of), default=current_boundary) if not missing_after else current_boundary
+        else:
+            new_boundary = max(complete, default=current_boundary)
+        return {
+            "leg": "common_raw",
+            "runner_result": result,
+            "required_dates": sessions,
+            "missing_dates": known_missing,
+            "missing_date_count": len(known_missing),
+            "blocked_no_data_dates": blocked_no_data,
+            "updated_date_count": len(known_missing) - len(_missing_session_dates(sessions, complete)) if sessions else int(result.get("aggregate", {}).get("complete_date_count", 0)),
+            "new_boundary": new_boundary,
+        }
 
 
 class RollingRawEtfUpdater:
@@ -1222,16 +1338,61 @@ class RollingRawEtfUpdater:
         closed = [str(r["date"]) for r in rows if start <= str(r["date"]) <= end and r["status"] == "NO_DATA"]
         return sorted(trading), sorted(closed)
 
-    def plan(self, current_boundary: str, target_as_of: str) -> dict[str, Any]:
-        start = _next_day(current_boundary)
-        trading, closed = self._session_dates(start, target_as_of)
-        return {"leg": "etf_raw", "start": start, "end": target_as_of, "trading_sessions": trading, "closed_sessions": closed}
+    def plan(self, current_boundary: str, target_as_of: str, *, required_dates: Sequence[str] | None = None) -> dict[str, Any]:
+        sessions = _normalise_session_dates(required_dates)
+        if sessions:
+            trading = [
+                day for day in sessions
+                if self.raw_store.get_manifest("KOSPI", day)
+                and self.raw_store.get_manifest("KOSPI", day).get("status") == "COMPLETE"
+            ]
+            closed = [
+                day for day in sessions
+                if self.raw_store.get_manifest("KOSPI", day)
+                and self.raw_store.get_manifest("KOSPI", day).get("status") == "NO_DATA"
+            ]
+            missing = [day for day in trading if self.raw_store.get_manifest("ETF", day) is None]
+            start = min(missing, default=_next_day(current_boundary))
+        else:
+            start = _next_day(current_boundary)
+            trading, closed = self._session_dates(start, target_as_of)
+            missing = [day for day in trading if self.raw_store.get_manifest("ETF", day) is None]
+        return {
+            "leg": "etf_raw", "start": start, "end": target_as_of,
+            "trading_sessions": trading, "closed_sessions": closed,
+            "missing_dates": missing,
+        }
 
-    def refresh(self, current_boundary: str, target_as_of: str, *, resume: bool = True) -> dict[str, Any]:
+    def refresh(
+        self,
+        current_boundary: str,
+        target_as_of: str,
+        *,
+        required_dates: Sequence[str] | None = None,
+        resume: bool = True,
+    ) -> dict[str, Any]:
         import time
 
-        start = _next_day(current_boundary)
-        trading, closed = self._session_dates(start, target_as_of)
+        sessions = set(_normalise_session_dates(required_dates))
+        if sessions:
+            trading = [
+                day for day in sorted(sessions)
+                if self.raw_store.get_manifest("KOSPI", day)
+                and self.raw_store.get_manifest("KOSPI", day).get("status") == "COMPLETE"
+            ]
+            closed = [
+                day for day in sorted(sessions)
+                if self.raw_store.get_manifest("KOSPI", day)
+                and self.raw_store.get_manifest("KOSPI", day).get("status") == "NO_DATA"
+            ]
+            start = min(
+                [day for day in trading if self.raw_store.get_manifest("ETF", day) is None]
+                + [day for day in closed if self.raw_store.get_manifest("ETF", day) is None]
+                or [_next_day(current_boundary)]
+            )
+        else:
+            start = _next_day(current_boundary)
+            trading, closed = self._session_dates(start, target_as_of)
         for day in closed:
             if self.raw_store.get_manifest("ETF", day) is None:
                 self.raw_store.save_snapshot("ETF", day, _empty_etf_snapshot(), ETF_ENDPOINT)
@@ -1250,11 +1411,20 @@ class RollingRawEtfUpdater:
                 break
             if self.request_interval_ms:
                 time.sleep(self.request_interval_ms / 1000.0)
-        new_boundary = max(
-            (str(r["date"]) for r in self.raw_store.list_manifest("ETF") if r.get("status") == "COMPLETE" and str(r["date"]) <= target_as_of),
-            default=current_boundary,
-        )
-        return {"leg": "etf_raw", "saved": saved, "failures": failures, "new_boundary": new_boundary}
+        complete = {
+            str(r["date"])
+            for r in self.raw_store.list_manifest("ETF")
+            if r.get("status") == "COMPLETE" and str(r["date"]) <= target_as_of
+        }
+        required_trading = sorted(set(trading) | {day for day in sessions if self.raw_store.get_manifest("KOSPI", day) and self.raw_store.get_manifest("KOSPI", day).get("status") == "COMPLETE"})
+        missing_after = _missing_session_dates(required_trading, complete)
+        new_boundary = max(complete, default=current_boundary) if not missing_after else current_boundary
+        return {
+            "leg": "etf_raw", "saved": saved, "failures": failures,
+            "required_dates": required_trading, "missing_dates": missing_after,
+            "missing_date_count": len(missing_after), "updated_date_count": saved,
+            "new_boundary": new_boundary,
+        }
 
 
 def _empty_etf_snapshot() -> pd.DataFrame:
@@ -2352,24 +2522,73 @@ class RollingEtfAdjustedUpdater:
         store: AdjustedPriceStore,
         *,
         requested_start: str = "2023-01-02",
+        raw_store: KrxRawStockStore | None = None,
         corporate_action_evidence_lookup: Callable[[str], Any] | None = None,
         evidence_observation_date: str | None = None,
     ) -> None:
         self.provider = provider
         self.store = store
         self.requested_start = requested_start
+        self.raw_store = raw_store
         self.corporate_action_evidence_lookup = corporate_action_evidence_lookup
         self.evidence_observation_date = evidence_observation_date
 
+    def _required_sessions(self, target_as_of: str) -> list[str]:
+        if self.raw_store is None:
+            return [day for day in candidate_dates(self.requested_start, target_as_of)]
+        return sorted(
+            str(row["date"])
+            for row in self.raw_store.list_manifest("KOSPI")
+            if row.get("status") == "COMPLETE" and self.requested_start <= str(row["date"]) <= target_as_of
+        )
+
+    def plan(self, current_boundary: str, target_as_of: str) -> dict[str, Any]:
+        required_sessions = self._required_sessions(target_as_of)
+        records: list[dict[str, Any]] = []
+        for ticker in ETF_VALIDATED_ACCEPTANCE_TICKERS:
+            if not (hasattr(self.store, "exists") and self.store.exists(ticker)):
+                observed: set[str] = set()
+            else:
+                observed = {pd.Timestamp(value).date().isoformat() for value in self.store.load_daily(ticker).index}
+            missing = _missing_session_dates(required_sessions, sorted(observed))
+            records.append({"ticker": ticker, "missing_dates": missing, "missing_date_count": len(missing)})
+        missing_dates = sorted({day for record in records for day in record["missing_dates"]})
+        return {
+            "leg": "etf_adjusted",
+            "current_boundary": current_boundary,
+            "target_as_of": target_as_of,
+            "required_dates": required_sessions,
+            "missing_dates": missing_dates,
+            "missing_date_count": len(missing_dates),
+            "ticker_records": records,
+        }
+
     def refresh(self, current_boundary: str, target_as_of: str) -> dict[str, Any]:
         results, failures, restatement_validation = [], [], []
+        skipped: list[dict[str, Any]] = []
+        updated_date_count = 0
+        required_sessions = self._required_sessions(target_as_of)
+        requested_session_set = set(required_sessions)
         for ticker in ETF_VALIDATED_ACCEPTANCE_TICKERS:
             try:
-                frame = self.provider.load_daily(ticker, self.requested_start, target_as_of)
-                if frame.empty:
-                    raise RuntimeError("EMPTY_ADJUSTED_AUTHORITY")
                 has_existing_store = hasattr(self.store, "exists") and self.store.exists(ticker)
                 before = self.store.load_daily(ticker) if has_existing_store else None
+                existing_dates = set() if before is None else {
+                    pd.Timestamp(value).date().isoformat() for value in before.index
+                }
+                missing_dates = _missing_session_dates(required_sessions, sorted(existing_dates))
+                if not missing_dates:
+                    skipped.append({"ticker": ticker, "reason": "ALREADY_COMPLETE", "missing_date_count": 0})
+                    continue
+                fetched_frames = []
+                for request_start, request_end in _session_ranges(missing_dates):
+                    frame = self.provider.load_daily(ticker, request_start, request_end)
+                    if frame.empty:
+                        raise RuntimeError(f"EMPTY_ADJUSTED_AUTHORITY:{request_start}:{request_end}")
+                    fetched_frames.append(frame)
+                frame = _merge_adjusted_frames(before, fetched_frames)
+                if frame.empty or not requested_session_set.issubset(set(frame.index.strftime("%Y-%m-%d")) | (set(existing_dates) - requested_session_set)):
+                    raise RuntimeError("ADJUSTED_MISSING_REQUIRED_SESSION")
                 transition = classify_adjusted_history_transition(
                     ticker,
                     before,
@@ -2403,20 +2622,34 @@ class RollingEtfAdjustedUpdater:
                 self.store.save_full(
                     ticker,
                     frame,
-                    metadata_context={"requested_start": self.requested_start, "requested_end": target_as_of},
+                    metadata_context={
+                        "requested_start": (
+                            str(before.index.min().date()) if before is not None and not before.empty else self.requested_start
+                        ),
+                        "requested_end": target_as_of,
+                    },
                 )
                 results.append(ticker)
+                updated_date_count += len(missing_dates)
             except Exception as exc:  # noqa: BLE001 -- bounded, reported, not retried with a new source
                 failures.append(
                     {"ticker": ticker, "error_type": type(exc).__name__, "error_message": str(exc)}
                 )
                 break
-        new_boundary = target_as_of if not failures and len(results) == len(ETF_VALIDATED_ACCEPTANCE_TICKERS) else current_boundary
+        new_boundary = (
+            max(required_sessions, default=current_boundary)
+            if not failures and len(results) + len(skipped) == len(ETF_VALIDATED_ACCEPTANCE_TICKERS)
+            else current_boundary
+        )
         return {
             "leg": "etf_adjusted",
             "expected_tickers": list(ETF_VALIDATED_ACCEPTANCE_TICKERS),
             "updated": results,
+            "skipped": skipped,
             "failures": failures,
+            "required_dates": required_sessions,
+            "missing_date_count": updated_date_count + sum(int(item.get("missing_date_count", 0)) for item in skipped),
+            "updated_date_count": updated_date_count,
             "restatement_validation": restatement_validation,
             "retry_telemetry": _retry_telemetry(self.provider),
             "new_boundary": new_boundary,
@@ -2456,6 +2689,45 @@ class RollingAdjustedPriceUpdater:
         if not dates or not pit_ends:
             raise RollingAuthorityError("PIT_OR_CALENDAR_ARTIFACT_EMPTY")
         return min(max(dates), max(pit_ends))
+
+    def plan(self, tickers: Sequence[str], current_boundary: str, target_as_of: str) -> dict[str, Any]:
+        intervals_by_ticker: dict[str, list[dict[str, Any]]] = {}
+        raw_pit = json.loads(self.pit_path.read_text(encoding="utf-8"))
+        for interval in raw_pit.get("intervals", []):
+            ticker = interval.get("ticker")
+            if ticker:
+                intervals_by_ticker.setdefault(str(ticker).zfill(6), []).append(interval)
+        records: list[dict[str, Any]] = []
+        for ticker in tickers:
+            normalized = str(ticker).zfill(6)
+            identity = resolve_current_identity(normalized, target_as_of, intervals_by_ticker)
+            if identity.status != "RESOLVED" or identity.interval is None:
+                records.append({"ticker": normalized, "missing_dates": [], "reason": f"IDENTITY_{identity.status}"})
+                continue
+            start = str(identity.interval["effective_from"])
+            resolution = resolve_expected_coverage(
+                normalized, start, target_as_of, pit_path=self.pit_path, historical_calendar_path=self.historical_calendar_path
+            )
+            if resolution.authority_status == "ERROR":
+                records.append({"ticker": normalized, "missing_dates": [], "reason": resolution.authority_status})
+                continue
+            required = _normalise_session_dates(list(resolution.expected_tradable_dates))
+            observed = (
+                {pd.Timestamp(value).date().isoformat() for value in self.store.load_daily(normalized).index}
+                if hasattr(self.store, "exists") and self.store.exists(normalized)
+                else set()
+            )
+            missing = _missing_session_dates(required, sorted(observed))
+            records.append({"ticker": normalized, "missing_dates": missing, "missing_date_count": len(missing)})
+        missing_dates = sorted({day for record in records for day in record["missing_dates"]})
+        return {
+            "leg": "common_adjusted",
+            "current_boundary": current_boundary,
+            "target_as_of": target_as_of,
+            "missing_dates": missing_dates,
+            "missing_date_count": len(missing_dates),
+            "ticker_records": records,
+        }
 
     def refresh(
         self, tickers: Sequence[str], current_boundary: str, target_as_of: str, requested_start: str | None = None
@@ -2540,6 +2812,8 @@ class RollingAdjustedPriceUpdater:
                     intervals_by_ticker.setdefault(t, []).append(iv)
 
         results, failures, skipped, restatement_validation = [], [], [], []
+        covered_dates: set[str] = set()
+        updated_date_count = 0
         for ticker in tickers:
             if requested_start is None:
                 identity = resolve_current_identity(ticker, target_as_of, intervals_by_ticker or {})
@@ -2557,12 +2831,26 @@ class RollingAdjustedPriceUpdater:
                 skipped.append({"ticker": ticker, "reason": resolution.authority_status})
                 continue
             try:
-                frame = self.provider.load_daily(ticker, ticker_requested_start, target_as_of)
-                if frame.empty:
-                    skipped.append({"ticker": ticker, "reason": "EMPTY_ADJUSTED_AUTHORITY"})
-                    continue
+                expected_dates = _normalise_session_dates(list(resolution.expected_tradable_dates))
+                covered_dates.update(expected_dates)
                 has_existing_store = hasattr(self.store, "exists") and self.store.exists(ticker)
                 before = self.store.load_daily(ticker) if has_existing_store else None
+                existing_dates = set() if before is None else {
+                    pd.Timestamp(value).date().isoformat() for value in before.index
+                }
+                missing_dates = _missing_session_dates(expected_dates, sorted(existing_dates))
+                if not missing_dates:
+                    skipped.append({"ticker": ticker, "reason": "ALREADY_COMPLETE", "missing_date_count": 0})
+                    continue
+                fetched_frames = []
+                for request_start, request_end in _session_ranges(missing_dates):
+                    fetched = self.provider.load_daily(ticker, request_start, request_end)
+                    if fetched.empty:
+                        raise RuntimeError(f"EMPTY_ADJUSTED_AUTHORITY:{request_start}:{request_end}")
+                    fetched_frames.append(fetched)
+                frame = _merge_adjusted_frames(before, fetched_frames)
+                if frame.empty:
+                    raise RuntimeError("EMPTY_ADJUSTED_AUTHORITY")
                 transition = classify_adjusted_history_transition(
                     ticker,
                     before,
@@ -2596,9 +2884,15 @@ class RollingAdjustedPriceUpdater:
                 self.store.save_full(
                     ticker,
                     frame,
-                    metadata_context={"requested_start": ticker_requested_start, "requested_end": target_as_of},
+                    metadata_context={
+                        "requested_start": (
+                            str(before.index.min().date()) if before is not None and not before.empty else ticker_requested_start
+                        ),
+                        "requested_end": target_as_of,
+                    },
                 )
                 results.append(ticker)
+                updated_date_count += len(missing_dates)
             except Exception as exc:  # noqa: BLE001
                 failures.append(
                     {"ticker": ticker, "error_type": type(exc).__name__, "error_message": str(exc)}
@@ -2606,13 +2900,17 @@ class RollingAdjustedPriceUpdater:
         # The boundary only advances to target_as_of when every ticker actually reached it -- a
         # skip or failure means this leg did not fully cover target_as_of, so it must report the
         # unchanged current_boundary rather than let the coordinator assume full coverage.
-        new_boundary = target_as_of if not failures and not skipped else current_boundary
+        new_boundary = current_boundary
+        if not failures and len(results) + len(skipped) == len(tickers):
+            new_boundary = max(covered_dates, default=current_boundary)
         return {
             "leg": "common_adjusted",
             "expected_tickers": [str(ticker).zfill(6) for ticker in tickers],
             "updated": results,
             "skipped": skipped,
             "failures": failures,
+            "missing_date_count": updated_date_count + sum(int(item.get("missing_date_count", 0)) for item in skipped),
+            "updated_date_count": updated_date_count,
             "restatement_validation": restatement_validation,
             "retry_telemetry": _retry_telemetry(self.provider),
             "new_boundary": new_boundary,
@@ -3362,6 +3660,12 @@ class RollingRefreshCoordinator:
             instrument_contract_version=manifest.instrument_contract_version,
             bootstrap_source=manifest.bootstrap_source,
             generated_at=_iso_today_utc(),
+            merged_pit_digest=manifest.merged_pit_digest,
+            merged_pit_frontier=manifest.merged_pit_frontier,
+            merged_pit_schema_version=manifest.merged_pit_schema_version,
+            merged_calendar_digest=manifest.merged_calendar_digest,
+            merged_calendar_frontier=manifest.merged_calendar_frontier,
+            merged_calendar_schema_version=manifest.merged_calendar_schema_version,
         )
         write_rolling_authority(new_manifest, self.authority_dir)
         return {
