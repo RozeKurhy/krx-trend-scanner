@@ -18,6 +18,7 @@ from typing import Any, Callable, Mapping, Sequence
 import pandas as pd
 
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
+from trend_scanner.data.adjusted_price_provider import normalize_ticker
 from trend_scanner.data.corporate_action_detector import CorporateActionSnapshot
 from trend_scanner.data.corporate_action_refresh import CorporateActionRefreshService
 from trend_scanner.data.corporate_action_state_store import CorporateActionStateStore
@@ -259,9 +260,11 @@ class DailyUpdateFoundation:
             market_index_plan = _leg_summary("PLAN", reason="INDEX_STORE_CHECK_DEFERRED_TO_LIVE_LEG")
         extension_needed = bool(tail_candidates)
         dirty_state_count = 0
+        managed_universe = self._managed_universe(target)
         if self.corporate_action_state_store is not None:
             dirty_state_count = sum(
                 state.status in {"DIRTY", "FAILED"}
+                and state.ticker in managed_universe
                 for state in self.corporate_action_state_store.list_states()
             )
         return {
@@ -284,6 +287,7 @@ class DailyUpdateFoundation:
             "corporate_action": {
                 "status": "NOT_BOUND" if self.corporate_action_state_store is None else "PLANNED",
                 "dirty_ticker_count": dirty_state_count,
+                "managed_ticker_count": len(managed_universe),
             },
         }
 
@@ -398,12 +402,37 @@ class DailyUpdateFoundation:
             and str(interval.get("effective_from", "")) <= target <= str(interval.get("effective_to", ""))
         }
 
-    def _corporate_action_snapshots(self, dates: Sequence[str]) -> list[CorporateActionSnapshot]:
+    def _managed_universe(self, target: str, pit_path: Path | None = None) -> set[str]:
+        """Return the exact current staged COMMON population plus accepted ETFs."""
+
+        effective_pit = pit_path or (self.authority_dir / DEFAULT_MERGED_PIT_PATH.name)
+        if effective_pit.exists():
+            common = load_effective_common_adjusted_population(
+                effective_pit,
+                etf_acceptance_tickers=ETF_VALIDATED_ACCEPTANCE_TICKERS,
+                identity_as_of=target,
+            )
+        else:
+            common = self.common_adjusted_tickers
+        return {
+            normalize_ticker(ticker)
+            for ticker in (*common, *ETF_VALIDATED_ACCEPTANCE_TICKERS)
+        }
+
+    def _corporate_action_snapshots(
+        self,
+        dates: Sequence[str],
+        managed_universe: set[str] | None = None,
+    ) -> list[CorporateActionSnapshot]:
         if self.corporate_action_snapshot_loader is not None:
             snapshots: list[CorporateActionSnapshot] = []
             for day in dates:
                 snapshots.extend(self.corporate_action_snapshot_loader(day))
-            return snapshots
+            return [
+                snapshot
+                for snapshot in snapshots
+                if managed_universe is None or snapshot.ticker in managed_universe
+            ]
         if not hasattr(self.raw_store, "load_snapshot"):
             return []
         by_key: dict[tuple[str, str], CorporateActionSnapshot] = {}
@@ -428,6 +457,8 @@ class DailyUpdateFoundation:
                         listed_shares_semantics="RAW_DAILY_LISTED_SHARES",
                         source_name=f"KRX_RAW_{market}",
                     )
+                    if managed_universe is not None and snapshot.ticker not in managed_universe:
+                        continue
                     key = (snapshot.ticker, snapshot.as_of.isoformat())
                     previous = by_key.get(key)
                     if previous is not None and previous.listed_shares != snapshot.listed_shares:
@@ -437,10 +468,62 @@ class DailyUpdateFoundation:
                     by_key[key] = snapshot
         return [by_key[key] for key in sorted(by_key)]
 
+    def _corporate_action_baselines(
+        self,
+        managed_universe: set[str],
+        certified_through: str,
+    ) -> dict[str, CorporateActionSnapshot]:
+        """Load the latest valid raw listed-shares observation at the old boundary."""
+
+        if not hasattr(self.raw_store, "list_manifest") or not hasattr(self.raw_store, "load_snapshot"):
+            return {}
+        latest: dict[str, CorporateActionSnapshot] = {}
+        same_day: dict[tuple[str, str], CorporateActionSnapshot] = {}
+        for market in ("KOSPI", "KOSDAQ", "ETF"):
+            for manifest_row in self.raw_store.list_manifest(market):
+                day = str(manifest_row.get("date", ""))
+                if day > certified_through or manifest_row.get("status") != "COMPLETE":
+                    continue
+                try:
+                    frame = self.raw_store.load_snapshot(market, day)
+                except Exception:  # noqa: BLE001 - unavailable historical baseline is non-fatal
+                    continue
+                if not isinstance(frame, pd.DataFrame) or frame.empty:
+                    continue
+                for row in frame.itertuples(index=False):
+                    ticker = str(getattr(row, "ticker", "")).strip()
+                    listed_shares = getattr(row, "listed_shares", None)
+                    if not ticker or listed_shares is None:
+                        continue
+                    snapshot = CorporateActionSnapshot(
+                        ticker=ticker,
+                        as_of=day,
+                        listed_shares=listed_shares,
+                        par_value=None,
+                        listed_shares_semantics="RAW_DAILY_LISTED_SHARES",
+                        source_name=f"KRX_RAW_{market}",
+                    )
+                    if snapshot.ticker not in managed_universe:
+                        continue
+                    same_day_key = (snapshot.ticker, snapshot.as_of.isoformat())
+                    previous_same_day = same_day.get(same_day_key)
+                    if previous_same_day is not None and previous_same_day.listed_shares != snapshot.listed_shares:
+                        raise DailyUpdateFoundationError(
+                            f"BLOCKED_CORPORATE_ACTION_SOURCE_CONFLICT:{snapshot.ticker}:{day}"
+                        )
+                    same_day[same_day_key] = snapshot
+                    previous = latest.get(snapshot.ticker)
+                    if previous is None or snapshot.as_of > previous.as_of:
+                        latest[snapshot.ticker] = snapshot
+        return latest
+
     def _run_corporate_action_phase(
         self,
         target: str,
         observation_dates: Sequence[str],
+        *,
+        managed_universe: Sequence[str] | set[str] | None = None,
+        baseline_boundary: str | None = None,
     ) -> dict[str, Any]:
         state_store = self.corporate_action_state_store
         service = self.corporate_action_refresh_service
@@ -450,8 +533,32 @@ class DailyUpdateFoundation:
             state_store = service.state_store
         if state_store is None or service is None:
             raise DailyUpdateFoundationError("BLOCKED_CORPORATE_ACTION_SERVICE_NOT_BOUND")
+        snapshots = self._corporate_action_snapshots(
+            observation_dates,
+            None if managed_universe is None else {
+                normalize_ticker(ticker) for ticker in managed_universe
+            },
+        )
+        if managed_universe is None:
+            effective_managed = {
+                snapshot.ticker for snapshot in snapshots
+            } | {
+                state.ticker for state in state_store.list_states()
+            }
+        else:
+            effective_managed = {normalize_ticker(ticker) for ticker in managed_universe}
+        observed_tickers = {snapshot.ticker for snapshot in snapshots}
+        baseline_count = 0
+        if baseline_boundary is not None:
+            for ticker, baseline in self._corporate_action_baselines(
+                effective_managed,
+                baseline_boundary,
+            ).items():
+                if ticker in observed_tickers and state_store.get(ticker) is None:
+                    state_store.evaluate_and_record(baseline)
+                    baseline_count += 1
         observed = 0
-        for snapshot in self._corporate_action_snapshots(observation_dates):
+        for snapshot in snapshots:
             try:
                 state_store.evaluate_and_record(snapshot)
                 observed += 1
@@ -462,7 +569,7 @@ class DailyUpdateFoundation:
         dirty_tickers = sorted(
             state.ticker
             for state in state_store.list_states()
-            if state.status in {"DIRTY", "FAILED"}
+            if state.status in {"DIRTY", "FAILED"} and state.ticker in effective_managed
         )
         refreshes: list[dict[str, Any]] = []
         for ticker in dirty_tickers:
@@ -471,7 +578,7 @@ class DailyUpdateFoundation:
         remaining = [
             state.ticker
             for state in state_store.list_states()
-            if state.status in {"DIRTY", "FAILED"}
+            if state.status in {"DIRTY", "FAILED"} and state.ticker in effective_managed
         ]
         if remaining:
             raise DailyUpdateFoundationError(
@@ -481,6 +588,8 @@ class DailyUpdateFoundation:
         return {
             "status": "PASS",
             "observed_count": observed,
+            "baseline_count": baseline_count,
+            "managed_ticker_count": len(effective_managed),
             "dirty_tickers": dirty_tickers,
             "refreshes": refreshes,
             "physical_write_count": physical_writes,
@@ -550,6 +659,8 @@ class DailyUpdateFoundation:
         if dry_run:
             complete_plan = not any(
                 plan.get(leg, {}).get("missing_dates")
+                or plan.get(leg, {}).get("blocked")
+                or plan.get(leg, {}).get("failures")
                 for leg in ("common_raw", "common_adjusted", "etf_raw", "etf_adjusted", "market_index")
             ) and not plan["authority_extension_needed"] and not plan["corporate_action"]["dirty_ticker_count"]
             return {
@@ -566,6 +677,8 @@ class DailyUpdateFoundation:
             not plan["common_raw"]["missing_dates"]
             and not plan["etf_raw"]["missing_dates"]
             and not plan["common_adjusted"].get("missing_dates")
+            and not plan["common_adjusted"].get("blocked")
+            and not plan["common_adjusted"].get("failures")
             and not plan["etf_adjusted"].get("missing_dates")
             and not plan["market_index"].get("missing_dates")
             and not plan["authority_extension_needed"]
@@ -603,20 +716,6 @@ class DailyUpdateFoundation:
                 leg_results["pit_authority"] = authority_result
                 _stage_dir, authority_refs = self._stage_authority(extension, manifest, stage_dir, target)
 
-                leg_results["etf_raw"] = self._call_refresh(
-                    self.etf_raw_updater,
-                    manifest.leg_boundaries["etf_raw"],
-                    target,
-                    required_dates=operating_dates,
-                )
-                observation_dates = sorted(
-                    set(leg_results["common_raw"].get("updated_dates", ()))
-                    | set(leg_results["etf_raw"].get("updated_dates", ()))
-                )
-                leg_results["corporate_action"] = self._run_corporate_action_phase(
-                    target,
-                    observation_dates,
-                )
                 staged_pit_path = stage_dir / DEFAULT_MERGED_PIT_PATH.name
                 common_tickers = list(self.common_adjusted_tickers)
                 population_added: set[str] = set()
@@ -636,6 +735,27 @@ class DailyUpdateFoundation:
                             ticker
                             for ticker, _isu_cd, _market in staged_identity_keys - previous_identity_keys
                         }
+                managed_universe = {
+                    normalize_ticker(ticker)
+                    for ticker in (*common_tickers, *ETF_VALIDATED_ACCEPTANCE_TICKERS)
+                }
+
+                leg_results["etf_raw"] = self._call_refresh(
+                    self.etf_raw_updater,
+                    manifest.leg_boundaries["etf_raw"],
+                    target,
+                    required_dates=operating_dates,
+                )
+                observation_dates = sorted(
+                    set(leg_results["common_raw"].get("updated_dates", ()))
+                    | set(leg_results["etf_raw"].get("updated_dates", ()))
+                )
+                leg_results["corporate_action"] = self._run_corporate_action_phase(
+                    target,
+                    observation_dates,
+                    managed_universe=managed_universe,
+                    baseline_boundary=manifest.certified_through,
+                )
                 leg_results["pit_authority"]["population_added_tickers"] = sorted(population_added)
                 leg_results["pit_authority"]["identity_added_tickers"] = sorted(identity_added)
                 if extension is not None and hasattr(self.common_adjusted_updater, "refresh_with_extension"):
@@ -652,6 +772,11 @@ class DailyUpdateFoundation:
                         manifest.leg_boundaries["common_adjusted"],
                         target,
                     )
+                if (
+                    leg_results["common_adjusted"].get("failures")
+                    or leg_results["common_adjusted"].get("blocked")
+                ):
+                    raise DailyUpdateFoundationError("BLOCKED_COMMON_ADJUSTED_AUTHORITY")
                 leg_results["etf_adjusted"] = self.etf_adjusted_updater.refresh(
                     manifest.leg_boundaries["etf_adjusted"], target
                 )

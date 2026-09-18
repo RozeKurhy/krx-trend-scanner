@@ -2773,18 +2773,33 @@ class RollingAdjustedPriceUpdater:
             if ticker:
                 intervals_by_ticker.setdefault(str(ticker).zfill(6), []).append(interval)
         records: list[dict[str, Any]] = []
+        blocked: list[dict[str, Any]] = []
         for ticker in tickers:
             normalized = str(ticker).zfill(6)
             identity = resolve_current_identity(normalized, target_as_of, intervals_by_ticker)
             if identity.status != "RESOLVED" or identity.interval is None:
-                records.append({"ticker": normalized, "missing_dates": [], "reason": f"IDENTITY_{identity.status}"})
+                record = {
+                    "ticker": normalized,
+                    "missing_dates": [],
+                    "reason": f"IDENTITY_{identity.status}",
+                    "status": "BLOCKED",
+                }
+                records.append(record)
+                blocked.append(record)
                 continue
             start = str(identity.interval["effective_from"])
             resolution = resolve_expected_coverage(
                 normalized, start, target_as_of, pit_path=self.pit_path, historical_calendar_path=self.historical_calendar_path
             )
-            if resolution.authority_status == "ERROR":
-                records.append({"ticker": normalized, "missing_dates": [], "reason": resolution.authority_status})
+            if resolution.authority_status != "VALID":
+                record = {
+                    "ticker": normalized,
+                    "missing_dates": [],
+                    "reason": resolution.authority_status,
+                    "status": "BLOCKED",
+                }
+                records.append(record)
+                blocked.append(record)
                 continue
             required = _normalise_session_dates(list(resolution.expected_tradable_dates))
             observed = (
@@ -2802,6 +2817,7 @@ class RollingAdjustedPriceUpdater:
             "missing_dates": missing_dates,
             "missing_date_count": len(missing_dates),
             "ticker_records": records,
+            "blocked": blocked,
         }
 
     def refresh(
@@ -2886,14 +2902,14 @@ class RollingAdjustedPriceUpdater:
                 if t:
                     intervals_by_ticker.setdefault(t, []).append(iv)
 
-        results, failures, skipped, restatement_validation = [], [], [], []
+        results, failures, skipped, blocked, restatement_validation = [], [], [], [], []
         covered_dates: set[str] = set()
         updated_date_count = 0
         for ticker in tickers:
             if requested_start is None:
                 identity = resolve_current_identity(ticker, target_as_of, intervals_by_ticker or {})
                 if identity.status != "RESOLVED":
-                    skipped.append({"ticker": ticker, "reason": f"IDENTITY_{identity.status}"})
+                    blocked.append({"ticker": ticker, "reason": f"IDENTITY_{identity.status}"})
                     continue
                 ticker_requested_start = str(identity.interval["effective_from"])
             else:
@@ -2902,8 +2918,14 @@ class RollingAdjustedPriceUpdater:
             resolution = resolve_expected_coverage(
                 ticker, ticker_requested_start, target_as_of, pit_path=pit_path, historical_calendar_path=historical_calendar_path
             )
-            if resolution.authority_status == "ERROR":
-                skipped.append({"ticker": ticker, "reason": resolution.authority_status})
+            if resolution.authority_status != "VALID":
+                blocked.append({
+                    "ticker": ticker,
+                    "reason": resolution.authority_status,
+                    "error_type": resolution.error_type,
+                    "error_message_sanitized": resolution.error_message_sanitized,
+                    "unresolved_authority_conflict_dates": list(resolution.unresolved_authority_conflict_dates),
+                })
                 continue
             try:
                 expected_dates = _normalise_session_dates(list(resolution.expected_tradable_dates))
@@ -2977,13 +2999,14 @@ class RollingAdjustedPriceUpdater:
         # skip or failure means this leg did not fully cover target_as_of, so it must report the
         # unchanged current_boundary rather than let the coordinator assume full coverage.
         new_boundary = current_boundary
-        if not failures and len(results) + len(skipped) == len(tickers):
+        if not failures and not blocked and len(results) + len(skipped) == len(tickers):
             new_boundary = max(covered_dates, default=current_boundary)
         return {
             "leg": "common_adjusted",
             "expected_tickers": [str(ticker).zfill(6) for ticker in tickers],
             "updated": results,
             "skipped": skipped,
+            "blocked": blocked,
             "failures": failures,
             "missing_date_count": updated_date_count + sum(int(item.get("missing_date_count", 0)) for item in skipped),
             "updated_date_count": updated_date_count,
