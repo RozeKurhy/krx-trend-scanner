@@ -37,6 +37,7 @@ from trend_scanner.data.rolling_market_data_refresh import (
     build_rolling_pit_extension,
     load_effective_common_adjusted_population,
     load_rolling_authority,
+    resolve_current_identity,
     validate_merged_authority_coherence,
     write_merged_pit_extension,
     write_rolling_authority,
@@ -419,6 +420,57 @@ class DailyUpdateFoundation:
             for ticker in (*common, *ETF_VALIDATED_ACCEPTANCE_TICKERS)
         }
 
+    @staticmethod
+    def _active_pit_identities(
+        path: Path,
+        target: str,
+        tickers: Sequence[str],
+    ) -> dict[str, dict[str, Any]]:
+        payload = _read_json(path)
+        intervals_by_ticker: dict[str, list[dict[str, Any]]] = {}
+        for interval in payload.get("intervals", []):
+            if interval.get("state") != "COMMON" or not interval.get("ticker"):
+                continue
+            ticker = normalize_ticker(interval["ticker"])
+            intervals_by_ticker.setdefault(ticker, []).append(dict(interval))
+        identities: dict[str, dict[str, Any]] = {}
+        for ticker in {normalize_ticker(value) for value in tickers}:
+            resolution = resolve_current_identity(ticker, target, intervals_by_ticker)
+            if resolution.status != "RESOLVED" or resolution.interval is None:
+                continue
+            interval = dict(resolution.interval)
+            component_intervals = interval.get("component_intervals", ())
+            identity_markets = {
+                str(component.get("market"))
+                for component in component_intervals
+                if component.get("market")
+            }
+            if interval.get("market"):
+                identity_markets.add(str(interval["market"]))
+            identities[ticker] = {
+                "ticker": ticker,
+                "isu_cd": interval.get("isu_cd"),
+                "market": interval.get("market"),
+                "markets": tuple(sorted(identity_markets)),
+                "effective_from": str(interval.get("effective_from", "")),
+            }
+        return identities
+
+    def _corporate_action_observation_dates(
+        self,
+        operating_dates: Sequence[str],
+        old_boundary: str,
+        target: str,
+    ) -> list[str]:
+        """Return persisted KOSPI/KOSDAQ trading dates in the uncertified window."""
+
+        paired_complete_dates = set(_paired_complete_dates(self.raw_store, target))
+        return sorted(
+            day
+            for day in set(operating_dates) & paired_complete_dates
+            if old_boundary < day <= target
+        )
+
     def _corporate_action_snapshots(
         self,
         dates: Sequence[str],
@@ -472,49 +524,83 @@ class DailyUpdateFoundation:
         self,
         managed_universe: set[str],
         certified_through: str,
+        *,
+        current_identities: Mapping[str, Mapping[str, Any]] | None = None,
+        target_tickers: set[str] | None = None,
     ) -> dict[str, CorporateActionSnapshot]:
         """Load the latest valid raw listed-shares observation at the old boundary."""
 
         if not hasattr(self.raw_store, "list_manifest") or not hasattr(self.raw_store, "load_snapshot"):
             return {}
+        targets = set(target_tickers or managed_universe)
+        if not targets:
+            return {}
         latest: dict[str, CorporateActionSnapshot] = {}
         same_day: dict[tuple[str, str], CorporateActionSnapshot] = {}
-        for market in ("KOSPI", "KOSDAQ", "ETF"):
-            for manifest_row in self.raw_store.list_manifest(market):
-                day = str(manifest_row.get("date", ""))
-                if day > certified_through or manifest_row.get("status") != "COMPLETE":
+        manifest_rows = [
+            row
+            for market in ("KOSPI", "KOSDAQ", "ETF")
+            for row in self.raw_store.list_manifest(market)
+        ]
+        manifest_rows.sort(key=lambda row: (str(row.get("date", "")), str(row.get("market", ""))), reverse=True)
+        current_day: str | None = None
+        found_on_day: set[str] = set()
+        for manifest_row in manifest_rows:
+            day = str(manifest_row.get("date", ""))
+            if current_day != day:
+                targets -= found_on_day
+                found_on_day = set()
+                current_day = day
+            if not targets:
+                break
+            if day > certified_through or manifest_row.get("status") != "COMPLETE":
+                continue
+            market = str(manifest_row.get("market", "")).upper()
+            try:
+                frame = self.raw_store.load_snapshot(market, day)
+            except Exception:  # noqa: BLE001 - unavailable historical baseline is non-fatal
+                continue
+            if not isinstance(frame, pd.DataFrame) or frame.empty:
+                continue
+            for row in frame.itertuples(index=False):
+                ticker = str(getattr(row, "ticker", "")).strip()
+                listed_shares = getattr(row, "listed_shares", None)
+                if not ticker or listed_shares is None:
                     continue
-                try:
-                    frame = self.raw_store.load_snapshot(market, day)
-                except Exception:  # noqa: BLE001 - unavailable historical baseline is non-fatal
+                snapshot = CorporateActionSnapshot(
+                    ticker=ticker,
+                    as_of=day,
+                    listed_shares=listed_shares,
+                    par_value=None,
+                    listed_shares_semantics="RAW_DAILY_LISTED_SHARES",
+                    source_name=f"KRX_RAW_{market}",
+                )
+                if snapshot.ticker not in targets and snapshot.ticker not in found_on_day:
                     continue
-                if not isinstance(frame, pd.DataFrame) or frame.empty:
+                identity = None if current_identities is None else current_identities.get(snapshot.ticker)
+                if current_identities is not None and identity is None:
                     continue
-                for row in frame.itertuples(index=False):
-                    ticker = str(getattr(row, "ticker", "")).strip()
-                    listed_shares = getattr(row, "listed_shares", None)
-                    if not ticker or listed_shares is None:
+                if identity is not None:
+                    effective_from = str(identity.get("effective_from", ""))
+                    if effective_from and snapshot.as_of.isoformat() < effective_from:
                         continue
-                    snapshot = CorporateActionSnapshot(
-                        ticker=ticker,
-                        as_of=day,
-                        listed_shares=listed_shares,
-                        par_value=None,
-                        listed_shares_semantics="RAW_DAILY_LISTED_SHARES",
-                        source_name=f"KRX_RAW_{market}",
+                    allowed_markets = set(identity.get("markets", ()))
+                    if not allowed_markets and identity.get("market"):
+                        allowed_markets.add(str(identity["market"]))
+                    if allowed_markets and market not in allowed_markets:
+                        continue
+                same_day_key = (snapshot.ticker, snapshot.as_of.isoformat())
+                previous_same_day = same_day.get(same_day_key)
+                if previous_same_day is not None and previous_same_day.listed_shares != snapshot.listed_shares:
+                    raise DailyUpdateFoundationError(
+                        f"BLOCKED_CORPORATE_ACTION_SOURCE_CONFLICT:{snapshot.ticker}:{day}"
                     )
-                    if snapshot.ticker not in managed_universe:
-                        continue
-                    same_day_key = (snapshot.ticker, snapshot.as_of.isoformat())
-                    previous_same_day = same_day.get(same_day_key)
-                    if previous_same_day is not None and previous_same_day.listed_shares != snapshot.listed_shares:
-                        raise DailyUpdateFoundationError(
-                            f"BLOCKED_CORPORATE_ACTION_SOURCE_CONFLICT:{snapshot.ticker}:{day}"
-                        )
-                    same_day[same_day_key] = snapshot
-                    previous = latest.get(snapshot.ticker)
-                    if previous is None or snapshot.as_of > previous.as_of:
-                        latest[snapshot.ticker] = snapshot
+                same_day[same_day_key] = snapshot
+                previous = latest.get(snapshot.ticker)
+                if previous is None or snapshot.as_of > previous.as_of:
+                    latest[snapshot.ticker] = snapshot
+                found_on_day.add(snapshot.ticker)
+        targets -= found_on_day
         return latest
 
     def _run_corporate_action_phase(
@@ -524,6 +610,7 @@ class DailyUpdateFoundation:
         *,
         managed_universe: Sequence[str] | set[str] | None = None,
         baseline_boundary: str | None = None,
+        current_identities: Mapping[str, Mapping[str, Any]] | None = None,
     ) -> dict[str, Any]:
         state_store = self.corporate_action_state_store
         service = self.corporate_action_refresh_service
@@ -548,15 +635,26 @@ class DailyUpdateFoundation:
         else:
             effective_managed = {normalize_ticker(ticker) for ticker in managed_universe}
         observed_tickers = {snapshot.ticker for snapshot in snapshots}
+        baseline_targets = {
+            ticker
+            for ticker in observed_tickers & effective_managed
+            if state_store.get(ticker) is None
+        }
         baseline_count = 0
         if baseline_boundary is not None:
-            for ticker, baseline in self._corporate_action_baselines(
-                effective_managed,
-                baseline_boundary,
-            ).items():
-                if ticker in observed_tickers and state_store.get(ticker) is None:
-                    state_store.evaluate_and_record(baseline)
-                    baseline_count += 1
+            baselines = (
+                self._corporate_action_baselines(
+                    effective_managed,
+                    baseline_boundary,
+                    current_identities=current_identities,
+                    target_tickers=baseline_targets,
+                )
+                if baseline_targets
+                else {}
+            )
+            for ticker, baseline in baselines.items():
+                state_store.evaluate_and_record(baseline)
+                baseline_count += 1
         observed = 0
         for snapshot in snapshots:
             try:
@@ -739,6 +837,11 @@ class DailyUpdateFoundation:
                     normalize_ticker(ticker)
                     for ticker in (*common_tickers, *ETF_VALIDATED_ACCEPTANCE_TICKERS)
                 }
+                current_identities = self._active_pit_identities(
+                    staged_pit_path,
+                    target,
+                    sorted(managed_universe),
+                )
 
                 leg_results["etf_raw"] = self._call_refresh(
                     self.etf_raw_updater,
@@ -746,15 +849,17 @@ class DailyUpdateFoundation:
                     target,
                     required_dates=operating_dates,
                 )
-                observation_dates = sorted(
-                    set(leg_results["common_raw"].get("updated_dates", ()))
-                    | set(leg_results["etf_raw"].get("updated_dates", ()))
+                observation_dates = self._corporate_action_observation_dates(
+                    operating_dates,
+                    old_boundary,
+                    target,
                 )
                 leg_results["corporate_action"] = self._run_corporate_action_phase(
                     target,
                     observation_dates,
                     managed_universe=managed_universe,
                     baseline_boundary=manifest.certified_through,
+                    current_identities=current_identities,
                 )
                 leg_results["pit_authority"]["population_added_tickers"] = sorted(population_added)
                 leg_results["pit_authority"]["identity_added_tickers"] = sorted(identity_added)

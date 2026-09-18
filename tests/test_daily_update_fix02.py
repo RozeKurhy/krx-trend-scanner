@@ -127,6 +127,59 @@ def test_common_adjusted_non_valid_coverage_is_blocked(monkeypatch, tmp_path, au
     assert result["new_boundary"] == "2026-08-01"
 
 
+def test_common_adjusted_no_expected_observations_is_normal_and_preserves_store(monkeypatch, tmp_path):
+    pit, calendar = _write_adjusted_authority(
+        tmp_path,
+        [
+            {
+                "ticker": "000001",
+                "isu_cd": "KR7000000001",
+                "market": "KOSPI",
+                "state": "COMMON",
+                "effective_from": "2026-08-01",
+                "effective_to": "2026-08-03",
+            }
+        ],
+    )
+    store = AdjustedPriceStore(tmp_path / "adjusted")
+    store.save_full(
+        "000001",
+        _adjusted_frame(["2026-07-31"], base=10),
+        {"requested_start": "2026-07-31", "requested_end": "2026-07-31"},
+    )
+    before = (store.base_dir / "000001.parquet").read_bytes()
+    monkeypatch.setattr(
+        "trend_scanner.data.rolling_market_data_refresh.resolve_expected_coverage",
+        lambda *_args, **_kwargs: ExpectedCoverageResolution(
+            ticker="000001",
+            query_start="2026-08-01",
+            query_end="2026-08-03",
+            authority_status="NO_EXPECTED_OBSERVATIONS",
+            authority_source="TEST",
+            authority_quality="TEST",
+            raw_observed_count=0,
+            excluded_nontradable_count=3,
+            expected_tradable_count=0,
+            expected_tradable_dates=(),
+            nontradable_dates=("2026-08-01", "2026-08-02", "2026-08-03"),
+            source_path="TEST",
+        ),
+    )
+
+    class Provider:
+        def load_daily(self, *_args):
+            raise AssertionError("zero-coverage must not call the provider")
+
+    result = RollingAdjustedPriceUpdater(
+        Provider(), store, pit_path=pit, historical_calendar_path=calendar
+    ).refresh(["000001"], "2026-08-01", "2026-08-03", requested_start="2026-08-01")
+    assert result["blocked"] == []
+    assert result["failures"] == []
+    assert result["skipped"][0]["reason"] == "NO_EXPECTED_OBSERVATIONS"
+    assert result["new_boundary"] == "2026-08-01"
+    assert (store.base_dir / "000001.parquet").read_bytes() == before
+
+
 def test_foundation_does_not_pass_when_common_adjusted_is_blocked(tmp_path):
     authority = tmp_path / "authority"
     extension = PitExtensionResult(
@@ -214,10 +267,16 @@ def _raw_frame(day: str, ticker: str, listed_shares: int) -> pd.DataFrame:
     )
 
 
-def _ca_foundation(tmp_path: Path, raw: KrxRawStockStore, state: CorporateActionStateStore, provider):
+def _ca_foundation(
+    tmp_path: Path,
+    raw: KrxRawStockStore,
+    state: CorporateActionStateStore,
+    provider,
+    ticker: str = "000001",
+):
     adjusted = AdjustedPriceStore(tmp_path / "adjusted")
     adjusted.save_full(
-        "000001",
+        ticker,
         _adjusted_frame(["2026-08-21"], base=10),
         {"requested_start": "2026-08-21", "requested_end": "2026-08-21"},
     )
@@ -225,7 +284,7 @@ def _ca_foundation(tmp_path: Path, raw: KrxRawStockStore, state: CorporateAction
         authority_dir=tmp_path / "authority",
         raw_store=raw,
         adjusted_store=adjusted,
-        common_adjusted_tickers=["000001"],
+        common_adjusted_tickers=[ticker],
         common_raw_updater=None,
         etf_raw_updater=None,
         common_adjusted_updater=None,
@@ -250,16 +309,124 @@ def test_corporate_action_baselines_old_raw_before_new_observation_and_refreshes
 
     provider = Provider()
     foundation = _ca_foundation(tmp_path, raw, state, provider)
+    current_identity = {
+        "000001": {
+            "ticker": "000001",
+            "isu_cd": "KR7000000001",
+            "market": "KOSPI",
+            "markets": ("KOSPI",),
+            "effective_from": "2026-08-01",
+        }
+    }
     result = foundation._run_corporate_action_phase(
         "2026-08-24",
         ["2026-08-24"],
         managed_universe={"000001"},
         baseline_boundary="2026-08-21",
+        current_identities=current_identity,
     )
     assert result["status"] == "PASS"
     assert result["baseline_count"] == 1
     assert provider.calls == [("000001", "2026-08-21", "2026-08-24")]
     assert state.get("000001").status == "CLEAN"
+
+
+def test_corporate_action_resume_reobserves_persisted_raw_date_after_raw_noop(tmp_path, monkeypatch):
+    raw = KrxRawStockStore(tmp_path / "raw")
+    for market in ("KOSPI", "KOSDAQ"):
+        raw.save_snapshot(market, "2026-08-24", _raw_frame("2026-08-24", "000001", 200), "/sto/market")
+    state = CorporateActionStateStore(tmp_path / "state.sqlite3")
+    state.evaluate_and_record(CorporateActionSnapshot("000001", "2026-08-21", 100))
+
+    class Provider:
+        calls = []
+
+        def load_daily(self, ticker, start, end):
+            self.calls.append((ticker, start, end))
+            return _adjusted_frame(["2026-08-21", "2026-08-24"], base=20)
+
+    provider = Provider()
+    foundation = _ca_foundation(tmp_path, raw, state, provider)
+    def unexpected_baseline_scan(*_args, **_kwargs):
+        raise AssertionError("existing corporate-action state must not trigger baseline scan")
+
+    monkeypatch.setattr(foundation, "_corporate_action_baselines", unexpected_baseline_scan)
+    observation_dates = foundation._corporate_action_observation_dates(
+        ["2026-08-21", "2026-08-24"], "2026-08-21", "2026-08-24"
+    )
+    assert observation_dates == ["2026-08-24"]
+    result = foundation._run_corporate_action_phase(
+        "2026-08-24",
+        observation_dates,
+        managed_universe={"000001"},
+        baseline_boundary="2026-08-21",
+        current_identities={
+            "000001": {
+                "ticker": "000001",
+                "isu_cd": "KR7000000001",
+                "market": "KOSPI",
+                "markets": ("KOSPI",),
+                "effective_from": "2026-08-01",
+            }
+        },
+    )
+    assert result["status"] == "PASS"
+    assert result["baseline_count"] == 0
+    assert provider.calls == [("000001", "2026-08-21", "2026-08-24")]
+    assert state.get("000001").status == "CLEAN"
+
+
+def test_corporate_action_ticker_reuse_does_not_use_old_identity_baseline(tmp_path):
+    raw = KrxRawStockStore(tmp_path / "raw")
+    raw.save_snapshot("KOSPI", "2026-08-21", _raw_frame("2026-08-21", "123456", 100), "/sto/stk")
+    raw.save_snapshot("KOSPI", "2026-08-24", _raw_frame("2026-08-24", "123456", 200), "/sto/stk")
+    pit = tmp_path / "pit.json"
+    pit.write_text(
+        json.dumps(
+            {
+                "intervals": [
+                    {
+                        "ticker": "123456",
+                        "isu_cd": "KR7OLD000001",
+                        "market": "KOSPI",
+                        "state": "COMMON",
+                        "effective_from": "2020-01-01",
+                        "effective_to": "2026-08-21",
+                    },
+                    {
+                        "ticker": "123456",
+                        "isu_cd": "KR7NEW000001",
+                        "market": "KOSPI",
+                        "state": "COMMON",
+                        "effective_from": "2026-08-24",
+                        "effective_to": "2026-08-24",
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    state = CorporateActionStateStore(tmp_path / "state.sqlite3")
+
+    class Provider:
+        def load_daily(self, *_args):
+            raise AssertionError("new identity first observation must be its baseline")
+
+    foundation = _ca_foundation(tmp_path, raw, state, Provider(), ticker="123456")
+    current_identity = foundation._active_pit_identities(pit, "2026-08-24", ["123456"])
+    assert current_identity["123456"]["isu_cd"] == "KR7NEW000001"
+    assert current_identity["123456"]["effective_from"] == "2026-08-24"
+    result = foundation._run_corporate_action_phase(
+        "2026-08-24",
+        ["2026-08-24"],
+        managed_universe={"123456"},
+        baseline_boundary="2026-08-21",
+        current_identities=current_identity,
+    )
+    assert result["status"] == "PASS"
+    assert result["baseline_count"] == 0
+    assert result["refreshes"] == []
+    assert state.get("123456").status == "CLEAN"
 
 
 def test_corporate_action_same_value_and_new_listing_are_clean_without_refresh(tmp_path):

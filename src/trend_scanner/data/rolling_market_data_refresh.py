@@ -2791,12 +2791,25 @@ class RollingAdjustedPriceUpdater:
             resolution = resolve_expected_coverage(
                 normalized, start, target_as_of, pit_path=self.pit_path, historical_calendar_path=self.historical_calendar_path
             )
-            if resolution.authority_status != "VALID":
+            if resolution.authority_status == "NO_EXPECTED_OBSERVATIONS":
+                records.append({
+                    "ticker": normalized,
+                    "missing_dates": [],
+                    "missing_date_count": 0,
+                    "reason": resolution.authority_status,
+                    "status": "ZERO_COVERAGE",
+                })
+                continue
+            if (
+                resolution.authority_status != "VALID"
+                or resolution.unresolved_authority_conflict_dates
+            ):
                 record = {
                     "ticker": normalized,
                     "missing_dates": [],
                     "reason": resolution.authority_status,
                     "status": "BLOCKED",
+                    "unresolved_authority_conflict_dates": list(resolution.unresolved_authority_conflict_dates),
                 }
                 records.append(record)
                 blocked.append(record)
@@ -2918,10 +2931,25 @@ class RollingAdjustedPriceUpdater:
             resolution = resolve_expected_coverage(
                 ticker, ticker_requested_start, target_as_of, pit_path=pit_path, historical_calendar_path=historical_calendar_path
             )
-            if resolution.authority_status != "VALID":
-                blocked.append({
+            if resolution.authority_status == "NO_EXPECTED_OBSERVATIONS":
+                skipped.append({
                     "ticker": ticker,
                     "reason": resolution.authority_status,
+                    "missing_date_count": 0,
+                    "zero_coverage": True,
+                })
+                continue
+            if (
+                resolution.authority_status != "VALID"
+                or resolution.unresolved_authority_conflict_dates
+            ):
+                blocked.append({
+                    "ticker": ticker,
+                    "reason": (
+                        "UNRESOLVED_AUTHORITY_CONFLICT"
+                        if resolution.unresolved_authority_conflict_dates
+                        else resolution.authority_status
+                    ),
                     "error_type": resolution.error_type,
                     "error_message_sanitized": resolution.error_message_sanitized,
                     "unresolved_authority_conflict_dates": list(resolution.unresolved_authority_conflict_dates),
