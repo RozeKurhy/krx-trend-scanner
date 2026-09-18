@@ -10,7 +10,7 @@ import pytest
 
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.corporate_action_detector import CorporateActionSnapshot
-from trend_scanner.data.corporate_action_refresh import CorporateActionRefreshService
+from trend_scanner.data.corporate_action_refresh import CorporateActionRefreshService, RefreshResult
 from trend_scanner.data.corporate_action_state_store import CorporateActionStateStore
 from trend_scanner.data.daily_update_foundation import DailyUpdateFoundation, DailyUpdateFoundationError
 from trend_scanner.data.krx_raw_stock_provider import RAW_COLUMNS
@@ -294,6 +294,38 @@ def _ca_foundation(
     )
 
 
+def _phase_foundation(tmp_path: Path, state: CorporateActionStateStore, service, observations):
+    return DailyUpdateFoundation(
+        authority_dir=tmp_path / "authority",
+        raw_store=None,
+        adjusted_store=AdjustedPriceStore(tmp_path / "adjusted"),
+        common_adjusted_tickers=["000001"],
+        common_raw_updater=None,
+        etf_raw_updater=None,
+        common_adjusted_updater=None,
+        etf_adjusted_updater=None,
+        corporate_action_state_store=state,
+        corporate_action_refresh_service=service,
+        corporate_action_snapshot_loader=lambda day: observations.get(day, []),
+    )
+
+
+def _cleaning_service(state: CorporateActionStateStore):
+    class Service:
+        state_store = state
+
+        def __init__(self):
+            self.calls: list[str] = []
+
+        def refresh_dirty(self, ticker, target):
+            self.calls.append(ticker)
+            assert state.claim_refresh(ticker)
+            state.mark_clean(ticker)
+            return RefreshResult(ticker, "CLEAN", "TEST_REFRESH", 0, None, None, None, target)
+
+    return Service()
+
+
 def test_corporate_action_baselines_old_raw_before_new_observation_and_refreshes_change(tmp_path):
     raw = KrxRawStockStore(tmp_path / "raw")
     raw.save_snapshot("KOSPI", "2026-08-21", _raw_frame("2026-08-21", "000001", 100), "/sto/stk")
@@ -328,6 +360,99 @@ def test_corporate_action_baselines_old_raw_before_new_observation_and_refreshes
     assert result["status"] == "PASS"
     assert result["baseline_count"] == 1
     assert provider.calls == [("000001", "2026-08-21", "2026-08-24")]
+    assert state.get("000001").status == "CLEAN"
+
+
+def test_corporate_action_phase_skips_only_past_replays_and_retries_dirty(tmp_path):
+    state = CorporateActionStateStore(tmp_path / "state.sqlite3")
+    state.evaluate_and_record(CorporateActionSnapshot("000001", "2026-09-15", 100))
+    state.evaluate_and_record(CorporateActionSnapshot("000001", "2026-09-16", 200))
+    service = _cleaning_service(state)
+    observations = {
+        "2026-09-14": [CorporateActionSnapshot("000001", "2026-09-14", 100)],
+        "2026-09-15": [CorporateActionSnapshot("000001", "2026-09-15", 100)],
+        "2026-09-16": [CorporateActionSnapshot("000001", "2026-09-16", 200)],
+    }
+    foundation = _phase_foundation(tmp_path, state, service, observations)
+
+    result = foundation._run_corporate_action_phase(
+        "2026-09-16",
+        ["2026-09-14", "2026-09-15", "2026-09-16"],
+        managed_universe={"000001"},
+    )
+
+    assert result["skipped_replay_count"] == 2
+    assert result["skipped_replays"] == [
+        {"ticker": "000001", "as_of": "2026-09-14", "persisted_as_of": "2026-09-16"},
+        {"ticker": "000001", "as_of": "2026-09-15", "persisted_as_of": "2026-09-16"},
+    ]
+    assert result["observed_count"] == 1
+    assert service.calls == ["000001"]
+    assert state.get("000001").status == "CLEAN"
+
+
+def test_corporate_action_phase_keeps_same_day_conflict_blocked(tmp_path):
+    state = CorporateActionStateStore(tmp_path / "state.sqlite3")
+    state.evaluate_and_record(CorporateActionSnapshot("000001", "2026-09-16", 100))
+    service = _cleaning_service(state)
+    foundation = _phase_foundation(
+        tmp_path,
+        state,
+        service,
+        {"2026-09-16": [CorporateActionSnapshot("000001", "2026-09-16", 200)]},
+    )
+
+    with pytest.raises(DailyUpdateFoundationError, match="SOURCE_CONFLICT"):
+        foundation._run_corporate_action_phase(
+            "2026-09-16",
+            ["2026-09-16"],
+            managed_universe={"000001"},
+        )
+
+
+def test_corporate_action_phase_processes_newer_observation(tmp_path):
+    state = CorporateActionStateStore(tmp_path / "state.sqlite3")
+    state.evaluate_and_record(CorporateActionSnapshot("000001", "2026-09-15", 100))
+    service = _cleaning_service(state)
+    foundation = _phase_foundation(
+        tmp_path,
+        state,
+        service,
+        {"2026-09-16": [CorporateActionSnapshot("000001", "2026-09-16", 200)]},
+    )
+
+    result = foundation._run_corporate_action_phase(
+        "2026-09-16",
+        ["2026-09-16"],
+        managed_universe={"000001"},
+    )
+
+    assert result["skipped_replay_count"] == 0
+    assert result["observed_count"] == 1
+    assert service.calls == ["000001"]
+    assert state.get("000001").status == "CLEAN"
+
+
+def test_corporate_action_phase_processes_new_ticker_without_state(tmp_path):
+    state = CorporateActionStateStore(tmp_path / "state.sqlite3")
+    service = _cleaning_service(state)
+    foundation = _phase_foundation(
+        tmp_path,
+        state,
+        service,
+        {"2026-09-16": [CorporateActionSnapshot("000001", "2026-09-16", 100)]},
+    )
+
+    result = foundation._run_corporate_action_phase(
+        "2026-09-16",
+        ["2026-09-16"],
+        managed_universe={"000001"},
+    )
+
+    assert result["skipped_replay_count"] == 0
+    assert result["observed_count"] == 1
+    assert result["refreshes"] == []
+    assert service.calls == []
     assert state.get("000001").status == "CLEAN"
 
 

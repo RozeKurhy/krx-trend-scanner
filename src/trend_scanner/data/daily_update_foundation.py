@@ -686,7 +686,18 @@ class DailyUpdateFoundation:
                 state_store.evaluate_and_record(baseline)
                 baseline_count += 1
         observed = 0
+        skipped_replays: list[dict[str, str]] = []
         for snapshot in snapshots:
+            persisted = state_store.get(snapshot.ticker)
+            if persisted is not None and snapshot.as_of < persisted.as_of:
+                skipped_replays.append(
+                    {
+                        "ticker": snapshot.ticker,
+                        "as_of": snapshot.as_of.isoformat(),
+                        "persisted_as_of": persisted.as_of.isoformat(),
+                    }
+                )
+                continue
             try:
                 state_store.evaluate_and_record(snapshot)
                 observed += 1
@@ -716,6 +727,8 @@ class DailyUpdateFoundation:
         return {
             "status": "PASS",
             "observed_count": observed,
+            "skipped_replay_count": len(skipped_replays),
+            "skipped_replays": skipped_replays,
             "baseline_count": baseline_count,
             "managed_ticker_count": len(effective_managed),
             "dirty_tickers": dirty_tickers,
