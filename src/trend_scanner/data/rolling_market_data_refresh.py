@@ -784,6 +784,8 @@ class ProductionRawCoverageAuthority:
     end_date: str
     covered_dates_by_market: Mapping[str, frozenset[str]]
     observed_dates_by_market_ticker: Mapping[tuple[str, str], frozenset[str]]
+    confirmed_nontrading_dates_by_market_ticker: Mapping[tuple[str, str], frozenset[str]]
+    unresolved_dates_by_market_ticker: Mapping[tuple[str, str], Mapping[str, str]]
 
 
 def _load_production_raw_coverage_authority(
@@ -794,6 +796,8 @@ def _load_production_raw_coverage_authority(
 ) -> ProductionRawCoverageAuthority:
     covered_dates_by_market: dict[str, frozenset[str]] = {}
     observed_dates_by_market_ticker: dict[tuple[str, str], set[str]] = {}
+    confirmed_nontrading_dates_by_market_ticker: dict[tuple[str, str], set[str]] = {}
+    unresolved_dates_by_market_ticker: dict[tuple[str, str], dict[str, str]] = {}
     for market in ("KOSPI", "KOSDAQ"):
         covered_dates: set[str] = set()
         for manifest_row in raw_store.list_manifest(market):
@@ -814,10 +818,14 @@ def _load_production_raw_coverage_authority(
                     row.volume,
                     row.trading_value,
                 )
-                if state != ClosureState.USABLE_ADJUSTED_OBSERVATION:
-                    continue
                 ticker = str(row.ticker).zfill(6)
-                observed_dates_by_market_ticker.setdefault((market, ticker), set()).add(day)
+                key = (market, ticker)
+                if state == ClosureState.USABLE_ADJUSTED_OBSERVATION:
+                    observed_dates_by_market_ticker.setdefault(key, set()).add(day)
+                elif state == ClosureState.CONFIRMED_NONTRADING:
+                    confirmed_nontrading_dates_by_market_ticker.setdefault(key, set()).add(day)
+                else:
+                    unresolved_dates_by_market_ticker.setdefault(key, {})[day] = state.value
         covered_dates_by_market[market] = frozenset(covered_dates)
     return ProductionRawCoverageAuthority(
         start_date=start_date,
@@ -825,6 +833,12 @@ def _load_production_raw_coverage_authority(
         covered_dates_by_market=covered_dates_by_market,
         observed_dates_by_market_ticker={
             key: frozenset(value) for key, value in observed_dates_by_market_ticker.items()
+        },
+        confirmed_nontrading_dates_by_market_ticker={
+            key: frozenset(value) for key, value in confirmed_nontrading_dates_by_market_ticker.items()
+        },
+        unresolved_dates_by_market_ticker={
+            key: dict(sorted(value.items())) for key, value in unresolved_dates_by_market_ticker.items()
         },
     )
 
@@ -2879,6 +2893,50 @@ class RollingAdjustedPriceUpdater:
             end_date=target_as_of,
         )
 
+    @staticmethod
+    def _production_raw_unresolved_observations(
+        ticker: str,
+        current_identity: Mapping[str, Any] | None,
+        production_raw_coverage: ProductionRawCoverageAuthority | None,
+    ) -> list[dict[str, str]]:
+        if current_identity is None or production_raw_coverage is None:
+            return []
+        market = str(current_identity.get("market", "")).upper()
+        classifications = production_raw_coverage.unresolved_dates_by_market_ticker.get(
+            (market, ticker), {}
+        )
+        return [
+            {
+                "ticker": ticker,
+                "date": day,
+                "classification": classification,
+                "reason": "PRODUCTION_RAW_OBSERVATION_NOT_USABLE_OR_UNRESOLVED",
+            }
+            for day, classification in sorted(classifications.items())
+            if day <= production_raw_coverage.end_date
+        ]
+
+    @classmethod
+    def _production_raw_unresolved_block(
+        cls,
+        ticker: str,
+        current_identity: Mapping[str, Any] | None,
+        production_raw_coverage: ProductionRawCoverageAuthority | None,
+    ) -> dict[str, Any] | None:
+        observations = cls._production_raw_unresolved_observations(
+            ticker, current_identity, production_raw_coverage
+        )
+        if not observations:
+            return None
+        return {
+            "ticker": ticker,
+            "missing_dates": [],
+            "missing_date_count": 0,
+            "reason": "UNRESOLVED_PRODUCTION_RAW_OBSERVATION",
+            "status": "BLOCKED",
+            "unresolved_raw_observations": observations,
+        }
+
     def _required_sessions(
         self,
         ticker: str,
@@ -2946,6 +3004,13 @@ class RollingAdjustedPriceUpdater:
                     "reason": "HISTORICAL_ONLY_IDENTITY_NOT_REQUIRED_AFTER_LIFECYCLE",
                     "status": "EXPLAINED_EXCLUSION",
                 })
+                continue
+            unresolved_block = self._production_raw_unresolved_block(
+                normalized, identity.interval, production_raw_coverage
+            )
+            if unresolved_block is not None:
+                records.append(unresolved_block)
+                blocked.append(unresolved_block)
                 continue
             resolution, required = self._required_sessions(
                 normalized,
@@ -3130,6 +3195,12 @@ class RollingAdjustedPriceUpdater:
                     "reason": "HISTORICAL_ONLY_IDENTITY_NOT_REQUIRED_AFTER_LIFECYCLE",
                     "missing_date_count": 0,
                 })
+                continue
+            unresolved_block = self._production_raw_unresolved_block(
+                normalized, current_identity, production_raw_coverage
+            )
+            if unresolved_block is not None:
+                blocked.append(unresolved_block)
                 continue
             resolution, expected_dates = self._required_sessions(
                 normalized,
