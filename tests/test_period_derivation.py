@@ -1,8 +1,10 @@
 """2단계 주봉·월봉 최소 구현(period_derivation.py) 집중 시험.
 
-w.md(KRX 데일리 업데이트 V01 — 2단계 주봉·월봉 최소 구현 지시서) §10 A~G에
-대응한다. H(FAST 신호 기준점 보호)는 기존 test_pattern_a_fast_weekly_close.py
-등으로 별도 확인한다(이 파일에서는 새로 만들지 않음).
+w.md(KRX 데일리 업데이트 V01 — 2단계 주봉·월봉 최소 구현 보정 지시서) §8
+A~I에 대응한다. I(FAST 신호 기준점 보호)는 이 파일에서 새로 만들지 않고
+tests/test_pattern_a_fast_evaluator_parity.py,
+tests/test_pattern_a_fast_stock_report.py,
+tests/test_pattern_a_fast_weekly_close.py를 별도로 재실행해서 확인한다.
 """
 
 from __future__ import annotations
@@ -10,10 +12,12 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+from trend_scanner.data import period_derivation
 from trend_scanner.data.market_calendar import MarketCalendarAuthority
 from trend_scanner.data.period_derivation import (
     BLOCKED,
     COMPLETE,
+    FAILED,
     PASS,
     PROVISIONAL,
     derive_periods,
@@ -53,23 +57,23 @@ def test_a_normal_trading_friday_is_complete():
 
 
 def test_b_friday_holiday_is_still_complete():
-    """가장 중요한 시험: 목요일이 실제 마지막 거래일, 금요일 휴장.
+    """가장 중요한 시험: 실제 운영 형태로 캘린더를 미래로 넓히지 않는다.
 
-    target_as_of = 금요일이라도 `target_as_of > certified_through`라는
+    목요일(2026-01-15)이 캘린더 권위가 아는 마지막 실제 거래일이고, 금요일
+    (2026-01-16)은 휴장이라 캘린더에도 daily에도 아예 존재하지 않는다.
+    `calendar.max_observed_trading_date`가 W-FRI 라벨(금요일)에 못 미친다는
     이유만으로 BLOCKED되면 실패다.
     """
-    # 2026-01-15(목)까지만 일봉 존재. 2026-01-16(금)은 휴장이라 데이터 없음.
+    # 시장/종목 모두 2026-01-15(목)까지만 실제 거래일이 존재한다.
     dates = pd.bdate_range("2026-01-05", "2026-01-15")
     daily = _daily_frame(dates)
-    # 캘린더 권위는 2026-01-16(금)을 제외한 채로 그 이후까지 넓게 확장돼 있다
-    # (KRX 휴장일은 사전에 알려져 있어, 캘린더 프론티어가 실제 인증 경계보다
-    # 앞서 있는 것이 정상적인 운영 형태다).
-    wide_dates = pd.bdate_range("2026-01-05", "2026-03-31").drop(pd.Timestamp("2026-01-16"))
-    calendar = MarketCalendarAuthority.from_dates(wide_dates, last_completed_month="2025-12")
+    # 캘린더 권위도 실제 운영처럼 마지막 확인된 거래일(목)까지만 안다 —
+    # 미래로 인위 확장하지 않는다.
+    calendar = MarketCalendarAuthority.from_dates(dates, last_completed_month="2025-12")
+    assert calendar.max_observed_trading_date == pd.Timestamp("2026-01-15")
 
     target_as_of = "2026-01-16"  # 마지막 실제 거래일(목)보다 뒤, 휴장 금요일
-    certified_through = daily.index.max()
-    assert pd.Timestamp(target_as_of) > certified_through  # 전제 조건 명시
+    assert pd.Timestamp(target_as_of) > calendar.max_observed_trading_date  # 전제 조건 명시
 
     result = derive_periods(daily, target_as_of, calendar)
 
@@ -95,7 +99,48 @@ def test_c_midweek_target_as_of_is_provisional():
     assert result.weekly_status == PROVISIONAL
 
 
-def test_d_completed_month_is_complete():
+def test_d_halted_ticker_weekly_is_still_complete():
+    """거래정지 종목: 시장 주간은 끝났는데 종목 마지막 관측일은 화요일뿐이다.
+
+    시장은 월~금(2026-01-05~09) 정상 거래했다고 가정한다. 이 종목은
+    월·화(01-05, 01-06)까지만 거래되고 수~금은 거래정지라 일봉이 없다.
+    target_as_of=금요일이면, 시장 주간이 이미 끝났으므로 weekly_status는
+    COMPLETE여야 한다 — 종목 마지막 관측일(화)을 시장 완료 경계로 쓰면
+    안 된다.
+    """
+    market_dates = pd.bdate_range("2026-01-05", "2026-01-09")  # 시장: 월~금 정상
+    ticker_dates = market_dates[:2]  # 종목: 월, 화만 거래(수~금 거래정지)
+    daily = _daily_frame(ticker_dates)
+    calendar = MarketCalendarAuthority.from_dates(market_dates, last_completed_month="2025-12")
+
+    result = derive_periods(daily, "2026-01-09", calendar)
+
+    assert result.final_status == PASS
+    assert result.weekly_status == COMPLETE
+    assert result.effective_daily_boundary == "2026-01-06"  # 종목 마지막 관측일(화)은 메타데이터로만 남는다
+
+
+def test_e_halted_ticker_monthly_is_still_complete():
+    """거래정지 종목: 운영 캘린더가 그 달을 완료 확정했는데 종목은 월초에 거래정지됐다.
+
+    캘린더 권위는 2025-12을 완료 월로 확정한다. 이 종목의 마지막 일봉은
+    2025-12-05(거래정지 이전)뿐이다. target_as_of가 그 완료 월 기준일이면
+    monthly_status는 COMPLETE여야 한다 — 종목 마지막 관측일을 시장 월봉
+    완료 경계로 쓰면 안 된다.
+    """
+    market_dates = pd.bdate_range("2025-12-01", "2026-01-15")  # 캘린더: 다음 달까지 관측됨
+    ticker_dates = pd.bdate_range("2025-12-01", "2025-12-05")  # 종목: 12월 첫 주만 거래
+    daily = _daily_frame(ticker_dates)
+    calendar = MarketCalendarAuthority.from_dates(market_dates, last_completed_month="2025-12")
+
+    result = derive_periods(daily, "2025-12-31", calendar)
+
+    assert result.final_status == PASS
+    assert result.monthly_status == COMPLETE
+    assert result.effective_daily_boundary == "2025-12-05"  # 종목 마지막 관측일(거래정지 직전)은 메타데이터로만 남는다
+
+
+def test_completed_month_is_complete():
     dates = pd.bdate_range("2025-12-01", "2026-01-15")
     daily = _daily_frame(dates)
     # 2025-12은 완료 월로 확정, 2026-01은 아직 진행 중(2026-01-15까지만 관측).
@@ -107,7 +152,7 @@ def test_d_completed_month_is_complete():
     assert result.monthly_status == COMPLETE
 
 
-def test_e_latest_observed_month_is_provisional():
+def test_f_latest_observed_month_is_provisional():
     dates = pd.bdate_range("2025-12-01", "2026-01-15")
     daily = _daily_frame(dates)
     calendar = MarketCalendarAuthority.from_dates(dates, last_completed_month="2025-12")
@@ -118,7 +163,7 @@ def test_e_latest_observed_month_is_provisional():
     assert result.monthly_status == PROVISIONAL
 
 
-def test_f_same_input_is_deterministic():
+def test_g_same_input_is_deterministic():
     dates = pd.bdate_range("2026-01-05", "2026-01-16")
     daily = _daily_frame(dates)
     calendar = MarketCalendarAuthority.from_dates(
@@ -136,9 +181,11 @@ def test_f_same_input_is_deterministic():
     pd.testing.assert_frame_equal(first.monthly, second.monthly)
 
 
-def test_g_required_week_dates_unverifiable_is_blocked():
+def test_h_required_week_dates_unverifiable_is_blocked():
     # daily는 2026-01-16(금)까지 있지만, 캘린더 권위는 2026-01-09(금)까지만
-    # 확장돼 있어 그 주(2026-01-16 W-FRI)의 필요 거래일을 증명할 수 없다.
+    # 확장돼 있어 그 주(2026-01-16 W-FRI, 시작일 2026-01-10)의 필요 거래일
+    # 자체를 증명할 수 없다. 휴장 금요일이라는 이유만으로 권위 부족 취급하는
+    # 것이 아니라, 캘린더가 그 주 시작일조차 모르는 진짜 권위 부족이다.
     dates = pd.bdate_range("2026-01-05", "2026-01-16")
     daily = _daily_frame(dates)
     calendar = MarketCalendarAuthority.from_dates(
@@ -162,3 +209,23 @@ def test_no_certified_daily_is_blocked():
 
     assert result.final_status == BLOCKED
     assert result.reason == "DATA_UNAVAILABLE: NO_CERTIFIED_DAILY"
+
+
+def test_unexpected_error_is_failed_not_blocked(monkeypatch):
+    """예상치 못한 구현 오류는 BLOCKED가 아니라 FAILED로 나와야 한다(계약 §12)."""
+    dates = pd.bdate_range("2026-01-05", "2026-01-16")
+    daily = _daily_frame(dates)
+    calendar = MarketCalendarAuthority.from_dates(
+        pd.bdate_range("2026-01-05", "2026-03-31"),
+        last_completed_month="2025-12",
+    )
+
+    def _boom(*_args, **_kwargs):
+        raise RuntimeError("simulated unexpected implementation error")
+
+    monkeypatch.setattr(period_derivation, "to_weekly", _boom)
+
+    result = derive_periods(daily, "2026-01-16", calendar)
+
+    assert result.final_status == FAILED
+    assert result.reason is not None and result.reason.startswith("UNEXPECTED_ERROR:RuntimeError")
