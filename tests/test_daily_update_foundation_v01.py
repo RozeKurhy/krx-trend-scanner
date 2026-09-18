@@ -20,6 +20,7 @@ from trend_scanner.data.index_store import INDEX_STORE_COLUMNS, IndexStore, MARK
 from trend_scanner.data.krx_market_index import KRX_MARKET_INDEX_MAP
 from trend_scanner.data.krx_raw_stock_provider import RAW_COLUMNS
 from trend_scanner.data.rolling_market_data_refresh import (
+    ETF_RAW_COVERAGE_START,
     ETF_VALIDATED_ACCEPTANCE_TICKERS,
     PitExtensionResult,
     RollingEtfAdjustedUpdater,
@@ -192,9 +193,21 @@ class EmptyCorporateActionService:
         raise AssertionError("the foundation fixture has no corporate-action dirty state")
 
 
-def _foundation(tmp_path: Path, *, calendar: list[str], complete: list[str], certified: str | None = None, **overrides):
+def _foundation(
+    tmp_path: Path,
+    *,
+    calendar: list[str],
+    complete: list[str],
+    certified: str | None = None,
+    etf_complete: list[str] | None = None,
+    **overrides,
+):
     authority = _authority(tmp_path, calendar, certified=certified)
-    raw = FakeRawStore(calendar=calendar, complete=complete, etf_complete=complete)
+    raw = FakeRawStore(
+        calendar=calendar,
+        complete=complete,
+        etf_complete=complete if etf_complete is None else etf_complete,
+    )
     common_raw = overrides.get("common_raw", FakeCommonRaw(raw))
     etf_raw = overrides.get("etf_raw", FakeEtfRaw(raw))
     common_adjusted = overrides.get("common_adjusted", FakeAdjusted())
@@ -322,6 +335,112 @@ def test_etf_raw_middle_gap_is_detected_from_common_sessions(tmp_path):
     updater = RollingRawEtfUpdater(None, raw)
     plan = updater.plan("2026-08-03", "2026-08-03", required_dates=["2026-08-01", "2026-08-02", "2026-08-03"])
     assert plan["missing_dates"] == ["2026-08-02"]
+
+
+def test_etf_raw_coverage_start_clamps_foundation_and_updater_required_dates(tmp_path):
+    calendar = ["2013-12-30", ETF_RAW_COVERAGE_START, "2014-01-03"]
+    foundation, raw, *_ = _foundation(
+        tmp_path,
+        calendar=calendar,
+        complete=calendar,
+        etf_complete=[ETF_RAW_COVERAGE_START],
+        certified=ETF_RAW_COVERAGE_START,
+    )
+
+    foundation_plan = foundation.plan("2014-01-03")
+    assert foundation_plan["etf_raw"]["required_dates"] == [ETF_RAW_COVERAGE_START, "2014-01-03"]
+    assert foundation_plan["etf_raw"]["missing_dates"] == ["2014-01-03"]
+
+    updater_plan = RollingRawEtfUpdater(None, raw).plan(
+        ETF_RAW_COVERAGE_START,
+        "2014-01-03",
+        required_dates=calendar,
+    )
+    assert updater_plan["trading_sessions"] == [ETF_RAW_COVERAGE_START, "2014-01-03"]
+    assert updater_plan["missing_dates"] == ["2014-01-03"]
+
+
+def test_etf_raw_coverage_start_live_refresh_targets_start_date_only():
+    pre_coverage = "2013-12-30"
+
+    class Provider:
+        def __init__(self):
+            self.calls = []
+
+        def fetch_snapshot(self, requested_day):
+            self.calls.append(requested_day)
+            return pd.DataFrame()
+
+    class WritableFakeRawStore(FakeRawStore):
+        def save_snapshot(self, market, day, frame, endpoint):
+            self.mark_complete(day, market)
+
+    writable = WritableFakeRawStore(
+        calendar=[pre_coverage, ETF_RAW_COVERAGE_START],
+        complete=[pre_coverage, ETF_RAW_COVERAGE_START],
+        etf_complete=[],
+    )
+    provider = Provider()
+    result = RollingRawEtfUpdater(provider, writable).refresh(
+        "2013-12-27",
+        ETF_RAW_COVERAGE_START,
+        required_dates=[pre_coverage, ETF_RAW_COVERAGE_START],
+    )
+    assert provider.calls == [ETF_RAW_COVERAGE_START]
+    assert result["required_dates"] == [ETF_RAW_COVERAGE_START]
+    assert result["missing_dates"] == []
+
+
+def test_etf_raw_precoverage_absence_does_not_call_provider_or_block_completion(tmp_path):
+    day = "2013-12-30"
+    foundation, raw, *_ = _foundation(
+        tmp_path,
+        calendar=[day],
+        complete=[day],
+        etf_complete=[],
+        certified=day,
+    )
+    foundation_plan = foundation.plan(day)
+    assert foundation_plan["etf_raw"]["required_dates"] == []
+    assert foundation_plan["etf_raw"]["missing_dates"] == []
+
+    class Provider:
+        def __init__(self):
+            self.calls = []
+
+        def fetch_snapshot(self, requested_day):
+            self.calls.append(requested_day)
+            raise AssertionError("pre-coverage ETF session must not call the provider")
+
+    provider = Provider()
+    result = RollingRawEtfUpdater(provider, raw).refresh(
+        "2013-12-27",
+        day,
+        required_dates=[day],
+    )
+    assert provider.calls == []
+    assert result["required_dates"] == []
+    assert result["missing_dates"] == []
+
+    dry_run = foundation.execute(day, dry_run=True)
+    assert dry_run["final_status"] == "NOOP"
+    assert dry_run["etf_raw"]["missing_dates"] == []
+
+
+def test_etf_raw_current_tail_remains_required_after_coverage_clamp(tmp_path):
+    tail = ["2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17", "2026-09-18"]
+    calendar = ["2013-12-30", ETF_RAW_COVERAGE_START, "2014-01-03", *tail]
+    raw = FakeRawStore(
+        calendar=calendar,
+        complete=calendar,
+        etf_complete=[ETF_RAW_COVERAGE_START, "2014-01-03"],
+    )
+    plan = RollingRawEtfUpdater(None, raw).plan(
+        "2026-09-11",
+        "2026-09-18",
+        required_dates=calendar,
+    )
+    assert plan["missing_dates"] == tail
 
 
 def test_market_index_middle_gap_is_detected_before_boundary():

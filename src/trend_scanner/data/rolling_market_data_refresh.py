@@ -97,6 +97,10 @@ from trend_scanner.universe.historical_authority_reconciliation import (
 ROLLING_AUTHORITY_VERSION = "ROLLING_MARKET_DATA_V01"
 DEFAULT_ROLLING_AUTHORITY_DIR = Path("data/market/rolling_authority")
 FROZEN_FULL_POPULATION_CLOSURE_BOUNDARY = "2026-08-21"
+# This is the lower bound of the ETF raw authority currently validated and used by this
+# project.  It is an operating coverage contract, not a claim about the historical capability
+# of the KRX Open API itself.  Expanding below it is a separately approved historical-scope task.
+ETF_RAW_COVERAGE_START = "2014-01-02"
 
 # BLOCKER B (directive section 14): closure artifacts already certified, by direct evidence, that
 # PIT COMMON population (3162 tickers) minus these 13 explicitly removed identities equals
@@ -194,6 +198,16 @@ def _normalise_session_dates(values: Sequence[str] | None) -> list[str]:
     if not values:
         return []
     return sorted({pd.Timestamp(value).date().isoformat() for value in values})
+
+
+def _etf_raw_required_dates(values: Sequence[str] | None, target_as_of: str) -> list[str]:
+    """Apply the validated production ETF raw coverage lower bound to required sessions."""
+
+    return [
+        day
+        for day in _normalise_session_dates(values)
+        if ETF_RAW_COVERAGE_START <= day <= str(target_as_of)
+    ]
 
 
 def _missing_session_dates(required_dates: Sequence[str], observed_dates: Sequence[str]) -> list[str]:
@@ -1399,13 +1413,14 @@ class RollingRawEtfUpdater:
         self.request_interval_ms = request_interval_ms
 
     def _session_dates(self, start: str, end: str) -> tuple[list[str], list[str]]:
+        start = max(str(start), ETF_RAW_COVERAGE_START)
         rows = self.raw_store.list_manifest("KOSPI")
         trading = [str(r["date"]) for r in rows if start <= str(r["date"]) <= end and r["status"] == "COMPLETE"]
         closed = [str(r["date"]) for r in rows if start <= str(r["date"]) <= end and r["status"] == "NO_DATA"]
         return sorted(trading), sorted(closed)
 
     def plan(self, current_boundary: str, target_as_of: str, *, required_dates: Sequence[str] | None = None) -> dict[str, Any]:
-        sessions = _normalise_session_dates(required_dates)
+        sessions = _etf_raw_required_dates(required_dates, target_as_of)
         if sessions:
             trading = [
                 day for day in sessions
@@ -1418,9 +1433,9 @@ class RollingRawEtfUpdater:
                 and self.raw_store.get_manifest("KOSPI", day).get("status") == "NO_DATA"
             ]
             missing = [day for day in trading if self.raw_store.get_manifest("ETF", day) is None]
-            start = min(missing, default=_next_day(current_boundary))
+            start = min(missing, default=max(_next_day(current_boundary), ETF_RAW_COVERAGE_START))
         else:
-            start = _next_day(current_boundary)
+            start = max(_next_day(current_boundary), ETF_RAW_COVERAGE_START)
             trading, closed = self._session_dates(start, target_as_of)
             missing = [day for day in trading if self.raw_store.get_manifest("ETF", day) is None]
         return {
@@ -1439,7 +1454,7 @@ class RollingRawEtfUpdater:
     ) -> dict[str, Any]:
         import time
 
-        sessions = set(_normalise_session_dates(required_dates))
+        sessions = set(_etf_raw_required_dates(required_dates, target_as_of))
         if sessions:
             trading = [
                 day for day in sorted(sessions)
@@ -1454,10 +1469,10 @@ class RollingRawEtfUpdater:
             start = min(
                 [day for day in trading if self.raw_store.get_manifest("ETF", day) is None]
                 + [day for day in closed if self.raw_store.get_manifest("ETF", day) is None]
-                or [_next_day(current_boundary)]
+                or [max(_next_day(current_boundary), ETF_RAW_COVERAGE_START)]
             )
         else:
-            start = _next_day(current_boundary)
+            start = max(_next_day(current_boundary), ETF_RAW_COVERAGE_START)
             trading, closed = self._session_dates(start, target_as_of)
         saved_no_data = 0
         for day in closed:
@@ -1485,7 +1500,15 @@ class RollingRawEtfUpdater:
             for r in self.raw_store.list_manifest("ETF")
             if r.get("status") == "COMPLETE" and str(r["date"]) <= target_as_of
         }
-        required_trading = sorted(set(trading) | {day for day in sessions if self.raw_store.get_manifest("KOSPI", day) and self.raw_store.get_manifest("KOSPI", day).get("status") == "COMPLETE"})
+        required_trading = sorted(
+            set(trading)
+            | {
+                day
+                for day in sessions
+                if self.raw_store.get_manifest("KOSPI", day)
+                and self.raw_store.get_manifest("KOSPI", day).get("status") == "COMPLETE"
+            }
+        )
         missing_after = _missing_session_dates(required_trading, complete)
         new_boundary = max(complete, default=current_boundary) if not missing_after else current_boundary
         return {
@@ -3945,6 +3968,7 @@ __all__ = [
     "ROLLING_AUTHORITY_VERSION",
     "DEFAULT_ROLLING_AUTHORITY_DIR",
     "FROZEN_FULL_POPULATION_CLOSURE_BOUNDARY",
+    "ETF_RAW_COVERAGE_START",
     "DEFAULT_REMOVED_IDENTITY_AUDIT_PATH",
     "DEFAULT_ZERO_STORE_CONTRACT_PATH",
     "DEFAULT_FULL_POPULATION_CLOSURE_RESULTS_PATH",

@@ -29,6 +29,7 @@ from trend_scanner.data.rolling_market_data_refresh import (
     DEFAULT_MERGED_CALENDAR_PATH,
     DEFAULT_MERGED_PIT_PATH,
     DEFAULT_ROLLING_AUTHORITY_DIR,
+    _etf_raw_required_dates,
     ETF_VALIDATED_ACCEPTANCE_TICKERS,
     PitExtensionResult,
     RollingAuthorityError,
@@ -226,12 +227,13 @@ class DailyUpdateFoundation:
             if day not in finalized_no_data
         ]
         required_candidates = sorted(set(known_dates) | set(tail_candidates))
+        etf_required_dates = _etf_raw_required_dates(required_candidates, target)
         complete_raw = sorted(
             set(_paired_complete_dates(self.raw_store, target)) | finalized_no_data
         )
         common_missing = sorted(set(required_candidates) - set(complete_raw))
         etf_missing = [
-            day for day in required_candidates
+            day for day in etf_required_dates
             if self.raw_store.get_manifest("KOSPI", day) is not None
             and self.raw_store.get_manifest("KOSPI", day).get("status") == "COMPLETE"
             and not (
@@ -274,7 +276,12 @@ class DailyUpdateFoundation:
             "operating_calendar_frontier": authority["operating_frontier"],
             "required_candidate_dates": required_candidates,
             "common_raw": _leg_summary("PLAN", missing=common_missing, reason="REQUIRED_MINUS_COMPLETE"),
-            "etf_raw": _leg_summary("PLAN", missing=etf_missing, reason="REQUIRED_MINUS_COMPLETE"),
+            "etf_raw": _leg_summary(
+                "PLAN",
+                missing=etf_missing,
+                required_dates=etf_required_dates,
+                reason="REQUIRED_MINUS_COMPLETE",
+            ),
             "common_adjusted": common_adjusted_plan,
             "etf_adjusted": etf_adjusted_plan,
             "market_index": market_index_plan,
@@ -726,6 +733,8 @@ class DailyUpdateFoundation:
             values = result.get("required_dates")
             if values is None:
                 values = plan.get(name, {}).get("required_dates", plan.get("required_candidate_dates", ()))
+            if name == "etf_raw":
+                return _etf_raw_required_dates(values or (), str(plan["target_as_of"]))
             return _normalise_session_dates(values or ())
 
         def terminal_raw(market: str, day: str, *, require_complete: bool = False) -> bool:
@@ -908,7 +917,7 @@ class DailyUpdateFoundation:
                 plan,
                 {
                     "common_raw": {"required_dates": plan["required_candidate_dates"]},
-                    "etf_raw": {"required_dates": plan["required_candidate_dates"]},
+                    "etf_raw": {"required_dates": plan["etf_raw"].get("required_dates", ())},
                     "common_adjusted": {"updated": [], "skipped": []},
                     "etf_adjusted": {"updated": [], "skipped": []},
                     "market_index": {"status": "IDEMPOTENT_NOOP"},

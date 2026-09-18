@@ -236,6 +236,20 @@ ETF 원천의 거래량과 거래대금은 원천 필드를 그대로 보존하�
 계산하지 않는다. 원천 인증이나 활용 승인이 되지 않으면 성공을 가장하지
 않고 `DATA_UNAVAILABLE: RAW_MISSING`으로 안전하게 차단한다.
 
+현재 production ETF raw authority의 운영 coverage lower bound는 다음과 같다.
+
+```text
+ETF_RAW_COVERAGE_START = 2014-01-02
+```
+
+이는 KRX 원천 자체의 2014년 이전 제공 가능 여부를 주장하는 값이 아니다.
+현재 프로젝트에서 검증되어 운영에 사용하는 ETF raw authority의 시작점이다.
+따라서 `2014-01-02` 이전 KOSPI·KOSDAQ 거래일은 Daily Update의 ETF raw 누락이나
+완료 게이트 차단 대상으로 계산하지 않는다. ETF raw historical scope를 이
+경계보다 과거로 확대하는 작업은 별도 승인 범위다. 이 lower bound는 ETF raw
+whole-market 계층에만 적용하며, ETF adjusted의 `2023-01-02` 시작 계약은
+변경하지 않는다.
+
 #### 시장 대표지수
 
 현재 `scripts/refresh_market_index_v01.py`의 증분 구조를 기준으로 한다.
