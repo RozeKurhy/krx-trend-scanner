@@ -173,6 +173,25 @@ class FakeAcquisition:
         return {"status": "COMPLETE", "network_attempts": 0}
 
 
+class EmptyCorporateActionState:
+    def list_states(self):
+        return []
+
+    def get(self, _ticker):
+        return None
+
+    def evaluate_and_record(self, _snapshot):
+        raise AssertionError("the foundation fixture has no corporate-action snapshots")
+
+
+class EmptyCorporateActionService:
+    def __init__(self):
+        self.state_store = EmptyCorporateActionState()
+
+    def refresh_dirty(self, *_args):
+        raise AssertionError("the foundation fixture has no corporate-action dirty state")
+
+
 def _foundation(tmp_path: Path, *, calendar: list[str], complete: list[str], certified: str | None = None, **overrides):
     authority = _authority(tmp_path, calendar, certified=certified)
     raw = FakeRawStore(calendar=calendar, complete=complete, etf_complete=complete)
@@ -191,6 +210,8 @@ def _foundation(tmp_path: Path, *, calendar: list[str], complete: list[str], cer
         etf_adjusted_updater=etf_adjusted,
         market_index_refresh=lambda target: {"status": "PROMOTED", "new_boundary": target, "request_count": 1},
         repository_validator=lambda target, authority_dir, legs: {"status": "PASS", "target": target},
+        corporate_action_state_store=EmptyCorporateActionState(),
+        corporate_action_refresh_service=EmptyCorporateActionService(),
         **{key: value for key, value in overrides.items() if key in {"basic_info_runner", "pit_extension_builder"}},
     ), raw, authority, common_raw, etf_raw, common_adjusted, etf_adjusted
 

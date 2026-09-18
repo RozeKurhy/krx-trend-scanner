@@ -404,7 +404,7 @@ class DailyUpdateFoundation:
         }
 
     def _managed_universe(self, target: str, pit_path: Path | None = None) -> set[str]:
-        """Return the exact current staged COMMON population plus accepted ETFs."""
+        """Return the exact current staged COMMON population for corporate-action control."""
 
         effective_pit = pit_path or (self.authority_dir / DEFAULT_MERGED_PIT_PATH.name)
         if effective_pit.exists():
@@ -415,10 +415,7 @@ class DailyUpdateFoundation:
             )
         else:
             common = self.common_adjusted_tickers
-        return {
-            normalize_ticker(ticker)
-            for ticker in (*common, *ETF_VALIDATED_ACCEPTANCE_TICKERS)
-        }
+        return {normalize_ticker(ticker) for ticker in common}
 
     @staticmethod
     def _active_pit_identities(
@@ -532,7 +529,15 @@ class DailyUpdateFoundation:
 
         if not hasattr(self.raw_store, "list_manifest") or not hasattr(self.raw_store, "load_snapshot"):
             return {}
-        targets = set(target_tickers or managed_universe)
+        targets = set(managed_universe if target_tickers is None else target_tickers)
+        if current_identities is not None:
+            targets = {
+                ticker
+                for ticker in targets
+                if ticker in current_identities
+                and str(current_identities[ticker].get("effective_from", ""))
+                and str(current_identities[ticker].get("effective_from", "")) <= certified_through
+            }
         if not targets:
             return {}
         latest: dict[str, CorporateActionSnapshot] = {}
@@ -640,6 +645,14 @@ class DailyUpdateFoundation:
             for ticker in observed_tickers & effective_managed
             if state_store.get(ticker) is None
         }
+        if current_identities is not None and baseline_boundary is not None:
+            baseline_targets = {
+                ticker
+                for ticker in baseline_targets
+                if ticker in current_identities
+                and str(current_identities[ticker].get("effective_from", ""))
+                and str(current_identities[ticker].get("effective_from", "")) <= baseline_boundary
+            }
         baseline_count = 0
         if baseline_boundary is not None:
             baselines = (
@@ -689,10 +702,117 @@ class DailyUpdateFoundation:
             "baseline_count": baseline_count,
             "managed_ticker_count": len(effective_managed),
             "dirty_tickers": dirty_tickers,
+            "remaining_dirty_tickers": [],
             "refreshes": refreshes,
             "physical_write_count": physical_writes,
             "production_write_performed": bool(physical_writes),
         }
+
+    def _validate_required_legs_complete(
+        self,
+        plan: Mapping[str, Any],
+        leg_results: Mapping[str, Any],
+    ) -> None:
+        """Fail closed unless every required leg has terminal, internally complete coverage."""
+
+        incomplete: list[str] = []
+
+        def result_for(name: str) -> Mapping[str, Any]:
+            value = leg_results.get(name, {})
+            return value if isinstance(value, Mapping) else {}
+
+        def required_dates_for(name: str) -> list[str]:
+            result = result_for(name)
+            values = result.get("required_dates")
+            if values is None:
+                values = plan.get(name, {}).get("required_dates", plan.get("required_candidate_dates", ()))
+            return _normalise_session_dates(values or ())
+
+        def terminal_raw(market: str, day: str, *, require_complete: bool = False) -> bool:
+            row = self.raw_store.get_manifest(market, day)
+            if row is None:
+                return False
+            status = str(row.get("status", "")).upper()
+            if status == "COMPLETE":
+                return True
+            if require_complete or status != "NO_DATA":
+                return False
+            checker = getattr(self.raw_store, "is_finalized_no_data", None)
+            return callable(checker) and bool(checker(market, day))
+
+        common_raw = result_for("common_raw")
+        common_required = required_dates_for("common_raw")
+        runner_result = common_raw.get("runner_result", {})
+        runner_status = (
+            str(runner_result.get("status", "")).upper()
+            if isinstance(runner_result, Mapping)
+            else ""
+        )
+        if common_raw.get("failures") or runner_status in {"FAILED", "ERROR", "BLOCKED"}:
+            incomplete.append("common_raw")
+        if common_required and any(
+            not (
+                terminal_raw("KOSPI", day, require_complete=True)
+                and terminal_raw("KOSDAQ", day, require_complete=True)
+            )
+            and not (
+                terminal_raw("KOSPI", day)
+                and terminal_raw("KOSDAQ", day)
+            )
+            for day in common_required
+        ):
+            incomplete.append("common_raw")
+        if not common_required and common_raw.get("missing_dates"):
+            incomplete.append("common_raw")
+
+        etf_raw = result_for("etf_raw")
+        etf_required = required_dates_for("etf_raw")
+        if etf_raw.get("failures") or etf_raw.get("missing_dates"):
+            incomplete.append("etf_raw")
+        if any(
+            self.raw_store.get_manifest("KOSPI", day) is not None
+            and str(self.raw_store.get_manifest("KOSPI", day).get("status", "")).upper() == "COMPLETE"
+            and not terminal_raw("ETF", day, require_complete=True)
+            for day in etf_required
+        ):
+            incomplete.append("etf_raw")
+
+        def adjusted_complete(name: str) -> bool:
+            result = result_for(name)
+            if result.get("failures") or result.get("blocked"):
+                return False
+            expected = {normalize_ticker(ticker) for ticker in result.get("expected_tickers", ())}
+            accounted = {
+                normalize_ticker(ticker) for ticker in result.get("updated", ())
+            }
+            accounted.update(
+                normalize_ticker(item.get("ticker"))
+                for item in result.get("skipped", ())
+                if isinstance(item, Mapping) and item.get("ticker")
+            )
+            return not expected or accounted == expected
+
+        if not adjusted_complete("common_adjusted"):
+            incomplete.append("common_adjusted")
+        if not adjusted_complete("etf_adjusted"):
+            incomplete.append("etf_adjusted")
+
+        if result_for("market_index").get("status") not in {"PROMOTED", "IDEMPOTENT_NOOP"}:
+            incomplete.append("market_index")
+        corporate_action = result_for("corporate_action")
+        if (
+            corporate_action.get("status") != "PASS"
+            or corporate_action.get("remaining_dirty_tickers")
+        ):
+            incomplete.append("corporate_action")
+        if result_for("repository_v2").get("status") != "PASS":
+            incomplete.append("repository_v2")
+        if result_for("pit_authority").get("status") not in {"STAGED", "UNCHANGED"}:
+            incomplete.append("pit_authority")
+
+        if incomplete:
+            unique = ",".join(dict.fromkeys(incomplete))
+            raise DailyUpdateFoundationError(f"BLOCKED_REQUIRED_LEG_INCOMPLETE:{unique}")
 
     def _build_extension(
         self,
@@ -781,8 +901,22 @@ class DailyUpdateFoundation:
             and not plan["market_index"].get("missing_dates")
             and not plan["authority_extension_needed"]
             and not plan["corporate_action"]["dirty_ticker_count"]
+            and plan["corporate_action"]["status"] == "PLANNED"
             and (target <= manifest.certified_through or target not in plan["required_candidate_dates"])
         ):
+            self._validate_required_legs_complete(
+                plan,
+                {
+                    "common_raw": {"required_dates": plan["required_candidate_dates"]},
+                    "etf_raw": {"required_dates": plan["required_candidate_dates"]},
+                    "common_adjusted": {"updated": [], "skipped": []},
+                    "etf_adjusted": {"updated": [], "skipped": []},
+                    "market_index": {"status": "IDEMPOTENT_NOOP"},
+                    "corporate_action": {"status": "PASS", "remaining_dirty_tickers": []},
+                    "repository_v2": {"status": "PASS"},
+                    "pit_authority": {"status": "UNCHANGED"},
+                },
+            )
             return {
                 **plan,
                 "final_status": "NOOP",
@@ -835,7 +969,7 @@ class DailyUpdateFoundation:
                         }
                 managed_universe = {
                     normalize_ticker(ticker)
-                    for ticker in (*common_tickers, *ETF_VALIDATED_ACCEPTANCE_TICKERS)
+                    for ticker in common_tickers
                 }
                 current_identities = self._active_pit_identities(
                     staged_pit_path,
@@ -920,6 +1054,7 @@ class DailyUpdateFoundation:
                 leg_results["repository_v2"] = dict(self.repository_validator(target, stage_dir, leg_results))
                 if leg_results["repository_v2"].get("status") != "PASS":
                     raise DailyUpdateFoundationError("BLOCKED_REPOSITORY_V2_VALIDATION")
+                self._validate_required_legs_complete(plan, leg_results)
                 if new_certified <= old_boundary:
                     update_observed = bool(
                         plan["common_raw"]["missing_dates"]
