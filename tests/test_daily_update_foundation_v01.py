@@ -28,6 +28,7 @@ from trend_scanner.data.rolling_market_data_refresh import (
     _missing_session_dates,
     _merge_adjusted_frames,
     _normalise_session_dates,
+    _session_ranges,
     write_merged_pit_extension,
     write_rolling_authority,
     RollingAuthorityManifest,
@@ -485,6 +486,137 @@ def test_common_adjusted_requests_only_missing_and_preserves_old_rows(tmp_path):
     assert result["updated"] == ["000001"]
     loaded = store.load_daily("000001")
     assert loaded.loc[pd.Timestamp("2026-08-03"), "close"] == old.loc[pd.Timestamp("2026-08-03"), "close"]
+
+
+def test_session_ranges_follow_required_trading_sequence():
+    required = ["2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11"]
+    assert _session_ranges(["2026-08-07", "2026-08-10"], required) == [
+        ("2026-08-07", "2026-08-10"),
+    ]
+    assert _session_ranges(["2026-08-07", "2026-08-11"], required) == [
+        ("2026-08-07", "2026-08-07"),
+        ("2026-08-11", "2026-08-11"),
+    ]
+    holiday_required = ["2026-10-08", "2026-10-12"]
+    assert _session_ranges(holiday_required, holiday_required) == [
+        ("2026-10-08", "2026-10-12"),
+    ]
+
+
+def test_common_adjusted_refresh_uses_required_sequence_ranges(tmp_path):
+    calendar = tmp_path / "calendar.json"
+    required = ["2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11"]
+    calendar.write_text(json.dumps({"trading_dates": required}))
+    pit = tmp_path / "pit.json"
+    pit.write_text(json.dumps({"intervals": [{
+        "ticker": "000001",
+        "state": "COMMON",
+        "effective_from": required[0],
+        "effective_to": required[-1],
+    }]}))
+    store = AdjustedPriceStore(tmp_path / "adjusted")
+    store.save_full("000001", _frame([required[0], required[-1]]), {
+        "requested_start": required[0],
+        "requested_end": required[-1],
+    })
+
+    class Provider:
+        calls = []
+
+        def load_daily(self, ticker, start, end):
+            self.calls.append((ticker, start, end))
+            return _frame(required[1:3], base=20)
+
+    from trend_scanner.data.rolling_market_data_refresh import RollingAdjustedPriceUpdater
+
+    provider = Provider()
+    result = RollingAdjustedPriceUpdater(
+        provider,
+        store,
+        pit_path=pit,
+        historical_calendar_path=calendar,
+    ).refresh(["000001"], "2026-08-05", required[-1])
+    assert provider.calls == [("000001", required[1], required[2])]
+    assert result["updated"] == ["000001"]
+
+
+def test_etf_adjusted_refresh_uses_required_sequence_ranges(monkeypatch, tmp_path):
+    monkeypatch.setattr("trend_scanner.data.rolling_market_data_refresh.ETF_VALIDATED_ACCEPTANCE_TICKERS", ("000001",))
+    required = ["2026-08-06", "2026-08-07", "2026-08-10", "2026-08-11"]
+
+    class PresenceRawStore:
+        def list_manifest(self, market=None):
+            if market == "KOSPI":
+                return [{"market": market, "date": day, "status": "COMPLETE"} for day in required]
+            if market == "ETF":
+                return [{"market": market, "date": day, "status": "COMPLETE"} for day in required]
+            return []
+
+        def load_snapshot(self, market, day):
+            return pd.DataFrame({"ticker": ["000001"]})
+
+    store = AdjustedPriceStore(tmp_path / "adjusted")
+    store.save_full("000001", _frame([required[0], required[-1]]), {
+        "requested_start": required[0],
+        "requested_end": required[-1],
+    })
+
+    class Provider:
+        calls = []
+
+        def load_daily(self, ticker, start, end):
+            self.calls.append((ticker, start, end))
+            return _frame(required[1:3], base=20)
+
+    provider = Provider()
+    result = RollingEtfAdjustedUpdater(
+        provider,
+        store,
+        raw_store=PresenceRawStore(),
+    ).refresh("2026-08-05", required[-1])
+    assert provider.calls == [("000001", required[1], required[2])]
+    assert result["updated"] == ["000001"]
+
+
+def test_etf_adjusted_uses_ticker_presence_to_remove_prelisting_gap_and_keep_tail(monkeypatch, tmp_path):
+    monkeypatch.setattr("trend_scanner.data.rolling_market_data_refresh.ETF_VALIDATED_ACCEPTANCE_TICKERS", ("0115D0",))
+    base_sessions = ["2023-01-02", "2025-10-27", "2025-10-28", "2025-10-29", "2026-09-01"]
+    observed_sessions = ["2025-10-28", "2025-10-29", "2026-09-01"]
+
+    class PresenceRawStore:
+        def list_manifest(self, market=None):
+            if market == "KOSPI":
+                return [{"market": market, "date": day, "status": "COMPLETE"} for day in base_sessions]
+            if market == "ETF":
+                return [{"market": market, "date": day, "status": "COMPLETE"} for day in observed_sessions]
+            return []
+
+        def load_snapshot(self, market, day):
+            return pd.DataFrame({"ticker": ["0115D0"]})
+
+    store = AdjustedPriceStore(tmp_path / "adjusted")
+    store.save_full("0115D0", _frame(observed_sessions[:2]), {
+        "requested_start": "2023-01-02",
+        "requested_end": observed_sessions[-1],
+    })
+    updater = RollingEtfAdjustedUpdater(None, store, raw_store=PresenceRawStore())
+    plan = updater.plan("2026-08-21", "2026-09-01")
+
+    record = plan["ticker_records"][0]
+    assert plan["requested_start"] == "2023-01-02"
+    assert plan["required_dates"] == observed_sessions
+    assert record["required_start"] == "2025-10-28"
+    assert record["missing_dates"] == ["2026-09-01"]
+    assert record["missing_date_count"] == 1
+    assert "2023-01-02" not in record["missing_dates"]
+    assert "2025-10-27" not in record["missing_dates"]
+
+
+def test_etf_adjusted_scope_remains_28_without_ticker_hardcode():
+    source = Path("src/trend_scanner/data/rolling_market_data_refresh.py").read_text(encoding="utf-8")
+    assert len(ETF_VALIDATED_ACCEPTANCE_TICKERS) == 28
+    updater_source = source[source.index("class RollingEtfAdjustedUpdater"):]
+    assert "0115D0" not in updater_source
 
 
 def test_etf_adjusted_requests_only_missing(monkeypatch, tmp_path):
