@@ -12,6 +12,7 @@ from trend_scanner.data.adjusted_price_provider import (
     AdjustedPriceDataProvider,
     validate_adjusted_ohlc,
 )
+from trend_scanner.data.adjusted_price_semantics import validate_source_integrity
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.corporate_action_detector import normalise_as_of
 from trend_scanner.data.corporate_action_state_store import CorporateActionStateStore
@@ -91,7 +92,10 @@ class CorporateActionRefreshService:
                 raise MarketDataError("REFRESH_END_BEFORE_EXISTING_COVERAGE")
 
             new_frame = self.provider.load_daily(normalized, requested_start, requested_end)
-            validate_adjusted_ohlc(new_frame)
+            if bool(new_frame.attrs.get("source_native_adjusted", False)):
+                validate_source_integrity(new_frame)
+            else:
+                validate_adjusted_ohlc(new_frame)
             if new_frame.empty:
                 raise MarketDataError("EMPTY_REFRESH_RESPONSE")
             if not old_frame.index.isin(new_frame.index).all():

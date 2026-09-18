@@ -62,6 +62,54 @@ def test_refresh_success_requires_full_history_and_marks_clean(tmp_path):
     assert set(old.index).issubset(set(adjusted.load_daily("005930").index))
 
 
+def test_source_native_relation_anomaly_is_preserved_and_marks_clean(tmp_path):
+    adjusted, state, old = _seed(tmp_path)
+    refreshed = _frame((110, 111, 112, 113, 114, 115))
+    refreshed.loc[refreshed.index[0], "high"] = refreshed.loc[refreshed.index[0], "open"] - 1
+    refreshed.attrs.update(source_native_adjusted=True, analytic_invalid_ohlc_count=1)
+    provider = _Provider(refreshed)
+
+    result = CorporateActionRefreshService(state, provider, adjusted).refresh_dirty("005930", "2024-01-07")
+
+    assert result.status == "CLEAN"
+    assert state.get("005930").status == "CLEAN"
+    stored = adjusted.load_daily("005930")
+    assert stored.loc[stored.index[0], "high"] == refreshed.loc[refreshed.index[0], "high"]
+    metadata = adjusted.load_metadata("005930")
+    assert metadata["source_native_adjusted"] is True
+    assert metadata["analytic_invalid_ohlc_count"] == 1
+    assert len(old.index.intersection(stored.index)) == len(old)
+
+
+def test_source_native_integrity_error_fails_and_preserves_old_store(tmp_path):
+    adjusted, state, _ = _seed(tmp_path)
+    before = (Path(adjusted.base_dir) / "005930.parquet").read_bytes()
+    refreshed = _frame((110, 111, 112, 113, 114, 115))
+    refreshed.loc[refreshed.index[0], "open"] = float("nan")
+    refreshed.attrs["source_native_adjusted"] = True
+    provider = _Provider(refreshed)
+
+    result = CorporateActionRefreshService(state, provider, adjusted).refresh_dirty("005930", "2024-01-07")
+
+    assert result.status == "FAILED"
+    assert result.reason == "REFRESH_FAILED"
+    assert state.get("005930").status == "FAILED"
+    assert (Path(adjusted.base_dir) / "005930.parquet").read_bytes() == before
+
+
+def test_non_source_native_invalid_ohlc_remains_strict(tmp_path):
+    adjusted, state, _ = _seed(tmp_path)
+    refreshed = _frame((110, 111, 112, 113, 114, 115))
+    refreshed.loc[refreshed.index[0], "high"] = refreshed.loc[refreshed.index[0], "open"] - 1
+    provider = _Provider(refreshed)
+
+    result = CorporateActionRefreshService(state, provider, adjusted).refresh_dirty("005930", "2024-01-07")
+
+    assert result.status == "FAILED"
+    assert result.reason == "REFRESH_FAILED"
+    assert state.get("005930").status == "FAILED"
+
+
 def test_provider_failure_marks_failed_and_preserves_old_store(tmp_path):
     adjusted, state, _ = _seed(tmp_path)
     before = (Path(adjusted.base_dir) / "005930.parquet").read_bytes()
