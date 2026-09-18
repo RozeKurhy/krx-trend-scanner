@@ -21,10 +21,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from trend_scanner.data.market_calendar import (
-    MarketCalendarAuthority,
-    MarketCalendarUnavailableError,
-)
+from trend_scanner.data.market_calendar import MarketCalendarAuthority
 from trend_scanner.data.resampler import to_monthly, to_weekly
 
 COMPLETE = "COMPLETE"
@@ -41,8 +38,10 @@ class PeriodDerivationResult:
     ``effective_daily_boundary``는 전달받은 ``daily``(해당 종목)의 마지막
     실제 관측일이며, 결과 메타데이터일 뿐이다. 거래정지 종목에서는 시장
     전체의 완료 경계보다 뒤처질 수 있으므로, ``weekly_status``/
-    ``monthly_status`` 판정에는 쓰지 않는다(판정은 항상 시장 기준 —
-    ``calendar``와 ``target_as_of``만 사용한다).
+    ``monthly_status`` 판정에는 쓰지 않는다. ``weekly_status``는
+    ``target_as_of``만으로, ``monthly_status``는 ``calendar``의 완료 월
+    권위와 ``target_as_of``로 판정한다 — 둘 다 1단계가 이미 인증한 ``daily``
+    범위를 그대로 신뢰하며 1단계 인증 충분성을 다시 추론하지 않는다.
     """
 
     target_as_of: str
@@ -55,49 +54,20 @@ class PeriodDerivationResult:
     reason: str | None = None
 
 
-def _weekly_status(
-    weekly: pd.DataFrame,
-    target: pd.Timestamp,
-    calendar: MarketCalendarAuthority,
-) -> tuple[str | None, str | None]:
-    """가장 마지막 주봉 bar의 DERIVED_WEEK_COMPLETE 상태를 시장 기준으로 판정한다.
+def _weekly_status(weekly: pd.DataFrame, target: pd.Timestamp) -> str | None:
+    """가장 마지막 주봉 bar의 DERIVED_WEEK_COMPLETE 상태를 판정한다.
 
-    반환: (status, blocked_reason). weekly가 비어 있으면 (None, None).
-    캘린더 권위가 그 주 시작일조차 확인할 수 없으면(REQUIRED_WEEK_TRADING_
-    DATES_UNVERIFIABLE) (None, reason)을 반환해 호출부가 BLOCKED로 처리하게
-    한다. 휴장 금요일처럼 주의 마지막 날짜 자체가 거래일이 아닌 경우는
-    캘린더 권위가 그 날짜를 아예 포함하지 않는 것이 정상이므로, 캘린더가
-    주(week) 시작일까지만 닿아 있어도 판정 가능하다 — 라벨(금요일) 자체까지
-    닿아 있을 것을 요구하지 않는다.
+    2단계는 1단계 인증 충분성을 다시 추론하지 않는다 — `daily`가 이미 1단계
+    인증 범위 안의 일봉이라는 전제를 그대로 신뢰한다. 따라서 판정은 W-FRI
+    라벨과 `target_as_of`의 단순 비교만으로 충분하며, `MarketCalendarAuthority`
+    (마지막 실제 거래일 등)를 별도로 참조하지 않는다. weekly가 비어 있으면
+    None을 반환한다(sliced가 비어 있지 않은 한 실제로는 발생하지 않는다).
     """
     if weekly.empty:
-        return None, None
+        return None
 
     week_label = weekly.index[-1].normalize()
-
-    if week_label > target:
-        # 계약 조건 2(W-FRI 라벨 <= target_as_of) 자체를 만족하지 못하므로
-        # 조건 3을 볼 것도 없이 진행 중인 주간이다.
-        return PROVISIONAL, None
-
-    week_start = week_label - pd.Timedelta(6, unit="D")
-    market_boundary = calendar.max_observed_trading_date
-
-    if market_boundary is None or market_boundary < week_start:
-        # 캘린더 권위가 그 주의 시작일조차 알지 못한다 — 휴장 여부와 무관하게
-        # 필요 거래일 자체를 증명할 수 없는 진짜 권위 부족 상태다.
-        return None, "REQUIRED_WEEK_TRADING_DATES_UNVERIFIABLE"
-
-    required_dates = [d for d in calendar.trading_dates if week_start <= d <= week_label]
-    if not required_dates:
-        # 그 구간에 실제 거래일 자체가 없다(예: 연휴 주). 완성을 주장할 근거가 없으므로 진행 중으로 본다.
-        return PROVISIONAL, None
-
-    # required_dates는 calendar.trading_dates의 부분집합이므로 항상
-    # market_boundary 이하이지만, 계약 조건 2(1단계 인증 범위 확인)를 코드에
-    # 명시적으로 드러내기 위해 비교를 남겨둔다.
-    status = COMPLETE if max(required_dates) <= market_boundary else PROVISIONAL
-    return status, None
+    return COMPLETE if week_label <= target else PROVISIONAL
 
 
 def _monthly_status(
@@ -105,20 +75,20 @@ def _monthly_status(
     target: pd.Timestamp,
     calendar: MarketCalendarAuthority,
 ) -> str | None:
-    """가장 마지막 월봉 bar의 완료 상태를 시장 기준(target_as_of)으로 판정한다.
+    """가장 마지막 월봉 bar의 완료 상태를 운영 완료 월 권위만으로 판정한다.
 
-    `historical_snapshot.py`의 `_drop_incomplete_current_month()`와 동일하게
-    종목의 마지막 관측일이 아니라 요청 기준일을 사용한다. 다만 `target`이
-    캘린더 권위의 `max_observed_trading_date`를 넘어서는 비거래일(예: 휴장
-    금요일)이면 `is_completed_month()`가 자체적으로 예외를 던지므로, 그
-    경우에는 캘린더가 실제로 확인한 마지막 거래일로 낮춰서 조회한다 — 상위
-    계약의 비거래일 target_as_of 허용 의미와 충돌하지 않기 위함이다.
+    종목의 마지막 관측일이 아니라 요청 기준일(target_as_of)을 사용한다는
+    점은 `historical_snapshot.py`의 `_drop_incomplete_current_month()`와
+    같다. `target_as_of`를 `calendar.max_observed_trading_date`로 낮춰서
+    조회하지 않는다 — 그 값은 마지막 실제 거래일일 뿐, 정상적인 휴장/주말과
+    권위가 오래된 상태를 구분하는 경계가 아니다. `get_actual_month_end()`는
+    (연, 월)이 완료 월 목록에 없으면 예외 없이 `None`을 반환하므로, 비거래일
+    `target_as_of`에서도 별도 클램프 없이 안전하게 조회할 수 있다.
     """
     if monthly.empty:
         return None
-    market_boundary = calendar.max_observed_trading_date
-    query_date = target if market_boundary is None or target <= market_boundary else market_boundary
-    return COMPLETE if calendar.is_completed_month(query_date) else PROVISIONAL
+    actual_month_end = calendar.get_actual_month_end(target.year, target.month)
+    return COMPLETE if actual_month_end is not None and target >= actual_month_end else PROVISIONAL
 
 
 def derive_periods(
@@ -168,46 +138,8 @@ def derive_periods(
     try:
         weekly = to_weekly(sliced)
         monthly = to_monthly(sliced)
-
-        weekly_status, weekly_block_reason = _weekly_status(weekly, target, calendar)
-        if weekly_block_reason is not None:
-            return PeriodDerivationResult(
-                target_as_of=target_str,
-                effective_daily_boundary=effective_boundary_str,
-                weekly=weekly,
-                monthly=monthly,
-                weekly_status=None,
-                monthly_status=None,
-                final_status=BLOCKED,
-                reason=weekly_block_reason,
-            )
-
-        try:
-            monthly_status = _monthly_status(monthly, target, calendar)
-        except MarketCalendarUnavailableError as exc:
-            return PeriodDerivationResult(
-                target_as_of=target_str,
-                effective_daily_boundary=effective_boundary_str,
-                weekly=weekly,
-                monthly=monthly,
-                weekly_status=weekly_status,
-                monthly_status=None,
-                final_status=BLOCKED,
-                reason=f"MONTHLY_AUTHORITY_UNAVAILABLE:{exc}",
-            )
-    except MarketCalendarUnavailableError as exc:
-        # weekly/monthly resample 자체는 캘린더 권위를 쓰지 않지만, 방어적으로
-        # 같은 예상 오류 범주를 BLOCKED로 유지한다(FAILED로 새지 않도록).
-        return PeriodDerivationResult(
-            target_as_of=target_str,
-            effective_daily_boundary=effective_boundary_str,
-            weekly=pd.DataFrame(),
-            monthly=pd.DataFrame(),
-            weekly_status=None,
-            monthly_status=None,
-            final_status=BLOCKED,
-            reason=f"CALENDAR_AUTHORITY_UNAVAILABLE:{exc}",
-        )
+        weekly_status = _weekly_status(weekly, target)
+        monthly_status = _monthly_status(monthly, target, calendar)
     except Exception as exc:  # noqa: BLE001 - 예상치 못한 구현 오류만 FAILED로 변환한다.
         return PeriodDerivationResult(
             target_as_of=target_str,

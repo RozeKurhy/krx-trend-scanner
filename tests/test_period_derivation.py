@@ -57,20 +57,21 @@ def test_a_normal_trading_friday_is_complete():
 
 
 def test_b_friday_holiday_is_still_complete():
-    """가장 중요한 시험: 실제 운영 형태로 캘린더를 미래로 넓히지 않는다.
+    """가장 중요한 시험: 휴장 금요일에서 캘린더가 확장돼 있지 않아도 COMPLETE다.
 
     목요일(2026-01-15)이 캘린더 권위가 아는 마지막 실제 거래일이고, 금요일
     (2026-01-16)은 휴장이라 캘린더에도 daily에도 아예 존재하지 않는다.
+    주봉 판정은 W-FRI 라벨과 target_as_of만 비교하므로,
     `calendar.max_observed_trading_date`가 W-FRI 라벨(금요일)에 못 미친다는
-    이유만으로 BLOCKED되면 실패다.
+    사실 자체가 판정에 관여하지 않는다 — 1단계가 이미 인증한 `daily`를
+    그대로 신뢰한다.
     """
-    # 시장/종목 모두 2026-01-15(목)까지만 실제 거래일이 존재한다.
+    # 시장/종목 모두 2026-01-15(목)까지만 실제 거래일이 존재한다. 캘린더
+    # 권위도 실제 운영처럼 마지막 확인된 거래일(목)까지만 안다 — 미래로
+    # 인위 확장하지 않는다.
     dates = pd.bdate_range("2026-01-05", "2026-01-15")
     daily = _daily_frame(dates)
-    # 캘린더 권위도 실제 운영처럼 마지막 확인된 거래일(목)까지만 안다 —
-    # 미래로 인위 확장하지 않는다.
     calendar = MarketCalendarAuthority.from_dates(dates, last_completed_month="2025-12")
-    assert calendar.max_observed_trading_date == pd.Timestamp("2026-01-15")
 
     target_as_of = "2026-01-16"  # 마지막 실제 거래일(목)보다 뒤, 휴장 금요일
     assert pd.Timestamp(target_as_of) > calendar.max_observed_trading_date  # 전제 조건 명시
@@ -181,22 +182,32 @@ def test_g_same_input_is_deterministic():
     pd.testing.assert_frame_equal(first.monthly, second.monthly)
 
 
-def test_h_required_week_dates_unverifiable_is_blocked():
-    # daily는 2026-01-16(금)까지 있지만, 캘린더 권위는 2026-01-09(금)까지만
-    # 확장돼 있어 그 주(2026-01-16 W-FRI, 시작일 2026-01-10)의 필요 거래일
-    # 자체를 증명할 수 없다. 휴장 금요일이라는 이유만으로 권위 부족 취급하는
-    # 것이 아니라, 캘린더가 그 주 시작일조차 모르는 진짜 권위 부족이다.
+def test_h_weekly_ignores_calendar_frontier():
+    """주봉 판정이 calendar.max_observed_trading_date(캘린더 프런티어)에
+    의존하지 않는다는 것을 직접 확인한다.
+
+    daily는 2026-01-16(금)까지 있지만, 캘린더 권위는 2026-01-09(금)까지만
+    확장돼 있어 그 주(2026-01-16 W-FRI)의 실제 거래일을 캘린더로는 검증할
+    수 없는 상태다. 과거 구현은 이런 경우를
+    `REQUIRED_WEEK_TRADING_DATES_UNVERIFIABLE`로 `BLOCKED`했지만, 이는
+    2단계가 1단계 인증 충분성을 캘린더 프런티어로 다시 추론하려던 잘못된
+    로직이었다. 지금은 주봉 판정이 W-FRI 라벨과 target_as_of만 비교하므로,
+    캘린더가 그 주까지 확장돼 있는지와 무관하게 정상적으로 COMPLETE가
+    나와야 한다.
+    """
     dates = pd.bdate_range("2026-01-05", "2026-01-16")
     daily = _daily_frame(dates)
     calendar = MarketCalendarAuthority.from_dates(
-        pd.bdate_range("2026-01-05", "2026-01-09"),
+        pd.bdate_range("2026-01-05", "2026-01-09"),  # 캘린더는 그 주 초까지만 확장됨(오래된 상태)
         last_completed_month="2025-12",
     )
+    assert calendar.max_observed_trading_date == pd.Timestamp("2026-01-09")
 
     result = derive_periods(daily, "2026-01-16", calendar)
 
-    assert result.final_status == BLOCKED
-    assert result.reason == "REQUIRED_WEEK_TRADING_DATES_UNVERIFIABLE"
+    assert result.final_status == PASS
+    assert result.weekly_status == COMPLETE
+    assert result.reason is None
 
 
 def test_no_certified_daily_is_blocked():
