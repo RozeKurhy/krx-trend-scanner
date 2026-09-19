@@ -38,11 +38,16 @@ KRX Data Marketplace 공식 지수 구성 종목 CSV
         ↓
 `2026-08-14` (2528 COMMON, 2496 resolved, 32 explicit UNMAPPED)
 `2026-09-04` (2562 COMMON, 2528 resolved, 34 explicit UNMAPPED)
-`2026-09-17` (2559 COMMON, 2438 resolved, 33 explicit UNMAPPED)
+`2026-09-17` (2559 COMMON, 2526 resolved, 33 explicit UNMAPPED)
         ↓
 `resolve_sector_membership_snapshot_for_target()`
         ↓
 `compute_relative_strength_features(require_exact_sector_snapshot=False)`
+
+Daily 3F는 선택된 membership을 `data/market/rolling_authority/merged_pit_intervals.json`의
+`target_as_of` COMMON KOSPI/KOSDAQ 전체 모집단에 left join한다. target COMMON에
+없는 membership row는 daily output에서 제외하고, membership에 없는 target COMMON은
+`UNMAPPED` / `DATA_UNAVAILABLE` row로 보존한다.
 
 Market RS는 기존 market index cache/원천을 계속 사용한다.
 KRX `/idx/krx_dd_trd` branded taxonomy는 native Sector RS에 사용하지 않는다.
@@ -88,6 +93,9 @@ Sector index cache 증분 갱신
 - 운영 취득: 직접 scripted HTTP 없이 공식 CSV 다운로드
 - 운영 게시 게이트: KOSPI 24 + KOSDAQ 22 = 46 / 46 required
 - CSV는 로컬 원천으로 보존한 뒤 effective-date `SectorMembershipStore` 스냅샷을 생성한다.
+- Sector Membership refresh는 daily execution이 아니다. 기본 월 1회 수동 refresh를
+  수행하고, 필요 시 특별 refresh를 수행한다. Daily 3F는 latest approved snapshot을
+  선택·소비한다.
 - Sector index cache metadata에는 source_name, fetch_mode, source_apis, mapping
   contract version/hash, date range, index/row counts, Parquet SHA-256을 기록한다.
 - 검증 결과는 `artifacts/data/krx_openapi/sector_rs_migration/v01/`에 저장하고,

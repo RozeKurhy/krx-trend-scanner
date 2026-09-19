@@ -185,7 +185,9 @@ market_rs_universe_{YYYYMMDD}.csv
 ### 4.4 업종 RS
 
 **입력**: 종목 가격 = `MarketDataRepositoryV2`(1단계), 업종 지수 = 기존 업종
-지수 캐시, 섹터 구성 = §4.5의 정확한 날짜 스냅샷.
+지수 캐시, 섹터 구성 = §4.5의 승인 스냅샷 선택. 일일 3F 출력 모집단은
+`target_as_of`의 Phase 1 PIT COMMON 전체 모집단을 사용하고, 선택된 섹터
+구성을 그 모집단에 reconciliation한다.
 
 **업종 지수 갱신 — 공식 재사용 경로**(이전 감사가 놓친 부분):
 `src/trend_scanner/data/krx_sector_index.py`의
@@ -249,6 +251,11 @@ CLI(`main()`)는 이미 `--as-of`를 지원한다
 하며, 기존 공식 loader의 schema·effective date·population 검증을 통과해야
 한다. 승인된 미래 스냅샷은 절대 과거 target에 적용하지 않는다.
 
+Sector Membership refresh는 daily execution 항목이 아니다. 기본 운영 주기는
+월 1회 수동 refresh이며, 필요할 때 특별 refresh를 수행한다. Daily Sector RS는
+refresh를 생성하지 않고 latest approved membership을 선택해 target PIT COMMON에
+적용한다.
+
 요청 target보다 이른 승인 스냅샷이 없거나, 가장 최신 후보가 부분 발행·무효
 상태이면 `SectorMembershipSnapshotUnavailable`로 fail closed한다. 이 경우
 더 오래된 스냅샷으로 재대체하지 않는다. 정확일 loader는 refresh 및
@@ -296,15 +303,21 @@ OpenDART 호출 주체가 아니다.
 ## 6. 권장 실행 순서
 
 ```text
+[Daily]
 1. 외국인 수급
 2. 펀더멘털
 3. 시장 RS
 4. 업종 지수
-5. 섹터 구성
+5. 승인된 Sector Membership 선택/확인
 6. 업종 RS 랭킹
+
+[Periodic Maintenance]
+- Sector Membership refresh: 기본 월 1회 수동
+- 필요 시 특별 refresh
 ```
 
-위 6개 항목은 실행 단계의 목록이며 Phase 3 최상위 입력의 목록과 다르다.
+Daily 6개 항목은 실행 단계의 목록이며 Phase 3 최상위 입력의 목록과 다르다.
+Periodic Maintenance의 Sector Membership refresh는 Daily 실행에 포함되지 않는다.
 Phase 3 전체 상태 합성 대상은 §1의 5개 최상위 입력(외국인 수급,
 펀더멘털, 시장 RS, 섹터 구성, 업종 RS)뿐이다. 업종 지수 갱신은 Phase 3의
 별도 최상위 입력이 아니라 업종 RS를 준비하기 위한 내부 선행 단계다.
@@ -316,7 +329,8 @@ Phase 3 전체 상태 합성 대상은 §1의 5개 최상위 입력(외국인 �
 └─ 업종 RS 랭킹 생성
 ```
 
-섹터 구성은 자체 최상위 입력이면서 업종 RS의 의존성이다.
+섹터 구성은 자체 최상위 입력이면서 업종 RS의 의존성이다. Daily 경로에서는
+승인 스냅샷 선택과 target PIT COMMON reconciliation이 준비 확인에 해당한다.
 
 업종 RS 랭킹은 업종 지수와 섹터 구성이 모두 `target_as_of` 기준으로
 준비된 뒤에만 실행한다. 시장 RS는 1단계 가격·지수에만 의존하므로 이
@@ -465,7 +479,7 @@ data/analytics/sector_rs_ranking/v01/
 | 펀더멘털 | 기존 OpenDART/F2/F3/F4 계층 | 벌크 재수화 스크립트에 `target_as_of` 매개변수화 |
 | 시장 RS | 기존 `relative_strength`/`cross_section` 계산 | `target_as_of` 정확한 날짜 스냅샷 생성 계층 |
 | 업종 지수(업종 RS 내부 선행 단계) | `KrxSectorIndexCacheBuilder.update()` / `update_sector_index_cache()` | 누락 거래일 계산 조율 계층 |
-| 섹터 구성 | `build_rolling_sector_membership()` | `target_as_of` 조율(스냅샷 존재 확인 → 없으면 생성 호출) |
+| 섹터 구성 | `build_rolling_sector_membership()` / 승인 snapshot resolver | Periodic refresh(기본 월 1회 수동·필요 시 특별)와 Daily 승인 snapshot 선택·target PIT COMMON reconciliation |
 | 업종 RS | 기존 랭킹 빌더(`build_sector_rs_ranking_v01.py`) | 실행 순서·`target_as_of` 전달 조율 |
 
 ## 13. 구현 단계 분리(참고, 이 문서가 강제하지 않음)

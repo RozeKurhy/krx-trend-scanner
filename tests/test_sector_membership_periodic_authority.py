@@ -16,16 +16,19 @@ from trend_scanner.data.sector_membership import (
     sector_membership_meta_path_for_date,
     sector_membership_path_for_date,
 )
-from trend_scanner.relative_strength.sector_ranking import HORIZONS
+from trend_scanner.relative_strength.sector_ranking import HORIZONS, compute_within_sector_rs_ranking
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _snapshot_frame(effective_date: str) -> pd.DataFrame:
+def _snapshot_frame(
+    effective_date: str,
+    tickers: tuple[str, ...] = ("005930", "000001"),
+) -> pd.DataFrame:
     rows = [
         {
-            "ticker": "005930",
+            "ticker": ticker,
             "market": "KOSPI",
             "effective_date": effective_date,
             "sector_code": "1001",
@@ -33,19 +36,9 @@ def _snapshot_frame(effective_date: str) -> pd.DataFrame:
             "resolution_status": "MAPPED",
             "policy_version": "MOST_SPECIFIC_NATIVE_SECTOR_V01",
             "source_authority": "KRX_FROZEN_CANONICAL_SECTOR_MEMBERSHIP",
-            "source_artifact_sha256": "a" * 64,
-        },
-        {
-            "ticker": "000001",
-            "market": "KOSPI",
-            "effective_date": effective_date,
-            "sector_code": "1001",
-            "sector_name": "테스트업종",
-            "resolution_status": "MAPPED",
-            "policy_version": "MOST_SPECIFIC_NATIVE_SECTOR_V01",
-            "source_authority": "KRX_FROZEN_CANONICAL_SECTOR_MEMBERSHIP",
-            "source_artifact_sha256": "b" * 64,
-        },
+            "source_artifact_sha256": chr(97 + index) * 64,
+        }
+        for index, ticker in enumerate(tickers)
     ]
     return pd.DataFrame(rows, columns=list(STORE_COLUMNS))
 
@@ -76,6 +69,28 @@ def _write_snapshot(
             encoding="utf-8",
         )
     return parquet_path, meta_path
+
+
+def _write_target_universe(root: Path, rows: list[dict[str, str]]) -> None:
+    path = root / "data/market/rolling_authority/merged_pit_intervals.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "intervals": [
+                    {
+                        "ticker": row["ticker"],
+                        "market": row["market"],
+                        "state": "COMMON",
+                        "effective_from": "2026-01-01",
+                        "effective_to": "2026-12-31",
+                    }
+                    for row in rows
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
 
 
 def test_resolver_uses_latest_approved_snapshot_not_after_target(tmp_path: Path) -> None:
@@ -119,6 +134,65 @@ def test_resolver_does_not_fallback_from_invalid_latest_candidate(tmp_path: Path
         resolve_sector_membership_snapshot_for_target("2026-09-18", repo_root=tmp_path)
 
 
+def test_reconciliation_preserves_new_common_and_excludes_stale_membership() -> None:
+    builder = _load_builder_module()
+    target_common = pd.DataFrame(
+        [
+            {"ticker": "000001", "market": "KOSPI"},
+            {"ticker": "000002", "market": "KOSPI"},
+            {"ticker": "000003", "market": "KOSPI"},
+        ]
+    )
+    selected_membership = _snapshot_frame(
+        "2026-09-17", tickers=("000001", "000002", "000004")
+    )
+
+    reconciled, counts = builder._reconcile_target_common_membership(
+        target_common, selected_membership
+    )
+
+    assert set(reconciled["ticker"]) == {"000001", "000002", "000003"}
+    assert counts == {
+        "target_common_missing_from_membership": 1,
+        "membership_not_in_target_common": 1,
+    }
+    new_common = reconciled.loc[reconciled["ticker"].eq("000003")].iloc[0]
+    assert new_common["resolution_status"] == "UNMAPPED"
+    assert pd.isna(new_common["sector_code"])
+    assert pd.isna(new_common["sector_name"])
+
+    output_row = builder._empty_result_row("000003", "KOSPI", new_common, "2026-09-18")
+    assert output_row["sector_rs_data_status"] == "DATA_UNAVAILABLE"
+    assert output_row["sector_rs_input_reason"] == "SECTOR_MEMBERSHIP_UNMAPPED"
+    assert all(output_row[f"sector_rs_{horizon}"] is None for horizon in HORIZONS)
+
+
+def test_unmapped_reconciliation_row_does_not_enter_ranking_denominator() -> None:
+    rows: list[dict[str, object]] = []
+    for ticker, status, value in (
+        ("000001", "MAPPED", 2.0),
+        ("000002", "MAPPED", 1.0),
+        ("000003", "UNMAPPED", None),
+    ):
+        row: dict[str, object] = {
+            "ticker": ticker,
+            "market": "KOSPI",
+            "membership_status": status,
+            "sector_code": "1001" if status == "MAPPED" else None,
+            "sector_name": "테스트업종" if status == "MAPPED" else None,
+        }
+        for horizon in HORIZONS:
+            row[f"sector_rs_{horizon}"] = value
+        rows.append(row)
+
+    ranked = compute_within_sector_rs_ranking(pd.DataFrame(rows))
+    unmapped = ranked.loc[ranked["ticker"].eq("000003")].iloc[0]
+    assert pd.isna(unmapped["sector_member_count"])
+    assert pd.isna(unmapped["within_sector_rs_rank_2w"])
+    assert ranked.loc[ranked["ticker"].eq("000001"), "sector_member_count"].iloc[0] == 2
+    assert ranked.loc[ranked["ticker"].eq("000001"), "sector_eligible_count_2w"].iloc[0] == 2
+
+
 def _load_builder_module():
     script_path = ROOT / "scripts/build_sector_rs_ranking_v01.py"
     spec = importlib.util.spec_from_file_location("build_sector_rs_ranking_v01_test", script_path)
@@ -130,6 +204,14 @@ def _load_builder_module():
 
 def test_3f_consumer_records_selected_prior_membership_snapshot(tmp_path: Path, monkeypatch) -> None:
     _write_snapshot(tmp_path, "2026-09-17")
+    _write_target_universe(
+        tmp_path,
+        [
+            {"ticker": "005930", "market": "KOSPI"},
+            {"ticker": "000001", "market": "KOSPI"},
+            {"ticker": "000002", "market": "KOSPI"},
+        ],
+    )
     sector_index_path = tmp_path / "sector_index_daily.parquet"
     pd.DataFrame(
         {
@@ -157,6 +239,14 @@ def test_3f_consumer_records_selected_prior_membership_snapshot(tmp_path: Path, 
         captured["sector_index_rows"] = len(sector_index)
         rows: list[dict[str, object]] = []
         for offset, member in enumerate(membership.itertuples(index=False)):
+            if str(member.resolution_status).upper() == "UNMAPPED":
+                membership_row = membership.loc[membership["ticker"].eq(str(member.ticker))].iloc[0]
+                rows.append(
+                    builder._empty_result_row(
+                        str(member.ticker), str(member.market), membership_row, as_of
+                    )
+                )
+                continue
             row: dict[str, object] = {
                 "as_of": as_of,
                 "ticker": str(member.ticker),
@@ -190,5 +280,15 @@ def test_3f_consumer_records_selected_prior_membership_snapshot(tmp_path: Path, 
         (output_dir / "sector_rs_ranking_20260918_meta.json").read_text(encoding="utf-8")
     )
     assert meta["membership_effective_date"] == "2026-09-17"
-    assert meta["scope"]["type"] == "APPROVED_SECTOR_MEMBERSHIP_POPULATION"
+    assert meta["membership_population"] == 2
+    assert meta["target_common_population"] == 3
+    assert meta["target_common_missing_from_membership"] == 1
+    assert meta["membership_not_in_target_common"] == 0
+    assert meta["scope"]["type"] == "TARGET_PIT_COMMON_POPULATION"
     assert meta["source"]["membership"].endswith("sector_membership_20260917.parquet")
+    output = pd.read_parquet(output_dir / "sector_rs_ranking_20260918.parquet")
+    new_common = output.loc[output["ticker"].eq("000002")].iloc[0]
+    assert new_common["membership_status"] == "UNMAPPED"
+    assert new_common["sector_rs_data_status"] == "DATA_UNAVAILABLE"
+    assert new_common["sector_rs_input_reason"] == "SECTOR_MEMBERSHIP_UNMAPPED"
+    assert pd.isna(new_common["within_sector_rs_rank_2w"])

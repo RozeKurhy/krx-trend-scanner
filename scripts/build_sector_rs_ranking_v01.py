@@ -18,6 +18,7 @@ from trend_scanner.data.sector_membership import (
     load_sector_mapping_exact_snapshot,
     resolve_sector_membership_snapshot_for_target,
 )
+from trend_scanner.data.sector_membership_rolling import load_local_target_universe
 from trend_scanner.relative_strength.relative_strength import compute_relative_strength_features
 from trend_scanner.relative_strength.sector_ranking import (
     HORIZONS,
@@ -131,6 +132,43 @@ def _empty_result_row(ticker: str, market: str, membership: pd.Series, as_of: st
     return row
 
 
+def _reconcile_target_common_membership(
+    target_common: pd.DataFrame,
+    selected_membership: pd.DataFrame,
+) -> tuple[pd.DataFrame, dict[str, int]]:
+    """Reconcile approved membership onto the target PIT COMMON population."""
+
+    target = target_common.loc[:, ["ticker", "market"]].copy()
+    target["ticker"] = target["ticker"].astype(str).str.strip().str.zfill(6)
+    target["market"] = target["market"].astype(str).str.strip().str.upper()
+
+    membership = selected_membership.copy()
+    membership["ticker"] = membership["ticker"].astype(str).str.strip().str.zfill(6)
+    membership["market"] = membership["market"].astype(str).str.strip().str.upper()
+    membership_columns = [column for column in membership.columns if column not in {"ticker", "market"}]
+    right = membership.rename(columns={"market": "membership_market"})
+    joined = target.merge(right, on="ticker", how="left", indicator=True, validate="one_to_one")
+
+    matched = joined["_merge"].eq("both")
+    market_mismatch = matched & joined["market"].ne(joined["membership_market"])
+    if market_mismatch.any():
+        raise ValueError("TARGET_MEMBERSHIP_MARKET_MISMATCH")
+
+    result = joined.loc[:, ["ticker", "market", *membership_columns]].copy()
+    missing = ~matched
+    result.loc[missing, "resolution_status"] = "UNMAPPED"
+    result.loc[missing, ["sector_code", "sector_name"]] = pd.NA
+    reconciliation = {
+        "target_common_missing_from_membership": int(
+            len(set(target["ticker"]) - set(membership["ticker"]))
+        ),
+        "membership_not_in_target_common": int(
+            len(set(membership["ticker"]) - set(target["ticker"]))
+        ),
+    }
+    return result, reconciliation
+
+
 def _compute_rows(
     as_of: str,
     membership: pd.DataFrame,
@@ -189,9 +227,29 @@ def _compute_rows(
     return pd.DataFrame(rows)
 
 
-def _validate_output(frame: pd.DataFrame, membership: pd.DataFrame, as_of: str) -> dict[str, Any]:
-    if len(frame) != len(membership) or frame["ticker"].nunique() != len(membership):
-        raise ValueError("ranking output does not conserve the exact membership population")
+def _validate_output(frame: pd.DataFrame, target_common: pd.DataFrame, as_of: str) -> dict[str, Any]:
+    expected_tickers = set(target_common["ticker"].astype(str).str.strip().str.zfill(6))
+    actual_tickers = set(frame["ticker"].astype(str).str.strip().str.zfill(6))
+    if len(frame) != len(target_common) or frame["ticker"].nunique() != len(target_common):
+        raise ValueError("ranking output does not conserve the target PIT COMMON population")
+    if actual_tickers != expected_tickers:
+        missing = sorted(expected_tickers - actual_tickers)
+        extra = sorted(actual_tickers - expected_tickers)
+        raise ValueError(f"TARGET_COMMON_TICKER_SET_MISMATCH:missing={missing}:extra={extra}")
+    expected_market = dict(
+        zip(
+            target_common["ticker"].astype(str).str.strip().str.zfill(6),
+            target_common["market"].astype(str).str.strip().str.upper(),
+        )
+    )
+    actual_market = dict(
+        zip(
+            frame["ticker"].astype(str).str.strip().str.zfill(6),
+            frame["market"].astype(str).str.strip().str.upper(),
+        )
+    )
+    if any(actual_market[ticker] != expected_market[ticker] for ticker in expected_tickers):
+        raise ValueError("TARGET_COMMON_MARKET_MISMATCH")
     if frame["ticker"].duplicated().any():
         raise ValueError("ranking output has duplicate tickers")
     mapped = frame[frame["membership_status"].isin(["MAPPED", "AGGREGATE_ONLY"])]
@@ -269,19 +327,24 @@ def build_sector_rs_ranking(
     as_of: str = AS_OF,
     output_dir: Path = DEFAULT_OUTPUT_DIR,
 ) -> dict[str, Any]:
-    """Build the exact-date within-sector ranking parquet and metadata."""
+    """Build the target-date within-sector ranking parquet and metadata."""
 
     _install_network_guard()
     as_of = _normalise_as_of(as_of)
-    membership, membership_effective_date, membership_path, _membership_meta = (
+    target_common = load_local_target_universe(as_of, repo_root=ROOT)
+    selected_membership, membership_effective_date, membership_path, _membership_meta = (
         resolve_sector_membership_snapshot_for_target(as_of, repo_root=ROOT)
+    )
+    membership, reconciliation = _reconcile_target_common_membership(
+        target_common,
+        selected_membership,
     )
     sector_index = pd.read_parquet(SECTOR_INDEX_PATH)
     _validate_sector_index(sector_index, as_of)
 
     base = _compute_rows(as_of, membership, sector_index, membership_effective_date)
     ranking = compute_within_sector_rs_ranking(base)
-    validation = _validate_output(ranking, membership, as_of)
+    validation = _validate_output(ranking, target_common, as_of)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     parquet_path = output_dir / f"sector_rs_ranking_{as_of.replace('-', '')}.parquet"
@@ -293,6 +356,9 @@ def build_sector_rs_ranking(
         "schema_version": "SECTOR_RS_RANKING_V01",
         "as_of": as_of,
         "membership_effective_date": membership_effective_date,
+        "membership_population": int(len(selected_membership)),
+        "target_common_population": int(len(target_common)),
+        **reconciliation,
         "source": {
             "membership": str(membership_path.relative_to(ROOT)),
             "membership_sha256": _sha256(membership_path),
@@ -306,7 +372,7 @@ def build_sector_rs_ranking(
             },
         },
         "scope": {
-            "type": "APPROVED_SECTOR_MEMBERSHIP_POPULATION",
+            "type": "TARGET_PIT_COMMON_POPULATION",
             "group_key": ["market", "sector_code"],
             "global_sector_ranking": False,
             "market_segment_ranking": False,
