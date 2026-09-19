@@ -25,6 +25,23 @@ DAILY_UPDATE_PHASE4 = 상세 계약 확정 / 구현 예정
 target_as_of = YYYY-MM-DD
 ```
 
+4단계의 날짜 필드는 다음처럼 구분한다.
+
+```text
+requested_as_of
+= 사용자가 요청한 분석 기준일
+= target_as_of
+
+reference_market_date
+= Phase 1이 인증한 target_as_of 이하의 실제 시장 기준 거래일
+<= target_as_of
+```
+
+거래일에는 두 값이 같을 수 있다. 주말·휴장일 `target_as_of`는 정상 입력이며,
+이 경우 `requested_as_of`는 요청 날짜를 유지하고
+`reference_market_date < target_as_of`가 정상일 수 있다. 요청 기준일을 가까운
+거래일로 다시 기록하지 않는다.
+
 4단계는 동일한 `target_as_of`에 대해 1~3단계가 `PASS` 또는
 `NOOP_ALREADY_COMPLETE`로 완료했음을 먼저 확인한다. 이 계약은 1~3단계의
 원천, Repository V2, 주봉·월봉, 수급, 펀더멘털, 시장·업종 RS 또는 섹터
@@ -37,9 +54,10 @@ target_as_of = YYYY-MM-DD
 - 스캐너·리포트의 이전 실행 산출물 날짜
 - 웹 화면이 현재 표시하는 날짜
 
-필수 입력의 기준일이 `target_as_of`와 다르거나 동일 날짜를 증명할 수 없으면
-4단계는 `BLOCKED`다. 일부만 새 날짜인 결과를 `PASS` 또는 최신 결과로
-표시하지 않는다.
+필수 입력의 `requested_as_of`가 `target_as_of`와 다르거나,
+`reference_market_date`가 Phase 1 인증 시장 권위의 실제 기준 거래일과 다르면
+4단계는 `BLOCKED`다. 비거래일에 두 날짜가 다르다는 사실만으로는 차단하지
+않는다. 일부만 새 날짜인 결과를 `PASS` 또는 최신 결과로 표시하지 않는다.
 
 ## 3. 현재 재사용 경로 감사
 
@@ -59,8 +77,9 @@ artifacts/patterns/pattern_a/production/scanner/
 `scripts/run_pattern_a_universe_scanner.py`는 `--as-of`와 `--output-dir`를
 제공하지만 현재 기본값과 섹터 스냅샷 고정값을 가진다. 함수 자체에도 인자를
 생략하면 최신 거래일을 선택하는 호환 경로가 있다. 4단계의 운영 호출은 이
-기본값·fallback을 사용하지 않고 `target_as_of`, `reference_market_date`,
-Repository V2, PIT COMMON 유니버스를 명시적으로 전달해야 한다.
+기본값·fallback을 사용하지 않고 `target_as_of`와 Phase 1이 확정한
+`reference_market_date`, Repository V2, PIT COMMON 유니버스를 명시적으로
+전달해야 한다.
 
 ### 3.2 공식 전략과 Stock Report
 
@@ -86,9 +105,10 @@ artifacts/reporting/stock_reports/{YYYYMMDD}/
 현재 단일 리포트 함수에는 인자를 생략했을 때 로컬 최신 기준일을 고르는
 호환 경로가 있고, 기존 batch 재생성 스크립트는 가장 최신 리포트 디렉터리를
 선택한다. 이는 4단계 운영 기준이 아니다. 4단계 구현은 모든 리포트 생성에
-`requested_as_of == target_as_of`를 명시하고, 스캐너 결과를 유일한 후보 입력으로
-소비해야 한다. 리포트가 스캐너를 독립 재실행하거나 다른 날짜 후보를
-fallback하는 것은 허용하지 않는다.
+`requested_as_of == target_as_of`와 `reference_market_date ==` 스캐너가
+확정한 `reference_market_date`를 명시하고, 스캐너 결과를 유일한 후보 입력으로
+소비해야 한다. 리포트가 스캐너를 독립 재실행하거나 다른 reference date·날짜
+후보를 fallback하는 것은 허용하지 않는다.
 
 ### 3.3 웹 정적 투영
 
@@ -114,7 +134,14 @@ Report 웹 payload를 입력으로 사용한다. 따라서 둘은 종목 리포�
 현재 `export_stock_report_web.py`는 날짜별 리포트 디렉터리 중 가장 최신 것을
 고르는 구조이고, 외인 순매수·섹터 RS 관련 exporter에는 과거 고정 기준일
 기본값이 있다. 이를 Phase 4의 최신 선택 규칙으로 승격하지 않는다. 구현 시에는
-대상 입력·출력 모두 `target_as_of`를 명시하고 혼합 날짜를 실패로 처리한다.
+대상 입력·출력 모두 `requested_as_of == target_as_of`와 같은 실행의
+`reference_market_date`를 명시하고 혼합 날짜를 실패로 처리한다. 비거래일
+target에서 두 날짜가 다른 것은 혼합 날짜가 아니다.
+
+현재 `scripts/export_web_data.py`에는 scanner와 Stock Report에
+`requested_as_of == reference_market_date`를 요구하는 오래된 equality 가정이
+남아 있다. 이는 Phase 4A 이후 구현 단계에서 정렬할 기존 구현 차이이며, 이번
+계약 보정에서 코드를 수정하지 않는다.
 
 공포지수 exporter는 `research_v01`의 `final_daily_regimes.csv`를 투영할 뿐이다.
 현재 그 연구 산출물에 4단계 생산 권위를 부여하는 계약은 없으므로, 기준일
@@ -149,8 +176,11 @@ Phase 1~3 complete for target_as_of
 - 처리: Repository V2와 rolling PIT COMMON을 사용해 전체 KOSPI/KOSDAQ 보통주를
   한 번 스캔한다. subset·limit·이전 scanner artifact 재사용은 운영 결과가 아니다.
 - 출력: 기준일 이름의 scanner CSV와 summary JSON.
-- 검증: summary의 `requested_as_of`와 `reference_market_date`가 모두
-  `target_as_of`이고, 공식 COMMON 총수와 emitted row 수의 관계를 확인한다.
+- 검증: summary의 `requested_as_of == target_as_of`와
+  `reference_market_date ==` Phase 1 인증 시장 권위의 실제 기준 거래일을
+  확인한다. `reference_market_date <= target_as_of`여야 하며, 비거래일에는
+  엄격히 더 이를 수 있다. 또한 공식 COMMON 총수와 emitted row 수의 관계를
+  확인한다.
 
 ### 4B. A FAST Core V2 및 Stock Report v0.5
 
@@ -159,15 +189,17 @@ Phase 1~3 complete for target_as_of
   생성한다. 스캐너 재실행, 전략 재정의, 펀더멘털 hydration 또는 새 산식은 하지 않는다.
 - 출력: `artifacts/reporting/stock_reports/{YYYYMMDD}/`의 Markdown/JSON.
 - 검증: 모든 발행 리포트의 `requested_as_of`와 date directory가
-  `target_as_of`에 일치하고, A FAST Core의 strategy ID가 V2이며 report version이
-  `0.5`인지 확인한다.
+  `target_as_of`에 일치하고, `reference_market_date`가 4A scanner가 확정한
+  실제 시장 기준 거래일과 같으며, A FAST Core의 strategy ID가 V2이고 report
+  version이 `0.5`인지 확인한다.
 
 ### 4C. 필수 분석 표시 결과
 
 - 입력: 4B 리포트와 3단계 권위 산출물.
 - 처리: 기존 마켓 RS, 섹터 RS, 외인 순매수, 전략 모니터, 상태 투영을 사용한다.
-- 검증: 각 필수 payload의 기준일·입력 집합·공개 리포트 집합이
-  `target_as_of`에 일치한다. 마켓 RS와 전략 모니터는 `stock-index.json` 및
+- 검증: 각 필수 payload의 `requested_as_of == target_as_of`,
+  `reference_market_date ==` 해당 실행의 실제 시장 기준 거래일, 입력 집합과
+  공개 리포트 집합을 확인한다. 마켓 RS와 전략 모니터는 `stock-index.json` 및
   `stocks/*.json`의 일치도 함께 확인한다.
 
 ### 4D. `web/data` 정적 반영
@@ -176,7 +208,9 @@ Phase 1~3 complete for target_as_of
 - 처리: 기존 `export_*_web.py`만 사용해 `web/data/`에 투영한다. 웹 계층에서
   전략·RS·펀더멘털을 재계산하지 않는다.
 - 검증: `stock-index.json` 및 종목 JSON, 필수 ranking/monitor/health JSON에
-  혼합 기준일이 없고, 화면 입력 파일이 존재하며 JSON 형식이 유효한지 확인한다.
+  `requested_as_of == target_as_of`와 동일 실행의 `reference_market_date`가
+  일관되게 기록되고, 화면 입력 파일이 존재하며 JSON 형식이 유효한지 확인한다.
+  비거래일에는 `reference_market_date < target_as_of`를 정상으로 처리한다.
 - 배포: 이 단계는 `web/data` 생성까지만 정의한다. Pages 배포는 main 반영 후의
   기존 workflow 책임이며 웹 JSON 자체가 분석 권위가 되지 않는다.
 
