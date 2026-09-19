@@ -215,11 +215,13 @@ def _repository_query_start(index_store: IndexStore, target_as_of: str) -> str:
 
 
 def _benchmark_exact_target_available(index_store: IndexStore, target_as_of: str) -> bool:
+    exact_target_available: list[bool] = []
     for code in MARKET_INDEX_CODES.values():
         history = index_store.load_family(MARKET_INDEX_FAMILY, end=target_as_of, index_codes=[code])
-        if not history.empty and str(history["date"].iloc[-1]) == target_as_of:
-            return True
-    return False
+        exact_target_available.append(
+            not history.empty and str(history["date"].iloc[-1]) == target_as_of
+        )
+    return all(exact_target_available)
 
 
 def _rs_record(ticker: str, market: str, target_as_of: str, result_dict: dict[str, Any]) -> dict[str, Any]:

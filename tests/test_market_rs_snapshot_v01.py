@@ -305,6 +305,42 @@ def test_t7_both_benchmarks_missing_exact_target_is_blocked(tmp_path, monkeypatc
     assert calls == []  # Repository V2 must not be touched once the benchmark gate fails.
 
 
+def test_t7a_kospi_exact_but_kosdaq_missing_is_blocked(tmp_path, monkeypatch):
+    target = "2026-09-17"
+    _patch_authority(monkeypatch, target)
+    _write_pit(tmp_path, [_interval("000001", "KOSPI", "2010-01-04", target)])
+    _patch_index(
+        monkeypatch,
+        {"1001": _bench_frame(target, 20, "1001"), "2001": _bench_frame("2026-09-16", 20, "2001")},
+    )
+    calls = _patch_repository(monkeypatch, {"000001": _stock_frame(target, 20)})
+
+    result = mrs.build_market_rs_snapshot(target, repo_root=tmp_path)
+
+    assert result.status == mrs.BLOCKED
+    assert result.reason == "MARKET_INDEX_TARGET_UNAVAILABLE"
+    assert not mrs._output_path(tmp_path, target).exists()
+    assert calls == []
+
+
+def test_t7b_kospi_missing_but_kosdaq_exact_is_blocked(tmp_path, monkeypatch):
+    target = "2026-09-17"
+    _patch_authority(monkeypatch, target)
+    _write_pit(tmp_path, [_interval("000001", "KOSPI", "2010-01-04", target)])
+    _patch_index(
+        monkeypatch,
+        {"1001": _bench_frame("2026-09-16", 20, "1001"), "2001": _bench_frame(target, 20, "2001")},
+    )
+    calls = _patch_repository(monkeypatch, {"000001": _stock_frame(target, 20)})
+
+    result = mrs.build_market_rs_snapshot(target, repo_root=tmp_path)
+
+    assert result.status == mrs.BLOCKED
+    assert result.reason == "MARKET_INDEX_TARGET_UNAVAILABLE"
+    assert not mrs._output_path(tmp_path, target).exists()
+    assert calls == []
+
+
 # ---------------------------------------------------------------------------
 # T8 expected ticker DATA_UNAVAILABLE (covered structurally by T4; kept as an explicit alias)
 # ---------------------------------------------------------------------------
