@@ -76,6 +76,43 @@ def test_exact_target_noop_has_zero_fetch_and_zero_write(tmp_path: Path):
     assert output.stat().st_mtime_ns == before_mtime
 
 
+def test_exact_target_middle_gap_is_repaired_then_noops(tmp_path: Path):
+    target = "2026-09-17"
+    _write_snapshot(
+        tmp_path,
+        target,
+        _flow(["2026-09-14", "2026-09-16", "2026-09-17"]),
+    )
+    provider = FakeProvider({"2026-09-15": _flow(["2026-09-15"])})
+    calendar = FakeCalendar(["2026-09-14", "2026-09-15", "2026-09-16", "2026-09-17"])
+
+    first = update_foreign_flow_snapshot(
+        target,
+        repo_root=tmp_path,
+        provider=provider,
+        calendar=calendar,
+    )
+    first_calls = list(provider.calls)
+    second = update_foreign_flow_snapshot(
+        target,
+        repo_root=tmp_path,
+        provider=provider,
+        calendar=calendar,
+    )
+
+    assert first.status == PASS
+    assert first_calls == ["2026-09-15"]
+    assert second.status == NOOP_ALREADY_COMPLETE
+    assert provider.calls == first_calls
+    final = pd.read_parquet(tmp_path / FLOW_DIR / "foreign_flow_daily_20260917.parquet")
+    assert final["date"].tolist() == [
+        "2026-09-14",
+        "2026-09-15",
+        "2026-09-16",
+        "2026-09-17",
+    ]
+
+
 def test_tail_incremental_fetches_only_new_dates_and_publishes_exact_target(tmp_path: Path):
     _write_snapshot(tmp_path, "2026-09-04", _flow(["2026-09-03", "2026-09-04"]))
     provider = FakeProvider(

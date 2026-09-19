@@ -188,6 +188,21 @@ def _calendar_dates(calendar: Any) -> list[str]:
     return sorted({date.strftime("%Y-%m-%d") for date in parsed})
 
 
+def _load_calendar(repo_root: Path, calendar: Any | None) -> Any:
+    resolved = calendar if calendar is not None else load_rolling_production_market_calendar(repo_root)
+    if resolved is None:
+        raise _BlockedInput("ROLLING_MARKET_CALENDAR_UNAVAILABLE")
+    return resolved
+
+
+def _required_trading_dates(calendar: Any, *, start_as_of: str, target_as_of: str) -> list[str]:
+    return [
+        date
+        for date in _calendar_dates(calendar)
+        if start_as_of <= date <= target_as_of
+    ]
+
+
 def _result(
     *,
     target_as_of: str,
@@ -298,38 +313,75 @@ def update_foreign_flow_snapshot(
     source_dir = repo_root / FLOW_SOURCE_DIR
     output_path = _target_output_path(repo_root, target)
 
-    # Exact target validation happens before constructing the provider or calendar:
-    # a valid target is a pure, zero-call, zero-write NOOP.
+    exact_frame: pd.DataFrame | None = None
+    exact_meta: dict[str, Any] | None = None
+
+    # A structurally valid exact target still needs rolling-calendar completeness.
+    # Only a complete target is a pure, zero-call, zero-write NOOP.
     if output_path.exists():
         try:
-            exact_frame, _ = _load_valid_snapshot(output_path, expected_as_of=target)
+            exact_frame, exact_meta = _load_valid_snapshot(output_path, expected_as_of=target)
         except _BlockedInput:
             exact_frame = None
         if exact_frame is not None:
-            return _result(
-                target_as_of=target,
-                status=NOOP_ALREADY_COMPLETE,
-                reason="EXACT_TARGET_SNAPSHOT_ALREADY_COMPLETE",
-                output_path=output_path,
-                seed_snapshot_as_of=target,
-                requested=[],
-                missing=[],
-                fetched=[],
-                frame=exact_frame,
-            )
+            try:
+                calendar = _load_calendar(repo_root, calendar)
+                exact_requested_dates = _required_trading_dates(
+                    calendar,
+                    start_as_of=str(exact_frame["date"].min()),
+                    target_as_of=target,
+                )
+            except _BlockedInput as exc:
+                return _result(
+                    target_as_of=target,
+                    status=BLOCKED,
+                    reason=str(exc),
+                    output_path=output_path,
+                    seed_snapshot_as_of=target,
+                    frame=exact_frame,
+                )
+            except Exception:
+                return _result(
+                    target_as_of=target,
+                    status=BLOCKED,
+                    reason="ROLLING_MARKET_CALENDAR_UNAVAILABLE",
+                    output_path=output_path,
+                    seed_snapshot_as_of=target,
+                    frame=exact_frame,
+                )
+
+            exact_completed_dates = set(exact_frame["date"].unique())
+            exact_missing_dates = [
+                date for date in exact_requested_dates if date not in exact_completed_dates
+            ]
+            if not exact_missing_dates:
+                return _result(
+                    target_as_of=target,
+                    status=NOOP_ALREADY_COMPLETE,
+                    reason="EXACT_TARGET_SNAPSHOT_ALREADY_COMPLETE",
+                    output_path=output_path,
+                    seed_snapshot_as_of=target,
+                    requested=exact_requested_dates,
+                    missing=[],
+                    fetched=[],
+                    frame=exact_frame,
+                )
 
     valid_candidates: list[tuple[str, Path, pd.DataFrame, dict[str, Any]]] = []
-    for snapshot_as_of, snapshot_path in _find_snapshot_paths(source_dir):
-        if snapshot_as_of >= target:
-            continue
-        try:
-            snapshot_frame, snapshot_meta = _load_valid_snapshot(
-                snapshot_path,
-                expected_as_of=snapshot_as_of,
-            )
-        except _BlockedInput:
-            continue
-        valid_candidates.append((snapshot_as_of, snapshot_path, snapshot_frame, snapshot_meta))
+    if exact_frame is not None:
+        valid_candidates.append((target, output_path, exact_frame, exact_meta or {}))
+    else:
+        for snapshot_as_of, snapshot_path in _find_snapshot_paths(source_dir):
+            if snapshot_as_of >= target:
+                continue
+            try:
+                snapshot_frame, snapshot_meta = _load_valid_snapshot(
+                    snapshot_path,
+                    expected_as_of=snapshot_as_of,
+                )
+            except _BlockedInput:
+                continue
+            valid_candidates.append((snapshot_as_of, snapshot_path, snapshot_frame, snapshot_meta))
 
     if not valid_candidates:
         return _result(
@@ -343,16 +395,12 @@ def update_foreign_flow_snapshot(
     seed_date_min = str(seed_frame["date"].min())
 
     try:
-        if calendar is None:
-            calendar = load_rolling_production_market_calendar(repo_root)
-        if calendar is None:
-            raise _BlockedInput("ROLLING_MARKET_CALENDAR_UNAVAILABLE")
-        all_calendar_dates = _calendar_dates(calendar)
-        requested_dates = [
-            date
-            for date in all_calendar_dates
-            if seed_date_min <= date <= target
-        ]
+        calendar = _load_calendar(repo_root, calendar)
+        requested_dates = _required_trading_dates(
+            calendar,
+            start_as_of=seed_date_min,
+            target_as_of=target,
+        )
     except _BlockedInput as exc:
         return _result(
             target_as_of=target,
