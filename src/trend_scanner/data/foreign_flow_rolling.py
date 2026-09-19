@@ -24,6 +24,10 @@ from trend_scanner.data.foreign_flow_provider import (
     compute_file_sha256,
 )
 from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
+from trend_scanner.data.rolling_market_data_refresh import (
+    DEFAULT_ROLLING_AUTHORITY_DIR,
+    load_rolling_authority,
+)
 
 
 PASS = "PASS"
@@ -188,11 +192,46 @@ def _calendar_dates(calendar: Any) -> list[str]:
     return sorted({date.strftime("%Y-%m-%d") for date in parsed})
 
 
-def _load_calendar(repo_root: Path, calendar: Any | None) -> Any:
-    resolved = calendar if calendar is not None else load_rolling_production_market_calendar(repo_root)
-    if resolved is None:
-        raise _BlockedInput("ROLLING_MARKET_CALENDAR_UNAVAILABLE")
-    return resolved
+def _load_calendar_and_frontier(repo_root: Path, calendar: Any | None) -> tuple[Any, str]:
+    """Load the calendar together with the authority boundary that covers it.
+
+    The production calendar's trading-date list alone cannot distinguish an
+    unobserved future session from a confirmed non-trading date.  The official
+    Phase 1 rolling manifest is therefore the source of the production frontier;
+    injected test calendars must expose the equivalent ``authority_frontier``.
+    """
+    if calendar is not None:
+        resolved = calendar
+        frontier = getattr(calendar, "authority_frontier", None)
+        if frontier is None:
+            metadata = getattr(calendar, "metadata", {})
+            if isinstance(metadata, dict):
+                frontier = metadata.get("authority_frontier") or metadata.get("calendar_frontier")
+        if frontier is None:
+            raise _BlockedInput("ROLLING_AUTHORITY_FRONTIER_UNAVAILABLE")
+    else:
+        try:
+            manifest = load_rolling_authority(repo_root / DEFAULT_ROLLING_AUTHORITY_DIR)
+            frontier = manifest.merged_calendar_frontier or manifest.certified_through
+            resolved = load_rolling_production_market_calendar(repo_root)
+        except Exception as exc:  # noqa: BLE001 - fail closed on authority read/validation errors
+            raise _BlockedInput("ROLLING_AUTHORITY_FRONTIER_UNAVAILABLE") from exc
+        if resolved is None:
+            raise _BlockedInput("ROLLING_MARKET_CALENDAR_UNAVAILABLE")
+
+    try:
+        normalised_frontier = _normalise_date(frontier)
+    except Exception as exc:  # noqa: BLE001 - invalid authority is blocked
+        raise _BlockedInput("ROLLING_AUTHORITY_FRONTIER_INVALID") from exc
+    return resolved, normalised_frontier
+
+
+def _validate_authority_frontier(*, target_as_of: str, authority_frontier: str) -> None:
+    if target_as_of > authority_frontier:
+        raise _BlockedInput(
+            "ROLLING_AUTHORITY_FRONTIER_INSUFFICIENT:"
+            f"frontier={authority_frontier}:target={target_as_of}"
+        )
 
 
 def _required_trading_dates(calendar: Any, *, start_as_of: str, target_as_of: str) -> list[str]:
@@ -313,6 +352,23 @@ def update_foreign_flow_snapshot(
     source_dir = repo_root / FLOW_SOURCE_DIR
     output_path = _target_output_path(repo_root, target)
 
+    # This gate must precede exact-target inspection: a stale exact file beyond
+    # the official frontier is not evidence that the target is complete, and
+    # must not be accepted as a zero-call NOOP.
+    try:
+        calendar, authority_frontier = _load_calendar_and_frontier(repo_root, calendar)
+        _validate_authority_frontier(
+            target_as_of=target,
+            authority_frontier=authority_frontier,
+        )
+    except _BlockedInput as exc:
+        return _result(
+            target_as_of=target,
+            status=BLOCKED,
+            reason=str(exc),
+            output_path=output_path,
+        )
+
     exact_frame: pd.DataFrame | None = None
     exact_meta: dict[str, Any] | None = None
 
@@ -325,7 +381,6 @@ def update_foreign_flow_snapshot(
             exact_frame = None
         if exact_frame is not None:
             try:
-                calendar = _load_calendar(repo_root, calendar)
                 exact_requested_dates = _required_trading_dates(
                     calendar,
                     start_as_of=str(exact_frame["date"].min()),
@@ -395,7 +450,6 @@ def update_foreign_flow_snapshot(
     seed_date_min = str(seed_frame["date"].min())
 
     try:
-        calendar = _load_calendar(repo_root, calendar)
         requested_dates = _required_trading_dates(
             calendar,
             start_as_of=seed_date_min,

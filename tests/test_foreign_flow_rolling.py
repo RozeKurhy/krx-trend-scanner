@@ -17,8 +17,9 @@ FLOW_DIR = Path("artifacts/patterns/pattern_a/production/flow/source")
 
 
 class FakeCalendar:
-    def __init__(self, dates: list[str]):
+    def __init__(self, dates: list[str], *, authority_frontier: str | None = None):
         self.trading_dates = pd.DatetimeIndex(dates)
+        self.authority_frontier = authority_frontier or max(dates)
 
 
 class FakeProvider:
@@ -66,7 +67,7 @@ def test_exact_target_noop_has_zero_fetch_and_zero_write(tmp_path: Path):
         target,
         repo_root=tmp_path,
         provider=provider,
-        calendar=FakeCalendar(["2026-09-04"]),
+        calendar=FakeCalendar(["2026-09-04"], authority_frontier="2026-09-05"),
     )
 
     assert result.status == NOOP_ALREADY_COMPLETE
@@ -172,7 +173,10 @@ def test_middle_gap_and_tail_gap_are_both_fetched(tmp_path: Path):
 def test_non_trading_target_publishes_exact_snapshot_then_noops(tmp_path: Path):
     _write_snapshot(tmp_path, "2026-09-11", _flow(["2026-09-10", "2026-09-11"]))
     provider = FakeProvider({})
-    calendar = FakeCalendar(["2026-09-10", "2026-09-11"])
+    calendar = FakeCalendar(
+        ["2026-09-10", "2026-09-11"],
+        authority_frontier="2026-09-12",
+    )
 
     first = update_foreign_flow_snapshot(
         "2026-09-12",
@@ -243,3 +247,56 @@ def test_no_usable_seed_blocks_without_historical_rebuild(tmp_path: Path):
     assert result.status == BLOCKED
     assert result.reason == "NO_USABLE_SEED_SNAPSHOT"
     assert provider.calls == []
+
+
+def test_authority_frontier_insufficient_blocks_before_fetch_or_target_write(tmp_path: Path):
+    _write_snapshot(tmp_path, "2026-09-17", _flow(["2026-09-17"]))
+    provider = FakeProvider({"2026-09-18": _flow(["2026-09-18"])})
+
+    result = update_foreign_flow_snapshot(
+        "2026-09-18",
+        repo_root=tmp_path,
+        provider=provider,
+        calendar=FakeCalendar(
+            ["2026-09-17"],
+            authority_frontier="2026-09-17",
+        ),
+    )
+
+    assert result.status == BLOCKED
+    assert result.reason == (
+        "ROLLING_AUTHORITY_FRONTIER_INSUFFICIENT:"
+        "frontier=2026-09-17:target=2026-09-18"
+    )
+    assert provider.calls == []
+    assert not (tmp_path / FLOW_DIR / "foreign_flow_daily_20260918.parquet").exists()
+    assert not (tmp_path / FLOW_DIR / "foreign_flow_daily_20260918_meta.json").exists()
+
+
+def test_exact_target_beyond_authority_frontier_is_not_noop_or_rewritten(tmp_path: Path):
+    output = _write_snapshot(
+        tmp_path,
+        "2026-09-18",
+        _flow(["2026-09-17", "2026-09-18"]),
+    )
+    meta_path = output.with_name("foreign_flow_daily_20260918_meta.json")
+    before_bytes = output.read_bytes()
+    before_meta = meta_path.read_bytes()
+    before_mtime = output.stat().st_mtime_ns
+    provider = FakeProvider({"2026-09-18": _flow(["2026-09-18"], base=999.0)})
+
+    result = update_foreign_flow_snapshot(
+        "2026-09-18",
+        repo_root=tmp_path,
+        provider=provider,
+        calendar=FakeCalendar(
+            ["2026-09-17"],
+            authority_frontier="2026-09-17",
+        ),
+    )
+
+    assert result.status == BLOCKED
+    assert provider.calls == []
+    assert output.read_bytes() == before_bytes
+    assert meta_path.read_bytes() == before_meta
+    assert output.stat().st_mtime_ns == before_mtime
