@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -334,3 +335,101 @@ def test_new_day_without_daily_usage_is_blocked_before_hydration(tmp_path: Path)
             run_date="2026-09-09",
             daily_usage_before_run=None,
         )
+
+
+# --- Phase 3B: target_as_of generalization (w.md §15 T1~T7) ------------------
+
+
+def test_t1_run_requires_explicit_requested_as_of_not_scanner_summary():
+    """T1: run()이 requested_as_of를 명시적으로 받고, scanner summary에서 읽지 않는다."""
+    assert not hasattr(f7, "_load_requested_as_of")
+    assert not hasattr(f7, "SCAN_SUMMARY_PATH")
+    parameters = inspect.signature(f7.run).parameters
+    assert "requested_as_of" in parameters
+    assert parameters["requested_as_of"].kind == inspect.Parameter.KEYWORD_ONLY
+    assert parameters["requested_as_of"].default is inspect.Parameter.empty
+
+
+def test_t2_missing_as_of_fails_argparse():
+    """T2: --as-of 없이 실행하면 argparse가 즉시 실패한다(오늘 날짜 fallback 금지)."""
+    with pytest.raises(SystemExit):
+        f7._build_parser().parse_args(["--pilot"])
+
+
+def test_t2_explicit_as_of_is_parsed():
+    args = f7._build_parser().parse_args(["--pilot", "--as-of", "2026-09-17"])
+    assert args.as_of == "2026-09-17"
+
+
+def test_t2_invalid_as_of_format_fails_closed():
+    with pytest.raises(RuntimeError, match="YYYY-MM-DD"):
+        f7._resolve_requested_as_of("2026/09/17")
+    with pytest.raises(RuntimeError, match="YYYY-MM-DD"):
+        f7._resolve_requested_as_of("not-a-date")
+
+
+def test_t3_dynamic_output_date_not_fixed_20260904():
+    """T3: 출력 경로가 requested_as_of 기준으로 동적이며 20260904에 고정되지 않는다."""
+    assert f7._output_dir("2026-09-17") == f7.OUTPUT_ROOT / "20260917"
+    assert f7._output_dir("2026-09-17") != f7.OUTPUT_ROOT / "20260904"
+    # 기존 2026-09-04 의미도 그대로 재현되어야 한다(특별 취급 상수 없이).
+    assert f7._output_dir("2026-09-04") == f7.OUTPUT_ROOT / "20260904"
+
+
+def test_t4_dynamic_priority_path_matches_requested_as_of(tmp_path: Path, monkeypatch):
+    """T4: priority 파일 경로와 내부 effective_date가 requested_as_of와 정확히 일치해야 한다."""
+    monkeypatch.setattr(f7, "PRIORITY_MARKET_DIR", tmp_path)
+    (tmp_path / "krx_market_cap_20260917.csv").write_text(
+        "ticker,close,market_cap,effective_date\n"
+        "005930,80000,500000000000,2026-09-17\n",
+        encoding="utf-8",
+    )
+    universe = [{"ticker": "005930", "asset_type": "COMMON"}]
+
+    priority, info = f7._load_priority_tickers(universe, "2026-09-17")
+
+    assert priority == {"005930"}
+    assert info["market_date"] == "2026-09-17"
+    assert info["market_file"].endswith("krx_market_cap_20260917.csv")
+
+
+def test_t4_only_exact_requested_date_file_is_consulted(tmp_path: Path, monkeypatch):
+    """T4: 다른 날짜(예: 20260904)의 기존 파일이 있어도 fallback으로 쓰지 않는다."""
+    monkeypatch.setattr(f7, "PRIORITY_MARKET_DIR", tmp_path)
+    (tmp_path / "krx_market_cap_20260904.csv").write_text(
+        "ticker,close,market_cap,effective_date\n"
+        "005930,80000,500000000000,2026-09-04\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(RuntimeError, match="missing"):
+        f7._load_priority_tickers([{"ticker": "005930", "asset_type": "COMMON"}], "2026-09-17")
+
+
+def test_t5_priority_wrong_internal_date_fails_closed(tmp_path: Path, monkeypatch):
+    """T5: 파일명은 20260917인데 내부 effective_date가 2026-09-04면 fail closed."""
+    monkeypatch.setattr(f7, "PRIORITY_MARKET_DIR", tmp_path)
+    (tmp_path / "krx_market_cap_20260917.csv").write_text(
+        "ticker,close,market_cap,effective_date\n"
+        "005930,80000,500000000000,2026-09-04\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(RuntimeError, match="2026-09-17 snapshot"):
+        f7._load_priority_tickers([{"ticker": "005930", "asset_type": "COMMON"}], "2026-09-17")
+
+
+def test_t6_cross_target_output_is_not_reused(tmp_path: Path):
+    """T6: 다른 requested_as_of의 기존 ticker 결과는 새 target에서 재사용되지 않는다."""
+    path = tmp_path / "000020.json"
+    path.write_text(json.dumps({
+        "runner_version": f7.RUNNER_VERSION,
+        "ticker": "000020",
+        "requested_as_of": "2026-09-04",
+        "asset_type": "COMMON",
+        "terminal_status": "PASS",
+    }), encoding="utf-8")
+
+    same_target = f7._load_existing(path, ticker="000020", requested_as_of="2026-09-04")
+    other_target = f7._load_existing(path, ticker="000020", requested_as_of="2026-09-17")
+
+    assert same_target is not None
+    assert other_target is None

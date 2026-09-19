@@ -87,7 +87,6 @@ from trend_scanner.universe.instrument_metadata import (  # noqa: E402
 )
 
 
-SCAN_SUMMARY_PATH = ROOT / "artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260904_summary.json"
 CORP_CACHE_PATH = ROOT / "data/cache/opendart/corp_code_cache.json"
 COMPANY_CACHE_DIR = ROOT / "data/cache/opendart/company"
 OUTPUT_ROOT = ROOT / "artifacts/fundamentals/production"
@@ -113,8 +112,7 @@ OFFICIAL_USAGE_BEFORE_PRIORITY = 11_000
 MAX_ADDITIONAL_OPENDART_REQUESTS = 28_000
 SAFETY_DAILY_CAP = 39_000
 REMAINING_SAFETY_DAILY_CAP = 39_000
-PRIORITY_MARKET_DATE = "2026-09-04"
-PRIORITY_MARKET_PATH = ROOT / "artifacts/patterns/pattern_a/production/investability/source/krx_market_cap_20260904.csv"
+PRIORITY_MARKET_DIR = ROOT / "artifacts/patterns/pattern_a/production/investability/source"
 KNOWN_TICKER_DATA_ERRORS = (
     OpenDartError,
     FilingRegistryError,
@@ -483,15 +481,20 @@ def _load_opendart_key(env_file: Path) -> str:
     raise F7TerminalError("OPENDART_API_KEY_MISSING", mapping_status="NOT_APPLICABLE")
 
 
-def _load_requested_as_of() -> tuple[str, str]:
-    if not SCAN_SUMMARY_PATH.exists():
-        raise RuntimeError(f"production authority summary missing: {SCAN_SUMMARY_PATH}")
-    summary = json.loads(SCAN_SUMMARY_PATH.read_text(encoding="utf-8"))
-    requested = str(summary.get("requested_as_of") or "")[:10]
-    reference = str(summary.get("reference_market_date") or "")[:10]
-    if not requested or requested != reference:
-        raise RuntimeError("production authority has no single exact requested_as_of")
-    return requested, reference
+def _resolve_requested_as_of(value: str) -> str:
+    """Validate the explicit, required PIT cutoff (no system-date fallback)."""
+
+    try:
+        parsed = datetime.strptime(value, "%Y-%m-%d").date()
+    except (TypeError, ValueError) as exc:
+        raise RuntimeError("requested_as_of must use YYYY-MM-DD format") from exc
+    if parsed.isoformat() != value:
+        raise RuntimeError("requested_as_of must use YYYY-MM-DD format")
+    return value
+
+
+def _output_dir(requested_as_of: str) -> Path:
+    return OUTPUT_ROOT / requested_as_of.replace("-", "")
 
 
 def _load_production_universe(requested_as_of: str) -> tuple[list[dict[str, Any]], str]:
@@ -529,12 +532,15 @@ def _load_production_universe(requested_as_of: str) -> tuple[list[dict[str, Any]
     return rows, snapshot_date
 
 
-def _load_priority_tickers(universe: Iterable[Mapping[str, Any]]) -> tuple[set[str], dict[str, Any]]:
-    """Resolve today's temporary priority from the existing local market file."""
+def _load_priority_tickers(
+    universe: Iterable[Mapping[str, Any]], requested_as_of: str,
+) -> tuple[set[str], dict[str, Any]]:
+    """Resolve the requested_as_of exact-date priority from the local market file."""
 
-    if not PRIORITY_MARKET_PATH.exists():
-        raise RuntimeError(f"priority market authority missing: {PRIORITY_MARKET_PATH}")
-    frame = pd.read_csv(PRIORITY_MARKET_PATH, dtype={"ticker": str})
+    market_path = PRIORITY_MARKET_DIR / f"krx_market_cap_{requested_as_of.replace('-', '')}.csv"
+    if not market_path.exists():
+        raise RuntimeError(f"priority market authority missing: {market_path}")
+    frame = pd.read_csv(market_path, dtype={"ticker": str})
     required = {"ticker", "close", "market_cap", "effective_date"}
     if not required.issubset(frame.columns):
         raise RuntimeError("priority market authority is missing required columns")
@@ -542,8 +548,10 @@ def _load_priority_tickers(universe: Iterable[Mapping[str, Any]]) -> tuple[set[s
     if frame["ticker"].duplicated().any():
         raise RuntimeError("priority market authority contains duplicate tickers")
     dates = set(frame["effective_date"].astype(str).str[:10])
-    if dates != {PRIORITY_MARKET_DATE}:
-        raise RuntimeError("priority market authority is not the exact 2026-09-04 snapshot")
+    if dates != {requested_as_of}:
+        raise RuntimeError(
+            f"priority market authority is not the exact {requested_as_of} snapshot"
+        )
     frame["close"] = pd.to_numeric(frame["close"], errors="coerce")
     frame["market_cap"] = pd.to_numeric(frame["market_cap"], errors="coerce")
     if frame[["close", "market_cap"]].isna().any().any():
@@ -558,9 +566,13 @@ def _load_priority_tickers(universe: Iterable[Mapping[str, Any]]) -> tuple[set[s
     universe_rows = list(universe)
     common = {str(row["ticker"]).strip().upper() for row in universe_rows if row["asset_type"] == "COMMON"}
     priority = common & market_priority
+    try:
+        market_file = str(market_path.relative_to(ROOT))
+    except ValueError:
+        market_file = str(market_path)
     return priority, {
-        "market_file": str(PRIORITY_MARKET_PATH.relative_to(ROOT)),
-        "market_date": PRIORITY_MARKET_DATE,
+        "market_file": market_file,
+        "market_date": requested_as_of,
         "market_universe_count": len(frame),
         "market_condition_count": len(market_priority),
         "common_universe_count": len(common),
@@ -1416,6 +1428,7 @@ def _choose_pilot(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def run(
     mode: str,
     *,
+    requested_as_of: str,
     env_file: Path,
     run_date: str | None = None,
     daily_usage_before_run: int | None = None,
@@ -1423,14 +1436,14 @@ def run(
     cache_only: bool = False,
 ) -> int:
     run_date = _resolve_run_date(run_date)
-    requested_as_of, _reference_market_date = _load_requested_as_of()
+    requested_as_of = _resolve_requested_as_of(requested_as_of)
     universe, metadata_snapshot_date = _load_production_universe(requested_as_of)
     priority_tickers: set[str] = set()
     priority_info: dict[str, Any] = {}
     if mode == "pilot":
         target_rows = _choose_pilot(universe)
     elif mode == "priority":
-        priority_tickers, priority_info = _load_priority_tickers(universe)
+        priority_tickers, priority_info = _load_priority_tickers(universe, requested_as_of)
         target_rows = [row for row in universe if row["ticker"] in priority_tickers]
     elif mode == "remaining":
         # The completed-output exclusion is applied after the real artifact
@@ -1438,7 +1451,7 @@ def run(
         target_rows = universe
     else:
         target_rows = universe
-    output_dir = OUTPUT_ROOT / requested_as_of.replace("-", "")
+    output_dir = _output_dir(requested_as_of)
     tickers_dir = output_dir / "tickers"
     _preflight_directory(OUTPUT_ROOT)
     _preflight_directory(output_dir)
@@ -1701,7 +1714,7 @@ def run(
     return 0
 
 
-def main() -> int:
+def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--pilot", action="store_true", help="Run the bounded 5-10 ticker pilot")
@@ -1709,19 +1722,26 @@ def main() -> int:
     group.add_argument(
         "--priority",
         action="store_true",
-        help="Run today's 2026-09-04 market-cap/close priority batch with quota cap",
+        help="Run the requested-as-of market-cap/close priority batch with quota cap",
     )
     group.add_argument(
         "--remaining",
         action="store_true",
         help="Resume only unfinished production tickers with a date-scoped quota context",
     )
+    parser.add_argument(
+        "--as-of",
+        type=str,
+        required=True,
+        help="Fundamentals PIT cutoff in YYYY-MM-DD format; there is no system-date default",
+    )
     parser.add_argument("--env-file", type=Path, default=Path("/Users/june/Documents/projects/env.md"))
     parser.add_argument(
         "--run-date",
         type=str,
         default=None,
-        help="Quota run date in YYYY-MM-DD format; defaults to the current KST date",
+        help="OpenDART quota accounting date in YYYY-MM-DD format; defaults to the current"
+        " KST date. This is separate from --as-of and must not be inferred from it.",
     )
     parser.add_argument(
         "--daily-usage-before-run",
@@ -1737,7 +1757,11 @@ def main() -> int:
         "--cache-only", action="store_true",
         help="Disallow network transport and fail closed on any cache miss",
     )
-    args = parser.parse_args()
+    return parser
+
+
+def main() -> int:
+    args = _build_parser().parse_args()
     try:
         mode = (
             "pilot" if args.pilot else "priority" if args.priority
@@ -1745,6 +1769,7 @@ def main() -> int:
         )
         return run(
             mode,
+            requested_as_of=args.as_of,
             env_file=args.env_file,
             run_date=args.run_date,
             daily_usage_before_run=args.daily_usage_before_run,
