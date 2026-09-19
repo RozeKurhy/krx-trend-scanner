@@ -67,7 +67,7 @@ def test_exact_target_noop_has_zero_fetch_and_zero_write(tmp_path: Path):
         target,
         repo_root=tmp_path,
         provider=provider,
-        calendar=FakeCalendar(["2026-09-04"], authority_frontier="2026-09-05"),
+        calendar=FakeCalendar(["2026-09-04"]),
     )
 
     assert result.status == NOOP_ALREADY_COMPLETE
@@ -173,10 +173,7 @@ def test_middle_gap_and_tail_gap_are_both_fetched(tmp_path: Path):
 def test_non_trading_target_publishes_exact_snapshot_then_noops(tmp_path: Path):
     _write_snapshot(tmp_path, "2026-09-11", _flow(["2026-09-10", "2026-09-11"]))
     provider = FakeProvider({})
-    calendar = FakeCalendar(
-        ["2026-09-10", "2026-09-11"],
-        authority_frontier="2026-09-12",
-    )
+    calendar = FakeCalendar(["2026-09-10", "2026-09-11"])
 
     first = update_foreign_flow_snapshot(
         "2026-09-12",
@@ -186,6 +183,31 @@ def test_non_trading_target_publishes_exact_snapshot_then_noops(tmp_path: Path):
     )
     second = update_foreign_flow_snapshot(
         "2026-09-12",
+        repo_root=tmp_path,
+        provider=provider,
+        calendar=calendar,
+    )
+
+    assert first.status == PASS
+    assert first.missing_trading_dates == []
+    assert first.date_max == "2026-09-11"
+    assert second.status == NOOP_ALREADY_COMPLETE
+    assert provider.calls == []
+
+
+def test_sunday_weekend_bridge_publishes_then_noops(tmp_path: Path):
+    _write_snapshot(tmp_path, "2026-09-11", _flow(["2026-09-10", "2026-09-11"]))
+    provider = FakeProvider({})
+    calendar = FakeCalendar(["2026-09-10", "2026-09-11"])
+
+    first = update_foreign_flow_snapshot(
+        "2026-09-13",
+        repo_root=tmp_path,
+        provider=provider,
+        calendar=calendar,
+    )
+    second = update_foreign_flow_snapshot(
+        "2026-09-13",
         repo_root=tmp_path,
         provider=provider,
         calendar=calendar,
@@ -300,3 +322,37 @@ def test_exact_target_beyond_authority_frontier_is_not_noop_or_rewritten(tmp_pat
     assert output.read_bytes() == before_bytes
     assert meta_path.read_bytes() == before_meta
     assert output.stat().st_mtime_ns == before_mtime
+
+
+def test_weekday_between_frontier_and_weekend_target_blocks_without_fetch_or_write(tmp_path: Path):
+    _write_snapshot(tmp_path, "2026-09-10", _flow(["2026-09-10"]))
+    provider = FakeProvider({"2026-09-11": _flow(["2026-09-11"])})
+
+    result = update_foreign_flow_snapshot(
+        "2026-09-12",
+        repo_root=tmp_path,
+        provider=provider,
+        calendar=FakeCalendar(["2026-09-10"]),
+    )
+
+    assert result.status == BLOCKED
+    assert provider.calls == []
+    assert not (tmp_path / FLOW_DIR / "foreign_flow_daily_20260912.parquet").exists()
+    assert not (tmp_path / FLOW_DIR / "foreign_flow_daily_20260912_meta.json").exists()
+
+
+def test_weekday_target_after_weekend_blocks_without_fetch_or_write(tmp_path: Path):
+    _write_snapshot(tmp_path, "2026-09-11", _flow(["2026-09-11"]))
+    provider = FakeProvider({"2026-09-14": _flow(["2026-09-14"])})
+
+    result = update_foreign_flow_snapshot(
+        "2026-09-14",
+        repo_root=tmp_path,
+        provider=provider,
+        calendar=FakeCalendar(["2026-09-11"]),
+    )
+
+    assert result.status == BLOCKED
+    assert provider.calls == []
+    assert not (tmp_path / FLOW_DIR / "foreign_flow_daily_20260914.parquet").exists()
+    assert not (tmp_path / FLOW_DIR / "foreign_flow_daily_20260914_meta.json").exists()

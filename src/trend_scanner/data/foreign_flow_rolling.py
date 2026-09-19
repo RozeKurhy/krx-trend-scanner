@@ -227,11 +227,21 @@ def _load_calendar_and_frontier(repo_root: Path, calendar: Any | None) -> tuple[
 
 
 def _validate_authority_frontier(*, target_as_of: str, authority_frontier: str) -> None:
-    if target_as_of > authority_frontier:
-        raise _BlockedInput(
-            "ROLLING_AUTHORITY_FRONTIER_INSUFFICIENT:"
-            f"frontier={authority_frontier}:target={target_as_of}"
-        )
+    if target_as_of <= authority_frontier:
+        return
+
+    bridge_dates = pd.date_range(
+        start=pd.Timestamp(authority_frontier) + pd.Timedelta(value=1, unit="D"),
+        end=pd.Timestamp(target_as_of),
+        freq="D",
+    )
+    if len(bridge_dates) > 0 and all(day.dayofweek >= 5 for day in bridge_dates):
+        return
+
+    raise _BlockedInput(
+        "ROLLING_AUTHORITY_FRONTIER_INSUFFICIENT:"
+        f"frontier={authority_frontier}:target={target_as_of}"
+    )
 
 
 def _required_trading_dates(calendar: Any, *, start_as_of: str, target_as_of: str) -> list[str]:
