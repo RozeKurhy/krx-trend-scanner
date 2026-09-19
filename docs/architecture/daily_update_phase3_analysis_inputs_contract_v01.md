@@ -243,26 +243,33 @@ CLI(`main()`)는 이미 `--as-of`를 지원한다
 주입 경로이며 production 기본 경로의 네트워크 수집을 의미하지 않는다.
 
 **공식 조회 경로**: `src/trend_scanner/data/sector_membership.py`의
-`load_sector_membership_snapshot(as_of, ...)`. 정책은 정확한 날짜만
-허용한다(모듈 docstring: "carry-forward or back-application" 금지).
-요청한 날짜의 스냅샷이 없으면 `SectorMembershipSnapshotUnavailable`을
-던지며 이전 스냅샷으로 조용히 대체하지 않는다.
+`resolve_sector_membership_snapshot_for_target(target_as_of, ...)`.
+일일 소비자는 `effective_date <= target_as_of`인 승인 스냅샷 중 가장 최신
+날짜를 선택한다. 선택된 스냅샷의 parquet와 `_meta.json` 쌍이 모두 있어야
+하며, 기존 공식 loader의 schema·effective date·population 검증을 통과해야
+한다. 승인된 미래 스냅샷은 절대 과거 target에 적용하지 않는다.
+
+요청 target보다 이른 승인 스냅샷이 없거나, 가장 최신 후보가 부분 발행·무효
+상태이면 `SectorMembershipSnapshotUnavailable`로 fail closed한다. 이 경우
+더 오래된 스냅샷으로 재대체하지 않는다. 정확일 loader는 refresh 및
+historical 검증용으로 계속 유지한다.
 
 **계약**:
 
 ```text
-target_as_of 스냅샷 존재
-→ 그대로 재사용
+승인된 snapshot 중 effective_date <= target_as_of인 최신 pair 존재
+→ 해당 snapshot 재사용
 
-target_as_of 스냅샷 없음
-→ 해당 날짜의 Marketplace manifest/CSV 원천이 준비된 경우
-   build_rolling_sector_membership(target_as_of) 실행
-→ manifest/CSV 원천이 없거나 검증에 실패한 경우
-   BLOCKED
+최신 후보 pair가 부분 발행·무효이거나 eligible snapshot 없음
+→ BLOCKED
+
+target_as_of보다 미래인 snapshot만 존재
+→ BLOCKED; 미래 snapshot을 backward apply하지 않음
 ```
 
-단, 원천 manifest/CSV가 준비되지 않으면 `BLOCKED`로 처리한다.
-임의로 이전 스냅샷을 재사용하지 않는다.
+원천 manifest/CSV가 준비되지 않으면 신규 snapshot 생성은 `BLOCKED`로
+처리한다. 일일 소비자는 위의 승인 후보 선택 규칙만 사용하며, 무효한 최신
+후보를 임의의 이전 snapshot으로 대체하지 않는다.
 
 **판단**: `REUSE_WITH_MINIMAL_WRAPPER`
 
@@ -388,9 +395,17 @@ PASS + FAILED + BLOCKED + PASS + PASS
 금지:
 
 - `datetime.now()`나 오늘 날짜 사용
-- 최신 파일을 자동으로 선택
-- 가장 가까운 이전 스냅샷을 자동으로 대체 사용
 - 현재 구성(membership)을 과거 날짜에 그대로 적용
+
+단, 섹터 구성 소비자에는 다음의 명시적 승인 규칙을 적용한다.
+
+- `resolve_sector_membership_snapshot_for_target()`가 승인된
+  `effective_date <= target_as_of` 중 최신 pair를 선택한다.
+- 미래 스냅샷은 선택하지 않는다.
+- 선택된 최신 후보가 부분 발행·무효이면 더 오래된 후보로 대체하지 않고
+  fail closed한다.
+- 다른 입력 원천에는 최신 파일 자동 선택이나 가장 가까운 이전 스냅샷의
+  자동 대체를 적용하지 않는다.
 
 각 원천이 내부적으로 다음 의미를 쓰는 것은 정상이며, `target_as_of`와
 같은 값으로 섞어 쓰지 않는다.

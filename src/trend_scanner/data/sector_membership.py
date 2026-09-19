@@ -1,9 +1,8 @@
-"""Exact-date KRX sector-membership authority for the Sector RS path.
+"""KRX sector-membership authority for the Sector RS path.
 
-Snapshot selection is intentionally exact-date only.  The legacy
-``2026-08-14`` authority remains the default for existing consumers, while
-rolling snapshots are selected by their requested effective date without
-carry-forward or back-application.
+Exact-date loading remains available for refresh and historical consumers.
+Daily consumers use the latest approved snapshot whose effective date is not
+after the requested target date; future snapshots are never back-applied.
 """
 
 from __future__ import annotations
@@ -38,7 +37,7 @@ STORE_COLUMNS = (
 
 
 class SectorMembershipSnapshotUnavailable(ValueError):
-    """Raised when the exact frozen snapshot cannot be used for ``as_of``."""
+    """Raised when no valid approved membership snapshot can serve a target."""
 
 
 def _normalise_as_of(as_of: str | pd.Timestamp) -> str:
@@ -136,6 +135,87 @@ def load_sector_membership_snapshot(
         expected_effective_date=requested,
         expected_population=expected_population,
     )
+
+
+def _snapshot_date_from_name(name: str, suffix: str) -> str | None:
+    prefix = "sector_membership_"
+    if not name.startswith(prefix) or not name.endswith(suffix):
+        return None
+    compact = name[len(prefix) : -len(suffix)]
+    if len(compact) != 8 or not compact.isdigit():
+        return None
+    try:
+        return pd.Timestamp(compact).strftime("%Y-%m-%d")
+    except Exception:
+        return None
+
+
+def resolve_sector_membership_snapshot_for_target(
+    target_as_of: str | pd.Timestamp,
+    *,
+    repo_root: Path | None = None,
+) -> tuple[pd.DataFrame, str, Path, dict[str, Any]]:
+    """Resolve the latest approved membership snapshot available by target date.
+
+    Candidate discovery is pair-based: the latest candidate date at or before
+    ``target_as_of`` must have both parquet and metadata files and pass the
+    existing exact-date loaders.  An invalid or partial latest candidate is a
+    hard failure and is never silently replaced by an older snapshot.
+    """
+
+    requested = _normalise_as_of(target_as_of)
+    root = repo_root or Path(__file__).resolve().parents[3]
+    store_dir = root / DEFAULT_STORE_DIR
+    candidates: dict[str, dict[str, Path]] = {}
+    for path in store_dir.glob("sector_membership_*"):
+        if path.name.endswith("_meta.json"):
+            date_text = _snapshot_date_from_name(path.name, "_meta.json")
+            kind = "meta"
+        elif path.suffix == ".parquet":
+            date_text = _snapshot_date_from_name(path.name, ".parquet")
+            kind = "parquet"
+        else:
+            continue
+        if date_text is not None:
+            candidates.setdefault(date_text, {})[kind] = path
+
+    eligible_dates = sorted(date_text for date_text in candidates if date_text <= requested)
+    if not eligible_dates:
+        raise SectorMembershipSnapshotUnavailable(
+            f"SECTOR_MEMBERSHIP_NO_APPROVED_SNAPSHOT:{requested}"
+        )
+
+    selected = eligible_dates[-1]
+    candidate = candidates[selected]
+    parquet_path = candidate.get("parquet")
+    meta_path = candidate.get("meta")
+    if parquet_path is None or meta_path is None:
+        raise SectorMembershipSnapshotUnavailable(
+            f"SECTOR_MEMBERSHIP_SNAPSHOT_INCOMPLETE:{selected}"
+        )
+
+    snapshot = load_sector_membership_snapshot(
+        selected,
+        path=parquet_path,
+        repo_root=root,
+    )
+    meta = load_sector_membership_meta(
+        selected,
+        path=meta_path,
+        repo_root=root,
+    )
+    if meta.get("target_population") is not None:
+        try:
+            target_population = int(meta["target_population"])
+        except (TypeError, ValueError):
+            raise SectorMembershipSnapshotUnavailable(
+                f"SECTOR_MEMBERSHIP_META_POPULATION_INVALID:{selected}"
+            ) from None
+        if target_population != len(snapshot):
+            raise SectorMembershipSnapshotUnavailable(
+                f"SECTOR_MEMBERSHIP_META_POPULATION_INVALID:{selected}"
+            )
+    return snapshot, selected, parquet_path, meta
 
 
 def load_sector_mapping_exact_snapshot(

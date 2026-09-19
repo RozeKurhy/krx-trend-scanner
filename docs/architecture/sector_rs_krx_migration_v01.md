@@ -6,8 +6,8 @@ docs/architecture/sector_rs_krx_migration_v01.md
 ----------------------------------------------------------------------
 Sector Relative Strength가 사용하는 native 46개 업종지수 가격 원천을
 PyKRX에서 KRX Open API로 교체했다. Sector 구성 종목 정보는 KRX Data Marketplace
-공식 지수구성종목 CSV를 수동 로그인 브라우저로 내려받아 approved exact-date
-SectorMembershipStore 기준일 스냅샷으로 관리한다. Naver 구성 종목 fallback과 live
+공식 지수구성종목 CSV를 수동 로그인 브라우저로 내려받아 approved
+effective-date SectorMembershipStore 스냅샷으로 관리한다. Naver 구성 종목 fallback과 live
 PyKRX 구성 종목 정보는 금지한다.
 
 운영 계약
@@ -34,14 +34,15 @@ KRX Data Marketplace 공식 지수 구성 종목 CSV
         ↓ (수동 로그인 → 지수 → 주가지수 → 지수구성종목 → 기준일)
 46개 업종 검증 (KOSPI 24 + KOSDAQ 22)
         ↓ MOST_SPECIFIC_NATIVE_SECTOR_V01 resolution
-`SectorMembershipStore` exact-date snapshots
+`SectorMembershipStore` approved effective-date snapshots
         ↓
 `2026-08-14` (2528 COMMON, 2496 resolved, 32 explicit UNMAPPED)
 `2026-09-04` (2562 COMMON, 2528 resolved, 34 explicit UNMAPPED)
+`2026-09-17` (2559 COMMON, 2438 resolved, 33 explicit UNMAPPED)
         ↓
-`load_sector_mapping_exact_snapshot()`
+`resolve_sector_membership_snapshot_for_target()`
         ↓
-`compute_relative_strength_features(require_exact_sector_snapshot=True)`
+`compute_relative_strength_features(require_exact_sector_snapshot=False)`
 
 Market RS는 기존 market index cache/원천을 계속 사용한다.
 KRX `/idx/krx_dd_trd` branded taxonomy는 native Sector RS에 사용하지 않는다.
@@ -59,15 +60,18 @@ KRX `/idx/krx_dd_trd` branded taxonomy는 native Sector RS에 사용하지 않�
 
 구성 종목 불변식
 ----------------------------------------------------------------------
-- 승인된 정확한 날짜의 snapshot만 사용한다.
-- 현재 보유 스냅샷은 `2026-08-14` 과거 승인 스냅샷과
-  `2026-09-04` 현재 최신 승인 스냅샷이다.
-- requested `as_of`와 정확히 일치하는 snapshot이 없으면 fail closed하고
-  Sector RS를 `NOT_EVALUATED`로 반환한다.
-- 이전 snapshot을 자동 carry-forward하지 않고, 이후 snapshot을 backward apply하지 않는다.
+- 승인된 snapshot pair(parquet + `_meta.json`)만 사용한다. 현재 보유 승인
+  스냅샷은 `2026-08-14`, `2026-09-04`, `2026-09-17`이며,
+  `2026-09-17`이 현재 최신 승인 스냅샷이다.
+- 일일 target에는 `effective_date <= target_as_of`인 최신 승인 snapshot을
+  사용한다. 정확히 일치하는 snapshot이 없어도 이 규칙에 따라 과거 승인
+  snapshot을 사용할 수 있다.
+- target보다 미래인 snapshot은 사용하지 않는다. 최신 eligible 후보가
+  부분 발행·무효이면 fail closed하고 더 오래된 snapshot으로 fallback하지
+  않는다.
 - unmapped COMMON은 삭제하지 않고 `DATA_UNAVAILABLE` /
   `SECTOR_MEMBERSHIP_UNMAPPED`로 보존한다. (`2026-08-14`: 32개,
-  `2026-09-04`: 34개)
+  `2026-09-04`: 34개, `2026-09-17`: 33개)
 - Sector RS cross-section은 전체 COMMON valid 값만으로 계산하며 candidate subset을
   분모로 사용하지 않는다.
 
@@ -83,7 +87,7 @@ Sector index cache 증분 갱신
 - UI 경로: 수동 로그인 → 지수 → 주가지수 → 지수구성종목 → 기준일 선택
 - 운영 취득: 직접 scripted HTTP 없이 공식 CSV 다운로드
 - 운영 게시 게이트: KOSPI 24 + KOSDAQ 22 = 46 / 46 required
-- CSV는 로컬 원천으로 보존한 뒤 exact-date `SectorMembershipStore` 스냅샷을 생성한다.
+- CSV는 로컬 원천으로 보존한 뒤 effective-date `SectorMembershipStore` 스냅샷을 생성한다.
 - Sector index cache metadata에는 source_name, fetch_mode, source_apis, mapping
   contract version/hash, date range, index/row counts, Parquet SHA-256을 기록한다.
 - 검증 결과는 `artifacts/data/krx_openapi/sector_rs_migration/v01/`에 저장하고,

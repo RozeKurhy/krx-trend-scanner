@@ -15,9 +15,8 @@ import pandas as pd
 
 from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2
 from trend_scanner.data.sector_membership import (
-    load_sector_membership_snapshot,
     load_sector_mapping_exact_snapshot,
-    sector_membership_path_for_date,
+    resolve_sector_membership_snapshot_for_target,
 )
 from trend_scanner.relative_strength.relative_strength import compute_relative_strength_features
 from trend_scanner.relative_strength.sector_ranking import (
@@ -132,8 +131,13 @@ def _empty_result_row(ticker: str, market: str, membership: pd.Series, as_of: st
     return row
 
 
-def _compute_rows(as_of: str, membership: pd.DataFrame, sector_index: pd.DataFrame) -> pd.DataFrame:
-    mapping = load_sector_mapping_exact_snapshot(as_of, repo_root=ROOT)
+def _compute_rows(
+    as_of: str,
+    membership: pd.DataFrame,
+    sector_index: pd.DataFrame,
+    membership_effective_date: str,
+) -> pd.DataFrame:
+    mapping = load_sector_mapping_exact_snapshot(membership_effective_date, repo_root=ROOT)
     repository = build_repository_v2(ROOT, end=as_of)
     loader = RepositoryV2DailyLoader(
         repository,
@@ -161,8 +165,8 @@ def _compute_rows(as_of: str, membership: pd.DataFrame, sector_index: pd.DataFra
             market=market,
             sector_index_df=sector_index,
             sector_mapping=mapping,
-            require_exact_sector_snapshot=True,
-            sector_snapshot_effective_date=as_of,
+            require_exact_sector_snapshot=False,
+            sector_snapshot_effective_date=membership_effective_date,
         )
         row = {
             "as_of": as_of,
@@ -269,12 +273,13 @@ def build_sector_rs_ranking(
 
     _install_network_guard()
     as_of = _normalise_as_of(as_of)
-    membership_path = sector_membership_path_for_date(as_of, repo_root=ROOT)
-    membership = load_sector_membership_snapshot(as_of, repo_root=ROOT)
+    membership, membership_effective_date, membership_path, _membership_meta = (
+        resolve_sector_membership_snapshot_for_target(as_of, repo_root=ROOT)
+    )
     sector_index = pd.read_parquet(SECTOR_INDEX_PATH)
     _validate_sector_index(sector_index, as_of)
 
-    base = _compute_rows(as_of, membership, sector_index)
+    base = _compute_rows(as_of, membership, sector_index, membership_effective_date)
     ranking = compute_within_sector_rs_ranking(base)
     validation = _validate_output(ranking, membership, as_of)
 
@@ -287,6 +292,7 @@ def build_sector_rs_ranking(
     meta: dict[str, Any] = {
         "schema_version": "SECTOR_RS_RANKING_V01",
         "as_of": as_of,
+        "membership_effective_date": membership_effective_date,
         "source": {
             "membership": str(membership_path.relative_to(ROOT)),
             "membership_sha256": _sha256(membership_path),
@@ -300,7 +306,7 @@ def build_sector_rs_ranking(
             },
         },
         "scope": {
-            "type": "EXACT_SECTOR_MEMBERSHIP_POPULATION",
+            "type": "APPROVED_SECTOR_MEMBERSHIP_POPULATION",
             "group_key": ["market", "sector_code"],
             "global_sector_ranking": False,
             "market_segment_ranking": False,
