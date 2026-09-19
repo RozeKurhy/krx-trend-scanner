@@ -21,6 +21,12 @@ from trend_scanner.data.krx_sector_index import (
     KRX_NATIVE_SECTOR_INDEX_MAP,
     KrxSectorIndexCacheBuilder,
 )
+from trend_scanner.data.krx_openapi_client import (
+    KrxOpenApiAuthorizationError,
+    KrxOpenApiBudgetError,
+    KrxOpenApiRateLimitError,
+)
+from trend_scanner.data.krx_openapi_quota import KrxOpenApiQuotaExceeded
 from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
 from trend_scanner.data.rolling_market_data_refresh import (
     DEFAULT_ROLLING_AUTHORITY_DIR,
@@ -36,6 +42,16 @@ FAILED = "FAILED"
 SECTOR_INDEX_CACHE_PATH = Path(".cache/krx_openapi/sector_rs_migration/v01/sector_index_daily.parquet")
 SECTOR_INDEX_META_PATH = Path(".cache/krx_openapi/sector_rs_migration/v01/sector_index_daily_meta.json")
 SECTOR_CODE_COUNT = len(KRX_NATIVE_SECTOR_INDEX_MAP)
+_KNOWN_KRX_OPERATIONAL_BLOCKERS = (
+    KrxOpenApiAuthorizationError,
+    KrxOpenApiRateLimitError,
+    KrxOpenApiBudgetError,
+    KrxOpenApiQuotaExceeded,
+)
+_MISSING_AUTH_KEY_MESSAGES = frozenset({
+    "KRX Open API auth key is required",
+    "KRX_OPEN_API_AUTH_KEY is required for sector cache build",
+})
 
 
 @dataclass
@@ -81,6 +97,12 @@ class SectorIndexRollingResult:
 
 class _BlockedInput(Exception):
     """Internal marker for an expected unavailable or invalid input."""
+
+
+def _is_missing_auth_key_error(error: ValueError) -> bool:
+    """Recognise only the two existing production auth-key validation messages."""
+
+    return str(error).strip() in _MISSING_AUTH_KEY_MESSAGES
 
 
 def _normalise_date(value: Any) -> str:
@@ -282,11 +304,35 @@ def update_sector_index_rolling(
                 output_parquet=cache_path,
                 output_meta=meta_path,
             )
-        except MarketDataError:
+        except (MarketDataError, *_KNOWN_KRX_OPERATIONAL_BLOCKERS):
             return _result(
                 target=target,
                 status=BLOCKED,
                 reason=f"REQUIRED_TRADING_DATE_UPDATE_BLOCKED:{day}",
+                cache_path=cache_path,
+                frame=frame,
+                required=required,
+                missing=missing,
+                updated=updated,
+                update_calls=update_calls,
+            )
+        except ValueError as exc:
+            if _is_missing_auth_key_error(exc):
+                return _result(
+                    target=target,
+                    status=BLOCKED,
+                    reason=f"REQUIRED_TRADING_DATE_UPDATE_BLOCKED:{day}",
+                    cache_path=cache_path,
+                    frame=frame,
+                    required=required,
+                    missing=missing,
+                    updated=updated,
+                    update_calls=update_calls,
+                )
+            return _result(
+                target=target,
+                status=FAILED,
+                reason=f"REQUIRED_TRADING_DATE_UPDATE_FAILED:{day}",
                 cache_path=cache_path,
                 frame=frame,
                 required=required,

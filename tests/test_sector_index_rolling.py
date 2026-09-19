@@ -9,6 +9,12 @@ import pytest
 from scripts.update_sector_index_v01 import build_parser
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.data.krx_sector_index import KRX_NATIVE_SECTOR_INDEX_MAP, STANDARD_INDEX_COLUMNS
+from trend_scanner.data.krx_openapi_client import (
+    KrxOpenApiAuthorizationError,
+    KrxOpenApiBudgetError,
+    KrxOpenApiRateLimitError,
+)
+from trend_scanner.data.krx_openapi_quota import KrxOpenApiQuotaExceeded
 from trend_scanner.data.rolling_market_data_refresh import (
     ROLLING_AUTHORITY_VERSION,
     RollingAuthorityManifest,
@@ -237,6 +243,56 @@ def test_unexpected_exception_is_failed(tmp_path: Path) -> None:
     )
     assert result.status == FAILED
     assert result.reason == "REQUIRED_TRADING_DATE_UPDATE_FAILED:2026-09-02"
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        KrxOpenApiAuthorizationError("unauthorized"),
+        KrxOpenApiRateLimitError("rate limited"),
+        KrxOpenApiBudgetError("budget exhausted"),
+        KrxOpenApiQuotaExceeded(
+            "quota exhausted",
+            endpoint_key="kospi_dd_trd",
+            usage_date_kst="2026-09-19",
+            endpoint_before=10,
+            global_before=20,
+        ),
+    ],
+    ids=["authorization", "rate_limit", "budget", "quota"],
+)
+def test_known_krx_operational_blockers_are_blocked(tmp_path: Path, error: Exception) -> None:
+    _prepare(tmp_path, ["2026-09-01"])
+    updater = FakeUpdater(errors={"2026-09-02": error})
+    result = update_sector_index_rolling(
+        "2026-09-02",
+        repo_root=tmp_path,
+        provider=updater,
+        calendar=FakeCalendar(["2026-09-01", "2026-09-02"]),
+    )
+    assert result.status == BLOCKED
+    assert result.update_call_count == 1
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "KRX Open API auth key is required",
+        "KRX_OPEN_API_AUTH_KEY is required for sector cache build",
+    ],
+    ids=["client_auth_key", "sector_builder_auth_key"],
+)
+def test_missing_auth_key_is_blocked_without_broad_value_error_catch(tmp_path: Path, message: str) -> None:
+    _prepare(tmp_path, ["2026-09-01"])
+    updater = FakeUpdater(errors={"2026-09-02": ValueError(message)})
+    result = update_sector_index_rolling(
+        "2026-09-02",
+        repo_root=tmp_path,
+        provider=updater,
+        calendar=FakeCalendar(["2026-09-01", "2026-09-02"]),
+    )
+    assert result.status == BLOCKED
+    assert result.update_call_count == 1
 
 
 def test_final_completeness_has_46_codes_per_required_date(tmp_path: Path) -> None:
