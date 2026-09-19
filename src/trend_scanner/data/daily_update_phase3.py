@@ -273,7 +273,16 @@ def _fundamentals_runner(repo_root: Path, env_file: Path, run_date: str | None) 
         if not manifest_path.is_file():
             return {"status": FAILED, "requested_as_of": target, "reason": "FUNDAMENTALS_MANIFEST_MISSING"}
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        if exit_code == 0 and manifest.get("final_status") == PASS:
+        final_status = str(manifest.get("final_status", ""))
+        if final_status != PASS:
+            return {
+                "status": FAILED,
+                "requested_as_of": target,
+                "reason": "FUNDAMENTALS_MANIFEST_FINAL_STATUS_INVALID",
+                "manifest_final_status": final_status,
+                "manifest": str(manifest_path),
+            }
+        if exit_code == 0:
             return {"status": PASS, "requested_as_of": target, "manifest": str(manifest_path)}
         return {
             "status": BLOCKED,
@@ -341,6 +350,9 @@ def _sector_rs_ranking_runner(repo_root: Path) -> StepRunner:
         meta_path = output_dir / f"sector_rs_ranking_{compact}_meta.json"
         if parquet_path.is_file() and meta_path.is_file():
             meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            _membership, current_membership_effective_date, _path, _membership_meta = (
+                resolve_sector_membership_snapshot_for_target(target, repo_root=repo_root)
+            )
             frame = pd.read_parquet(parquet_path, columns=["ticker", "market", "as_of"])
             target_common = load_local_target_universe(target, repo_root=repo_root)
             expected_tickers = set(target_common["ticker"].astype(str).str.zfill(6))
@@ -352,7 +364,7 @@ def _sector_rs_ranking_runner(repo_root: Path) -> StepRunner:
             actual_markets = dict(zip(frame["ticker"], frame["market"]))
             if (
                 meta.get("as_of") == target
-                and str(meta.get("membership_effective_date", "")) <= target
+                and str(meta.get("membership_effective_date", "")) == str(current_membership_effective_date)
                 and meta.get("scope", {}).get("type") == "TARGET_PIT_COMMON_POPULATION"
                 and int(meta.get("target_common_population", -1)) == len(target_common)
                 and len(frame) == len(target_common)

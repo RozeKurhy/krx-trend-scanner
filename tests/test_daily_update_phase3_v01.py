@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import json
 from pathlib import Path
+from types import SimpleNamespace
 
+import pandas as pd
 import pytest
 
+import trend_scanner.data.daily_update_phase3 as phase3
 from trend_scanner.data.daily_update_phase3 import (
     BLOCKED,
     FAILED,
@@ -14,7 +18,10 @@ from trend_scanner.data.daily_update_phase3 import (
     PASS,
     Phase3Coordinator,
     TOP_LEVEL_STEPS,
+    _fundamentals_runner,
     _load_script_module,
+    _run_step,
+    _sector_rs_ranking_runner,
     compose_phase3_status,
 )
 
@@ -115,3 +122,76 @@ def test_script_loader_registers_dataclass_module(tmp_path: Path) -> None:
     module = _load_script_module(tmp_path, "fixture.py")
 
     assert module.Fixture("ok").value == "ok"
+
+
+@pytest.mark.parametrize(
+    ("artifact_effective_date", "expected_status"),
+    [
+        ("2026-09-17", BLOCKED),
+        ("2026-10-01", NOOP_ALREADY_COMPLETE),
+    ],
+)
+def test_sector_rs_noop_requires_current_membership_effective_date(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    artifact_effective_date: str,
+    expected_status: str,
+) -> None:
+    target = "2026-10-05"
+    output_dir = tmp_path / "data/analytics/sector_rs_ranking/v01"
+    output_dir.mkdir(parents=True)
+    compact = target.replace("-", "")
+    parquet_path = output_dir / f"sector_rs_ranking_{compact}.parquet"
+    parquet_path.touch()
+    (output_dir / f"sector_rs_ranking_{compact}_meta.json").write_text(
+        json.dumps(
+            {
+                "as_of": target,
+                "membership_effective_date": artifact_effective_date,
+                "scope": {"type": "TARGET_PIT_COMMON_POPULATION"},
+                "target_common_population": 1,
+            }
+        ),
+        encoding="utf-8",
+    )
+    target_common = pd.DataFrame({"ticker": ["000001"], "market": ["KOSPI"]})
+    frame = pd.DataFrame({"ticker": ["000001"], "market": ["KOSPI"], "as_of": [target]})
+    membership = target_common.assign(sector_code="001", sector_name="Fixture")
+    monkeypatch.setattr(
+        phase3,
+        "resolve_sector_membership_snapshot_for_target",
+        lambda *_args, **_kwargs: (membership, "2026-10-01", tmp_path / "membership.parquet", {}),
+    )
+    monkeypatch.setattr(phase3, "load_local_target_universe", lambda *_args, **_kwargs: target_common)
+    monkeypatch.setattr(phase3.pd, "read_parquet", lambda *_args, **_kwargs: frame)
+    monkeypatch.setattr(
+        phase3,
+        "_load_script_module",
+        lambda *_args, **_kwargs: pytest.fail("invalid existing artifact must not rebuild"),
+    )
+
+    result = _run_step(_sector_rs_ranking_runner(tmp_path), target)
+
+    assert result.status == expected_status
+    if expected_status == BLOCKED:
+        assert result.details["reason"] == "EXISTING_SECTOR_RS_ARTIFACT_INVALID"
+
+
+def test_fundamentals_manifest_changes_requested_is_failed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = "2026-10-05"
+    manifest_path = tmp_path / "artifacts/fundamentals/production/20261005/manifest.json"
+    manifest_path.parent.mkdir(parents=True)
+    manifest_path.write_text(json.dumps({"final_status": "CHANGES_REQUESTED"}), encoding="utf-8")
+    monkeypatch.setattr(
+        phase3,
+        "_load_script_module",
+        lambda *_args, **_kwargs: SimpleNamespace(run=lambda *_args, **_kwargs: 1),
+    )
+
+    result = _fundamentals_runner(tmp_path, tmp_path / "env.md", "2026-10-05")(target)
+
+    assert result["status"] == FAILED
+    assert result["manifest_final_status"] == "CHANGES_REQUESTED"
