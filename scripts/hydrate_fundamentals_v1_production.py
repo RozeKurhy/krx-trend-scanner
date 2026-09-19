@@ -19,7 +19,7 @@ import sys
 import time
 from collections import Counter
 from dataclasses import asdict, is_dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 from zoneinfo import ZoneInfo
@@ -323,30 +323,54 @@ class BoundedFilingRegistry(FilingRegistry):
     completed year window is materialized into the registry's ordinary
     per-year/per-report cache shape, so the existing provider continues to
     consume the standard cache without a parallel HTTP implementation.
+
+    A fiscal year with no valid cache history (missing, incomplete, or an
+    invalid ``coverage_start``) is bootstrapped exactly as before: one full
+    ``fiscal_year-01-01 ~ requested_as_of`` fetch for that year.  A fiscal
+    year whose caches all have a valid history start but a stale
+    ``coverage_end`` is instead advanced with a single ticker-level
+    receipt-date delta fetch, so a new ``target_as_of`` does not repeat a
+    multi-year history query it has already paid for.
     """
 
     def __init__(self, *args: Any, **kwargs: Any):
         super().__init__(*args, **kwargs)
         self.preload_year_fetches = 0
         self.preload_pages_fetched = 0
+        self.preload_delta_fetches = 0
+        self.preload_delta_pages_fetched = 0
 
     @staticmethod
-    def _cache_is_usable(
+    def _cache_base(
         registry: FilingRegistry,
         *,
         corp_code: str,
         fiscal_year: str,
         reprt_code: str,
-        requested_as_of: str,
-    ) -> bool:
+    ) -> tuple[list[Any], dict[str, Any]] | None:
+        """Return the cached (rows, metadata) if its history start is valid.
+
+        Unlike ``FilingRegistry._cache_covers``, this ignores how stale
+        ``coverage_end`` is -- it only asks whether the cache is a safe base
+        to extend with a later receipt-date delta, not whether it already
+        covers the current target.
+        """
         cached = registry._load(registry._cache_path(corp_code, fiscal_year, reprt_code))
-        return bool(
-            cached is not None
-            and registry._cache_covers(
-                cached[1],
-                required_start=f"{int(fiscal_year):04d}-01-01",
-                requested_as_of=requested_as_of,
-            )
+        if cached is None:
+            return None
+        required_start = f"{int(fiscal_year):04d}-01-01"
+        coverage_start = str(cached[1].get("coverage_start") or "")
+        if not coverage_start or coverage_start > required_start:
+            return None
+        return cached
+
+    @staticmethod
+    def _filing_identity(item: Any) -> tuple[Any, ...]:
+        """Content used to detect a real conflict; excludes the fetch-time timestamp."""
+        return (
+            item.ticker, item.corp_code, item.corp_name, item.bsns_year, item.reprt_code,
+            item.report_type, item.report_nm, item.rcept_no, item.rcept_dt,
+            item.filing_chain_key, item.correction_flag, item.fs_div,
         )
 
     def preload_ticker(
@@ -373,20 +397,25 @@ class BoundedFilingRegistry(FilingRegistry):
                 )
             )
         )
-        missing_years = [
-            year for year in years
-            if not all(
-                self._cache_is_usable(
-                    self,
-                    corp_code=corp_code,
-                    fiscal_year=year,
-                    reprt_code=reprt_code,
-                    requested_as_of=cutoff,
+
+        bootstrap_years: list[str] = []
+        stale_entries: list[tuple[str, str, list[Any], dict[str, Any]]] = []
+        for fiscal_year in years:
+            bases = {
+                reprt_code: self._cache_base(
+                    self, corp_code=corp_code, fiscal_year=fiscal_year, reprt_code=reprt_code,
                 )
                 for reprt_code in REGULAR_REPORT_CODES
-            )
-        ]
-        for fiscal_year in missing_years:
+            }
+            if any(base is None for base in bases.values()):
+                bootstrap_years.append(fiscal_year)
+                continue
+            for reprt_code, base in bases.items():
+                rows, metadata = base
+                if str(metadata.get("coverage_end") or "") < cutoff:
+                    stale_entries.append((fiscal_year, reprt_code, rows, metadata))
+
+        for fiscal_year in bootstrap_years:
             coverage_start = f"{int(fiscal_year):04d}-01-01"
             raw_rows, responses, total_count, total_page = self._fetch_pages(
                 corp_code=corp_code,
@@ -463,6 +492,89 @@ class BoundedFilingRegistry(FilingRegistry):
                     self._cache_path(corp_code, fiscal_year, reprt_code),
                     {"metadata": metadata, "filings": [item.to_dict() for item in rows]},
                 )
+
+        if not stale_entries:
+            return
+        min_coverage_end = min(
+            str(metadata.get("coverage_end") or "") for _fy, _rc, _rows, metadata in stale_entries
+        )
+        delta_start = (date.fromisoformat(min_coverage_end) + timedelta(days=1)).isoformat()
+        delta_end = cutoff
+        if delta_start > delta_end:
+            return
+        raw_rows, responses, total_count, total_page = self._fetch_pages(
+            corp_code=corp_code,
+            bgn_de=delta_start.replace("-", ""),
+            end_de=delta_end.replace("-", ""),
+        )
+        self.preload_delta_fetches += 1
+        self.preload_delta_pages_fetched += len(responses)
+        retrieved_at = _now()
+        # Seeded per-bucket dicts so a delta row lands with the filing's own
+        # (bsns_year, reprt_code) -- a correction to an older report filed
+        # inside this window still merges into that older bucket, not the
+        # bucket that happened to trigger the fetch.
+        buckets: dict[tuple[str, str], dict[str, Any]] = {
+            (fiscal_year, reprt_code): {item.rcept_no: item for item in rows}
+            for fiscal_year, reprt_code, rows, _metadata in stale_entries
+        }
+        raw_by_rcept: dict[str, str] = {}
+        for raw in raw_rows:
+            if not isinstance(raw, dict):
+                continue
+            rcept_no = str(raw.get("rcept_no") or "")
+            raw_digest = json.dumps(raw, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+            if rcept_no and rcept_no in raw_by_rcept and raw_by_rcept[rcept_no] != raw_digest:
+                raise FilingRegistryConflictError(f"Conflicting payloads for rcept_no={rcept_no}")
+            if rcept_no:
+                raw_by_rcept[rcept_no] = raw_digest
+            filing = to_registered_filing(raw, ticker=ticker, retrieved_at=retrieved_at)
+            if filing is None:
+                continue
+            bucket = buckets.get((filing.bsns_year, filing.reprt_code))
+            if bucket is None:
+                # Not one of the caches this ticker is extending right now.
+                continue
+            existing = bucket.get(filing.rcept_no)
+            if existing is not None and self._filing_identity(existing) != self._filing_identity(filing):
+                raise FilingRegistryConflictError(
+                    f"Conflicting delta payload for rcept_no={filing.rcept_no}"
+                )
+            bucket[filing.rcept_no] = filing
+
+        # Merge succeeded for every bucket with no conflict; only now write.
+        source_hash = hashlib.sha256(b"".join(response.raw for response in responses)).hexdigest()
+        new_window = {"bgn_de": delta_start.replace("-", ""), "end_de": delta_end.replace("-", "")}
+        for fiscal_year, reprt_code, _old_rows, old_metadata in stale_entries:
+            rows = sorted(
+                buckets[(fiscal_year, reprt_code)].values(),
+                key=lambda item: (item.rcept_dt, item.rcept_no),
+            )
+            existing_windows = list(old_metadata.get("request_windows") or [])
+            existing_windows.append(new_window)
+            metadata = dict(old_metadata)
+            metadata.update({
+                "coverage_end": cutoff,
+                "requested_as_of": cutoff,
+                "retrieved_at": retrieved_at,
+                "pages_fetched": len(responses),
+                "window_count": len(existing_windows),
+                "request_window": new_window,
+                "request_windows": existing_windows,
+                "total_count": total_count if total_count is not None else len(raw_rows),
+                "total_page": total_page if total_page is not None else len(responses),
+                "http_status": 200,
+                "api_status": "000",
+                "source_sha256": source_hash,
+                "record_count": len(rows),
+                "cache_complete": True,
+                "cache_hit": False,
+                "preloaded_by": RUNNER_VERSION,
+            })
+            _write_json_checked(
+                self._cache_path(corp_code, fiscal_year, reprt_code),
+                {"metadata": metadata, "filings": [item.to_dict() for item in rows]},
+            )
 
 
 def _load_opendart_key(env_file: Path) -> str:
@@ -1699,7 +1811,10 @@ def run(
     manifest["filing_registry_preload"] = {
         "year_fetches": filing_registry.preload_year_fetches,
         "pages_fetched": filing_registry.preload_pages_fetched,
-        "strategy": "one_complete_list_json_window_per_missing_ticker_year",
+        "delta_fetches": filing_registry.preload_delta_fetches,
+        "delta_pages_fetched": filing_registry.preload_delta_pages_fetched,
+        "strategy": "one_complete_list_json_window_per_missing_ticker_year"
+                    "_plus_one_receipt_date_delta_per_ticker_for_stale_valid_years",
     }
     _write_json_checked(output_dir / "manifest.json", manifest)
     print(json.dumps({

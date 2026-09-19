@@ -433,3 +433,267 @@ def test_t6_cross_target_output_is_not_reused(tmp_path: Path):
 
     assert same_target is not None
     assert other_target is None
+
+
+# --- FilingRegistry incremental window fix (w.md T1~T7) ---------------------
+
+
+def _filing_row(
+    *, ticker: str, corp_code: str, corp_name: str, bsns_year: str, reprt_code: str,
+    rcept_no: str, rcept_dt: str, report_nm: str = "사업보고서", report_type: str = "PERIODIC",
+    correction_flag: bool = False, fs_div: str | None = None,
+) -> dict[str, object]:
+    return {
+        "ticker": ticker, "corp_code": corp_code, "corp_name": corp_name,
+        "bsns_year": bsns_year, "reprt_code": reprt_code, "report_type": report_type,
+        "report_nm": report_nm, "rcept_no": rcept_no, "rcept_dt": rcept_dt,
+        "filing_chain_key": f"{corp_code}:{bsns_year}:{reprt_code}:{report_nm}",
+        "correction_flag": correction_flag, "source_retrieved_at": "2026-01-01T00:00:00+00:00",
+        "fs_div": fs_div,
+    }
+
+
+def _seed_cache(
+    cache_dir: Path, *, corp_code: str, fiscal_year: str, reprt_code: str,
+    coverage_end: str, rows: list[dict] | None = None,
+) -> None:
+    """Write a valid FilingRegistry cache file directly (no bootstrap needed to create it)."""
+    payload = {
+        "metadata": {
+            "corp_code": corp_code, "bsns_year": fiscal_year, "reprt_code": reprt_code,
+            "requested_as_of": coverage_end,
+            "coverage_start": f"{int(fiscal_year):04d}-01-01",
+            "coverage_end": coverage_end,
+            "retrieved_at": "2026-01-01T00:00:00+00:00",
+            "page_count_requested": 100, "pages_fetched": 1, "window_count": 1,
+            "total_count": len(rows or []), "total_page": 1,
+            "http_status": 200, "api_status": "000", "source_sha256": "seed",
+            "record_count": len(rows or []), "cache_complete": True, "cache_hit": False,
+        },
+        "filings": list(rows or []),
+    }
+    (cache_dir / f"{corp_code}_{fiscal_year}_{reprt_code}.json").write_text(
+        json.dumps(payload, ensure_ascii=False), encoding="utf-8",
+    )
+
+
+def _seed_year(
+    cache_dir: Path, *, corp_code: str, fiscal_year: str, coverage_end: str,
+    rows_by_code: dict[str, list[dict]] | None = None,
+) -> None:
+    """Seed all four report-code caches for one fiscal year so the year is not a bootstrap target."""
+    rows_by_code = rows_by_code or {}
+    for reprt_code in f7.REGULAR_REPORT_CODES:
+        _seed_cache(
+            cache_dir, corp_code=corp_code, fiscal_year=fiscal_year, reprt_code=reprt_code,
+            coverage_end=coverage_end, rows=rows_by_code.get(reprt_code, []),
+        )
+
+
+def _raw_row(*, report_nm: str, rcept_no: str, rcept_dt: str, corp_code: str = "123456",
+             corp_name: str = "테스트") -> dict[str, str]:
+    return {"corp_code": corp_code, "corp_name": corp_name, "report_nm": report_nm,
+            "rcept_no": rcept_no, "rcept_dt": rcept_dt}
+
+
+class ScriptedBoundedRegistry(f7.BoundedFilingRegistry):
+    """A BoundedFilingRegistry whose ``_fetch_pages`` returns scripted rows per exact window."""
+
+    def __init__(self, cache_dir: Path, *, window_rows: dict[tuple[str, str], list[dict]] | None = None):
+        super().__init__(object(), cache_dir=cache_dir)
+        self.fetch_calls: list[dict[str, str]] = []
+        self._window_rows = window_rows or {}
+
+    def _fetch_pages(self, *, corp_code: str, bgn_de: str, end_de: str, page_count: int = 100):
+        self.fetch_calls.append({"corp_code": corp_code, "bgn_de": bgn_de, "end_de": end_de})
+        rows = self._window_rows.get((bgn_de, end_de), [])
+        payload = {"status": "000", "list": rows, "total_page": 1, "total_count": len(rows)}
+        raw = json.dumps(payload, sort_keys=True).encode()
+        response = f7.JsonResponse(
+            payload, raw, 200, "application/json", "https://example/list.json", "000", "PASS",
+        )
+        return list(rows), [response], len(rows), 1
+
+
+def test_filing_delta_t1_stale_valid_cache_uses_one_delta_window(tmp_path: Path):
+    """T1: 여러 회계연도 캐시가 모두 유효하면 전체 재조회 없이 ticker당 delta 1회만 조회한다."""
+    for fiscal_year in ("2024", "2025"):
+        _seed_year(tmp_path, corp_code="123456", fiscal_year=fiscal_year, coverage_end="2026-09-04")
+    registry = ScriptedBoundedRegistry(tmp_path)
+
+    registry.preload_ticker(
+        ticker="TEST01", corp_code="123456", requested_as_of="2026-09-17",
+        fiscal_years=("2024", "2025"),
+    )
+
+    assert registry.preload_year_fetches == 0
+    assert registry.preload_delta_fetches == 1
+    assert registry.fetch_calls == [{"corp_code": "123456", "bgn_de": "20260905", "end_de": "20260917"}]
+    for fiscal_year in ("2024", "2025"):
+        for reprt_code in f7.REGULAR_REPORT_CODES:
+            cache = json.loads((tmp_path / f"123456_{fiscal_year}_{reprt_code}.json").read_text())
+            assert cache["metadata"]["coverage_end"] == "2026-09-17"
+
+
+def test_filing_delta_t2_distributes_by_bsns_year_and_reprt_code(tmp_path: Path):
+    """T2: delta 응답의 신규/정정 filing이 각자의 (bsns_year, reprt_code) 버킷에 정확히 merge된다."""
+    existing_2023 = _filing_row(
+        ticker="TEST01", corp_code="123456", corp_name="테스트", bsns_year="2023", reprt_code="11011",
+        report_nm="사업보고서 (2023.12)", rcept_no="20230301000000", rcept_dt="20230301",
+    )
+    _seed_year(
+        tmp_path, corp_code="123456", fiscal_year="2023", coverage_end="2026-09-04",
+        rows_by_code={"11011": [existing_2023]},
+    )
+    _seed_year(tmp_path, corp_code="123456", fiscal_year="2026", coverage_end="2026-09-04")
+
+    new_2026_filing = _raw_row(report_nm="사업보고서", rcept_no="20260910000001", rcept_dt="20260910")
+    correction_2023_filing = _raw_row(
+        report_nm="사업보고서 (2023.12 기재정정)", rcept_no="20260912000002", rcept_dt="20260912",
+    )
+    registry = ScriptedBoundedRegistry(
+        tmp_path, window_rows={("20260905", "20260917"): [new_2026_filing, correction_2023_filing]},
+    )
+
+    registry.preload_ticker(
+        ticker="TEST01", corp_code="123456", requested_as_of="2026-09-17",
+        fiscal_years=("2023", "2026"),
+    )
+
+    cache_2023 = json.loads((tmp_path / "123456_2023_11011.json").read_text())
+    cache_2026 = json.loads((tmp_path / "123456_2026_11011.json").read_text())
+    assert {row["rcept_no"] for row in cache_2023["filings"]} == {"20230301000000", "20260912000002"}
+    assert {row["rcept_no"] for row in cache_2026["filings"]} == {"20260910000001"}
+    assert cache_2023["metadata"]["coverage_end"] == "2026-09-17"
+    assert cache_2026["metadata"]["coverage_end"] == "2026-09-17"
+
+
+def test_filing_delta_t3_empty_delta_advances_coverage_without_failure(tmp_path: Path):
+    """T3: delta에 신규 filing이 없어도 실패가 아니며 rows는 보존되고 coverage_end만 전진한다."""
+    existing = _filing_row(
+        ticker="TEST01", corp_code="123456", corp_name="테스트", bsns_year="2025", reprt_code="11011",
+        report_nm="사업보고서 (2025.12)", rcept_no="20250301000000", rcept_dt="20250301",
+    )
+    _seed_year(
+        tmp_path, corp_code="123456", fiscal_year="2025", coverage_end="2026-09-04",
+        rows_by_code={"11011": [existing]},
+    )
+    registry = ScriptedBoundedRegistry(tmp_path, window_rows={("20260905", "20260917"): []})
+
+    registry.preload_ticker(
+        ticker="TEST01", corp_code="123456", requested_as_of="2026-09-17", fiscal_years=("2025",),
+    )
+
+    cache = json.loads((tmp_path / "123456_2025_11011.json").read_text())
+    assert [row["rcept_no"] for row in cache["filings"]] == ["20250301000000"]
+    assert cache["metadata"]["coverage_end"] == "2026-09-17"
+    assert len(registry.fetch_calls) == 1
+
+    # Same target again: every required cache now has coverage_end == target, so network 0.
+    registry.preload_ticker(
+        ticker="TEST01", corp_code="123456", requested_as_of="2026-09-17", fiscal_years=("2025",),
+    )
+    assert len(registry.fetch_calls) == 1
+
+
+def test_filing_delta_t4_conflicting_rcept_no_is_fail_closed(tmp_path: Path):
+    """T4: 같은 rcept_no가 기존 캐시와 의미 충돌하면 fail closed되고 기존 캐시는 손상되지 않는다."""
+    existing = _filing_row(
+        ticker="TEST01", corp_code="123456", corp_name="테스트", bsns_year="2025", reprt_code="11011",
+        report_nm="사업보고서 (2025.12)", rcept_no="20250301000000", rcept_dt="20250301",
+    )
+    _seed_year(
+        tmp_path, corp_code="123456", fiscal_year="2025", coverage_end="2026-09-04",
+        rows_by_code={"11011": [existing]},
+    )
+    before = (tmp_path / "123456_2025_11011.json").read_text()
+    conflicting = _raw_row(
+        report_nm="사업보고서 (2025.12)", rcept_no="20250301000000", rcept_dt="20250302",
+    )
+    registry = ScriptedBoundedRegistry(
+        tmp_path, window_rows={("20260905", "20260917"): [conflicting]},
+    )
+
+    with pytest.raises(f7.FilingRegistryConflictError):
+        registry.preload_ticker(
+            ticker="TEST01", corp_code="123456", requested_as_of="2026-09-17", fiscal_years=("2025",),
+        )
+
+    assert (tmp_path / "123456_2025_11011.json").read_text() == before
+    for reprt_code in f7.REGULAR_REPORT_CODES:
+        cache = json.loads((tmp_path / f"123456_2025_{reprt_code}.json").read_text())
+        assert cache["metadata"]["coverage_end"] == "2026-09-04"
+
+
+def test_filing_delta_t5_uneven_frontier_uses_earliest_safe_start(tmp_path: Path):
+    """T5: 캐시별 coverage_end가 달라도 전체 재조회 없이 가장 이른 frontier 이후만 조회한다."""
+    rows_by_code = {}
+    for reprt_code in f7.REGULAR_REPORT_CODES:
+        coverage_end = "2026-09-03" if reprt_code == "11011" else "2026-09-04"
+        _seed_cache(
+            tmp_path, corp_code="123456", fiscal_year="2025", reprt_code=reprt_code,
+            coverage_end=coverage_end, rows=rows_by_code.get(reprt_code, []),
+        )
+    registry = ScriptedBoundedRegistry(tmp_path)
+
+    registry.preload_ticker(
+        ticker="TEST01", corp_code="123456", requested_as_of="2026-09-17", fiscal_years=("2025",),
+    )
+
+    assert registry.fetch_calls == [{"corp_code": "123456", "bgn_de": "20260904", "end_de": "20260917"}]
+    for reprt_code in f7.REGULAR_REPORT_CODES:
+        cache = json.loads((tmp_path / f"123456_2025_{reprt_code}.json").read_text())
+        assert cache["metadata"]["coverage_end"] == "2026-09-17"
+
+
+def test_filing_delta_t6_missing_year_still_bootstraps_others_use_delta(tmp_path: Path):
+    """T6: 일부 회계연도 캐시가 없으면 그 연도만 기존 bootstrap 의미를 유지하고, 나머지 유효 연도는 delta로 처리한다."""
+    _seed_year(tmp_path, corp_code="123456", fiscal_year="2025", coverage_end="2026-09-04")
+    # 2024: only three of the four report codes exist; the missing one forces a full bootstrap for 2024.
+    codes = list(f7.REGULAR_REPORT_CODES)
+    for reprt_code in codes[:-1]:
+        _seed_cache(
+            tmp_path, corp_code="123456", fiscal_year="2024", reprt_code=reprt_code,
+            coverage_end="2026-09-04",
+        )
+    bootstrap_row = _raw_row(report_nm="사업보고서 (2024.12)", rcept_no="20240301000000", rcept_dt="20240301")
+    registry = ScriptedBoundedRegistry(
+        tmp_path,
+        window_rows={
+            ("20240101", "20260917"): [bootstrap_row],
+            ("20260905", "20260917"): [],
+        },
+    )
+
+    registry.preload_ticker(
+        ticker="TEST01", corp_code="123456", requested_as_of="2026-09-17",
+        fiscal_years=("2024", "2025"),
+    )
+
+    assert registry.preload_year_fetches == 1
+    assert registry.preload_delta_fetches == 1
+    for reprt_code in f7.REGULAR_REPORT_CODES:
+        cache_2024 = json.loads((tmp_path / f"123456_2024_{reprt_code}.json").read_text())
+        cache_2025 = json.loads((tmp_path / f"123456_2025_{reprt_code}.json").read_text())
+        assert cache_2024["metadata"]["coverage_end"] == "2026-09-17"
+        assert cache_2025["metadata"]["coverage_end"] == "2026-09-17"
+
+
+def test_filing_delta_t7_same_target_fetches_and_writes_nothing(tmp_path: Path):
+    """T7: 모든 필요 캐시의 coverage_end가 이미 target이면 fetch 0, write 0이다."""
+    _seed_year(tmp_path, corp_code="123456", fiscal_year="2025", coverage_end="2026-09-17")
+    registry = ScriptedBoundedRegistry(tmp_path)
+    before = {
+        reprt_code: (tmp_path / f"123456_2025_{reprt_code}.json").stat().st_mtime_ns
+        for reprt_code in f7.REGULAR_REPORT_CODES
+    }
+
+    registry.preload_ticker(
+        ticker="TEST01", corp_code="123456", requested_as_of="2026-09-17", fiscal_years=("2025",),
+    )
+
+    assert registry.fetch_calls == []
+    assert registry.preload_year_fetches == 0
+    assert registry.preload_delta_fetches == 0
+    for reprt_code in f7.REGULAR_REPORT_CODES:
+        assert (tmp_path / f"123456_2025_{reprt_code}.json").stat().st_mtime_ns == before[reprt_code]
