@@ -10,8 +10,10 @@
 
 이 문서는 실행 계획 메모가 아니다. 아래에서 **현재 확정된 공통 계약**과
 **1단계의 상세 기준**을 권위 있게 정의한다. 2단계와 3단계는 각각 별도
-상세 계약에서 정의하며 완료 상태다. 이 문서의 4~5단계는 전체 흐름과 상속
-규칙만 설명하는 상위 개요다.
+상세 계약에서 정의하며 완료 상태다. 4단계는 [분석·리포트·웹 반영 기준
+V01](daily_update_phase4_analysis_reporting_web_contract_v01.md)에서 상세
+계약을 정의했으며 구현은 아직 시작하지 않았다. 이 문서의 5단계는 전체
+흐름과 상속 규칙만 설명하는 상위 개요다.
 
 현재 1단계 구현은 운영에서 검증되어 `DAILY_UPDATE_PHASE1 = COMPLETE`
 상태다. 2026-09-16 전체 사이클과 2026-09-17 정상 롤링 갱신은 각각 `PASS`로
@@ -47,7 +49,7 @@ target_as_of 입력
 | 1단계 | 데일리 업데이트 기반 | 원천 시장데이터와 Repository V2의 기준일 일관성. 상세 정의 |
 | 2단계 | 주봉·월봉 파생 | 일봉에서 파생되는 주봉·월봉의 기준일과 완성 상태. `DAILY_UPDATE_PHASE2 = COMPLETE`(상세 계약·실운영 검증 완료, [상세 계약](daily_update_phase2_weekly_monthly_derivation_contract_v01.md) 참고) |
 | 3단계 | 분석 입력 갱신 | 수급·펀더멘털·시장·업종 RS 등 추가 입력. `DAILY_UPDATE_PHASE3 = COMPLETE`(상세 계약·통합 실운영 검증 완료, [상세 계약](daily_update_phase3_analysis_inputs_contract_v01.md) 참고) |
-| 4단계 | 분석·리포트·웹 반영 | 스캐너·전략·종목 리포트·랭킹·공포지수·`web/data`. 개요만 정의 |
+| 4단계 | 분석·리포트·웹 반영 | 스캐너·전략·종목 리포트·랭킹·공포지수·`web/data`. [상세 계약](daily_update_phase4_analysis_reporting_web_contract_v01.md) 확정, 구현 예정 |
 | 5단계 | 최종 검증·배포 | 하나의 진입점에서 검증 후 배포하는 최종 묶음. 개요만 정의 |
 
 이 순서는 원천 데이터가 먼저 완성되고, 그 위에 파생·분석·표시 결과가
@@ -370,7 +372,9 @@ V01](daily_update_phase3_analysis_inputs_contract_v01.md)에서 정의한다.
 스캐너, 공식 전략, 시장·업종 RS, 종목 리포트, 랭킹, 공포지수,
 `web/data`는 1~3단계가 확정한 동일한 기준일을 사용한다. 일부 입력만 최신이고
 일부 입력은 이전 기준일이면 결과를 최신으로 표시하지 않는다. 분석 결과와
-웹 산출물은 검증을 통과한 경우에만 배포 대상으로 삼는다.
+웹 산출물은 검증을 통과한 경우에만 배포 대상으로 삼는다. 기존 경로의 재사용,
+필수·선택 투영 구분, 상태 합성과 구현 전제는 [분석·리포트·웹 반영 기준
+V01](daily_update_phase4_analysis_reporting_web_contract_v01.md)에서 정의한다.
 
 ### 6.4 5단계: 최종 검증·배포
 
@@ -418,3 +422,4 @@ V01](daily_update_phase3_analysis_inputs_contract_v01.md)에서 정의한다.
 - [생존편향 방지 과거 분모 동결](survivorship_safe_denominator_freeze_v01.md)
 - [주봉·월봉 파생 기준 V01](daily_update_phase2_weekly_monthly_derivation_contract_v01.md) — 2단계 상세 계약
 - [분석 입력 갱신 기준 V01](daily_update_phase3_analysis_inputs_contract_v01.md) — 3단계 상세 계약
+- [분석·리포트·웹 반영 기준 V01](daily_update_phase4_analysis_reporting_web_contract_v01.md) — 4단계 상세 계약(구현 예정)

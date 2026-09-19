@@ -20,13 +20,15 @@
 ```text
 데일리 업데이트 기준 V01
 ├─ 2단계: 주봉·월봉 파생 기준 V01
-└─ 3단계: 분석 입력 갱신 기준 V01
+├─ 3단계: 분석 입력 갱신 기준 V01
+└─ 4단계: 분석·리포트·웹 반영 기준 V01
 ```
 
 | 단계 | 상세 계약 | 한 줄 역할 |
 |---|---|---|
 | 2단계 | [주봉·월봉 파생 기준 V01](daily_update_phase2_weekly_monthly_derivation_contract_v01.md) | 인증된 일봉에서 주봉·월봉을 파생하고 기간 완료 상태를 판정하는 기준 (`COMPLETE`) |
 | 3단계 | [분석 입력 갱신 기준 V01](daily_update_phase3_analysis_inputs_contract_v01.md) | 수급·펀더멘털·시장·업종 RS 등 분석 입력을 기준일에 맞춰 갱신하는 기준 (`COMPLETE`) |
+| 4단계 | [분석·리포트·웹 반영 기준 V01](daily_update_phase4_analysis_reporting_web_contract_v01.md) | 스캐너·공식 전략·Stock Report v0.5·필수 웹 투영을 같은 기준일에 연결하는 기준 (상세 계약 확정 / 구현 예정) |
 
 ## B. 현재 세부 데이터 계약
 
