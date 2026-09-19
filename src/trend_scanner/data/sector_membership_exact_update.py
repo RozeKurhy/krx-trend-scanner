@@ -218,11 +218,21 @@ def update_sector_membership_exact(
                 builder_called=False,
                 published=False,
             )
-        except Exception:
+        except (SectorMembershipSnapshotUnavailable, RollingMembershipError, ValueError):
             return SectorMembershipExactUpdateResult(
                 target_as_of=target,
                 status=BLOCKED,
                 reason=REASON_EXISTING_INVALID,
+                snapshot_path=_relative_or_str(snapshot_path, repo_root),
+                meta_path=_relative_or_str(meta_path, repo_root),
+                builder_called=False,
+                published=False,
+            )
+        except Exception as exc:
+            return SectorMembershipExactUpdateResult(
+                target_as_of=target,
+                status=FAILED,
+                reason=f"EXISTING_TARGET_SNAPSHOT_VERIFICATION_FAILED:{type(exc).__name__}",
                 snapshot_path=_relative_or_str(snapshot_path, repo_root),
                 meta_path=_relative_or_str(meta_path, repo_root),
                 builder_called=False,

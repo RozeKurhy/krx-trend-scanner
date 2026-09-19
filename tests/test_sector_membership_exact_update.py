@@ -512,3 +512,30 @@ def test_t12_second_run_is_noop(tmp_path: Path) -> None:
     assert _file_sha256(snap_path) == sha_parquet
     assert meta_path.stat().st_mtime_ns == mtime_meta
     assert meta_path.stat().st_size == size_meta
+
+
+def test_existing_snapshot_unexpected_exception_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = "2026-09-17"
+    _setup_authority(tmp_path, certified_through=target)
+    snap_path = sector_membership_path_for_date(target, tmp_path)
+    meta_path = sector_membership_meta_path_for_date(target, tmp_path)
+    snap_path.parent.mkdir(parents=True, exist_ok=True)
+    snap_path.write_bytes(b"dummy")
+    meta_path.write_text("{}", encoding="utf-8")
+
+    def raise_runtime_error(*args: Any, **kwargs: Any) -> Any:
+        raise RuntimeError("unexpected failure during verification")
+
+    monkeypatch.setattr(
+        "trend_scanner.data.sector_membership_exact_update.load_sector_membership_snapshot",
+        raise_runtime_error,
+    )
+
+    result = update_sector_membership_exact(target, repo_root=tmp_path)
+    assert result.status == FAILED
+    assert "EXISTING_TARGET_SNAPSHOT_VERIFICATION_FAILED:RuntimeError" in result.reason
+    assert result.builder_called is False
+    assert result.published is False
