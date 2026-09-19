@@ -45,7 +45,7 @@ target_as_of 입력
 | 단계 | 이름 | 이 문서에서의 범위 |
 |---|---|---|
 | 1단계 | 데일리 업데이트 기반 | 원천 시장데이터와 Repository V2의 기준일 일관성. 상세 정의 |
-| 2단계 | 주봉·월봉 파생 | 일봉에서 파생되는 주봉·월봉의 기준일과 완성 상태. `DAILY_UPDATE_PHASE2 = COMPLETE`(상세 계약·실운영 검증 완료, [상세 계약](weekly_monthly_derivation_contract_v01.md) 참고) |
+| 2단계 | 주봉·월봉 파생 | 일봉에서 파생되는 주봉·월봉의 기준일과 완성 상태. `DAILY_UPDATE_PHASE2 = COMPLETE`(상세 계약·실운영 검증 완료, [상세 계약](daily_update_phase2_weekly_monthly_derivation_contract_v01.md) 참고) |
 | 3단계 | 분석 입력 갱신 | 수급·펀더멘털·시장·업종 RS 등 추가 입력. 개요만 정의 |
 | 4단계 | 분석·리포트·웹 반영 | 스캐너·전략·종목 리포트·랭킹·공포지수·`web/data`. 개요만 정의 |
 | 5단계 | 최종 검증·배포 | 하나의 진입점에서 검증 후 배포하는 최종 묶음. 개요만 정의 |
@@ -413,5 +413,5 @@ Repository V2 정상
 - [현재 수정주가 저장소 계약](adjusted_price_store_v02.md)
 - [종목 메타데이터 권위 기준](instrument_metadata_authority.md)
 - [생존편향 방지 과거 분모 동결](survivorship_safe_denominator_freeze_v01.md)
-- [주봉·월봉 파생 기준 V01](weekly_monthly_derivation_contract_v01.md) — 2단계 상세 계약
+- [주봉·월봉 파생 기준 V01](daily_update_phase2_weekly_monthly_derivation_contract_v01.md) — 2단계 상세 계약
 - [분석 입력 갱신 기준 V01](daily_update_phase3_analysis_inputs_contract_v01.md) — 3단계 상세 계약

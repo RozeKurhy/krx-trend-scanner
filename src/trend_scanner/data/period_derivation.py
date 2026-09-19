@@ -1,6 +1,6 @@
 """1단계 인증 일봉에서 2단계 주봉·월봉을 얇게 조율해 파생한다.
 
-계약: docs/architecture/weekly_monthly_derivation_contract_v01.md
+계약: docs/architecture/daily_update_phase2_weekly_monthly_derivation_contract_v01.md
 
 이 모듈은 새 거래일 권위나 새 resample 로직을 만들지 않는다.
 `to_weekly()`/`to_monthly()`(resampler.py)와 `MarketCalendarAuthority`

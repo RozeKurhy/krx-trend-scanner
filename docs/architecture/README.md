@@ -15,6 +15,19 @@
 | [survivorship_safe_denominator_freeze_v01.md](survivorship_safe_denominator_freeze_v01.md) | 과거 백테스트와 PIT 종목 집합의 생존편향 방지 기준 |
 | [daily_update_contract_v01.md](daily_update_contract_v01.md) | 특정 기준일까지 운영 데이터를 일관되게 증분 갱신하는 데일리 업데이트 기준 |
 
+데일리 업데이트의 단계별 상세 계약은 상위 기준 문서 아래에 둔다.
+
+```text
+데일리 업데이트 기준 V01
+├─ 2단계: 주봉·월봉 파생 기준 V01
+└─ 3단계: 분석 입력 갱신 기준 V01
+```
+
+| 단계 | 상세 계약 | 한 줄 역할 |
+|---|---|---|
+| 2단계 | [주봉·월봉 파생 기준 V01](daily_update_phase2_weekly_monthly_derivation_contract_v01.md) | 인증된 일봉에서 주봉·월봉을 파생하고 기간 완료 상태를 판정하는 기준 |
+| 3단계 | [분석 입력 갱신 기준 V01](daily_update_phase3_analysis_inputs_contract_v01.md) | 수급·펀더멘털·시장·업종 RS 등 분석 입력을 기준일에 맞춰 갱신하는 기준 |
+
 ## B. 현재 세부 데이터 계약
 
 위 다섯 문서의 세부 저장소·원천·전환 계약은 다음 문서에서 확인한다.

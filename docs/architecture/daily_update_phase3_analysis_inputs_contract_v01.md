@@ -15,9 +15,9 @@
 섹터 구성
 ```
 
-이 문서는 계약 문서이며 구현 완료 기록이 아니다. 3단계는 아직 구현
-전이며, 이 문서는 구현에 앞서 각 입력이 무엇을 재사용하고 무엇을 새로
-만들어야 하는지 확정한다.
+이 문서는 계약 문서이며 작업 일지가 아니다. 3단계의 입력별 구현·검증
+상태와 이 문서가 정의하는 공통 계약은 구분한다. 이 문서는 각 입력이
+무엇을 재사용하고 무엇을 새로 만들어야 하는지 확정한다.
 
 ```text
 DAILY_UPDATE_PHASE1 = COMPLETE
@@ -160,16 +160,16 @@ authority snapshot"이며,
 **시장 RS cross-section 모집단 권위**:
 
 ```text
-Market RS cross-section population
-= Phase 1 rolling PIT authority
+시장 RS 횡단면 모집단
+= 1단계 롤링 PIT 권위
   (data/market/rolling_authority/merged_pit_intervals.json)에서
   target_as_of에 COMMON인 전체 KOSPI/KOSDAQ 종목 집합
 ```
 
 이 전체 모집단을 `compute_market_rs_cross_section()`에 전달한 뒤, 스캐너나
 종목 리포트에는 그 결과를 조회해 붙인다. 현재 종목 목록, Pattern A
-candidate subset, investable subset, scanner 결과 subset, 과거 Phase 12
-검증용 oracle artifact는 운영 cross-section 분모로 사용하지 않는다.
+후보 집합, 투자 가능 집합, 스캐너 결과 집합, 과거 12단계
+검증용 기준 산출물은 운영 횡단면 분모로 사용하지 않는다.
 
 ```text
 필수 출력:
@@ -186,8 +186,8 @@ market_rs_universe_{YYYYMMDD}.csv
 
 **입력**: 종목 가격 = `MarketDataRepositoryV2`(1단계), 업종 지수 = 기존 업종
 지수 캐시, 섹터 구성 = §4.5의 승인 스냅샷 선택. 일일 3F 출력 모집단은
-`target_as_of`의 Phase 1 PIT COMMON 전체 모집단을 사용하고, 선택된 섹터
-구성을 그 모집단에 reconciliation한다.
+`target_as_of`의 1단계 PIT COMMON 전체 모집단을 사용하고, 선택된 섹터
+구성 정보를 그 모집단과 대조한다.
 
 **업종 지수 갱신 — 공식 재사용 경로**(이전 감사가 놓친 부분):
 `src/trend_scanner/data/krx_sector_index.py`의
@@ -229,7 +229,7 @@ API로 수집해서 기존 캐시와 병합하는(기존 같은 날짜 행은 �
 **공식 생성 경로 — 이미 존재함**(이전 감사가 놓친 부분):
 `src/trend_scanner/data/sector_membership_rolling.py`의
 `build_rolling_sector_membership(effective_date, *, repo_root, ...)`가
-공식 생성기다. `fetcher=None`인 production 기본 경로는
+공식 생성기다. `fetcher=None`인 운영 기본 경로는
 `load_marketplace_sector_checkpoints()`를 사용하며, 다음 로컬 원천을 읽는다.
 
 ```text
@@ -242,41 +242,40 @@ CLI(`main()`)는 이미 `--as-of`를 지원한다
 "신규 스냅샷 생성용 커밋된 스크립트를 못 찾았다"고 한 것은 부정확한
 결론이다. 이 함수는 로컬 manifest와 CSV를 검증하고 46개 업종 전부가
 성공해야만 발행하는 게이트를 가진다. 명시적인 `fetcher`는 테스트용
-주입 경로이며 production 기본 경로의 네트워크 수집을 의미하지 않는다.
+주입 경로이며 운영 기본 경로의 네트워크 수집을 의미하지 않는다.
 
 **공식 조회 경로**: `src/trend_scanner/data/sector_membership.py`의
 `resolve_sector_membership_snapshot_for_target(target_as_of, ...)`.
 일일 소비자는 `effective_date <= target_as_of`인 승인 스냅샷 중 가장 최신
 날짜를 선택한다. 선택된 스냅샷의 parquet와 `_meta.json` 쌍이 모두 있어야
-하며, 기존 공식 loader의 schema·effective date·population 검증을 통과해야
+하며, 기존 공식 loader의 스키마·효력일·모집단 검증을 통과해야
 한다. 승인된 미래 스냅샷은 절대 과거 target에 적용하지 않는다.
 
-Sector Membership refresh는 daily execution 항목이 아니다. 기본 운영 주기는
-월 1회 수동 refresh이며, 필요할 때 특별 refresh를 수행한다. Daily Sector RS는
-refresh를 생성하지 않고 latest approved membership을 선택해 target PIT COMMON에
-적용한다.
+섹터 구성 정보 갱신은 일일 실행 항목이 아니다. 기본 운영 주기는 월 1회
+수동 갱신이며, 필요할 때 특별 갱신을 수행한다. 일일 업종 RS는 갱신을
+생성하지 않고 최신 승인 섹터 구성 정보를 선택해 기준일 PIT COMMON에 적용한다.
 
 요청 target보다 이른 승인 스냅샷이 없거나, 가장 최신 후보가 부분 발행·무효
-상태이면 `SectorMembershipSnapshotUnavailable`로 fail closed한다. 이 경우
-더 오래된 스냅샷으로 재대체하지 않는다. 정확일 loader는 refresh 및
-historical 검증용으로 계속 유지한다.
+상태이면 `SectorMembershipSnapshotUnavailable`로 조건 불충족 시 차단한다. 이
+경우 더 오래된 스냅샷으로 재대체하지 않는다. 정확일 loader는 갱신 및
+과거 기준 검증용으로 계속 유지한다.
 
 **계약**:
 
 ```text
-승인된 snapshot 중 effective_date <= target_as_of인 최신 pair 존재
-→ 해당 snapshot 재사용
+승인된 스냅샷 중 `effective_date <= target_as_of`인 최신 스냅샷 쌍 존재
+→ 해당 스냅샷 재사용
 
-최신 후보 pair가 부분 발행·무효이거나 eligible snapshot 없음
+최신 후보 쌍이 부분 발행·무효이거나 유효한 스냅샷 없음
 → BLOCKED
 
-target_as_of보다 미래인 snapshot만 존재
-→ BLOCKED; 미래 snapshot을 backward apply하지 않음
+target_as_of보다 미래인 스냅샷만 존재
+→ BLOCKED; 미래 스냅샷을 역적용하지 않음
 ```
 
-원천 manifest/CSV가 준비되지 않으면 신규 snapshot 생성은 `BLOCKED`로
+원천 manifest/CSV가 준비되지 않으면 신규 스냅샷 생성은 `BLOCKED`로
 처리한다. 일일 소비자는 위의 승인 후보 선택 규칙만 사용하며, 무효한 최신
-후보를 임의의 이전 snapshot으로 대체하지 않는다.
+후보를 임의의 이전 스냅샷으로 대체하지 않는다.
 
 **판단**: `REUSE_WITH_MINIMAL_WRAPPER`
 
@@ -303,22 +302,22 @@ OpenDART 호출 주체가 아니다.
 ## 6. 권장 실행 순서
 
 ```text
-[Daily]
+[일일]
 1. 외국인 수급
 2. 펀더멘털
 3. 시장 RS
 4. 업종 지수
-5. 승인된 Sector Membership 선택/확인
+5. 승인된 섹터 구성 정보 선택/확인
 6. 업종 RS 랭킹
 
-[Periodic Maintenance]
-- Sector Membership refresh: 기본 월 1회 수동
-- 필요 시 특별 refresh
+[정기 관리]
+- 섹터 구성 정보 갱신: 기본 월 1회 수동
+- 필요 시 특별 갱신
 ```
 
-Daily 6개 항목은 실행 단계의 목록이며 Phase 3 최상위 입력의 목록과 다르다.
-Periodic Maintenance의 Sector Membership refresh는 Daily 실행에 포함되지 않는다.
-Phase 3 전체 상태 합성 대상은 §1의 5개 최상위 입력(외국인 수급,
+일일 6개 항목은 실행 단계의 목록이며 3단계 최상위 입력의 목록과 다르다.
+정기 관리의 섹터 구성 정보 갱신은 일일 실행에 포함되지 않는다.
+3단계 전체 상태 합성 대상은 §1의 5개 최상위 입력(외국인 수급,
 펀더멘털, 시장 RS, 섹터 구성, 업종 RS)뿐이다. 업종 지수 갱신은 Phase 3의
 별도 최상위 입력이 아니라 업종 RS를 준비하기 위한 내부 선행 단계다.
 
@@ -329,8 +328,8 @@ Phase 3 전체 상태 합성 대상은 §1의 5개 최상위 입력(외국인 �
 └─ 업종 RS 랭킹 생성
 ```
 
-섹터 구성은 자체 최상위 입력이면서 업종 RS의 의존성이다. Daily 경로에서는
-승인 스냅샷 선택과 target PIT COMMON reconciliation이 준비 확인에 해당한다.
+섹터 구성은 자체 최상위 입력이면서 업종 RS의 의존성이다. 일일 경로에서는
+승인 스냅샷 선택과 기준일 PIT COMMON 대조가 준비 확인에 해당한다.
 
 업종 RS 랭킹은 업종 지수와 섹터 구성이 모두 `target_as_of` 기준으로
 준비된 뒤에만 실행한다. 시장 RS는 1단계 가격·지수에만 의존하므로 이
@@ -349,7 +348,7 @@ Phase 3 전체 상태 합성 대상은 §1의 5개 최상위 입력(외국인 �
 
 ## 8. 전체 상태 합성 및 부분 성공 금지
 
-Phase 3 전체 상태는 다음 5개 최상위 입력의 상태만 합성한다.
+3단계 전체 상태는 다음 5개 최상위 입력의 상태만 합성한다.
 
 - 외국인 수급
 - 펀더멘털
@@ -409,15 +408,15 @@ PASS + FAILED + BLOCKED + PASS + PASS
 금지:
 
 - `datetime.now()`나 오늘 날짜 사용
-- 현재 구성(membership)을 과거 날짜에 그대로 적용
+- 현재 섹터 구성 정보를 과거 날짜에 그대로 적용
 
 단, 섹터 구성 소비자에는 다음의 명시적 승인 규칙을 적용한다.
 
 - `resolve_sector_membership_snapshot_for_target()`가 승인된
-  `effective_date <= target_as_of` 중 최신 pair를 선택한다.
+  `effective_date <= target_as_of` 중 최신 스냅샷 쌍을 선택한다.
 - 미래 스냅샷은 선택하지 않는다.
 - 선택된 최신 후보가 부분 발행·무효이면 더 오래된 후보로 대체하지 않고
-  fail closed한다.
+  조건 불충족 시 차단한다.
 - 다른 입력 원천에는 최신 파일 자동 선택이나 가장 가까운 이전 스냅샷의
   자동 대체를 적용하지 않는다.
 
@@ -479,7 +478,7 @@ data/analytics/sector_rs_ranking/v01/
 | 펀더멘털 | 기존 OpenDART/F2/F3/F4 계층 | 벌크 재수화 스크립트에 `target_as_of` 매개변수화 |
 | 시장 RS | 기존 `relative_strength`/`cross_section` 계산 | `target_as_of` 정확한 날짜 스냅샷 생성 계층 |
 | 업종 지수(업종 RS 내부 선행 단계) | `KrxSectorIndexCacheBuilder.update()` / `update_sector_index_cache()` | 누락 거래일 계산 조율 계층 |
-| 섹터 구성 | `build_rolling_sector_membership()` / 승인 snapshot resolver | Periodic refresh(기본 월 1회 수동·필요 시 특별)와 Daily 승인 snapshot 선택·target PIT COMMON reconciliation |
+| 섹터 구성 | `build_rolling_sector_membership()` / 승인 스냅샷 선택 함수 | 정기 갱신(기본 월 1회 수동·필요 시 특별)과 일일 승인 스냅샷 선택·기준일 PIT COMMON 대조 |
 | 업종 RS | 기존 랭킹 빌더(`build_sector_rs_ranking_v01.py`) | 실행 순서·`target_as_of` 전달 조율 |
 
 ## 13. 구현 단계 분리(참고, 이 문서가 강제하지 않음)
@@ -495,11 +494,11 @@ data/analytics/sector_rs_ranking/v01/
 3E 업종 RS 랭킹
 3F 통합 조율
 3G 실운영 검증
-Phase 3 COMPLETE
+3단계 COMPLETE
 ```
 
 ## 14. 관련 현재 기준 문서
 
 - [데일리 업데이트 기준 V01](daily_update_contract_v01.md) — 1단계 상위 계약
-- [주봉·월봉 파생 기준 V01](weekly_monthly_derivation_contract_v01.md) — 2단계 상세 계약
+- [주봉·월봉 파생 기준 V01](daily_update_phase2_weekly_monthly_derivation_contract_v01.md) — 2단계 상세 계약
 - [Sector RS KRX 이관 기준](sector_rs_krx_migration_v01.md)

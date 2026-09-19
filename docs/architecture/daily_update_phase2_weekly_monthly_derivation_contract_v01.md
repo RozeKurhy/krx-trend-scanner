@@ -48,7 +48,7 @@ DAILY_UPDATE_PHASE2 = COMPLETE
 ## 3. 기존 집계 규칙 재사용
 
 현재 `src/trend_scanner/data/resampler.py`의 규칙을 2단계 공식 집계 규칙으로
-그대로 재사용한다. 새 산식이나 별도 resample 함수를 만들지 않는다.
+그대로 재사용한다. 새 산식이나 별도 재표본화 함수를 만들지 않는다.
 
 | 구분 | 규칙 |
 |---|---|
@@ -89,7 +89,7 @@ DAILY_UPDATE_PHASE2 = COMPLETE
 **현재 구현과의 관계**: `_weekly_status()`(`period_derivation.py`)는 W-FRI
 라벨과 `target_as_of`의 단순 비교만 수행하며, `MarketCalendarAuthority`(마지막
 실제 거래일 등)를 별도로 참조하지 않는다. 2단계는 "그 주의 필요 일봉이 실제로
-확보됐는지"를 캘린더로 다시 검증하지 않는다 — 1단계가 이미 인증한 `daily`
+확보됐는지"를 캘린더로 다시 검증하지 않는다 — 1단계가 이미 인증한 일봉
 범위를 그대로 신뢰한다(§8의 `daily_gap_authority = INHERITED_FROM_PHASE1`와
 같은 원칙). 초기 구현은 `calendar.max_observed_trading_date`로 이 신뢰를
 대신 재검증하려 했으나, 이는 마지막 실제 거래일과 "권위가 실제로 확인한
@@ -183,7 +183,7 @@ PROVISIONAL
 기본 의미:
 
 ```text
-daily = 1단계 인증 일봉 중 date <= target_as_of
+일봉 = 1단계 인증 일봉 중 date <= target_as_of
 weekly/monthly = 그 일봉 구간에서만 파생
 ```
 
@@ -262,7 +262,7 @@ daily_gap_authority = INHERITED_FROM_PHASE1
 
 - FAST의 `W-FRI` 과거 신호 기준점 변경
 - 백테스트 결과를 바꾸는 조용한 이관
-- 기존 동결(frozen) 전략 의미 변경
+- 기존 동결 전략 의미 변경
 - 소비 계층 전수 리팩터링
 
 ## 12. 2단계 완료 상태
@@ -272,7 +272,7 @@ daily_gap_authority = INHERITED_FROM_PHASE1
 | 상태 | 의미 |
 |---|---|
 | `PASS` | `target_as_of` 일관성 확보, 1단계 인증 일봉 사용, 주봉·월봉 파생 정상, `COMPLETE`/`PROVISIONAL` 판정 정상, 소비 계층 의미 훼손 없음 |
-| `BLOCKED` | 1단계 인증 경계 부족, rolling 거래일 권위 부족, 입력 일봉 권위 확인 불가 등 |
+| `BLOCKED` | 1단계 인증 경계 부족, 연속 확장 거래일 권위 부족, 입력 일봉 권위 확인 불가 등 |
 | `FAILED` | 계약상 예상하지 못한 구현 오류 |
 
 `NOOP`은 필요한 경우에만 사용한다. 영구 산출물이 없는 실행 시점 파생에 억지로
