@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
 
 from scripts.update_sector_index_v01 import build_parser
+import scripts.update_sector_index_v01 as sector_cli
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.data.krx_sector_index import KRX_NATIVE_SECTOR_INDEX_MAP, STANDARD_INDEX_COLUMNS
 from trend_scanner.data.krx_openapi_client import (
@@ -121,6 +124,55 @@ def test_explicit_as_of_is_required() -> None:
     with pytest.raises(SystemExit) as exc_info:
         build_parser().parse_args([])
     assert exc_info.value.code == 2
+
+
+def _patch_cli_runner(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, *, status: str = PASS):
+    calls: list[dict[str, str | Path | None]] = []
+
+    def fake_runner(target_as_of: str, *, repo_root: Path):
+        calls.append({"target_as_of": target_as_of, "repo_root": repo_root, "auth_key": os.environ.get("KRX_OPEN_API_AUTH_KEY")})
+        return SimpleNamespace(status=status, to_dict=lambda: {"status": status})
+
+    monkeypatch.setattr(sector_cli, "ROOT", tmp_path)
+    monkeypatch.setattr(sector_cli, "update_sector_index_rolling", fake_runner)
+    return calls
+
+
+def test_cli_loads_repo_root_dotenv_as_auth_fallback(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / ".env").write_text("KRX_OPEN_API_AUTH_KEY=test-secret\n", encoding="utf-8")
+    monkeypatch.delenv("KRX_OPEN_API_AUTH_KEY", raising=False)
+    calls = _patch_cli_runner(monkeypatch, tmp_path)
+
+    assert sector_cli.main(["--as-of", "2026-09-17"]) == 0
+    assert calls[0]["auth_key"] == "test-secret"
+    assert calls[0]["repo_root"] == tmp_path
+
+
+def test_cli_environment_value_has_priority_over_dotenv(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (tmp_path / ".env").write_text("KRX_OPEN_API_AUTH_KEY=dotenv-secret\n", encoding="utf-8")
+    monkeypatch.setenv("KRX_OPEN_API_AUTH_KEY", "env-value")
+    calls = _patch_cli_runner(monkeypatch, tmp_path)
+
+    assert sector_cli.main(["--as-of", "2026-09-17"]) == 0
+    assert calls[0]["auth_key"] == "env-value"
+
+
+def test_cli_missing_auth_key_preserves_blocked_result(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("KRX_OPEN_API_AUTH_KEY", raising=False)
+    calls = _patch_cli_runner(monkeypatch, tmp_path, status=BLOCKED)
+
+    assert sector_cli.main(["--as-of", "2026-09-17"]) == 1
+    assert calls[0]["auth_key"] is None
+
+
+def test_cli_does_not_print_auth_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    secret = "test-secret-not-output"
+    (tmp_path / ".env").write_text(f"KRX_OPEN_API_AUTH_KEY={secret}\n", encoding="utf-8")
+    monkeypatch.delenv("KRX_OPEN_API_AUTH_KEY", raising=False)
+    _patch_cli_runner(monkeypatch, tmp_path)
+
+    assert sector_cli.main(["--as-of", "2026-09-17"]) == 0
+    assert secret not in capsys.readouterr().out
 
 
 def test_phase1_boundary_blocks_before_cache_or_update(tmp_path: Path) -> None:

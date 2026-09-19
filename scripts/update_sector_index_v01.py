@@ -7,6 +7,8 @@ import argparse
 import json
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 from trend_scanner.data.sector_index_rolling import (
     BLOCKED,
     FAILED,
@@ -29,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    load_dotenv(ROOT / ".env", override=False)
     result = update_sector_index_rolling(args.as_of, repo_root=ROOT)
     print(json.dumps(result.to_dict(), ensure_ascii=False, sort_keys=True, indent=2))
     return 1 if result.status in {BLOCKED, FAILED} else 0
