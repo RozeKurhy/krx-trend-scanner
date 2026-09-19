@@ -2,31 +2,33 @@
 
 ## 1. 문서 역할과 현재 상태
 
-이 문서는 [데일리 업데이트 기준 V01](daily_update_contract_v01.md) §6.2가 개요만
-정의한 3단계(분석 입력 갱신)의 상세 계약이다. 1단계·2단계 상위 계약은
-그대로 유지하며, 이 문서는 그 위에서 다음 5개 분석 입력에만 적용되는
-세부 기준을 정의한다.
+이 문서는 [데일리 업데이트 기준 V01](daily_update_contract_v01.md) §6.2가
+요약한 3단계(분석 입력 갱신)의 상세 계약이다. 1단계·2단계 상위 계약은
+그대로 유지하며, 이 문서는 그 위에서 다음 5개 최상위 분석 입력에만
+적용되는 세부 기준을 정의한다.
 
 ```text
-외국인 수급
-펀더멘털
-시장 RS
-업종 RS
-섹터 구성
+foreign_flow
+fundamentals
+market_rs
+sector_membership
+sector_rs
 ```
 
 이 문서는 계약 문서이며 작업 일지가 아니다. 3단계의 입력별 구현·검증
-상태와 이 문서가 정의하는 공통 계약은 구분한다. 이 문서는 각 입력이
-무엇을 재사용하고 무엇을 새로 만들어야 하는지 확정한다.
+상태와 이 문서가 정의하는 공통 계약은 구분한다. 이 문서는 각 입력의
+현재 운영 경로와 재사용 경계를 정의한다.
 
 ```text
 DAILY_UPDATE_PHASE1 = COMPLETE
 DAILY_UPDATE_PHASE2 = COMPLETE
+DAILY_UPDATE_PHASE3 = COMPLETE
 ```
 
-3단계의 기본 방향은 이미 존재하는 원천 수집·계산 로직을 재사용하고,
-하나의 `target_as_of`로 5개 입력을 일관되게 묶는 조율 계층만 최소로
-추가하는 것이다. 새 데이터 엔진을 만드는 작업이 아니다.
+3단계는 기존 원천 수집·계산 로직을 재사용하고, 하나의 `target_as_of`로
+5개 입력을 일관되게 조율한다. 공식 통합 실운영 검증에서 동일 기준일
+재실행이 모두 `NOOP_ALREADY_COMPLETE`로 확인됐다. 새 데이터 엔진을
+만드는 작업이 아니다.
 
 ## 2. 공통 원칙
 
@@ -64,12 +66,6 @@ Repository V2
 (`src/trend_scanner/data/foreign_flow_provider.py`)의
 `fetch_date_batch()`, `build_historical_cache()`, `load_flow_history()`.
 
-**현재 부족한 부분**: `build_historical_cache()`는 전달받은 거래일
-목록 전체를 매번 새로 수집해서 파일을 새로 쓰는 방식이며, 기존
-스냅샷과 비교해 빠진 거래일만 계산해서 병합하는 절차는 없다. 커밋된
-스크립트(`scripts/fetch_foreign_flow_20260814.py`)에도 기준일 인자
-자체가 없어 특정 날짜 1회용으로만 동작한다.
-
 **계약**:
 
 ```text
@@ -88,10 +84,9 @@ foreign_flow_daily_{YYYYMMDD}.parquet
 foreign_flow_daily_{YYYYMMDD}_meta.json
 ```
 
-동일한 `target_as_of`로 재실행하면 추가 수집이나 쓰기 없이 정상
-종료해야 한다.
-
-**판단**: `NEEDS_MINIMAL_UPDATE_PATH`
+현재 `update_foreign_flow_snapshot()`은 필요한 거래일을 계산해 누락일만
+수집·병합하고, 정확한 target snapshot을 만든다. 동일한 `target_as_of`의
+정상 snapshot은 추가 수집이나 쓰기 없이 `NOOP_ALREADY_COMPLETE`로 종료한다.
 
 ### 4.2 펀더멘털
 
@@ -99,18 +94,10 @@ foreign_flow_daily_{YYYYMMDD}_meta.json
 → `FundamentalsSection` 생성 계층(`src/trend_scanner/reporting/fundamentals_report.py`).
 생성된 섹션은 Stock Report v0.5에 주입하며, `stock_report.py`는 이를 소비·렌더링한다.
 
-**현재 부족한 부분**: 벌크 유니버스 재수화 스크립트
-(`scripts/hydrate_fundamentals_v1_production.py`)는 `--as-of`
-인자가 없다. `_load_requested_as_of()`가 파일명에 `20260904`가
-고정된 `SCAN_SUMMARY_PATH`
-(`artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_20260904_summary.json`)를
-읽어서 기준일을 역산하는 구조이며, 그 파일이 없으면 즉시 예외를 던진다.
-
 **계약**:
 
 ```text
-target_as_of를 명시적으로 받는다.
---as-of YYYY-MM-DD 또는 동등한 하나의 명시적 매개변수.
+target_as_of를 --as-of YYYY-MM-DD로 명시적으로 받는다.
 ```
 
 금지:
@@ -129,10 +116,14 @@ filing availability date <= target_as_of
 `target_as_of`를 하나의 날짜로 취급하지 않는다.
 
 출력 위치는 기존 그대로 `artifacts/fundamentals/production/{YYYYMMDD}/`를
-재사용한다. 같은 기준일 재실행 시 기존 캐시를 재사용하고 불필요한
-전체 재수집을 하지 않는다.
+재사용한다. 같은 기준일의 유효 ticker output은 재사용한다. 새 기준일에서는
+기존 filing cache를 재사용하고, stale cache는 필요한 receipt-date delta
+구간만 확장한다. 따라서 펀더멘털 갱신은 매일 전체 재수집이 아니라
+`target_as_of`까지 새 공시·정정 여부를 증분 확인하는 경로다.
 
-**판단**: `NEEDS_MINIMAL_UPDATE_PATH`
+동일 target의 full `PASS` artifact가 있으면 통합 조율기는
+`NOOP_ALREADY_COMPLETE`로 종료한다. 실제 hydration이 필요하고 full `PASS`
+artifact가 없으면 OpenDART quota 회계일인 `run_date`를 별도로 제공해야 한다.
 
 ### 4.3 시장 RS
 
@@ -141,9 +132,8 @@ filing availability date <= target_as_of
 재사용한다. 계산 로직은 기존 `relative_strength`/`cross_section` 계산
 모듈을 재사용한다.
 
-**현재 실제로 두 경로가 공존함**(이전 감사가 놓친 부분): 스캐너는
-`MarketDataRepositoryV2` + `IndexStore`로 실행 시점에 시장 RS를 계산하지만,
-종목 리포트는 별도로 **정확한 날짜의 스냅샷 파일**을 요구한다.
+스캐너는 `MarketDataRepositoryV2` + `IndexStore`로 실행 시점에 시장 RS를
+계산하며, 종목 리포트는 별도로 **정확한 날짜의 스냅샷 파일**을 요구한다.
 `src/trend_scanner/reporting/relative_strength_report.py`는 파일
 docstring부터 "Local exact-date consumer for the Phase 12 Market RS
 authority snapshot"이며,
@@ -180,7 +170,9 @@ market_rs_universe_{YYYYMMDD}.csv
 계산 로직은 참고·재사용하되, 그 스크립트의 `AS_OF = "2026-08-14"`
 고정값은 운영 경로에서 사용하지 않는다.
 
-**판단**: `REUSE_WITH_MINIMAL_WRAPPER`
+3단계 운영 경로는 `target_as_of`의 PIT COMMON 전체 모집단으로 정확한 날짜
+snapshot을 생성하며, 유효한 same-target artifact는 `NOOP_ALREADY_COMPLETE`로
+재사용한다.
 
 ### 4.4 업종 RS
 
@@ -189,7 +181,7 @@ market_rs_universe_{YYYYMMDD}.csv
 `target_as_of`의 1단계 PIT COMMON 전체 모집단을 사용하고, 선택된 섹터
 구성 정보를 그 모집단과 대조한다.
 
-**업종 지수 갱신 — 공식 재사용 경로**(이전 감사가 놓친 부분):
+**업종 지수 갱신 — 공식 재사용 경로**:
 `src/trend_scanner/data/krx_sector_index.py`의
 `KrxSectorIndexCacheBuilder.update(*, target_date, output_parquet,
 output_meta, minimum_sessions=1)`는 지정한 날짜 하나만 KRX Open
@@ -198,10 +190,7 @@ API로 수집해서 기존 캐시와 병합하는(기존 같은 날짜 행은 �
 정상 종료한다.
 `src/trend_scanner/data/index_price_provider.py`의
 `update_sector_index_cache(target_date, output_parquet, output_meta,
-...)`는 이 빌더를 감싸는 얇은 함수다. 이전 감사가 "1회성
-이관 스크립트만 있다"고 본 것은
-`scripts/migrate_sector_rs_krx_v01.py`만 확인했기 때문이며,
-재사용 가능한 증분 갱신 메서드 자체는 이미 존재한다.
+...)`는 이 빌더를 감싸는 얇은 함수다.
 
 **계약**: 3단계에서 새 갱신기를 만들지 않는다. 필요한 누락 거래일을
 계산해서 기존 `update_sector_index_cache()`를 그 거래일마다 호출하는
@@ -222,11 +211,9 @@ API로 수집해서 기존 캐시와 병합하는(기존 같은 날짜 행은 �
 랭킹 대상 모집단
 ```
 
-**판단**: `REUSE_WITH_MINIMAL_WRAPPER`
-
 ### 4.5 섹터 구성
 
-**공식 생성 경로 — 이미 존재함**(이전 감사가 놓친 부분):
+**공식 생성 경로**:
 `src/trend_scanner/data/sector_membership_rolling.py`의
 `build_rolling_sector_membership(effective_date, *, repo_root, ...)`가
 공식 생성기다. `fetcher=None`인 운영 기본 경로는
@@ -237,12 +224,11 @@ API로 수집해서 기존 캐시와 병합하는(기존 같은 날짜 행은 �
 + 해당 manifest가 가리키는 날짜별 KRX Data Marketplace 공식 구성종목 CSV 46개
 ```
 
-CLI(`main()`)는 이미 `--as-of`를 지원한다
-(`parser.add_argument("--as-of", default=AS_OF)`). 이전 감사가
-"신규 스냅샷 생성용 커밋된 스크립트를 못 찾았다"고 한 것은 부정확한
-결론이다. 이 함수는 로컬 manifest와 CSV를 검증하고 46개 업종 전부가
-성공해야만 발행하는 게이트를 가진다. 명시적인 `fetcher`는 테스트용
-주입 경로이며 운영 기본 경로의 네트워크 수집을 의미하지 않는다.
+CLI(`main()`)는 `--as-of`를 지원한다
+(`parser.add_argument("--as-of", default=AS_OF)`). 이 함수는 로컬 manifest와
+CSV를 검증하고 46개 업종 전부가 성공해야만 발행하는 게이트를 가진다.
+명시적인 `fetcher`는 테스트용 주입 경로이며 운영 기본 경로의 네트워크
+수집을 의미하지 않는다.
 
 **공식 조회 경로**: `src/trend_scanner/data/sector_membership.py`의
 `resolve_sector_membership_snapshot_for_target(target_as_of, ...)`.
@@ -277,12 +263,8 @@ target_as_of보다 미래인 스냅샷만 존재
 처리한다. 일일 소비자는 위의 승인 후보 선택 규칙만 사용하며, 무효한 최신
 후보를 임의의 이전 스냅샷으로 대체하지 않는다.
 
-**판단**: `REUSE_WITH_MINIMAL_WRAPPER`
 
-## 5. 펀더멘털 소비 경로 정정
-
-이전 감사는 `stock_report.py`가 종목별로 OpenDART를 직접 호출한다고
-기록했는데, 이는 부정확하다. 실제 구조를 코드로 확인했다.
+## 5. 펀더멘털 소비 경로
 
 ```text
 OpenDART 원천 수화(hydration)
@@ -299,41 +281,28 @@ OpenDART 원천 수화(hydration)
 경로일 뿐 OpenDART를 직접 호출하지 않는다. `stock_report.py` 자체는
 OpenDART 호출 주체가 아니다.
 
-## 6. 권장 실행 순서
+## 6. 공식 실행 순서
+
+공식 coordinator는 다음 순서로 동일한 `target_as_of`를 전달한다.
 
 ```text
-[일일]
-1. 외국인 수급
-2. 펀더멘털
-3. 시장 RS
-4. 업종 지수
-5. 승인된 섹터 구성 정보 선택/확인
-6. 업종 RS 랭킹
-
-[정기 관리]
-- 섹터 구성 정보 갱신: 기본 월 1회 수동
-- 필요 시 특별 갱신
+1. foreign_flow
+2. fundamentals
+3. market_rs
+4. sector_membership
+5. sector_rs
+   ├─ sector_index
+   └─ sector_rs_ranking
 ```
 
-일일 6개 항목은 실행 단계의 목록이며 3단계 최상위 입력의 목록과 다르다.
-정기 관리의 섹터 구성 정보 갱신은 일일 실행에 포함되지 않는다.
-3단계 전체 상태 합성 대상은 §1의 5개 최상위 입력(외국인 수급,
-펀더멘털, 시장 RS, 섹터 구성, 업종 RS)뿐이다. 업종 지수 갱신은 3단계의
-별도 최상위 입력이 아니라 업종 RS를 준비하기 위한 내부 선행 단계다.
+`sector_index`는 별도 최상위 입력이 아니라 `sector_rs` 내부 선행 단계다.
+`sector_membership`이 `BLOCKED` 또는 `FAILED`이면 sector index와 ranking을
+실행하지 않는다. sector index가 `BLOCKED` 또는 `FAILED`이면 ranking을
+실행하지 않는다.
 
-```text
-업종 RS
-├─ 업종 지수 갱신
-├─ 섹터 구성 준비 확인
-└─ 업종 RS 랭킹 생성
-```
-
-섹터 구성은 자체 최상위 입력이면서 업종 RS의 의존성이다. 일일 경로에서는
-승인 스냅샷 선택과 기준일 PIT COMMON 대조가 준비 확인에 해당한다.
-
-업종 RS 랭킹은 업종 지수와 섹터 구성이 모두 `target_as_of` 기준으로
-준비된 뒤에만 실행한다. 시장 RS는 1단계 가격·지수에만 의존하므로 이
-순서 안에서 상대적으로 독립적이다.
+섹터 구성 스냅샷 생성은 일일 실행 항목이 아니다. 기본 운영 주기는 월 1회
+수동 갱신이며, 필요할 때 특별 갱신을 수행한다. 일일 경로에서는 승인
+스냅샷 선택과 기준일 PIT COMMON 대조만 수행한다.
 
 ## 7. 상태 계약
 
@@ -467,24 +436,21 @@ data/analytics/sector_rs_ranking/v01/
 
 새 데이터베이스나 매니페스트 체계를 만들지 않는다.
 
-## 12. 재사용 대상과 3단계 신규 범위
+## 12. 현재 운영 경로와 재사용 대상
 
 아래 표의 업종 지수 행은 별도 최상위 입력을 뜻하지 않는다. 업종 지수는
 업종 RS 내부 선행 단계이며, 그 상태는 업종 RS에 전달한다.
 
-| 입력 | 기존 엔진 재사용 | 3단계 신규 범위 |
+| 입력 | 현재 운영 경로 | 재사용 경계 |
 |---|---|---|
-| 외국인 수급 | `ForeignFlowDataProvider` | 누락 거래일 계산·병합 조율 계층 |
-| 펀더멘털 | 기존 OpenDART/F2/F3/F4 계층 | 벌크 재수화 스크립트에 `target_as_of` 매개변수화 |
-| 시장 RS | 기존 `relative_strength`/`cross_section` 계산 | `target_as_of` 정확한 날짜 스냅샷 생성 계층 |
-| 업종 지수(업종 RS 내부 선행 단계) | `KrxSectorIndexCacheBuilder.update()` / `update_sector_index_cache()` | 누락 거래일 계산 조율 계층 |
-| 섹터 구성 | `build_rolling_sector_membership()` / 승인 스냅샷 선택 함수 | 정기 갱신(기본 월 1회 수동·필요 시 특별)과 일일 승인 스냅샷 선택·기준일 PIT COMMON 대조 |
-| 업종 RS | 기존 랭킹 빌더(`build_sector_rs_ranking_v01.py`) | 실행 순서·`target_as_of` 전달 조율 |
+| 외국인 수급 | `update_foreign_flow_snapshot()` | `ForeignFlowDataProvider`와 기존 snapshot 저장소 |
+| 펀더멘털 | `hydrate_fundamentals_v1_production.py --as-of` | 기존 OpenDART/F2/F3/F4 계층과 filing cache |
+| 시장 RS | `build_market_rs_snapshot_v01.py` | `relative_strength`/`cross_section` 계산과 1단계 권위 |
+| 업종 지수(업종 RS 내부 선행 단계) | `update_sector_index_rolling()` | `KrxSectorIndexCacheBuilder.update()` / `update_sector_index_cache()` |
+| 섹터 구성 | 승인 스냅샷 선택 함수 | `build_rolling_sector_membership()`과 기준일 PIT COMMON 대조 |
+| 업종 RS | `build_sector_rs_ranking_v01.py` | 기존 랭킹 빌더와 현재 선택 membership |
 
-## 13. 구현 단계 분리(참고, 이 문서가 강제하지 않음)
-
-이 계약 확정 이후 구현은 한 번에 전체를 고치지 않는 것을 권장한다.
-아래는 논리적 단위일 뿐이며 실제 커밋 수를 강제하지 않는다.
+## 13. 3단계 완료 상태
 
 ```text
 3A 외국인 수급 — 완료
@@ -494,11 +460,24 @@ data/analytics/sector_rs_ranking/v01/
 3E 섹터 구성 — 완료
 3F 업종 RS 순위 — 완료
 3G 통합 조율 — 완료
-3H 통합 실운영 검증 — 다음 작업
-3단계 완료
+3H 통합 실운영 검증 — 완료
+3단계 — 완료
 ```
 
-## 14. 관련 현재 기준 문서
+## 14. 공식 실행 진입점
+
+3단계 공식 통합 진입점은 다음이다.
+
+```text
+scripts/run_daily_update_phase3_v01.py
+--target-as-of YYYY-MM-DD
+--execute-live
+```
+
+펀더멘털 full `PASS` artifact가 없어서 실제 hydration이 필요한 경우에만
+`--fundamentals-run-date`로 OpenDART quota 회계일을 별도 전달한다.
+
+## 15. 관련 현재 기준 문서
 
 - [데일리 업데이트 기준 V01](daily_update_contract_v01.md) — 1단계 상위 계약
 - [주봉·월봉 파생 기준 V01](daily_update_phase2_weekly_monthly_derivation_contract_v01.md) — 2단계 상세 계약

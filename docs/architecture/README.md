@@ -25,8 +25,8 @@
 
 | 단계 | 상세 계약 | 한 줄 역할 |
 |---|---|---|
-| 2단계 | [주봉·월봉 파생 기준 V01](daily_update_phase2_weekly_monthly_derivation_contract_v01.md) | 인증된 일봉에서 주봉·월봉을 파생하고 기간 완료 상태를 판정하는 기준 |
-| 3단계 | [분석 입력 갱신 기준 V01](daily_update_phase3_analysis_inputs_contract_v01.md) | 수급·펀더멘털·시장·업종 RS 등 분석 입력을 기준일에 맞춰 갱신하는 기준 |
+| 2단계 | [주봉·월봉 파생 기준 V01](daily_update_phase2_weekly_monthly_derivation_contract_v01.md) | 인증된 일봉에서 주봉·월봉을 파생하고 기간 완료 상태를 판정하는 기준 (`COMPLETE`) |
+| 3단계 | [분석 입력 갱신 기준 V01](daily_update_phase3_analysis_inputs_contract_v01.md) | 수급·펀더멘털·시장·업종 RS 등 분석 입력을 기준일에 맞춰 갱신하는 기준 (`COMPLETE`) |
 
 ## B. 현재 세부 데이터 계약
 
