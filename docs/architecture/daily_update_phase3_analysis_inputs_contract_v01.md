@@ -96,8 +96,8 @@ foreign_flow_daily_{YYYYMMDD}_meta.json
 ### 4.2 펀더멘털
 
 **현재 재사용 대상**: OpenDART 원천 → `FilingRegistry` → F2 → F3 → F4
-계산 계층 전체, 그리고 종목별 실시간 조회 경로(`build_fundamentals_section()`,
-`src/trend_scanner/reporting/fundamentals_report.py`).
+→ `FundamentalsSection` 생성 계층(`src/trend_scanner/reporting/fundamentals_report.py`).
+생성된 섹션은 Stock Report v0.5에 주입하며, `stock_report.py`는 이를 소비·렌더링한다.
 
 **현재 부족한 부분**: 벌크 유니버스 재수화 스크립트
 (`scripts/hydrate_fundamentals_v1_production.py`)는 `--as-of`
@@ -157,6 +157,20 @@ authority snapshot"이며,
 `target_as_of` 기준 전체 `COMMON`(보통주) 시장 RS의 정확한 날짜 스냅샷을
 생성하는 것이다.
 
+**시장 RS cross-section 모집단 권위**:
+
+```text
+Market RS cross-section population
+= Phase 1 rolling PIT authority
+  (data/market/rolling_authority/merged_pit_intervals.json)에서
+  target_as_of에 COMMON인 전체 KOSPI/KOSDAQ 종목 집합
+```
+
+이 전체 모집단을 `compute_market_rs_cross_section()`에 전달한 뒤, 스캐너나
+종목 리포트에는 그 결과를 조회해 붙인다. 현재 종목 목록, Pattern A
+candidate subset, investable subset, scanner 결과 subset, 과거 Phase 12
+검증용 oracle artifact는 운영 cross-section 분모로 사용하지 않는다.
+
 ```text
 필수 출력:
 market_rs_universe_{YYYYMMDD}.csv
@@ -213,12 +227,20 @@ API로 수집해서 기존 캐시와 병합하는(기존 같은 날짜 행은 �
 **공식 생성 경로 — 이미 존재함**(이전 감사가 놓친 부분):
 `src/trend_scanner/data/sector_membership_rolling.py`의
 `build_rolling_sector_membership(effective_date, *, repo_root, ...)`가
-공식 생성기다. CLI(`main()`)는 이미 `--as-of`를 지원한다
+공식 생성기다. `fetcher=None`인 production 기본 경로는
+`load_marketplace_sector_checkpoints()`를 사용하며, 다음 로컬 원천을 읽는다.
+
+```text
+.cache/krx_marketplace/sector_membership/{YYYYMMDD}/manifest.json
++ 해당 manifest가 가리키는 날짜별 KRX Data Marketplace 공식 구성종목 CSV 46개
+```
+
+CLI(`main()`)는 이미 `--as-of`를 지원한다
 (`parser.add_argument("--as-of", default=AS_OF)`). 이전 감사가
 "신규 스냅샷 생성용 커밋된 스크립트를 못 찾았다"고 한 것은 부정확한
-결론이다. 이 함수는 46개 업종 전부가 성공해야만 발행하는 게이트를
-가지고 있으며, KRX 원천에 실시간으로 접근한다(네트워크 호출 포함 —
-3단계 조율 계층 자체가 아니라 이 함수 내부의 기존 동작).
+결론이다. 이 함수는 로컬 manifest와 CSV를 검증하고 46개 업종 전부가
+성공해야만 발행하는 게이트를 가진다. 명시적인 `fetcher`는 테스트용
+주입 경로이며 production 기본 경로의 네트워크 수집을 의미하지 않는다.
 
 **공식 조회 경로**: `src/trend_scanner/data/sector_membership.py`의
 `load_sector_membership_snapshot(as_of, ...)`. 정책은 정확한 날짜만
@@ -229,11 +251,17 @@ API로 수집해서 기존 캐시와 병합하는(기존 같은 날짜 행은 �
 **계약**:
 
 ```text
-target_as_of 스냅샷 존재 → 그대로 재사용
-없음 → build_rolling_sector_membership(target_as_of)
+target_as_of 스냅샷 존재
+→ 그대로 재사용
+
+target_as_of 스냅샷 없음
+→ 해당 날짜의 Marketplace manifest/CSV 원천이 준비된 경우
+   build_rolling_sector_membership(target_as_of) 실행
+→ manifest/CSV 원천이 없거나 검증에 실패한 경우
+   BLOCKED
 ```
 
-단, 원천 CSV나 KRX 권위가 준비되지 않으면 `BLOCKED`로 처리한다.
+단, 원천 manifest/CSV가 준비되지 않으면 `BLOCKED`로 처리한다.
 임의로 이전 스냅샷을 재사용하지 않는다.
 
 **판단**: `REUSE_WITH_MINIMAL_WRAPPER`
@@ -284,12 +312,31 @@ OpenDART 호출 주체가 아니다.
 | `BLOCKED` | 필요한 원천 미확정(예: 섹터 구성 원천 CSV 없음, OpenDART 권위 사용 불가, 업종 지수 원천 미확정) |
 | `FAILED` | 계약상 예상하지 못한 코드·실행 오류 |
 
-## 8. 부분 성공 금지
+## 8. 전체 상태 합성 및 부분 성공 금지
 
-5개 입력 중 하나라도 `BLOCKED`나 `FAILED`이면 3단계 전체 결과는
-`PASS`가 아니다. 예를 들어 외국인 수급·펀더멘털·시장 RS·업종 지수가
-전부 `PASS`이고 섹터 구성만 `BLOCKED`이면, 3단계 전체는 `BLOCKED`다.
-섹터 구성이 막힌 상태에서 업종 RS 랭킹을 억지로 진행하지 않는다.
+여러 입력 결과를 3단계 전체 상태로 합칠 때는 다음 우선순위를 고정한다.
+
+```text
+1. 하나라도 FAILED
+   → 전체 FAILED
+
+2. FAILED는 없고 하나라도 BLOCKED
+   → 전체 BLOCKED
+
+3. FAILED와 BLOCKED가 없고 모든 필수 입력이 NOOP_ALREADY_COMPLETE
+   → 전체 NOOP_ALREADY_COMPLETE
+
+4. 그 밖의 정상 조합
+   (PASS + NOOP_ALREADY_COMPLETE)
+   → 전체 PASS
+```
+
+따라서 `PASS + PASS + NOOP + PASS + NOOP + PASS`는 전체 `PASS`이고,
+모든 입력이 `NOOP_ALREADY_COMPLETE`일 때만 전체 `NOOP_ALREADY_COMPLETE`다.
+`PASS + BLOCKED + PASS`는 전체 `BLOCKED`이며, `BLOCKED + FAILED`는
+전체 `FAILED`다. 하나의 입력이 `BLOCKED`나 `FAILED`인 상태에서 다른
+입력만 성공한 부분 성공을 전체 `PASS`로 승격하지 않으며, 섹터 구성이
+막힌 상태에서 업종 RS 랭킹을 억지로 진행하지 않는다.
 
 ## 9. target_as_of 공통 규칙
 
