@@ -69,6 +69,7 @@ from trend_scanner.fundamentals.periodization_provider import (  # noqa: E402
 )
 from trend_scanner.fundamentals.filing_registry import (  # noqa: E402
     FilingRegistry,
+    FilingRegistryApiError,
     FilingRegistryConflictError,
     FilingRegistryError,
     REGULAR_REPORT_CODES,
@@ -502,11 +503,21 @@ class BoundedFilingRegistry(FilingRegistry):
         delta_end = cutoff
         if delta_start > delta_end:
             return
-        raw_rows, responses, total_count, total_page = self._fetch_pages(
-            corp_code=corp_code,
-            bgn_de=delta_start.replace("-", ""),
-            end_de=delta_end.replace("-", ""),
-        )
+        try:
+            raw_rows, responses, total_count, total_page = self._fetch_pages(
+                corp_code=corp_code,
+                bgn_de=delta_start.replace("-", ""),
+                end_de=delta_end.replace("-", ""),
+            )
+        except FilingRegistryApiError as exc:
+            # A short delta window can legitimately have no filings at all;
+            # OpenDART reports that as status 013 (DATA_NOT_FOUND) rather than
+            # an empty "000" page. Any other status/classification (auth,
+            # request, rate-limit, service) still fails closed below.
+            if exc.status == "013" or exc.classification == "DATA_NOT_FOUND":
+                raw_rows, responses, total_count, total_page = [], [], 0, 0
+            else:
+                raise
         self.preload_delta_fetches += 1
         self.preload_delta_pages_fetched += len(responses)
         retrieved_at = _now()

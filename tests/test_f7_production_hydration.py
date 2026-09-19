@@ -499,13 +499,27 @@ def _raw_row(*, report_nm: str, rcept_no: str, rcept_dt: str, corp_code: str = "
 class ScriptedBoundedRegistry(f7.BoundedFilingRegistry):
     """A BoundedFilingRegistry whose ``_fetch_pages`` returns scripted rows per exact window."""
 
-    def __init__(self, cache_dir: Path, *, window_rows: dict[tuple[str, str], list[dict]] | None = None):
+    def __init__(
+        self,
+        cache_dir: Path,
+        *,
+        window_rows: dict[tuple[str, str], list[dict]] | None = None,
+        window_errors: dict[tuple[str, str], tuple[str, str, int]] | None = None,
+    ):
         super().__init__(object(), cache_dir=cache_dir)
         self.fetch_calls: list[dict[str, str]] = []
         self._window_rows = window_rows or {}
+        self._window_errors = window_errors or {}
 
     def _fetch_pages(self, *, corp_code: str, bgn_de: str, end_de: str, page_count: int = 100):
         self.fetch_calls.append({"corp_code": corp_code, "bgn_de": bgn_de, "end_de": end_de})
+        error = self._window_errors.get((bgn_de, end_de))
+        if error is not None:
+            status, classification, http_status = error
+            raise f7.FilingRegistryApiError(
+                f"scripted OpenDART error status={status}",
+                status=status, classification=classification, http_status=http_status,
+            )
         rows = self._window_rows.get((bgn_de, end_de), [])
         payload = {"status": "000", "list": rows, "total_page": 1, "total_count": len(rows)}
         raw = json.dumps(payload, sort_keys=True).encode()
@@ -697,3 +711,83 @@ def test_filing_delta_t7_same_target_fetches_and_writes_nothing(tmp_path: Path):
     assert registry.preload_delta_fetches == 0
     for reprt_code in f7.REGULAR_REPORT_CODES:
         assert (tmp_path / f"123456_2025_{reprt_code}.json").stat().st_mtime_ns == before[reprt_code]
+
+
+def test_filing_delta_013_empty_delta_advances_coverage_without_error(tmp_path: Path):
+    """013 Fix T1: 실제 OpenDART 013(DATA_NOT_FOUND)도 정상 empty delta로 처리된다."""
+    existing = _filing_row(
+        ticker="TEST01", corp_code="123456", corp_name="테스트", bsns_year="2025", reprt_code="11011",
+        report_nm="사업보고서 (2025.12)", rcept_no="20250301000000", rcept_dt="20250301",
+    )
+    _seed_year(
+        tmp_path, corp_code="123456", fiscal_year="2025", coverage_end="2026-09-04",
+        rows_by_code={"11011": [existing]},
+    )
+    registry = ScriptedBoundedRegistry(
+        tmp_path, window_errors={("20260905", "20260917"): ("013", "DATA_NOT_FOUND", 200)},
+    )
+
+    registry.preload_ticker(
+        ticker="TEST01", corp_code="123456", requested_as_of="2026-09-17", fiscal_years=("2025",),
+    )
+
+    for reprt_code in f7.REGULAR_REPORT_CODES:
+        cache = json.loads((tmp_path / f"123456_2025_{reprt_code}.json").read_text())
+        assert cache["metadata"]["coverage_end"] == "2026-09-17"
+        assert cache["metadata"]["requested_as_of"] == "2026-09-17"
+    cache_11011 = json.loads((tmp_path / "123456_2025_11011.json").read_text())
+    assert [row["rcept_no"] for row in cache_11011["filings"]] == ["20250301000000"]
+
+
+def test_filing_delta_013_then_same_target_is_idempotent(tmp_path: Path):
+    """013 Fix T2: 013 empty delta로 coverage가 전진한 뒤 같은 target 재실행은 network/write 0이다."""
+    _seed_year(tmp_path, corp_code="123456", fiscal_year="2025", coverage_end="2026-09-04")
+    registry = ScriptedBoundedRegistry(
+        tmp_path, window_errors={("20260905", "20260917"): ("013", "DATA_NOT_FOUND", 200)},
+    )
+
+    registry.preload_ticker(
+        ticker="TEST01", corp_code="123456", requested_as_of="2026-09-17", fiscal_years=("2025",),
+    )
+    assert len(registry.fetch_calls) == 1
+
+    before = {
+        reprt_code: (tmp_path / f"123456_2025_{reprt_code}.json").stat().st_mtime_ns
+        for reprt_code in f7.REGULAR_REPORT_CODES
+    }
+    registry.preload_ticker(
+        ticker="TEST01", corp_code="123456", requested_as_of="2026-09-17", fiscal_years=("2025",),
+    )
+
+    assert len(registry.fetch_calls) == 1  # no additional fetch
+    for reprt_code in f7.REGULAR_REPORT_CODES:
+        assert (tmp_path / f"123456_2025_{reprt_code}.json").stat().st_mtime_ns == before[reprt_code]
+
+
+@pytest.mark.parametrize(
+    "status, classification, http_status",
+    [
+        ("020", "RATE_LIMIT", 200),
+        ("800", "SERVICE", 200),
+        ("014", "REQUEST", 200),
+    ],
+)
+def test_filing_delta_non_013_errors_fail_closed(
+    tmp_path: Path, status: str, classification: str, http_status: int,
+):
+    """013 Fix T3: 013 이외의 상태(RATE_LIMIT/SERVICE/REQUEST 등)는 여전히 fail closed다."""
+    _seed_year(tmp_path, corp_code="123456", fiscal_year="2025", coverage_end="2026-09-04")
+    before = (tmp_path / "123456_2025_11011.json").read_text()
+    registry = ScriptedBoundedRegistry(
+        tmp_path, window_errors={("20260905", "20260917"): (status, classification, http_status)},
+    )
+
+    with pytest.raises(f7.FilingRegistryApiError):
+        registry.preload_ticker(
+            ticker="TEST01", corp_code="123456", requested_as_of="2026-09-17", fiscal_years=("2025",),
+        )
+
+    assert (tmp_path / "123456_2025_11011.json").read_text() == before
+    for reprt_code in f7.REGULAR_REPORT_CODES:
+        cache = json.loads((tmp_path / f"123456_2025_{reprt_code}.json").read_text())
+        assert cache["metadata"]["coverage_end"] == "2026-09-04"
