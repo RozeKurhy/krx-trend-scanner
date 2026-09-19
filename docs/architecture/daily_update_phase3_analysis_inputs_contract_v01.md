@@ -297,13 +297,27 @@ OpenDART 호출 주체가 아니다.
 6. 업종 RS 랭킹
 ```
 
+위 6개 항목은 실행 단계의 목록이며 Phase 3 최상위 입력의 목록과 다르다.
+Phase 3 전체 상태 합성 대상은 §1의 5개 최상위 입력(외국인 수급,
+펀더멘털, 시장 RS, 섹터 구성, 업종 RS)뿐이다. 업종 지수 갱신은 Phase 3의
+별도 최상위 입력이 아니라 업종 RS를 준비하기 위한 내부 선행 단계다.
+
+```text
+업종 RS
+├─ 업종 지수 갱신
+├─ 섹터 구성 준비 확인
+└─ 업종 RS 랭킹 생성
+```
+
+섹터 구성은 자체 최상위 입력이면서 업종 RS의 의존성이다.
+
 업종 RS 랭킹은 업종 지수와 섹터 구성이 모두 `target_as_of` 기준으로
 준비된 뒤에만 실행한다. 시장 RS는 1단계 가격·지수에만 의존하므로 이
 순서 안에서 상대적으로 독립적이다.
 
 ## 7. 상태 계약
 
-3단계 전체 상태와 각 입력의 상태는 동일한 값 집합을 사용한다.
+3단계 전체 상태와 5개 최상위 입력의 상태는 동일한 값 집합을 사용한다.
 
 | 상태 | 의미 |
 |---|---|
@@ -314,7 +328,22 @@ OpenDART 호출 주체가 아니다.
 
 ## 8. 전체 상태 합성 및 부분 성공 금지
 
-여러 입력 결과를 3단계 전체 상태로 합칠 때는 다음 우선순위를 고정한다.
+Phase 3 전체 상태는 다음 5개 최상위 입력의 상태만 합성한다.
+
+- 외국인 수급
+- 펀더멘털
+- 시장 RS
+- 섹터 구성
+- 업종 RS
+
+업종 지수는 별도 최상위 상태로 합성하지 않고 업종 RS 내부 선행 단계로
+처리한다. 업종 지수 상태가 `BLOCKED`이면 업종 RS는 `BLOCKED`,
+`FAILED`이면 업종 RS는 `FAILED`로 전달한다. 업종 지수가
+`NOOP_ALREADY_COMPLETE`이어도 업종 RS 랭킹이 새로 생성되면 업종 RS는
+`PASS`가 될 수 있다.
+
+5개 최상위 입력 결과를 3단계 전체 상태로 합칠 때는 다음 우선순위를
+고정한다.
 
 ```text
 1. 하나라도 FAILED
@@ -331,12 +360,26 @@ OpenDART 호출 주체가 아니다.
    → 전체 PASS
 ```
 
-따라서 `PASS + PASS + NOOP + PASS + NOOP + PASS`는 전체 `PASS`이고,
-모든 입력이 `NOOP_ALREADY_COMPLETE`일 때만 전체 `NOOP_ALREADY_COMPLETE`다.
-`PASS + BLOCKED + PASS`는 전체 `BLOCKED`이며, `BLOCKED + FAILED`는
-전체 `FAILED`다. 하나의 입력이 `BLOCKED`나 `FAILED`인 상태에서 다른
-입력만 성공한 부분 성공을 전체 `PASS`로 승격하지 않으며, 섹터 구성이
-막힌 상태에서 업종 RS 랭킹을 억지로 진행하지 않는다.
+따라서 다음과 같이 합성한다.
+
+```text
+PASS + NOOP_ALREADY_COMPLETE + PASS + PASS + NOOP_ALREADY_COMPLETE
+→ 전체 PASS
+
+NOOP_ALREADY_COMPLETE + NOOP_ALREADY_COMPLETE + NOOP_ALREADY_COMPLETE
++ NOOP_ALREADY_COMPLETE + NOOP_ALREADY_COMPLETE
+→ 전체 NOOP_ALREADY_COMPLETE
+
+PASS + PASS + PASS + BLOCKED + PASS
+→ 전체 BLOCKED
+
+PASS + FAILED + BLOCKED + PASS + PASS
+→ 전체 FAILED
+```
+
+하나의 입력이 `BLOCKED`나 `FAILED`인 상태에서 다른 입력만 성공한 부분
+성공을 전체 `PASS`로 승격하지 않으며, 섹터 구성이 막힌 상태에서 업종 RS
+랭킹을 억지로 진행하지 않는다.
 
 ## 9. target_as_of 공통 규칙
 
@@ -398,12 +441,15 @@ data/analytics/sector_rs_ranking/v01/
 
 ## 12. 재사용 대상과 3단계 신규 범위
 
+아래 표의 업종 지수 행은 별도 최상위 입력을 뜻하지 않는다. 업종 지수는
+업종 RS 내부 선행 단계이며, 그 상태는 업종 RS에 전달한다.
+
 | 입력 | 기존 엔진 재사용 | 3단계 신규 범위 |
 |---|---|---|
 | 외국인 수급 | `ForeignFlowDataProvider` | 누락 거래일 계산·병합 조율 계층 |
 | 펀더멘털 | 기존 OpenDART/F2/F3/F4 계층 | 벌크 재수화 스크립트에 `target_as_of` 매개변수화 |
 | 시장 RS | 기존 `relative_strength`/`cross_section` 계산 | `target_as_of` 정확한 날짜 스냅샷 생성 계층 |
-| 업종 지수 | `KrxSectorIndexCacheBuilder.update()` / `update_sector_index_cache()` | 누락 거래일 계산 조율 계층 |
+| 업종 지수(업종 RS 내부 선행 단계) | `KrxSectorIndexCacheBuilder.update()` / `update_sector_index_cache()` | 누락 거래일 계산 조율 계층 |
 | 섹터 구성 | `build_rolling_sector_membership()` | `target_as_of` 조율(스냅샷 존재 확인 → 없으면 생성 호출) |
 | 업종 RS | 기존 랭킹 빌더(`build_sector_rs_ranking_v01.py`) | 실행 순서·`target_as_of` 전달 조율 |
 
