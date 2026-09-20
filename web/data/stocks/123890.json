@@ -1,0 +1,306 @@
+{
+  "schema_version": 1,
+  "identity": {
+    "ticker": "123890",
+    "name": "한국자산신탁",
+    "market": "KOSPI",
+    "asset_type": "COMMON"
+  },
+  "availability": {
+    "report_available": true,
+    "report_status": "READY"
+  },
+  "decision": {
+    "action": "WAIT",
+    "strategy_state": "WAIT",
+    "canonical_position": "FLAT",
+    "action_reason": "ENTRY_CONDITIONS_NOT_MET",
+    "is_investable": true
+  },
+  "summary": {
+    "trend_stage": "TRANSITION",
+    "flow_state": "FLOW_ACCUMULATION"
+  },
+  "price_trend": {
+    "latest_close": 2470.0,
+    "latest_close_as_of": "2026-09-17",
+    "price_status": "AVAILABLE",
+    "price_source": "data/market/adjusted/stocks/123890.parquet",
+    "score_trend": {
+      "current_score": 31.85,
+      "score_1m_ago": 23.88,
+      "score_3m_ago": 38.8,
+      "score_6m_ago": 38.51,
+      "score_12m_ago": 40.57,
+      "change_1m": 7.97,
+      "change_3m": -6.95,
+      "change_6m": -6.66,
+      "change_12m": -8.72
+    },
+    "trading_value_state": "TRADING_VALUE_MIXED",
+    "trading_value_explanation": "최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 3.80억원, 20일: 4.96억원, 60일: 4.79억원)",
+    "avg_trading_value_1d_eok": 4.03,
+    "avg_trading_value_5d_eok": 3.8,
+    "avg_trading_value_10d_eok": 4.07,
+    "avg_trading_value_20d_eok": 4.96,
+    "avg_trading_value_60d_eok": 4.79
+  },
+  "pattern": {
+    "official_stage": "TRANSITION",
+    "candidate_state": "candidate",
+    "score": 31.85,
+    "history_12m": [
+      {
+        "as_of": "2025-08-29",
+        "close": 2410.0,
+        "score": 40.57,
+        "stage": "WEAK",
+        "candidate_state": "blocked",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-09-30",
+        "close": 2315.0,
+        "score": 37.13,
+        "stage": "WEAK",
+        "candidate_state": "blocked",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-10-31",
+        "close": 2215.0,
+        "score": 24.74,
+        "stage": "WEAK",
+        "candidate_state": "blocked",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-11-28",
+        "close": 2470.0,
+        "score": 21.1,
+        "stage": "WEAK",
+        "candidate_state": "blocked",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-12-30",
+        "close": 2430.0,
+        "score": 22.69,
+        "stage": "WEAK",
+        "candidate_state": "blocked",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-01-30",
+        "close": 2605.0,
+        "score": 30.45,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-02-27",
+        "close": 2980.0,
+        "score": 38.51,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-03-31",
+        "close": 2570.0,
+        "score": 41.54,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-04-30",
+        "close": 2655.0,
+        "score": 45.03,
+        "stage": "BASE",
+        "candidate_state": "watch",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-05-29",
+        "close": 2300.0,
+        "score": 38.8,
+        "stage": "WEAK",
+        "candidate_state": "blocked",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-06-30",
+        "close": 2140.0,
+        "score": 31.85,
+        "stage": "WEAK",
+        "candidate_state": "blocked",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-07-31",
+        "close": 2285.0,
+        "score": 23.88,
+        "stage": "WEAK",
+        "candidate_state": "blocked",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-08-31",
+        "close": 2640.0,
+        "score": 31.85,
+        "stage": "BASE",
+        "candidate_state": "watch",
+        "data_available": true
+      }
+    ]
+  },
+  "market_strength": {
+    "applicability": "APPLICABLE",
+    "data_status": "READY",
+    "benchmark_name": "코스피",
+    "benchmark_last_observation_date": "2026-09-17",
+    "stock_return_2w": -0.06439393939393945,
+    "stock_return_1m": 0.037815126050420256,
+    "stock_return_3m": 0.051063829787234116,
+    "stock_return_6m": -0.13181019332161692,
+    "stock_return_12m": 0.04219409282700415,
+    "market_rs_2w": -0.08333201343829155,
+    "market_rs_1m": 6.970672582884418e-05,
+    "market_rs_3m": 0.41862885259108884,
+    "market_rs_6m": -0.2707806015160227,
+    "market_rs_12m": -0.5032490766545216,
+    "percentile_2w": 14.332920280875673,
+    "percentile_1m": 53.12760633861552,
+    "percentile_3m": 85.0354314297624,
+    "percentile_6m": 26.605504587155966,
+    "percentile_12m": 31.146847228099872,
+    "explanation": "12개월 기준으로는 시장 대비 약세였으나 6개월, 3개월로 갈수록 상대강도가 연속 개선되며 최근 시장 대비 강도가 뚜렷하게 회복되고 있습니다."
+  },
+  "flow": {
+    "data_status": "READY",
+    "state": "FLOW_ACCUMULATION",
+    "net_buy_value_1d_krw": 168998811.0,
+    "net_buy_value_5d_krw": 628113361.0,
+    "net_buy_value_10d_krw": 1184784860.0,
+    "net_buy_value_20d_krw": 1837033649.0,
+    "net_buy_value_60d_krw": 4684820437.0,
+    "intensity_1d": 0.4192,
+    "intensity_5d": 0.3303,
+    "intensity_10d": 0.291,
+    "intensity_20d": 0.1852,
+    "intensity_60d": 0.1632,
+    "positive_days_1d": 1,
+    "positive_days_5d": 5,
+    "positive_days_10d": 9,
+    "positive_days_20d": 16,
+    "positive_days_60d": 45,
+    "explanation": "최근 5일, 20일, 60일 모두 외국인 누적 순매수가 플러스를 유지하며 중단기 전 구간에서 순매수 우위(매집) 기조입니다 (5일 순매수 강도: +33.03%)."
+  },
+  "fundamentals": {
+    "status": "NOT_APPLICABLE",
+    "applicability": "NOT_APPLICABLE",
+    "reason": "FINANCIAL_COMPANY",
+    "requested_as_of": "2026-09-17",
+    "company_family": "FINANCIAL",
+    "currency": "KRW",
+    "filter_status": "NOT_APPLICABLE",
+    "filter_passed": false,
+    "filter_reasons": [],
+    "summary": {
+      "latest_fy": null,
+      "latest_quarter": null,
+      "latest_fy_revenue_krw": null,
+      "latest_4q_avg_revenue_krw": null,
+      "ttm_revenue_krw": null,
+      "ttm_operating_income_krw": null,
+      "ttm_net_income_krw": null,
+      "ttm_operating_cash_flow_krw": null,
+      "ttm_operating_margin_pct": null,
+      "ttm_net_margin_pct": null,
+      "ttm_operating_cash_flow_margin_pct": null,
+      "ttm_roe_pct": null,
+      "latest_debt_ratio_pct": null,
+      "filter_status": "NOT_APPLICABLE",
+      "filter_passed": false,
+      "filter_reasons": []
+    },
+    "quarterly": [],
+    "annual": []
+  },
+  "strategy": {
+    "action": "WAIT",
+    "state": "WAIT",
+    "position": "FLAT",
+    "reason": "ENTRY_CONDITIONS_NOT_MET",
+    "interpretation": "패스트 코어 V2 관망(WAIT) 상태입니다. 진입 미충족 조건: FAST_NOT_TRIGGER_READY.",
+    "history": [
+      {
+        "trade_id": "123890_01",
+        "trade_sequence": 1,
+        "entry_signal_date": "2021-01-08",
+        "entry_execution_date": "2021-01-11",
+        "entry_open": 4100.0,
+        "entry_pattern_a_stage": "TRANSITION",
+        "exit_type": "EXIT4_SCORE_DRAWDOWN_GE_15",
+        "exit_signal_date": "2021-07-31",
+        "exit_execution_date": "2021-08-02",
+        "exit_price": 4510.0,
+        "trade_status": "REALIZED",
+        "return_pct": 10.0,
+        "lifecycle_class": "NORMAL_EARLY_TREND_HANDOFF"
+      },
+      {
+        "trade_id": "123890_02",
+        "trade_sequence": 2,
+        "entry_signal_date": "2026-02-13",
+        "entry_execution_date": "2026-02-19",
+        "entry_open": 2880.0,
+        "entry_pattern_a_stage": "TRANSITION",
+        "exit_type": "LOSS_GUARD_CLOSE_LE_NEG_15",
+        "exit_signal_date": "2026-05-12",
+        "exit_execution_date": "2026-05-13",
+        "exit_price": 2370.0,
+        "trade_status": "REALIZED",
+        "return_pct": -17.71,
+        "lifecycle_class": "NEVER_PROGRESSED"
+      }
+    ]
+  },
+  "technical_details": {
+    "requested_as_of": "2026-09-17",
+    "reference_market_date": "2026-09-17",
+    "report_version": "0.5",
+    "report_status": "READY",
+    "asset_type": "COMMON",
+    "investability_status": "INVESTABLE",
+    "investability_reason": "PASS_ALL_INVESTABILITY_FILTERS",
+    "pattern_stage": "TRANSITION",
+    "pattern_score": 31.85,
+    "candidate_state": "candidate",
+    "flow_state": "FLOW_ACCUMULATION",
+    "market_strength_applicability": "APPLICABLE",
+    "market_strength_status": "READY",
+    "relative_strength_status": "READY",
+    "trading_value_state": "TRADING_VALUE_MIXED",
+    "price_as_of": "2026-09-17",
+    "price_status": "AVAILABLE",
+    "price_source": "data/market/adjusted/stocks/123890.parquet",
+    "sector_name": "금융",
+    "data_quality": {
+      "cache_present": true,
+      "cache_first_date": "2016-07-13",
+      "cache_last_date": "2026-09-17",
+      "daily_rows_count": 2454,
+      "completed_month_count": 122,
+      "quality_status": "OK",
+      "quality_flags": []
+    },
+    "source_report": "artifacts/reporting/stock_reports/20260917/json/123890_한국자산신탁.json"
+  },
+  "external_links": {
+    "naver_finance": "https://finance.naver.com/item/main.naver?code=123890",
+    "naver_chart": "https://stock.naver.com/fchart/domestic/stock/123890"
+  }
+}

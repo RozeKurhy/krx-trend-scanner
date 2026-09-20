@@ -111,7 +111,10 @@
   function validatePayload(value) {
     return Boolean(
       value && value.schema_version === 1 && value.scope && value.scope.type === "KRX_COMMON_STOCKS" &&
-      value.as_of === "2026-09-04" && Array.isArray(value.horizons) && HORIZONS.every((horizon) => value.horizons.includes(horizon)) &&
+      typeof value.requested_as_of === "string" && typeof value.reference_market_date === "string" &&
+      typeof value.as_of === "string" && value.as_of === value.reference_market_date &&
+      value.reference_market_date <= value.requested_as_of &&
+      Array.isArray(value.horizons) && HORIZONS.every((horizon) => value.horizons.includes(horizon)) &&
       value.coverage && Number.isInteger(value.coverage.target_common_universe_count) && Array.isArray(value.items) &&
       value.items.every((item) => item && item.asset_type === "COMMON" && item.market && item.ticker && item.name)
     );

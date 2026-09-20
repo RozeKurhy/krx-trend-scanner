@@ -39,9 +39,9 @@ def test_strategy_monitor_schema_and_source_count_are_consistent():
     assert monitor["scope"] == {
         "type": "PUBLISHED_REPORTS",
         "label": "현재 공개 리포트 기준",
-        "report_count": 553,
+        "report_count": 1850,
     }
-    assert monitor["as_of"] == "2026-09-04"
+    assert monitor["as_of"] == "2026-09-17"
     assert monitor["scope"]["report_count"] == index["available_report_count"] == len(items)
     bucket_counts = Counter(item["bucket"] for item in items)
     assert all(monitor["counts"][key] == bucket_counts.get(key, 0) for key in ("entry", "hold", "exit", "watch", "unavailable"))
@@ -70,23 +70,15 @@ def test_representative_common_open_trade_is_projected_without_recalculation():
         "trade_sequence": 6,
         "entry_execution_date": "2025-09-01",
         "entry_open": 68400.0,
-        "return_pct": 273.54,
+        "return_pct": 274.27,
         "trade_status": "OPEN_AT_CUTOFF",
     }
 
 
 def test_etf_is_not_in_action_counts_and_has_no_fake_trade():
     monitor = _load_monitor()
-    item = next(item for item in monitor["items"] if item["ticker"] == "069500")
-
-    assert item["asset_type"] == "ETF"
-    assert item["canonical_position"] == "NOT_APPLICABLE"
-    assert item["action"] == "NONE"
-    assert item["data_status"] == "NOT_APPLICABLE"
-    assert item["bucket"] == "unavailable"
-    assert item["current_trade"] is None
-    assert monitor["counts"]["unavailable"] == 33
-    assert sum(monitor["counts"][key] for key in ("entry", "hold", "exit")) == 124
+    assert "069500" not in {item["ticker"] for item in monitor["items"]}
+    assert sum(monitor["counts"].values()) == monitor["scope"]["report_count"]
 
 
 def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
@@ -183,8 +175,8 @@ def test_strategy_ui_polish_uses_representative_source_returns_and_split_dates()
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert positive["current_trade"]["return_pct"] == 273.54
-    assert negative["current_trade"]["return_pct"] == -6.39
+    assert positive["current_trade"]["return_pct"] == 274.27
+    assert negative["current_trade"]["return_pct"] == -10.12
     assert 'const returnClass = trade && Number(trade.return_pct) > 0 ? "detail-value-positive"' in strategy_js
     assert 'Number(trade.return_pct) < 0 ? "detail-value-negative"' in strategy_js
     assert 'createPriceDateField("현재가"' in strategy_js
@@ -204,7 +196,6 @@ def test_strategy_position_examples_keep_meaningful_two_line_values():
     assert items["027410"]["strategy_state"] == "HOLD_PRE_PROGRESSED"
     wait_item = next(item for item in monitor["items"] if item["strategy_state"] == "WAIT")
     assert wait_item["canonical_position"] == "FLAT"
-    assert items["069500"]["canonical_position"] == "NOT_APPLICABLE"
 
 
 def test_strategy_monitor_json_matches_clean_exporter_projection():

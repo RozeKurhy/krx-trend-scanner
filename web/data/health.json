@@ -1,16 +1,18 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-10T14:41:40.695506Z",
+  "generated_at": "2026-09-20T11:24:53.542958Z",
+  "requested_as_of": "2026-09-17",
+  "reference_market_date": "2026-09-17",
   "overall_status": "UNKNOWN",
   "market_data": {
     "status": "NORMAL",
-    "latest_trading_date": "2026-09-04",
-    "certified_through": "2026-09-04",
+    "latest_trading_date": "2026-09-17",
+    "certified_through": "2026-09-17",
     "authority_version": "ROLLING_MARKET_DATA_V01",
     "source": {
       "path": "data/market/rolling_authority/manifest.json",
-      "as_of": "2026-09-04",
-      "generated_at": "2026-09-05T09:22:54.515962+00:00"
+      "as_of": "2026-09-17",
+      "generated_at": "2026-09-14T01:20:32.586563+00:00"
     }
   },
   "universe": {
@@ -34,25 +36,24 @@
   "fundamentals": {
     "status": "NORMAL",
     "run_status": "COMPLETE",
-    "requested_as_of": "2026-09-04",
+    "requested_as_of": "2026-09-17",
     "completed": 4415,
     "total": 4415,
     "remaining": 0,
     "percentage": 100.0,
     "terminal_status_counts": {
-      "DATA_UNAVAILABLE": 315,
-      "FILTERED_ANNUAL_REVENUE": 558,
-      "FILTERED_NET_LOSS": 159,
-      "FILTERED_OPERATING_LOSS": 348,
+      "DATA_UNAVAILABLE": 308,
+      "FILTERED_ANNUAL_REVENUE": 564,
+      "FILTERED_NET_LOSS": 162,
+      "FILTERED_OPERATING_LOSS": 351,
       "FILTERED_QUARTERLY_REVENUE": 7,
-      "NOT_APPLICABLE": 1942,
-      "PASS": 1086
+      "NOT_APPLICABLE": 1925,
+      "PASS": 1098
     },
     "data_status_counts": {
-      "DATA_UNAVAILABLE": 315,
-      "NOT_APPLICABLE": 1942,
-      "PARTIAL": 604,
-      "READY": 1554
+      "DATA_UNAVAILABLE": 308,
+      "NOT_APPLICABLE": 1925,
+      "PARTIAL": 2182
     },
     "output_integrity": {
       "valid_output_count": 4415,
@@ -61,14 +62,14 @@
       "duplicate_payload_count": 0
     },
     "source": {
-      "production_directory": "artifacts/fundamentals/production/20260904",
+      "production_directory": "artifacts/fundamentals/production/20260917",
       "checkpoint": {
-        "path": "artifacts/fundamentals/production/20260904/daily_quota_checkpoint.json",
-        "as_of": "2026-09-04"
+        "path": "artifacts/fundamentals/production/20260917/daily_quota_checkpoint.json",
+        "as_of": "2026-09-17"
       },
       "outputs": {
-        "path": "artifacts/fundamentals/production/20260904/tickers",
-        "as_of": "2026-09-04"
+        "path": "artifacts/fundamentals/production/20260917/tickers",
+        "as_of": "2026-09-17"
       }
     }
   },
@@ -76,38 +77,39 @@
     "status": "NORMAL",
     "reason": "Stock Report v0.5 and Web Fundamentals artifacts are complete.",
     "source": {
-      "path": "artifacts/fundamentals/production/20260904/daily_quota_checkpoint.json",
-      "as_of": "2026-09-04"
+      "path": "artifacts/fundamentals/production/20260917/daily_quota_checkpoint.json",
+      "as_of": "2026-09-17"
     },
-    "existing_artifact_count": 1836,
+    "existing_artifact_count": 1850,
     "artifact_source": {
-      "path": "artifacts/reporting/stock_reports/20260904",
-      "as_of": "2026-09-04"
+      "path": "artifacts/reporting/stock_reports/20260917",
+      "as_of": "2026-09-17"
     },
     "report_version": "0.5",
-    "source_json_count": 1836,
-    "source_markdown_count": 1836,
-    "v05_count": 1836,
+    "ready": true,
+    "source_json_count": 1850,
+    "source_markdown_count": 1850,
+    "v05_count": 1850,
     "schema_errors": 0,
-    "fundamentals_integrated_count": 1836,
-    "web_compact_count": 1836,
-    "web_fundamentals_integrated_count": 1836,
-    "web_index_available_report_count": 1836
+    "fundamentals_integrated_count": 1850,
+    "web_compact_count": 1850,
+    "web_fundamentals_integrated_count": 1850,
+    "web_index_available_report_count": 1850
   },
   "analysis": {
     "status": "UNKNOWN",
     "reason": "No WEB-01 readiness authority confirms downstream completion.",
     "source": {
-      "path": "artifacts/fundamentals/production/20260904/daily_quota_checkpoint.json",
-      "as_of": "2026-09-04"
+      "path": "artifacts/fundamentals/production/20260917/daily_quota_checkpoint.json",
+      "as_of": "2026-09-17"
     }
   },
   "backtest": {
     "status": "UNKNOWN",
     "reason": "No WEB-01 readiness authority confirms downstream completion.",
     "source": {
-      "path": "artifacts/fundamentals/production/20260904/daily_quota_checkpoint.json",
-      "as_of": "2026-09-04"
+      "path": "artifacts/fundamentals/production/20260917/daily_quota_checkpoint.json",
+      "as_of": "2026-09-17"
     }
   }
 }

@@ -377,7 +377,11 @@ def _count_stock_report_artifacts(stock_reports_dir: Path) -> int:
 
 
 def _stock_report_readiness(
-    requested_as_of: str, stock_reports_dir: Path, *, reference_market_date: str | None = None,
+    requested_as_of: str,
+    stock_reports_dir: Path,
+    *,
+    reference_market_date: str | None = None,
+    web_data_root: Path = WEB_STOCK_DATA_ROOT,
 ) -> dict[str, Any]:
     """Check the factual F8 source/Web completion state from local artifacts.
 
@@ -418,7 +422,7 @@ def _stock_report_readiness(
         ):
             fundamentals_integrated_count += 1
 
-    web_stock_dir = WEB_STOCK_DATA_ROOT / "stocks"
+    web_stock_dir = web_data_root / "stocks"
     web_paths = sorted(web_stock_dir.glob("*.json")) if web_stock_dir.exists() else []
     web_fundamentals_integrated_count = 0
     for path in web_paths:
@@ -437,7 +441,7 @@ def _stock_report_readiness(
             web_fundamentals_integrated_count += 1
 
     web_index = {}
-    stock_index_path = WEB_STOCK_DATA_ROOT / "stock-index.json"
+    stock_index_path = web_data_root / "stock-index.json"
     if stock_index_path.exists():
         try:
             web_index = _read_json(stock_index_path)
@@ -505,6 +509,7 @@ def _build_downstream_section(
         value["artifact_source"] = _source(stock_reports_dir, as_of=requested_as_of)
     if readiness is not None:
         value["report_version"] = "0.5"
+        value["ready"] = readiness.get("ready")
         for key in (
             "source_json_count",
             "source_markdown_count",
@@ -549,7 +554,11 @@ def _assert_public_payload(payload: Mapping[str, Any]) -> None:
 
 
 def build_health(
-    repo_root: Path = ROOT, *, generated_at: str | None = None, target_as_of: str | None = None,
+    repo_root: Path = ROOT,
+    *,
+    generated_at: str | None = None,
+    target_as_of: str | None = None,
+    web_data_root: Path | None = None,
 ) -> dict[str, Any]:
     """Build the public-safe health document from local authorities.
 
@@ -573,7 +582,10 @@ def build_health(
     market_data = _build_market_data(requested_as_of, reference_market_date=reference_market_date)
     stock_report_count = _count_stock_report_artifacts(paths["stock_reports"])
     stock_report_readiness = _stock_report_readiness(
-        requested_as_of, paths["stock_reports"], reference_market_date=reference_market_date,
+        requested_as_of,
+        paths["stock_reports"],
+        reference_market_date=reference_market_date,
+        web_data_root=web_data_root if web_data_root is not None else WEB_STOCK_DATA_ROOT,
     )
     stock_reports = _build_downstream_section(
         fundamentals["status"],

@@ -52,7 +52,7 @@ def test_compact_report_preserves_authority_values_without_raw_markdown(payload)
     assert report["identity"]["ticker"] == "005930"
     assert report["identity"]["name"] == item["name"]
     assert report["decision"]["action"] in {"HOLD", "WAIT", "ENTER_NEXT_OPEN", "NONE", "WATCH", "ENTRY", "EXIT"}
-    source = json.loads(next((ROOT / "artifacts/reporting/stock_reports/20260904/json").glob("005930_*.json")).read_text(encoding="utf-8"))
+    source = json.loads(next((ROOT / "artifacts/reporting/stock_reports/20260917/json").glob("005930_*.json")).read_text(encoding="utf-8"))
     assert report["fundamentals"]["status"] == source["fundamentals"]["data_status"]
     assert report["fundamentals"]["summary"] == source["fundamentals"]["summary"]
     assert report["fundamentals"]["quarterly"] == source["fundamentals"]["quarterly"]
@@ -70,7 +70,7 @@ def test_compact_report_preserves_authority_values_without_raw_markdown(payload)
 
 def test_all_published_compact_reports_have_ticker_bound_naver_chart(payload):
     _index, reports, _stats = payload
-    source_count = len(list((ROOT / "artifacts/reporting/stock_reports/20260904/json").glob("*.json")))
+    source_count = len(list((ROOT / "artifacts/reporting/stock_reports/20260917/json").glob("*.json")))
 
     assert len(reports) == source_count
     for ticker, report in reports.items():
@@ -84,13 +84,12 @@ def test_fundamentals_projection_preserves_source_status_and_applicability(paylo
     _index, reports, _stats = payload
     report_dir, _requested_as_of = exporter._resolve_report_directory()
     source_reports = [json.loads(path.read_text(encoding="utf-8")) for path in (report_dir / "json").glob("*.json")]
-    common = next(source for source in source_reports if source["asset_type"] == "COMMON")
-    non_common = next(source for source in source_reports if source["asset_type"] != "COMMON")
-
-    assert reports[common["ticker"]]["fundamentals"]["status"] == common["fundamentals"]["data_status"]
-    assert reports[common["ticker"]]["fundamentals"]["applicability"] == common["fundamentals"]["applicability"]
-    assert reports[non_common["ticker"]]["fundamentals"]["status"] == non_common["fundamentals"]["data_status"]
-    assert reports[non_common["ticker"]]["fundamentals"]["applicability"] == non_common["fundamentals"]["applicability"]
+    assert source_reports
+    assert all(source["asset_type"] == "COMMON" for source in source_reports)
+    for source in source_reports:
+        compact = reports[source["ticker"]]
+        assert compact["fundamentals"]["status"] == source["fundamentals"]["data_status"]
+        assert compact["fundamentals"]["applicability"] == source["fundamentals"]["applicability"]
     assert all("diagnostics" not in report["fundamentals"] for report in reports.values())
 
 

@@ -33,11 +33,14 @@ def test_market_ranking_schema_scope_and_generated_projection_match():
     assert ranking["scope"] == {
         "type": "PUBLISHED_REPORTS",
         "label": "현재 공개 리포트 기준",
-        "report_count": 553,
+        "report_count": 1850,
     }
     assert ranking["metric_scope"] == {"label": "마켓 RS는 전체 보통주 기준"}
-    assert ranking["as_of"] == "2026-09-04"
-    assert ranking["eligible_counts"] == {"2w": 513, "1m": 513, "3m": 513, "6m": 513, "12m": 513}
+    assert ranking["as_of"] == "2026-09-17"
+    assert ranking["eligible_counts"] == {
+        horizon: sum(exporter._is_eligible(item, horizon) for item in ranking["items"])
+        for horizon in ("2w", "1m", "3m", "6m", "12m")
+    }
     assert len(ranking["items"]) == ranking["scope"]["report_count"]
 
 
@@ -88,11 +91,8 @@ def test_market_strength_returns_project_from_compact_stock_report_without_recal
 
 def test_eligibility_is_independent_per_horizon_and_excludes_etf():
     ranking = _load_ranking()
-    etf = next(item for item in ranking["items"] if item["ticker"] == "069500")
-
-    assert etf["asset_type"] == "ETF"
-    assert etf["market_strength_applicability"] == "NOT_APPLICABLE"
-    assert etf["market_strength_status"] == "NOT_EVALUATED"
+    assert all(item["asset_type"] == "COMMON" for item in ranking["items"])
+    assert "069500" not in {item["ticker"] for item in ranking["items"]}
     for horizon in ("2w", "1m", "3m", "6m", "12m"):
         eligible = [
             item for item in ranking["items"]
