@@ -82,27 +82,53 @@ def _write_fundamentals_artifact(root: Path, target_as_of: str, ticker: str, *, 
     (fund_dir / f"{ticker}.json").write_text(json.dumps(payload), encoding="utf-8")
 
 
+_VALID_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+
+
 def _write_previous_corpus(
     root: Path,
     previous_date: str,
     entries: list[tuple[str, str, str | None]],
+    *,
+    report_version: str = "0.5",
+    requested_as_of: str | None = None,
+    strategy_id: str | None = _VALID_STRATEGY_ID,
+    duplicate_last: bool = False,
 ) -> Path:
-    """entries: [(ticker, asset_type, canonical_position_or_None), ...]"""
+    """entries: [(ticker, asset_type, canonical_position_or_None), ...]
+
+    기본값은 audit_previous_corpus()의 신규 fail-closed 검증을 모두 통과하는
+    "정상" previous corpus를 만든다. report_version/requested_as_of/strategy_id를
+    명시적으로 다르게 주면 해당 검증 실패 케이스를 재현할 수 있다.
+    """
     dt_clean = previous_date.replace("-", "")
     corpus_dir = root / "artifacts/reporting/stock_reports" / dt_clean
     json_dir = corpus_dir / "json"
     json_dir.mkdir(parents=True, exist_ok=True)
+    effective_as_of = requested_as_of if requested_as_of is not None else previous_date
     for ticker, asset_type, position in entries:
         payload: dict = {
             "ticker": ticker,
             "asset_type": asset_type,
-            "report_version": "0.5",
-            "requested_as_of": previous_date,
+            "report_version": report_version,
+            "requested_as_of": effective_as_of,
         }
-        if position is not None:
-            payload["a_fast_core"] = {"canonical_position": position}
+        if position is not None or strategy_id is not None:
+            a_fast_core: dict = {}
+            if strategy_id is not None:
+                a_fast_core["strategy_id"] = strategy_id
+            if position is not None:
+                a_fast_core["canonical_position"] = position
+            payload["a_fast_core"] = a_fast_core
         (json_dir / f"{ticker}.json").write_text(json.dumps(payload), encoding="utf-8")
         (corpus_dir / f"{ticker}.md").write_text(f"# {ticker}", encoding="utf-8")
+    if duplicate_last and entries:
+        dup_ticker = entries[-1][0]
+        # 동일 ticker로 실제 서로 다른 파일 두 개를 만들어 진짜 "중복 ticker"를 재현한다
+        # (파일명이 아니라 JSON 내부 ticker 필드 기준 중복 판정을 검증하기 위함).
+        dup_path = json_dir / f"{dup_ticker}__dup.json"
+        dup_payload = json.loads((json_dir / f"{dup_ticker}.json").read_text(encoding="utf-8"))
+        dup_path.write_text(json.dumps(dup_payload), encoding="utf-8")
     return corpus_dir
 
 
@@ -579,3 +605,111 @@ def test_continuity_open_outside_current_common_fails_closed_end_to_end(tmp_path
 
     with pytest.raises(phase4b.Phase4BError, match="OPEN_POSITION_OUTSIDE_CURRENT_COMMON"):
         phase4b.run_phase4b(TARGET, root=tmp_path)
+
+
+# ==================================================================================
+# Production Default Final Fix (PHASE4B_PRODUCTION_DEFAULT_FINAL_FIX_V01)
+# ==================================================================================
+
+
+# --- A/B. CLI --max-workers 기본값/override ---------------------------------------
+
+
+def test_a_cli_default_max_workers_is_4():
+    args = phase4b.build_parser().parse_args(["--target-as-of", "2026-09-17"])
+    assert args.max_workers == 4
+
+
+def test_b_cli_explicit_max_workers_1_overrides_default():
+    args = phase4b.build_parser().parse_args(["--target-as-of", "2026-09-17", "--max-workers", "1"])
+    assert args.max_workers == 1
+
+
+def test_run_phase4b_internal_default_max_workers_is_still_1():
+    """run_phase4b()의 내부 기본값은 그대로 1(순차)이어야 한다 -- CLI 기본값 변경과
+    별개로 테스트/직접 호출 호환성을 위해 유지된다."""
+    import inspect
+
+    sig = inspect.signature(phase4b.run_phase4b)
+    assert sig.parameters["max_workers"].default == 1
+
+
+# --- C~F. previous canonical corpus fail-closed 검증 -------------------------------
+
+
+def test_c_previous_corpus_duplicate_ticker_fails_closed(tmp_path):
+    corpus_dir = _write_previous_corpus(
+        tmp_path, PREVIOUS, [("900000", "COMMON", "FLAT")], duplicate_last=True,
+    )
+    with pytest.raises(phase4b.Phase4BError, match="PHASE4B_PREVIOUS_CORPUS_DUPLICATE_TICKER"):
+        phase4b.audit_previous_corpus(corpus_dir)
+
+
+def test_d_previous_corpus_wrong_report_version_fails_closed(tmp_path):
+    corpus_dir = _write_previous_corpus(
+        tmp_path, PREVIOUS, [("900000", "COMMON", "FLAT")], report_version="0.4",
+    )
+    with pytest.raises(phase4b.Phase4BError, match="PHASE4B_PREVIOUS_CORPUS_REPORT_VERSION_MISMATCH"):
+        phase4b.audit_previous_corpus(corpus_dir)
+
+
+def test_e_previous_corpus_wrong_requested_as_of_fails_closed(tmp_path):
+    corpus_dir = _write_previous_corpus(
+        tmp_path, PREVIOUS, [("900000", "COMMON", "FLAT")], requested_as_of="2026-09-03",
+    )
+    with pytest.raises(phase4b.Phase4BError, match="PHASE4B_PREVIOUS_CORPUS_AS_OF_MISMATCH"):
+        phase4b.audit_previous_corpus(corpus_dir)
+
+
+def test_f_previous_corpus_wrong_strategy_id_fails_closed(tmp_path):
+    corpus_dir = _write_previous_corpus(
+        tmp_path, PREVIOUS, [("900000", "COMMON", "FLAT")], strategy_id="PATTERN_A_FAST_FINAL_STRATEGY_V01",
+    )
+    with pytest.raises(phase4b.Phase4BError, match="PHASE4B_PREVIOUS_CORPUS_STRATEGY_ID_MISMATCH"):
+        phase4b.audit_previous_corpus(corpus_dir)
+
+
+def test_f_previous_corpus_missing_strategy_id_fails_closed(tmp_path):
+    corpus_dir = _write_previous_corpus(
+        tmp_path, PREVIOUS, [("900000", "COMMON", "FLAT")], strategy_id=None,
+    )
+    with pytest.raises(phase4b.Phase4BError, match="PHASE4B_PREVIOUS_CORPUS_STRATEGY_ID_MISMATCH"):
+        phase4b.audit_previous_corpus(corpus_dir)
+
+
+# --- G. 정상 previous corpus -> PASS -----------------------------------------------
+
+
+def test_g_valid_previous_corpus_passes_audit(tmp_path):
+    corpus_dir = _write_previous_corpus(
+        tmp_path, PREVIOUS,
+        [("900000", "COMMON", "OPEN"), ("900001", "COMMON", "FLAT"), ("900002", "ETF", None)],
+    )
+    audit = phase4b.audit_previous_corpus(corpus_dir)
+    assert audit.total == 3
+    assert audit.common == {"900000", "900001"}
+    assert audit.non_common == {"900002"}
+    assert audit.open_tickers == {"900000"}
+
+
+def test_g_default_previous_corpus_fixture_passes_audit(tmp_path):
+    """이 테스트 파일의 다른 continuity 테스트들이 쓰는 기본 fixture
+    (_default_previous_corpus)도 신규 검증을 통과해야 한다."""
+    corpus_dir = _default_previous_corpus(tmp_path)
+    audit = phase4b.audit_previous_corpus(corpus_dir)
+    assert audit.total == 1
+    assert audit.common == {"900000"}
+
+
+def test_g_real_20260904_corpus_passes_audit_read_only():
+    """실제 2026-09-04 canonical corpus(운영 previous source)가 신규 fail-closed
+    검증을 통과하는지 read-only로 확인한다."""
+    root = Path(__file__).resolve().parents[1]
+    corpus_dir = root / "artifacts/reporting/stock_reports/20260904"
+    if not corpus_dir.exists():
+        pytest.skip("local 20260904 production corpus not present in this environment")
+    audit = phase4b.audit_previous_corpus(corpus_dir)
+    assert audit.total == 1836
+    assert len(audit.common) == 1808
+    assert len(audit.non_common) == 28
+    assert len(audit.open_tickers) == 232

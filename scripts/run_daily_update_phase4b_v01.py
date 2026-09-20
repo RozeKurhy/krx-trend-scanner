@@ -159,17 +159,55 @@ class PreviousCorpusAudit:
     open_tickers: set[str]
 
 
+_TICKER_RE = re.compile(r"^[0-9A-Z]{6}$")
+
+
 def audit_previous_corpus(previous_dir: Path) -> PreviousCorpusAudit:
-    """직전 canonical corpus를 read-only로 감사한다 (COMMON/non-COMMON, OPEN 포지션)."""
+    """직전 canonical corpus를 read-only로 감사한다 (COMMON/non-COMMON, OPEN 포지션).
+
+    PHASE4B_PRODUCTION_DEFAULT_FINAL_FIX_V01: continuity 계산의 authority가 되는
+    선택된 previous corpus 단 하나에 대해 최소 무결성을 fail-closed로 검증한다
+    (ticker 유효/중복 없음/report_version==0.5/requested_as_of==디렉터리 날짜/
+    strategy_id==PATTERN_A_FAST_FINAL_STRATEGY_V02). previous corpus 선택 로직
+    (``find_previous_canonical_report_dir``) 자체는 확대하지 않는다 -- 이미
+    선택된 단 하나의 후보만 검증한다.
+    """
     json_dir = previous_dir / "json"
+    expected_as_of = f"{previous_dir.name[:4]}-{previous_dir.name[4:6]}-{previous_dir.name[6:]}"
+
     common: set[str] = set()
     non_common: set[str] = set()
     open_tickers: set[str] = set()
+    seen_tickers: set[str] = set()
     total = 0
     for p in sorted(json_dir.glob("*.json")):
         payload = json.loads(p.read_text(encoding="utf-8"))
         total += 1
-        ticker = str(payload.get("ticker", "")).strip().zfill(6)
+        raw_ticker = str(payload.get("ticker", "")).strip().zfill(6)
+        if not _TICKER_RE.fullmatch(raw_ticker):
+            raise Phase4BError(f"PHASE4B_PREVIOUS_CORPUS_INVALID_TICKER: {raw_ticker!r} in {p}")
+        if raw_ticker in seen_tickers:
+            raise Phase4BError(f"PHASE4B_PREVIOUS_CORPUS_DUPLICATE_TICKER: {raw_ticker} in {previous_dir}")
+        seen_tickers.add(raw_ticker)
+
+        if payload.get("report_version") != EXPECTED_REPORT_VERSION:
+            raise Phase4BError(
+                f"PHASE4B_PREVIOUS_CORPUS_REPORT_VERSION_MISMATCH: {raw_ticker} "
+                f"expected {EXPECTED_REPORT_VERSION!r}, got {payload.get('report_version')!r} in {p}"
+            )
+        if payload.get("requested_as_of") != expected_as_of:
+            raise Phase4BError(
+                f"PHASE4B_PREVIOUS_CORPUS_AS_OF_MISMATCH: {raw_ticker} expected {expected_as_of!r}, "
+                f"got {payload.get('requested_as_of')!r} in {p}"
+            )
+        strategy_id = (payload.get("a_fast_core") or {}).get("strategy_id")
+        if strategy_id != EXPECTED_STRATEGY_ID:
+            raise Phase4BError(
+                f"PHASE4B_PREVIOUS_CORPUS_STRATEGY_ID_MISMATCH: {raw_ticker} expected {EXPECTED_STRATEGY_ID!r}, "
+                f"got {strategy_id!r} in {p}"
+            )
+
+        ticker = raw_ticker
         asset_type = payload.get("asset_type")
         if asset_type == "COMMON":
             common.add(ticker)
@@ -505,11 +543,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target-as-of", required=True, help="explicit YYYY-MM-DD target (no default)")
     parser.add_argument(
-        "--max-workers", type=int, default=1,
+        "--max-workers", type=int, default=4,
         help=(
-            "candidate report 생성에 사용할 프로세스 수 (기본 1=순차). "
-            "종목별 계산은 완전히 독립적이므로 >1이면 ProcessPoolExecutor로 병렬 생성한다 "
-            "(PHASE4B_STOCK_REPORT_PERFORMANCE_V01 §14)."
+            "candidate report 생성에 사용할 프로세스 수 (기본 4=운영 병렬 경로, "
+            "PHASE4B_PRODUCTION_DEFAULT_FINAL_FIX_V01: 2026-09-17 1850개 full "
+            "production이 이 경로로 40.4분에 PASS했다). 종목별 계산은 완전히 "
+            "독립적이므로 ProcessPoolExecutor로 병렬 생성한다"
+            "(PHASE4B_STOCK_REPORT_PERFORMANCE_V01 §14). --max-workers 1로 기존 "
+            "순차 in-process 디버그 경로를 명시적으로 선택할 수 있다."
         ),
     )
     return parser
