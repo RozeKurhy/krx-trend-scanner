@@ -13,8 +13,14 @@ import logging
 from pathlib import Path
 import sys
 
+import pandas as pd
+
+from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
 from trend_scanner.data.repository_v2_loader import build_production_repository_v2
-from trend_scanner.data.sector_membership import load_sector_mapping_exact_snapshot
+from trend_scanner.data.sector_membership import (
+    load_sector_mapping_exact_snapshot,
+    resolve_sector_membership_snapshot_for_target,
+)
 from trend_scanner.scanner import scan_pattern_a_universe
 
 logging.basicConfig(
@@ -24,15 +30,15 @@ logging.basicConfig(
 logger = logging.getLogger("run_pattern_a_universe_scanner")
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Run Pattern A Full Universe Scanner on Official COMMON Stocks."
     )
     parser.add_argument(
         "--as-of",
         type=str,
-        default="2026-08-14",
-        help="Evaluation as-of date (YYYY-MM-DD, default: 2026-08-14)",
+        required=True,
+        help="Required target as-of date (YYYY-MM-DD)",
     )
     parser.add_argument(
         "--cache-dir",
@@ -71,7 +77,50 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Compute Market RS ranks/percentiles over the complete COMMON scan population",
     )
-    return parser.parse_args()
+    return parser.parse_args(argv)
+
+
+def resolve_reference_market_date(target_as_of: str, calendar: object | None) -> str:
+    """Return the certified market trading date at or before ``target_as_of``.
+
+    The requested analysis date is not rewritten on weekends or holidays.  A
+    missing or unusable rolling production calendar is an explicit failure,
+    never a latest-date or system-date fallback.
+    """
+
+    if calendar is None:
+        raise RuntimeError("ROLLING_PRODUCTION_CALENDAR_UNAVAILABLE")
+
+    try:
+        target = pd.Timestamp(target_as_of).normalize()
+        trading_dates = pd.DatetimeIndex(calendar.trading_dates).normalize()
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise RuntimeError("ROLLING_PRODUCTION_CALENDAR_INVALID") from exc
+
+    eligible = trading_dates[trading_dates <= target]
+    if len(eligible) == 0:
+        raise RuntimeError(f"ROLLING_PRODUCTION_CALENDAR_NO_DATE_AT_OR_BEFORE:{target_as_of}")
+    return eligible.max().strftime("%Y-%m-%d")
+
+
+def validate_full_common_scan(summary: object, *, is_full_common_scan: bool) -> None:
+    """Fail the production CLI when an unfiltered COMMON scan is incomplete."""
+
+    if not is_full_common_scan:
+        return
+
+    if summary.scan_target_count != summary.official_common_total:
+        raise RuntimeError(
+            "FULL_COMMON_SCAN_TARGET_COUNT_MISMATCH:"
+            f"{summary.scan_target_count}!={summary.official_common_total}"
+        )
+    if summary.rows_emitted != summary.official_common_total:
+        raise RuntimeError(
+            "FULL_COMMON_SCAN_ROW_COUNT_MISMATCH:"
+            f"{summary.rows_emitted}!={summary.official_common_total}"
+        )
+    if summary.scanner_error_count > 0:
+        raise RuntimeError(f"FULL_COMMON_SCAN_SCANNER_ERRORS:{summary.scanner_error_count}")
 
 
 def main() -> None:
@@ -93,30 +142,40 @@ def main() -> None:
     # ROLLING_MARKET_DATA_AUTHORITY_FINALIZATION_V01 section 7).
     repo_root = Path(__file__).resolve().parents[1]
     repository = build_production_repository_v2(repo_root, end=args.as_of)
+    production_calendar = load_rolling_production_market_calendar(repo_root)
+    reference_market_date = resolve_reference_market_date(args.as_of, production_calendar)
 
-    # Sector RS uses the approved frozen 2026-08-14 membership snapshot.  The
-    # mapping entries carry their effective date, so the scanner still applies
-    # strict PIT filtering for historical as-of values while allowing the
-    # current production path to use the snapshot for later local dates.
+    _, membership_effective_date, membership_path, _ = (
+        resolve_sector_membership_snapshot_for_target(args.as_of, repo_root=repo_root)
+    )
     sector_mapping = load_sector_mapping_exact_snapshot(
-        "2026-08-14",
+        membership_effective_date,
+        path=membership_path,
         repo_root=repo_root,
     )
+    logger.info("  Reference Market Date: %s", reference_market_date)
+    logger.info("  Sector Membership Effective Date: %s", membership_effective_date)
 
     result = scan_pattern_a_universe(
         cache=Path(args.cache_dir),
         as_of=args.as_of,
-        reference_market_date=args.as_of,
+        reference_market_date=reference_market_date,
         target_markets=markets,
         target_tickers=args.tickers,
         limit=args.limit,
         repository=repository,
         sector_mapping=sector_mapping,
-        sector_mapping_snapshot_date="2026-08-14",
+        sector_mapping_snapshot_date=membership_effective_date,
         enrich_market_rs_cross_section=args.enrich_market_rs_cross_section,
     )
 
     summary = result.summary
+    validate_full_common_scan(
+        summary,
+        is_full_common_scan=(
+            args.market is None and args.tickers is None and args.limit is None
+        ),
+    )
 
     logger.info("==================================================")
     logger.info("Pattern A Universe Scan Completed!")
