@@ -946,6 +946,7 @@ def scan_pattern_a_universe(
         as_of_str = str(as_of).strip()
 
     req_as_of = pd.Timestamp(as_of_str)
+    req_as_of_str = req_as_of.strftime("%Y-%m-%d")
     repository_loader: RepositoryV2DailyLoader | None = None
     if repository is not None:
         repository_loader = RepositoryV2DailyLoader(repository, end=req_as_of)
@@ -970,8 +971,8 @@ def scan_pattern_a_universe(
         # classify_asset_type() 수정 검증 재스캔이 수정 전 결과를 그대로 재사용한 사고).
         # Production default는 항상 local offline authority(merged PIT -> as-of OPEN
         # COMMON -> rolling Basic Info -> asset classification)를 사용한다.
-        offline_univ = _default_offline_universe(repo_root, ref_market_date)
-        raw_univ = offline_univ if offline_univ is not None else load_krx_equity_universe(as_of=ref_market_date)
+        offline_univ = _default_offline_universe(repo_root, req_as_of_str)
+        raw_univ = offline_univ if offline_univ is not None else load_krx_equity_universe(as_of=req_as_of_str)
     else:
         raw_univ = universe_securities
 
@@ -1014,7 +1015,7 @@ def scan_pattern_a_universe(
                 # 무조건 COMMON으로 편입하지도 않는다 -- canonical instrument metadata
                 # authority(FORMAL_SECURITY_TYPE)가 production-trusted COMMON으로 확정한
                 # 경우에만 포함한다. UNKNOWN/untrusted는 fail-closed로 제외한다.
-                canonical = resolve_instrument_metadata(t, as_of=ref_market_date, repo_root=repo_root)
+                canonical = resolve_instrument_metadata(t, as_of=req_as_of_str, repo_root=repo_root)
                 if canonical.is_common_stock_for_production:
                     all_common_targets.append((t, n, m))
             elif classify_asset_type(t, n) == AssetType.COMMON:
@@ -1052,7 +1053,6 @@ def scan_pattern_a_universe(
 
     # 3.0 Market Cap PIT Snapshot 로드 (반드시 requested as_of 기준)
     repo_root = Path(__file__).resolve().parent.parent.parent.parent
-    req_as_of_str = req_as_of.strftime("%Y-%m-%d")
     exact_sector_snapshot = (
         enrich_sector_rs_cross_section if require_exact_sector_snapshot is None else require_exact_sector_snapshot
     )
