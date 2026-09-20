@@ -437,6 +437,81 @@ def test_fg_foreign_report_available_still_read_from_stock_index(tmp_path):
     assert item["name"] == "삼성전자"
 
 
+# --- NT/LG. Non-trading PIT identity date 분리 (PHASE4C_NON_TRADING_PIT_DATE_FINAL_FIX) --
+# PIT identity/name 기준일 = requested_as_of, 시장/수급 계산 기준일 = reference_market_date.
+
+
+def _synthetic_foreign_universe_paths(tmp_path):
+    index_path = tmp_path / "stock-index.json"
+    index_path.write_text(
+        json.dumps({
+            "schema_version": 1,
+            "items": [{"ticker": "005930", "name": "무시되는이름", "report_available": True}],
+        }),
+        encoding="utf-8",
+    )
+    common_authority_path = tmp_path / "common.csv"
+    common_authority_path.write_text("ticker,market\n005930,KOSPI\n", encoding="utf-8")
+    sector_path = tmp_path / "sector.parquet"
+    pd.DataFrame({"ticker": ["005930"], "sector_name": ["전기전자"]}).to_parquet(sector_path)
+    return index_path, common_authority_path, sector_path
+
+
+def test_nt_non_trading_identity_date_uses_requested_as_of(monkeypatch, tmp_path):
+    """비거래일 target_as_of: PIT identity resolver는 requested_as_of(2026-09-12)
+    기준으로 조회되고, 시장/수급 기준일(as_of=reference_market_date=2026-09-11)은
+    그대로 유지되는지 spy로 직접 확인한다."""
+    index_path, common_authority_path, sector_path = _synthetic_foreign_universe_paths(tmp_path)
+    requested_as_of = "2026-09-12"
+    reference_market_date = "2026-09-11"
+
+    calls: list[str] = []
+
+    def _spy(repo_root, as_of):
+        calls.append(as_of)
+        return {"005930": "삼성전자"}
+
+    monkeypatch.setattr(foreign_net_buy_web, "_load_pit_identity_names", _spy)
+
+    universe, snapshot_date = foreign_net_buy_web.load_common_universe(
+        index_path=index_path,
+        sector_path=sector_path,
+        common_authority_path=common_authority_path,
+        as_of=reference_market_date,
+        identity_as_of=requested_as_of,
+        repo_root=ROOT,
+    )
+
+    assert calls == [requested_as_of]  # PIT identity는 requested_as_of 기준으로 조회
+    assert snapshot_date == reference_market_date  # 시장/수급 기준일은 reference_market_date 유지
+    item = next(i for i in universe if i["ticker"] == "005930")
+    assert item["name"] == "삼성전자"
+
+
+def test_lg_legacy_call_without_identity_as_of_keeps_as_of_semantics(monkeypatch, tmp_path):
+    """identity_as_of 미지정 시 기존(legacy) 동작 유지: PIT identity 기준일 = as_of."""
+    index_path, common_authority_path, sector_path = _synthetic_foreign_universe_paths(tmp_path)
+    as_of = "2026-09-11"
+
+    calls: list[str] = []
+
+    def _spy(repo_root, identity_as_of):
+        calls.append(identity_as_of)
+        return {"005930": "삼성전자"}
+
+    monkeypatch.setattr(foreign_net_buy_web, "_load_pit_identity_names", _spy)
+
+    foreign_net_buy_web.load_common_universe(
+        index_path=index_path,
+        sector_path=sector_path,
+        common_authority_path=common_authority_path,
+        as_of=as_of,
+        repo_root=ROOT,
+    )
+
+    assert calls == [as_of]
+
+
 # --- I. web_data_writes > 0이면 fail -------------------------------------------------
 
 

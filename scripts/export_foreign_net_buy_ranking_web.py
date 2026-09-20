@@ -87,9 +87,19 @@ def load_common_universe(
     common_authority_path: Path = DEFAULT_COMMON_AUTHORITY_PATH,
     as_of: str = AS_OF,
     *,
+    identity_as_of: str | None = None,
     repo_root: Path = ROOT,
 ) -> tuple[list[dict[str, Any]], str | None]:
-    """Resolve the exact production common-stock authority and sector labels."""
+    """Resolve the exact production common-stock authority and sector labels.
+
+    ``identity_as_of``(선택, PHASE4C_NON_TRADING_PIT_DATE_FINAL_FIX): PIT identity/
+    name 조회 기준일. 생략하면 ``as_of``를 그대로 쓴다(하위 호환, 기존 동작 유지).
+    명시하면(Phase 4 날짜 계약: identity_as_of=requested_as_of) 시장/수급 계산은
+    여전히 ``as_of``(reference_market_date)를 쓰고, PIT identity/name만 이 값
+    기준으로 조회한다 -- 비거래일 target_as_of에서도 identity 기준일이 어긋나지
+    않도록 한다.
+    """
+    effective_identity_as_of = identity_as_of or as_of
 
     index = _read_json(index_path)
     if index.get("schema_version") != 1 or not isinstance(index.get("items"), list):
@@ -116,7 +126,7 @@ def load_common_universe(
     # authority(InstrumentMetadataResolver)에서 조인한다 -- market_rs_universe는
     # ticker/market 모집단 authority 역할을 그대로 유지한다.
     if "name" not in authority.columns:
-        name_by_ticker = _load_pit_identity_names(repo_root, as_of)
+        name_by_ticker = _load_pit_identity_names(repo_root, effective_identity_as_of)
         authority = authority[["ticker", "market"]].copy()
         authority["name"] = authority["ticker"].astype(str).str.strip().str.upper().map(name_by_ticker)
     authority = authority.loc[authority["market"].isin({"KOSPI", "KOSDAQ"}), ["ticker", "name", "market"]].copy()
@@ -253,6 +263,7 @@ def build_foreign_net_buy_ranking(
     as_of: str = AS_OF,
     requested_as_of: str | None = None,
     reference_market_date: str | None = None,
+    identity_as_of: str | None = None,
     repo_root: Path = ROOT,
 ) -> dict[str, Any]:
     """``requested_as_of``/``reference_market_date``(선택, PHASE4C_FINAL_FIX_V01):
@@ -261,9 +272,16 @@ def build_foreign_net_buy_ranking(
     모두 노출한다. 생략하면 기존과 완전히 동일하게 ``as_of``만 노출한다(하위 호환).
     ``as_of``(실제 조회 기준일)는 항상 그대로 유지한다 -- reference_market_date와
     다른 값을 의도적으로 넘기는 호출자(과거 검증 스크립트 등)를 깨지 않기 위함이다.
+
+    ``identity_as_of``(선택, PHASE4C_NON_TRADING_PIT_DATE_FINAL_FIX): PIT identity/
+    name 조회 기준일을 ``as_of``와 분리한다. Production 호출에서는
+    ``identity_as_of=requested_as_of``를 넘겨 비거래일 target_as_of에서도 PIT
+    identity가 requested_as_of 기준으로 조회되도록 한다. 생략하면
+    ``load_common_universe``가 ``as_of``로 폴백한다(하위 호환).
     """
     universe, universe_snapshot_date = load_common_universe(
-        index_path, sector_path, common_authority_path, as_of, repo_root=repo_root,
+        index_path, sector_path, common_authority_path, as_of,
+        identity_as_of=identity_as_of, repo_root=repo_root,
     )
     flow, flow_meta = load_flow_source(flow_path)
     target_tickers = {item["ticker"] for item in universe}

@@ -262,6 +262,7 @@ def run_phase4c(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
             as_of=reference_market_date,
             requested_as_of=target_as_of,
             reference_market_date=reference_market_date,
+            identity_as_of=target_as_of,
             repo_root=root,
         )
         if foreign_net_buy.get("requested_as_of") != target_as_of:
