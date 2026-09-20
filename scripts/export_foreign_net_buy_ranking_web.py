@@ -57,6 +57,7 @@ def load_common_universe(
     if index.get("schema_version") != 1 or not isinstance(index.get("items"), list):
         raise ValueError("stock-index schema is incomplete")
     report_by_ticker: dict[str, bool] = {}
+    name_by_ticker: dict[str, str] = {}
     for item in index["items"]:
         if not isinstance(item, dict) or not item.get("ticker"):
             continue
@@ -64,13 +65,23 @@ def load_common_universe(
         if ticker in report_by_ticker:
             raise ValueError("stock-index contains duplicate tickers")
         report_by_ticker[ticker] = bool(item.get("report_available", False))
+        if item.get("name"):
+            name_by_ticker[ticker] = str(item["name"])
 
     authority = pd.read_csv(common_authority_path, dtype=str)
-    required_authority = {"ticker", "name", "market"}
+    required_authority = {"ticker", "market"}
     if not required_authority.issubset(authority.columns):
         raise ValueError(
             f"common authority schema is incomplete: {sorted(required_authority - set(authority.columns))}"
         )
+    # PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01: exact-target(2026-09-17) market RS
+    # universe authority 스키마에는 name 컬럼이 없다(0904 스키마와 다름). 종목명은
+    # 이미 로드한 stock-index(PIT COMMON 전체 실제 이름 authority, krx_instrument_
+    # metadata 기반)에서 조인한다 -- 새 이름 소스를 만들지 않고 이미 신뢰하는
+    # authority를 재사용한다.
+    if "name" not in authority.columns:
+        authority = authority[["ticker", "market"]].copy()
+        authority["name"] = authority["ticker"].astype(str).str.strip().map(name_by_ticker)
     authority = authority.loc[authority["market"].isin({"KOSPI", "KOSDAQ"}), ["ticker", "name", "market"]].copy()
     if authority.empty or authority[["ticker", "name", "market"]].isna().any().any():
         raise ValueError("common authority is empty or has incomplete identity")

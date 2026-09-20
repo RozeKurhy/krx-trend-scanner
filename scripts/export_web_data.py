@@ -121,6 +121,34 @@ def _load_as_of() -> tuple[str, str]:
     return requested, reference
 
 
+def _resolve_exact_scanner_summary(target_as_of: str) -> Path:
+    """PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01: latest-summary 자동 선택 대신
+    target_as_of 하나의 exact scanner summary만 사용한다."""
+    dt_clean = target_as_of.replace("-", "")
+    path = SCANNER_DIR / f"pattern_a_universe_scan_{dt_clean}_summary.json"
+    if not path.exists():
+        raise FileNotFoundError(f"exact-target scanner summary not found: {path}")
+    return path
+
+
+def _load_exact_as_of(target_as_of: str) -> str:
+    """target_as_of의 exact scanner summary에서 reference_market_date를 읽는다.
+
+    ``_load_as_of()``와 달리 requested_as_of == reference_market_date를 요구하지
+    않는다 -- 비거래일 target_as_of에서 reference_market_date < requested_as_of는
+    정상이다."""
+    summary = _read_json(_resolve_exact_scanner_summary(target_as_of))
+    requested = str(summary.get("requested_as_of") or "")[:10]
+    reference = str(summary.get("reference_market_date") or "")[:10]
+    if requested != target_as_of:
+        raise ValueError(
+            f"exact-target scanner summary requested_as_of mismatch: expected {target_as_of!r}, got {requested!r}"
+        )
+    if not reference or reference > target_as_of:
+        raise ValueError(f"exact-target scanner summary reference_market_date is invalid: {reference!r}")
+    return reference
+
+
 def _production_paths(requested_as_of: str) -> dict[str, Path]:
     """Build all date-scoped downstream paths from the canonical as_of."""
 
@@ -305,13 +333,20 @@ def _build_fundamentals(
     }
 
 
-def _build_market_data(requested_as_of: str) -> dict[str, Any]:
+def _build_market_data(requested_as_of: str, *, reference_market_date: str | None = None) -> dict[str, Any]:
+    """``reference_market_date``(선택, PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01): 생략하면
+    기존과 동일하게 ``requested_as_of``와 비교한다(하위 호환). 비거래일
+    target_as_of에서는 실제 시장 거래일(reference_market_date)과 비교해야
+    ``requested_as_of > reference_market_date``를 정상으로 처리할 수 있다."""
+    effective_reference_market_date = (
+        reference_market_date if reference_market_date is not None else requested_as_of
+    )
     manifest = _read_json(MARKET_AUTHORITY_MANIFEST_PATH)
     latest = str(manifest.get("certified_through") or "")[:10]
     frontier = str(manifest.get("merged_calendar_frontier") or "")[:10]
     if not latest or latest != frontier:
         raise ValueError("rolling market authority has no single certified frontier")
-    status = "NORMAL" if latest == requested_as_of else "CHECK_REQUIRED"
+    status = "NORMAL" if latest == effective_reference_market_date else "CHECK_REQUIRED"
     return {
         "status": status,
         "latest_trading_date": latest,
@@ -341,9 +376,19 @@ def _count_stock_report_artifacts(stock_reports_dir: Path) -> int:
     return sum(1 for path in stock_reports_dir.glob("*.md") if path.is_file())
 
 
-def _stock_report_readiness(requested_as_of: str, stock_reports_dir: Path) -> dict[str, Any]:
-    """Check the factual F8 source/Web completion state from local artifacts."""
+def _stock_report_readiness(
+    requested_as_of: str, stock_reports_dir: Path, *, reference_market_date: str | None = None,
+) -> dict[str, Any]:
+    """Check the factual F8 source/Web completion state from local artifacts.
 
+    ``reference_market_date``(선택, PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01): 생략하면
+    기존과 동일하게 ``requested_as_of``와 같은 값으로 취급한다(하위 호환). 비거래일
+    target_as_of에서는 명시적으로 전달해 reference_market_date < requested_as_of를
+    정상 처리해야 한다."""
+
+    effective_reference_market_date = (
+        reference_market_date if reference_market_date is not None else requested_as_of
+    )
     source_json_dir = stock_reports_dir / "json"
     source_json_paths = sorted(source_json_dir.glob("*.json")) if source_json_dir.exists() else []
     source_markdown_count = _count_stock_report_artifacts(stock_reports_dir)
@@ -363,7 +408,7 @@ def _stock_report_readiness(requested_as_of: str, stock_reports_dir: Path) -> di
         if (
             report.get("report_version") == "0.5"
             and report.get("requested_as_of") == requested_as_of
-            and report.get("reference_market_date") == requested_as_of
+            and report.get("reference_market_date") == effective_reference_market_date
         ):
             v05_count += 1
         if (
@@ -503,18 +548,33 @@ def _assert_public_payload(payload: Mapping[str, Any]) -> None:
             raise ValueError(f"public health payload contains forbidden fragment: {fragment}")
 
 
-def build_health(repo_root: Path = ROOT, *, generated_at: str | None = None) -> dict[str, Any]:
-    """Build the public-safe health document from local authorities."""
+def build_health(
+    repo_root: Path = ROOT, *, generated_at: str | None = None, target_as_of: str | None = None,
+) -> dict[str, Any]:
+    """Build the public-safe health document from local authorities.
+
+    ``target_as_of``(선택, PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01): 생략하면 기존과
+    완전히 동일하게 ``_load_as_of()``로 최신 유효 scanner summary를 자동 선택하고
+    requested_as_of == reference_market_date를 요구한다(하위 호환). 명시하면
+    latest 자동 선택 대신 그 target_as_of의 exact scanner summary만 사용하고,
+    reference_market_date < requested_as_of(비거래일)를 정상 처리하며, 이 둘을
+    payload 최상위에 명시적으로 포함한다."""
 
     if repo_root != ROOT:
         raise ValueError("WEB-01 exporter is bound to the repository root")
-    requested_as_of, _ = _load_as_of()
+    if target_as_of is not None:
+        requested_as_of = target_as_of
+        reference_market_date = _load_exact_as_of(target_as_of)
+    else:
+        requested_as_of, reference_market_date = _load_as_of()
     paths = _production_paths(requested_as_of)
     universe_tickers, snapshot_date, asset_counts = _load_universe(requested_as_of)
     fundamentals = _build_fundamentals(requested_as_of, universe_tickers, paths)
-    market_data = _build_market_data(requested_as_of)
+    market_data = _build_market_data(requested_as_of, reference_market_date=reference_market_date)
     stock_report_count = _count_stock_report_artifacts(paths["stock_reports"])
-    stock_report_readiness = _stock_report_readiness(requested_as_of, paths["stock_reports"])
+    stock_report_readiness = _stock_report_readiness(
+        requested_as_of, paths["stock_reports"], reference_market_date=reference_market_date,
+    )
     stock_reports = _build_downstream_section(
         fundamentals["status"],
         checkpoint_path=paths["fundamentals_checkpoint"],
@@ -547,6 +607,8 @@ def build_health(repo_root: Path = ROOT, *, generated_at: str | None = None) -> 
     health = {
         "schema_version": 1,
         "generated_at": generated_at or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "requested_as_of": requested_as_of,
+        "reference_market_date": reference_market_date,
         "overall_status": _overall_status(status_sections),
         **sections,
     }

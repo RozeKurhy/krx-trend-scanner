@@ -123,10 +123,12 @@ def _load_core(ranking_path: Path, meta_path: Path) -> tuple[pd.DataFrame, dict[
     return ranking.reset_index(drop=True), meta
 
 
-def _validate_core(ranking: pd.DataFrame, meta: dict[str, Any]) -> dict[str, int]:
+def _validate_core(
+    ranking: pd.DataFrame, meta: dict[str, Any], *, expected_as_of: str = "2026-09-04",
+) -> dict[str, int]:
     as_of = str(meta["as_of"])
-    if as_of != "2026-09-04":
-        raise ValueError(f"unexpected ranking as_of: {as_of}")
+    if as_of != expected_as_of:
+        raise ValueError(f"unexpected ranking as_of: expected {expected_as_of!r}, got {as_of!r}")
     membership_meta = meta.get("membership")
     validation_meta = meta.get("validation")
     if not isinstance(membership_meta, dict) or not isinstance(validation_meta, dict):
@@ -309,10 +311,12 @@ def _validate_payload(
     meta: dict[str, Any],
     names: dict[str, dict[str, str]],
     report_tickers: set[str],
+    *,
+    expected_as_of: str = "2026-09-04",
 ) -> dict[str, int]:
     items = payload["items"]
     sectors = payload["sectors"]
-    expected = _validate_core(ranking.copy(), meta)
+    expected = _validate_core(ranking.copy(), meta, expected_as_of=expected_as_of)
     if len(items) != expected["population_count"]:
         raise ValueError("payload item population is not conserved")
     if len(sectors) != expected["sector_group_count"]:
@@ -424,22 +428,35 @@ def _validate_payload(
     }
 
 
+def _basic_info_date_from_dir(basic_info_dir: Path) -> str:
+    name = basic_info_dir.name
+    if len(name) == 8 and name.isdigit():
+        return f"{name[:4]}-{name[4:6]}-{name[6:]}"
+    return name
+
+
 def build_sector_rs_web_payload(
     *,
     ranking_path: Path = DEFAULT_RANKING_PATH,
     meta_path: Path = DEFAULT_META_PATH,
     basic_info_dir: Path = DEFAULT_BASIC_INFO_DIR,
     stocks_dir: Path = DEFAULT_STOCKS_DIR,
+    expected_as_of: str = "2026-09-04",
 ) -> dict[str, Any]:
-    """Project the closed authority without recomputing any Sector RS value."""
+    """Project the closed authority without recomputing any Sector RS value.
+
+    ``expected_as_of``(PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01): 기존 하드코딩된
+    "2026-09-04" 검증을 명시적 파라미터로 바꿔, exact-target(예: 2026-09-17) 호출도
+    ranking authority의 as_of를 정확히 검증할 수 있게 한다. 생략하면 기존과 동일한
+    기본값(2026-09-04)을 그대로 쓴다."""
 
     _install_network_guard()
     ranking, meta = _load_core(ranking_path, meta_path)
-    source_validation = _validate_core(ranking, meta)
+    source_validation = _validate_core(ranking, meta, expected_as_of=expected_as_of)
     names = _load_name_authority(basic_info_dir)
     missing_names = set(ranking["ticker"]) - set(names)
     if missing_names:
-        raise ValueError(f"exact 2026-09-04 Basic Info name join failed: {sorted(missing_names)}")
+        raise ValueError(f"exact {expected_as_of} Basic Info name join failed: {sorted(missing_names)}")
     report_tickers = _load_report_file_set(stocks_dir)
     sectors = _build_sectors(ranking)
     items = _project_items(ranking, names, report_tickers)
@@ -466,12 +483,12 @@ def build_sector_rs_web_payload(
         "source": {
             "ranking_schema": meta["schema_version"],
             "ranking_as_of": str(meta["as_of"]),
-            "name_source_date": "2026-09-04",
+            "name_source_date": _basic_info_date_from_dir(basic_info_dir),
         },
         "sectors": sectors,
         "items": items,
     }
-    validation = _validate_payload(payload, ranking, meta, names, report_tickers)
+    validation = _validate_payload(payload, ranking, meta, names, report_tickers, expected_as_of=expected_as_of)
     # Strict serialization is itself a final guard against NaN/Infinity leaking into JSON.
     json.dumps(payload, ensure_ascii=False, allow_nan=False)
     payload["_validation"] = validation
@@ -492,7 +509,10 @@ def export_sector_rs_ranking_web(
     ranking, meta = _load_core(kwargs.get("ranking_path", DEFAULT_RANKING_PATH), kwargs.get("meta_path", DEFAULT_META_PATH))
     names = _load_name_authority(kwargs.get("basic_info_dir", DEFAULT_BASIC_INFO_DIR))
     report_tickers = _load_report_file_set(kwargs.get("stocks_dir", DEFAULT_STOCKS_DIR))
-    validation = _validate_payload(payload, ranking, meta, names, report_tickers)
+    validation = _validate_payload(
+        payload, ranking, meta, names, report_tickers,
+        expected_as_of=kwargs.get("expected_as_of", "2026-09-04"),
+    )
     return {
         "output": str(output_path.relative_to(ROOT)) if output_path.is_relative_to(ROOT) else str(output_path),
         "schema_version": payload["schema_version"],

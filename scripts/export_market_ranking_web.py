@@ -140,6 +140,19 @@ def build_market_ranking(
     if as_of != str(index.get("requested_as_of") or "")[:10]:
         raise ValueError("stock-index and published report requested_as_of differ")
 
+    # PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01: reference_market_date는 identity 기준일
+    # (requested_as_of/as_of)과 별개의 시장 거래일 기준이므로 섞이지 않았는지도
+    # 검증한다.
+    reference_market_date_values = {
+        str(item["technical_details"].get("reference_market_date"))[:10] for item in reports.values()
+    }
+    if len(reference_market_date_values) != 1:
+        raise ValueError(f"published report reference_market_date is mixed: {sorted(reference_market_date_values)}")
+    reference_market_date = next(iter(reference_market_date_values))
+    index_reference_market_date = str(index.get("reference_market_date") or "")[:10]
+    if index_reference_market_date and reference_market_date != index_reference_market_date:
+        raise ValueError("stock-index and published report reference_market_date differ")
+
     eligible_counts = {
         horizon: sum(1 for item in items if _is_eligible(item, horizon))
         for horizon in HORIZONS
@@ -154,6 +167,8 @@ def build_market_ranking(
         "metric_scope": {
             "label": "마켓 RS는 전체 보통주 기준",
         },
+        "requested_as_of": as_of,
+        "reference_market_date": reference_market_date,
         "as_of": as_of,
         "eligible_counts": eligible_counts,
         "items": items,

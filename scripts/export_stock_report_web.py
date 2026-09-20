@@ -88,6 +88,17 @@ def _resolve_report_directory() -> tuple[Path, str]:
     return directory, f"{directory.name[:4]}-{directory.name[4:6]}-{directory.name[6:]}"
 
 
+def _resolve_exact_report_directory(target_as_of: str) -> tuple[Path, str]:
+    """PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01: production 4C는 최신 디렉터리를
+    자동 선택하지 않고 target_as_of 디렉터리 하나만 exact하게 사용한다."""
+    dt_clean = target_as_of.replace("-", "")
+    directory = STOCK_REPORTS_ROOT / dt_clean
+    json_dir = directory / "json"
+    if not directory.is_dir() or not json_dir.is_dir() or not any(json_dir.glob("*.json")):
+        raise FileNotFoundError(f"exact-target Stock Report directory not found or empty: {directory}")
+    return directory, target_as_of
+
+
 def _load_universe(requested_as_of: str) -> tuple[list[dict[str, str]], str]:
     if not METADATA_PATH.exists():
         raise FileNotFoundError(f"instrument metadata authority missing: {METADATA_PATH}")
@@ -349,10 +360,26 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
     }
 
 
-def build_web_payload(repo_root: Path = ROOT) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, Any]]:
+def build_web_payload(
+    repo_root: Path = ROOT,
+    *,
+    target_as_of: str | None = None,
+    reference_market_date: str | None = None,
+) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, Any]]:
+    """``target_as_of``(선택, PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01)를 명시하면
+    최신 디렉터리 자동 선택 대신 그 날짜의 exact 디렉터리만 사용하고,
+    ``reference_market_date``(생략 시 target_as_of와 동일)와의 불일치도 fail-closed로
+    검증한다. 둘 다 생략하면 기존과 완전히 동일한 latest-directory 자동 선택
+    경로를 그대로 쓴다(하위 호환)."""
     if repo_root != ROOT:
         raise ValueError("stock report web exporter is bound to the repository root")
-    report_dir, requested_as_of = _resolve_report_directory()
+    if target_as_of is not None:
+        report_dir, requested_as_of = _resolve_exact_report_directory(target_as_of)
+    else:
+        report_dir, requested_as_of = _resolve_report_directory()
+    effective_reference_market_date = (
+        reference_market_date if reference_market_date is not None else requested_as_of
+    )
     universe, snapshot_date = _load_universe(requested_as_of)
     source_json_dir = report_dir / "json"
     source_json_paths = sorted(source_json_dir.glob("*.json"))
@@ -370,6 +397,8 @@ def build_web_payload(repo_root: Path = ROOT) -> tuple[dict[str, Any], dict[str,
             raise ValueError(f"invalid or duplicate Stock Report ticker: {path}")
         if str(report.get("requested_as_of") or "")[:10] != requested_as_of:
             raise ValueError(f"Stock Report date mismatch: {path}")
+        if str(report.get("reference_market_date") or "")[:10] != effective_reference_market_date:
+            raise ValueError(f"Stock Report reference_market_date mismatch: {path}")
         if report.get("report_version") != "0.5":
             raise ValueError(f"Stock Report v0.5 authority missing: {path}")
         fundamentals_source = report.get("fundamentals")
@@ -397,6 +426,7 @@ def build_web_payload(repo_root: Path = ROOT) -> tuple[dict[str, Any], dict[str,
     index = {
         "schema_version": 1,
         "requested_as_of": requested_as_of,
+        "reference_market_date": effective_reference_market_date,
         "universe_snapshot_date": snapshot_date,
         "source_report_directory": _relative(report_dir),
         "count": len(items),
@@ -405,6 +435,7 @@ def build_web_payload(repo_root: Path = ROOT) -> tuple[dict[str, Any], dict[str,
     }
     stats = {
         "requested_as_of": requested_as_of,
+        "reference_market_date": effective_reference_market_date,
         "universe_snapshot_date": snapshot_date,
         "universe_count": len(items),
         "available_report_count": len(reports),

@@ -123,9 +123,23 @@ def _project_item(index_item: dict[str, Any], report: dict[str, Any]) -> dict[st
     return item
 
 
-def build_strategy_monitor(repo_root: Path = ROOT) -> dict[str, Any]:
-    index_path = repo_root / "web/data/stock-index.json"
-    stocks_path = repo_root / "web/data/stocks"
+def build_strategy_monitor(
+    repo_root: Path = ROOT,
+    *,
+    index_path: Path | None = None,
+    stocks_path: Path | None = None,
+    target_as_of: str | None = None,
+    reference_market_date: str | None = None,
+) -> dict[str, Any]:
+    """``index_path``/``stocks_path``(선택, PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01)를
+    명시하면 ``web/data/`` 대신 그 exact-target 소스를 읽는다. 생략하면 기존과
+    완전히 동일하게 ``repo_root/web/data/``를 읽는다(하위 호환). ``target_as_of``/
+    ``reference_market_date``를 명시하면 published report의 requested_as_of/
+    reference_market_date가 그 값과 정확히 일치하는지 fail-closed로 검증한다
+    (생략 시 기존처럼 mixed일 경우 "MIXED"로만 표시하고 raise하지 않는다).
+    """
+    index_path = index_path if index_path is not None else repo_root / "web/data/stock-index.json"
+    stocks_path = stocks_path if stocks_path is not None else repo_root / "web/data/stocks"
     index = _read_json(index_path)
     index_items = index.get("items") or []
     available = [item for item in index_items if item.get("report_available") is True]
@@ -140,14 +154,37 @@ def build_strategy_monitor(repo_root: Path = ROOT) -> dict[str, Any]:
 
     items: list[dict[str, Any]] = []
     as_of_values: set[str] = set()
+    reference_market_date_values: set[str] = set()
     for index_item in available:
         ticker = str(index_item.get("ticker") or "").upper()
         report = _read_json(stocks_path / f"{ticker}.json")
         technical = report.get("technical_details") or {}
         as_of = str(technical.get("requested_as_of") or "")[:10]
+        ref = str(technical.get("reference_market_date") or "")[:10]
         if as_of:
             as_of_values.add(as_of)
+        if ref:
+            reference_market_date_values.add(ref)
         items.append(_project_item(index_item, report))
+
+    if target_as_of is not None and as_of_values != {target_as_of}:
+        raise ValueError(
+            f"strategy monitor requested_as_of mismatch: expected {target_as_of!r}, got {sorted(as_of_values)}"
+        )
+    if reference_market_date is not None and reference_market_date_values != {reference_market_date}:
+        raise ValueError(
+            f"strategy monitor reference_market_date mismatch: expected {reference_market_date!r}, "
+            f"got {sorted(reference_market_date_values)}"
+        )
+
+    resolved_as_of = (
+        target_as_of if target_as_of is not None
+        else (next(iter(as_of_values)) if len(as_of_values) == 1 else "MIXED")
+    )
+    resolved_reference = (
+        reference_market_date if reference_market_date is not None
+        else (next(iter(reference_market_date_values)) if len(reference_market_date_values) == 1 else "MIXED")
+    )
 
     counts = {"entry": 0, "hold": 0, "exit": 0, "watch": 0, "unavailable": 0}
     for item in items:
@@ -168,7 +205,9 @@ def build_strategy_monitor(repo_root: Path = ROOT) -> dict[str, Any]:
             "label": "현재 공개 리포트 기준",
             "report_count": len(items),
         },
-        "as_of": next(iter(as_of_values)) if len(as_of_values) == 1 else "MIXED",
+        "requested_as_of": resolved_as_of,
+        "reference_market_date": resolved_reference,
+        "as_of": resolved_as_of,
         "counts": counts,
         "items": items,
     }
