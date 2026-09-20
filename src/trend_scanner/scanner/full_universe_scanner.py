@@ -129,6 +129,13 @@ def _default_market_rs_repository(repo_root: Path) -> MarketDataRepositoryV2:
     return repository
 
 
+# _default_offline_universe()가 붙이는 metadata_source. 이 값을 가진 UniverseSecurity는
+# rolling PIT authority가 이미 state == COMMON으로 확정한 종목이므로, classify_asset_type()
+# 이름/티커 휴리스틱으로 재필터링하지 않는다(예: "우"로 끝나지만 우선주가 아닌 이름,
+# 실제 상장명에 "스팩"이 들어간 정상 COMMON 종목이 오탐으로 탈락하는 문제).
+_AUTHORITATIVE_PIT_METADATA_SOURCE = "ROLLING_AUTHORITY_MERGED_PIT_V01"
+
+
 def _default_production_market_calendar(repo_root: Path) -> MarketCalendarAuthority | None:
     """PRODUCTION_REGENERATION_INFRASTRUCTURE_FIX_V01 section 1: wire the production scanner's
     per-ticker completed-period calendar to the rolling authority's calendar (shared with Stock
@@ -209,7 +216,7 @@ def _default_offline_universe(repo_root: Path, as_of: str) -> list[UniverseSecur
                 ticker=iv["ticker"],
                 name=name_by_isu.get(iv["isu_cd"], iv["ticker"]),
                 market=market,
-                metadata_source="ROLLING_AUTHORITY_MERGED_PIT_V01",
+                metadata_source=_AUTHORITATIVE_PIT_METADATA_SOURCE,
             )
         )
     return universe or None
@@ -984,6 +991,7 @@ def scan_pattern_a_universe(
             t = item.ticker
             n = item.name
             m = item.market
+            is_authoritative_common = item.metadata_source == _AUTHORITATIVE_PIT_METADATA_SOURCE
         else:
             t = str(item["ticker"]).strip().zfill(6)
             n = str(item.get("name", "")).strip()
@@ -992,9 +1000,10 @@ def scan_pattern_a_universe(
                 m = MarketType(m_str)
             except ValueError:
                 m = MarketType.UNKNOWN
+            is_authoritative_common = False
 
         if m in (MarketType.KOSPI, MarketType.KOSDAQ):
-            if classify_asset_type(t, n) == AssetType.COMMON:
+            if is_authoritative_common or classify_asset_type(t, n) == AssetType.COMMON:
                 all_common_targets.append((t, n, m))
 
     all_common_targets.sort(key=lambda x: (x[2].value, x[0]))

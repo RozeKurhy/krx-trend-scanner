@@ -175,6 +175,46 @@ def test_output_row_count_matches_resolved_common_count(mock_scanner_env):
     assert len(res.rows) == 4
 
 
+def test_authoritative_pit_common_not_excluded_by_name_heuristic(mock_scanner_env):
+    """rolling PIT authority가 이미 state==COMMON으로 확정한 종목은 이름/티커 휴리스틱
+    재분류로 오탈락하지 않아야 한다 (authoritative PIT state wins).
+
+    회귀 대상: 2026-09-17 authoritative COMMON 2559 vs Scanner 2553 갭. 실제 누락 6종목 중
+    "이오플로우"(이름이 "우"로 끝나 PREFERRED 오탐)와 "하나31호스팩"(이름에 "스팩" 포함돼
+    SPAC 오탐)을 대표로 사용한다.
+    """
+    universe = list(mock_scanner_env["universe"]) + [
+        UniverseSecurity(
+            "294090",
+            "이오플로우",
+            MarketType.KOSDAQ,
+            metadata_source="ROLLING_AUTHORITY_MERGED_PIT_V01",
+        ),
+        UniverseSecurity(
+            "469900",
+            "하나31호스팩",
+            MarketType.KOSDAQ,
+            metadata_source="ROLLING_AUTHORITY_MERGED_PIT_V01",
+        ),
+    ]
+
+    res = scan_pattern_a_universe(
+        cache=mock_scanner_env["cache"],
+        as_of=mock_scanner_env["as_of"],
+        universe_securities=universe,
+    )
+
+    by_ticker = {r.ticker: r for r in res.rows}
+    assert "294090" in by_ticker
+    assert "469900" in by_ticker
+    assert by_ticker["294090"].asset_type == AssetType.COMMON
+    assert by_ticker["469900"].asset_type == AssetType.COMMON
+
+    # 비authoritative(fixture) 소스는 여전히 이름 휴리스틱으로 정상 제외된다.
+    assert "005935" not in by_ticker  # PREFERRED
+    assert "400001" not in by_ticker  # SPAC
+
+
 def test_missing_cache_ticker_row_preserved_and_fail_closed(mock_scanner_env):
     """캐시가 없는 보통주 종목도 row가 삭제되지 않고 INSUFFICIENT_DATA로 fail closed 보존되는지 검증."""
     res = scan_pattern_a_universe(
