@@ -821,6 +821,7 @@ def generate_stock_report(
     output_dir: Path | str | None = None,
     repository: MarketDataRepositoryV2 | None = None,
     fundamentals_section: FundamentalsSection | None | object = _FUNDAMENTALS_UNSET,
+    reference_market_date: str | None = None,
 ) -> tuple[StockReport, Path | None, Path | None]:
     """단일 종목 리포트를 생성한다.
 
@@ -828,6 +829,12 @@ def generate_stock_report(
     path remains v0.4 for archived/regression callers; passing either a section
     or explicit ``None`` opts into v0.5 (``None`` becomes a safe unavailable
     section without any provider hydration).
+
+    ``reference_market_date``: 시장 거래일 표기(freshness 등)에 쓰는 별도 기준일.
+    생략하면(``None``) 기존처럼 ``canonical_as_of``를 그대로 사용한다(하위 호환).
+    Phase 4B production 호출은 이 값을 4A Scanner summary의 ``reference_market_date``로
+    명시 전달해 비거래일 target_as_of에서 재계산하지 않는다. identity/metadata/전략
+    기준(``canonical_as_of``/``req_as_of_ts``)에는 영향을 주지 않는다.
     """
     emit_v05 = fundamentals_section is not _FUNDAMENTALS_UNSET
     root_path = Path(repo_root) if repo_root else Path(__file__).resolve().parent.parent.parent.parent
@@ -841,7 +848,7 @@ def generate_stock_report(
         canonical_as_of = str(as_of).strip()[:10]
 
     req_as_of_ts = pd.Timestamp(canonical_as_of)
-    ref_market_date = canonical_as_of
+    ref_market_date = str(reference_market_date).strip()[:10] if reference_market_date else canonical_as_of
 
     # 2. 로컬 Universe 및 종목 메타데이터 로드 (Formal Authority, Zero-Network)
     price_source = "MarketDataRepositoryV2" if repository is not None else "local parquet cache"

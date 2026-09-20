@@ -5,6 +5,8 @@ No provider, raw filing, network, or filter calculation belongs in this module.
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from trend_scanner.reporting.models import (
@@ -21,6 +23,29 @@ DATA_UNAVAILABLE = "DATA_UNAVAILABLE"
 NOT_APPLICABLE = "NOT_APPLICABLE"
 _NON_COMMON_ASSET_TYPES = {"ETF", "ETN", "PREFERRED", "SPAC", "REIT", "OTHER", "UNKNOWN"}
 _QUARTER_SNAPSHOT = {"Q1": "Q1_END", "Q2": "H1_END", "Q3": "Q3_END", "Q4": "FY_END"}
+_F5_REQUIRED_FIELDS = {
+    "applicability",
+    "data_status",
+    "reason",
+    "requested_as_of",
+    "company_family",
+    "currency",
+    "filter_status",
+    "filter_passed",
+    "filter_reasons",
+    "summary",
+    "quarterly",
+    "annual",
+    "diagnostics",
+}
+_VALID_F5_DATA_STATUSES = {READY, PARTIAL, DATA_UNAVAILABLE, NOT_APPLICABLE}
+
+
+class FundamentalsArtifactUnavailable(RuntimeError):
+    """Phase 4B fail-closed: candidate의 exact-target Fundamentals production
+    artifact가 없거나, ticker/requested_as_of가 일치하지 않거나, f5_ready가
+    없거나 불완전한 경우. artifact 내부의 정상 terminal 상태
+    (DATA_UNAVAILABLE/NOT_APPLICABLE)는 여기 해당하지 않는다."""
 
 
 def _text(value: Any) -> str:
@@ -515,3 +540,95 @@ def fundamentals_executive_bullet(section: FundamentalsSection | None) -> str | 
 
 def _format_eok(value: int | float | None) -> str:
     return "N/A" if value is None else f"{value / 100_000_000:,.1f}억원"
+
+
+def _section_from_f5_ready(value: Mapping[str, Any]) -> FundamentalsSection:
+    """이미 계산된 f5_ready 딕셔너리를 FundamentalsSection으로 복원한다.
+
+    F2/F3/F4를 다시 호출하거나 산식을 재계산하지 않는 순수 역직렬화다
+    (scripts/integrate_fundamentals_v1_f8.py의 ``_section_from_f5``와 동일 계약).
+    """
+    missing = sorted(_F5_REQUIRED_FIELDS - set(value))
+    if missing:
+        raise FundamentalsArtifactUnavailable(f"FUNDAMENTALS_ARTIFACT_F5_READY_INCOMPLETE: missing {missing}")
+    if value["data_status"] not in _VALID_F5_DATA_STATUSES:
+        raise FundamentalsArtifactUnavailable(f"FUNDAMENTALS_ARTIFACT_INVALID_DATA_STATUS: {value['data_status']!r}")
+    if value["currency"] != "KRW":
+        raise FundamentalsArtifactUnavailable(f"FUNDAMENTALS_ARTIFACT_INVALID_CURRENCY: {value['currency']!r}")
+    summary = value["summary"]
+    if not isinstance(summary, Mapping):
+        raise FundamentalsArtifactUnavailable("FUNDAMENTALS_ARTIFACT_SUMMARY_NOT_OBJECT")
+    if not isinstance(value["quarterly"], list) or not isinstance(value["annual"], list):
+        raise FundamentalsArtifactUnavailable("FUNDAMENTALS_ARTIFACT_QUARTERLY_ANNUAL_NOT_ARRAY")
+    if not isinstance(value["filter_reasons"], list) or not isinstance(value["diagnostics"], list):
+        raise FundamentalsArtifactUnavailable("FUNDAMENTALS_ARTIFACT_FILTER_REASONS_DIAGNOSTICS_NOT_ARRAY")
+    try:
+        summary_model = FundamentalsSummary(**dict(summary))
+        quarterly = [FundamentalsQuarterRow(**dict(row)) for row in value["quarterly"]]
+        annual = [FundamentalsAnnualRow(**dict(row)) for row in value["annual"]]
+    except (TypeError, ValueError) as exc:
+        raise FundamentalsArtifactUnavailable(f"FUNDAMENTALS_ARTIFACT_NESTED_STRUCTURE_INVALID: {exc}") from exc
+    return FundamentalsSection(
+        applicability=str(value["applicability"]),
+        data_status=str(value["data_status"]),
+        reason=value["reason"],
+        requested_as_of=value["requested_as_of"],
+        company_family=value["company_family"],
+        currency=str(value["currency"]),
+        filter_status=str(value["filter_status"]),
+        filter_passed=bool(value["filter_passed"]),
+        filter_reasons=list(value["filter_reasons"]),
+        summary=summary_model,
+        quarterly=quarterly,
+        annual=annual,
+        diagnostics=list(value["diagnostics"]),
+    )
+
+
+def load_fundamentals_section_from_production_artifact(
+    ticker: str,
+    requested_as_of: str,
+    repo_root: Path | str,
+) -> FundamentalsSection:
+    """Phase 4B: Phase 3B production Fundamentals artifact
+    (``artifacts/fundamentals/production/{YYYYMMDD}/tickers/{ticker}.json``)의
+    이미 계산된 ``f5_ready``를 FundamentalsSection으로 복원한다. OpenDART 호출,
+    FilingRegistry hydration, F2/F3/F4 재계산, filter 재평가를 전혀 하지 않는다.
+
+    artifact 부재, ticker mismatch, requested_as_of mismatch, f5_ready 부재/불완전은
+    :class:`FundamentalsArtifactUnavailable`로 fail-closed한다. artifact 내부의 정상
+    terminal 상태(f5_ready.data_status == DATA_UNAVAILABLE/NOT_APPLICABLE)는 실패가
+    아니며 그대로 반환한다.
+    """
+    clean_ticker = str(ticker).strip().zfill(6)
+    clean_as_of = str(requested_as_of).strip()[:10]
+    dt_clean = clean_as_of.replace("-", "")
+    artifact_path = Path(repo_root) / "artifacts/fundamentals/production" / dt_clean / "tickers" / f"{clean_ticker}.json"
+
+    if not artifact_path.exists():
+        raise FundamentalsArtifactUnavailable(f"FUNDAMENTALS_ARTIFACT_MISSING: {artifact_path}")
+    try:
+        payload = json.loads(artifact_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise FundamentalsArtifactUnavailable(f"FUNDAMENTALS_ARTIFACT_INVALID_JSON: {artifact_path}: {exc}") from exc
+    if not isinstance(payload, Mapping):
+        raise FundamentalsArtifactUnavailable(f"FUNDAMENTALS_ARTIFACT_NOT_OBJECT: {artifact_path}")
+
+    payload_ticker = str(payload.get("ticker", "")).strip().zfill(6)
+    if payload_ticker != clean_ticker:
+        raise FundamentalsArtifactUnavailable(
+            f"FUNDAMENTALS_ARTIFACT_TICKER_MISMATCH: expected {clean_ticker}, got {payload_ticker!r} in {artifact_path}"
+        )
+    payload_as_of = str(payload.get("requested_as_of", "")).strip()[:10]
+    if payload_as_of != clean_as_of:
+        raise FundamentalsArtifactUnavailable(
+            f"FUNDAMENTALS_ARTIFACT_AS_OF_MISMATCH: expected {clean_as_of}, got {payload_as_of!r} in {artifact_path}"
+        )
+    f5_ready = payload.get("f5_ready")
+    if not isinstance(f5_ready, Mapping):
+        raise FundamentalsArtifactUnavailable(f"FUNDAMENTALS_ARTIFACT_F5_READY_MISSING: {artifact_path}")
+
+    try:
+        return _section_from_f5_ready(f5_ready)
+    except FundamentalsArtifactUnavailable as exc:
+        raise FundamentalsArtifactUnavailable(f"{exc} (artifact={artifact_path})") from exc
