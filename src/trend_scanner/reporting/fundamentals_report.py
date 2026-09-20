@@ -627,6 +627,12 @@ def load_fundamentals_section_from_production_artifact(
     f5_ready = payload.get("f5_ready")
     if not isinstance(f5_ready, Mapping):
         raise FundamentalsArtifactUnavailable(f"FUNDAMENTALS_ARTIFACT_F5_READY_MISSING: {artifact_path}")
+    f5_as_of = str(f5_ready.get("requested_as_of", "")).strip()[:10]
+    if f5_as_of != clean_as_of:
+        raise FundamentalsArtifactUnavailable(
+            f"FUNDAMENTALS_ARTIFACT_F5_READY_AS_OF_MISMATCH: expected {clean_as_of}, "
+            f"got {f5_as_of!r} in {artifact_path}"
+        )
 
     try:
         return _section_from_f5_ready(f5_ready)

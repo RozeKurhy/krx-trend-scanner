@@ -21,6 +21,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from trend_scanner.backtest.snapshot_context import PrecomputedTickerContext
 from trend_scanner.data.resampler import to_weekly
 from trend_scanner.data.market_calendar import MarketCalendarAuthority
 from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
@@ -114,12 +115,18 @@ def build_pattern_a_fast_section(
     as_of: pd.Timestamp,
     root_path: Path,
     market_calendar: MarketCalendarAuthority | None = None,
+    context: PrecomputedTickerContext | None = None,
 ) -> PatternAFastSection:
     """Pattern A FAST Weekly History section을 생성한다.
 
     ``daily_slice``는 호출자가 이미 ``as_of`` 시점까지로 PIT-슬라이싱한 데이터여야
     한다 (Stock Report의 기존 Pattern A 슬라이싱 관례와 동일). 완료된 주봉만
     포함하며, 미래 데이터로 과거 주 결과가 달라지지 않는다.
+
+    ``context``(선택, PHASE4B_STOCK_REPORT_PERFORMANCE_V01): 같은
+    ``daily_slice``로 이미 만든 ``PrecomputedTickerContext``가 있으면 전달해
+    이 함수가 매 주봉마다 전체 이력을 다시 resample하지 않고 재사용하게 한다.
+    생략하면(``None``) 기존과 완전히 동일한 legacy 경로를 그대로 사용한다.
     """
     if daily_slice is None or daily_slice.empty:
         return _empty_section()
@@ -132,7 +139,8 @@ def build_pattern_a_fast_section(
 
     daily_sorted = daily_slice.sort_index()
     lookback_start = as_of - WEEKLY_HISTORY_LOOKBACK
-    weekly_labels = [label for label in to_weekly(daily_sorted).index if lookback_start <= label <= as_of]
+    all_weekly_labels = context.weekly_labels if context is not None else to_weekly(daily_sorted).index
+    weekly_labels = [label for label in all_weekly_labels if lookback_start <= label <= as_of]
 
     observations: list[PatternAFastWeeklyObservation] = []
     for week_label in weekly_labels:
@@ -144,7 +152,7 @@ def build_pattern_a_fast_section(
         # 완료된 주봉만 evaluator에 전달하므로 evaluate_pattern_a_fast의 유일한 raise
         # 경로(미완료 weekly date)는 여기서 발생하지 않는다. 그 외 예외는 데이터
         # 부족이 아닌 programming error이므로 여기서 숨기지 않고 그대로 전파한다.
-        point = evaluate_pattern_a_fast(ticker, name, daily_sorted, week_label, score, stage, market_calendar=market_calendar)
+        point = evaluate_pattern_a_fast(ticker, name, daily_sorted, week_label, score, stage, context=context, market_calendar=market_calendar)
         # 가격은 FAST evaluator의 output이 아니라 report observation metadata다.
         # week_daily의 마지막 행이 곧 completed-week 판정에 쓰인 그 거래일이므로
         # 그 행의 close를 그대로 사용한다(월말/평균/최신가 대체 금지, fail-closed).

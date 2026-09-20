@@ -67,6 +67,10 @@ from trend_scanner.data.market_calendar import load_rolling_production_market_ca
 from trend_scanner.universe.asset_classifier import AssetType
 from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
+from trend_scanner.backtest.snapshot_context import (
+    build_historical_snapshot_from_context,
+    build_precomputed_ticker_context,
+)
 
 
 LEGACY_A_FAST_CORE_PROVENANCE_PATH = "docs/validation/pattern_a_fast_final_strategy_v02.md"
@@ -1010,6 +1014,19 @@ def generate_stock_report(
         market_cap_source=mcap_source,
     )
 
+    # PHASE4B_STOCK_REPORT_PERFORMANCE_V01: 이 함수 안에서 daily_slice 기반 스냅샷을
+    # 반복 생성하는 여러 구간(월별 Score/Stage 히스토리, Pattern A FAST 주별
+    # 히스토리)이 각자 build_historical_snapshot()/to_weekly()로 daily_slice
+    # 전체를 매번 처음부터 다시 resample했다 -- 종목 하나가 상장 이후 전체
+    # 이력(최대 수백 개월)에 걸쳐 반복되므로 리포트 생성 시간의 대부분을
+    # 차지했다(1850개 리포트 production 실행에서 실측 확인). 종목당 한 번만
+    # PrecomputedTickerContext를 만들어 두 구간에서 재사용하면 매 스냅샷은
+    # 꼬리 구간(최대 1개월/1주치)만 다시 resample한다 -- 결과는
+    # build_historical_snapshot_from_context/evaluate_pattern_a_fast(context=...)가
+    # 기존 legacy 경로와 parity-identical함이 이미 증명된 경로이므로 그대로
+    # 사용한다(산식/의미 변경 없음).
+    ticker_context = build_precomputed_ticker_context(clean_ticker, name, daily_slice) if not daily_slice.empty else None
+
     # 6. Monthly Score & Stage History (Full & Recent 12M)
     full_monthly_history: list[MonthlyObservation] = []
     if not daily_slice.empty:
@@ -1039,12 +1056,9 @@ def generate_stock_report(
                     continue
 
                 exact_close = float(daily_slice.loc[me_date, "close"]) if "close" in daily_slice.columns and not pd.isna(daily_slice.loc[me_date, "close"]) else None
-                d_sub = daily_slice.loc[daily_slice.index <= me_date]
                 try:
-                    sub_snap = build_historical_snapshot(
-                        ticker=clean_ticker,
-                        name=name,
-                        daily=d_sub,
+                    sub_snap = build_historical_snapshot_from_context(
+                        ticker_context,
                         snapshot_date=me_str,
                         include_incomplete_periods=False,
                         market_calendar=production_market_calendar,
@@ -1264,6 +1278,7 @@ def generate_stock_report(
         as_of=req_as_of_ts,
         root_path=root_path,
         market_calendar=production_market_calendar,
+        context=ticker_context,
     )
 
     # 8c. A FAST Core V2 Strategy Section (v0.2 Core Innovation)

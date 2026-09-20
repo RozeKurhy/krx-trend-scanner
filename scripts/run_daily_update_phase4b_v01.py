@@ -7,7 +7,22 @@ and its ``_summary.json``) and Phase 3B production Fundamentals artifacts
 (``artifacts/fundamentals/production/{TARGET}/tickers/{ticker}.json``). It never
 re-runs the Scanner, redefines the strategy, or hydrates Fundamentals -- it only
 wires already-computed inputs into the existing ``generate_stock_report()`` /
-A FAST Core V2 implementation for the Scanner's official ``candidate`` set.
+A FAST Core V2 implementation.
+
+Report target set (PHASE4B_REPORT_TARGET_CONTINUITY_FIX_V01): the Scanner's official
+``candidate`` set alone is not the full publication target, because A FAST Core can
+still hold an ``OPEN`` position on a ticker whose current Pattern A stage moved to
+``LATE``/``WATCH``/``BLOCKED``. The target is therefore
+
+    (previous_published_common ∩ current_scanner_common) ∪ current_scanner_candidates
+
+where ``previous_published_common`` is read from the most recent canonical Stock
+Report directory strictly before ``target_as_of`` (never ``web/data``, never the
+target day's own -- possibly partial -- directory). Every previously published
+``OPEN`` COMMON ticker must remain inside ``current_scanner_common``; if one falls
+out of the current Scanner COMMON universe, this run fails closed
+(``OPEN_POSITION_OUTSIDE_CURRENT_COMMON``) instead of silently including or
+dropping it.
 """
 
 from __future__ import annotations
@@ -16,8 +31,11 @@ import argparse
 import csv
 import json
 import logging
+import re
 import shutil
 import tempfile
+from collections import Counter
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -99,11 +117,167 @@ def select_candidate_tickers(rows: list[dict[str, str]]) -> list[str]:
     return tickers
 
 
+def compute_current_common(rows: list[dict[str, str]]) -> set[str]:
+    """4A exact-target scanner CSV의 전체 row는 이미 canonical COMMON 확정 집합이다."""
+    return {r["ticker"] for r in rows}
+
+
+_DATE_DIR_PATTERN = re.compile(r"^(\d{8})$")
+
+
+def find_previous_canonical_report_dir(root: Path, target_as_of: str) -> Path:
+    """``target_as_of``보다 엄격히 이전인 날짜 중 가장 최신의 유효한 canonical Stock
+    Report directory를 선택한다. ``web/data``나 target 당일 디렉터리(예: 잘못 좁게
+    생성된 기존 partial corpus)는 절대 previous source로 쓰지 않는다."""
+    base = root / "artifacts/reporting/stock_reports"
+    target_clean = target_as_of.replace("-", "")
+    candidates: list[str] = []
+    if base.exists():
+        for p in base.iterdir():
+            if not p.is_dir():
+                continue
+            if not _DATE_DIR_PATTERN.fullmatch(p.name):
+                continue
+            if p.name >= target_clean:
+                continue
+            json_dir = p / "json"
+            if json_dir.is_dir() and any(json_dir.glob("*.json")):
+                candidates.append(p.name)
+    if not candidates:
+        raise Phase4BError(
+            f"PHASE4B_PREVIOUS_CORPUS_NOT_FOUND: no valid canonical report directory strictly before {target_as_of}"
+        )
+    return base / max(candidates)
+
+
+@dataclass
+class PreviousCorpusAudit:
+    directory: Path
+    total: int
+    common: set[str]
+    non_common: set[str]
+    open_tickers: set[str]
+
+
+def audit_previous_corpus(previous_dir: Path) -> PreviousCorpusAudit:
+    """직전 canonical corpus를 read-only로 감사한다 (COMMON/non-COMMON, OPEN 포지션)."""
+    json_dir = previous_dir / "json"
+    common: set[str] = set()
+    non_common: set[str] = set()
+    open_tickers: set[str] = set()
+    total = 0
+    for p in sorted(json_dir.glob("*.json")):
+        payload = json.loads(p.read_text(encoding="utf-8"))
+        total += 1
+        ticker = str(payload.get("ticker", "")).strip().zfill(6)
+        asset_type = payload.get("asset_type")
+        if asset_type == "COMMON":
+            common.add(ticker)
+            if (payload.get("a_fast_core") or {}).get("canonical_position") == "OPEN":
+                open_tickers.add(ticker)
+        else:
+            non_common.add(ticker)
+    return PreviousCorpusAudit(
+        directory=previous_dir, total=total, common=common, non_common=non_common, open_tickers=open_tickers,
+    )
+
+
+def compute_report_target(
+    *,
+    previous_common: set[str],
+    previous_open: set[str],
+    current_common: set[str],
+    current_candidates: set[str],
+) -> list[str]:
+    """(previous_common ∩ current_common) ∪ current_candidates.
+
+    previous_open ⊆ current_common이어야 한다 -- 그렇지 않으면 기존 OPEN 포지션 추적이
+    끊기므로, 조용히 포함하거나 버리지 않고 fail-closed한다.
+    """
+    missing_open = previous_open - current_common
+    if missing_open:
+        raise Phase4BError(
+            f"OPEN_POSITION_OUTSIDE_CURRENT_COMMON: {sorted(missing_open)}"
+        )
+    continuity = previous_common & current_common
+    return sorted(continuity | current_candidates)
+
+
+def summarize_corpus_positions(staging_dir: Path) -> dict[str, Any]:
+    """검증용 집계일 뿐 새 authority artifact가 아니다."""
+    position_counts: Counter[str] = Counter()
+    strategy_state_counts: Counter[str] = Counter()
+    action_counts: Counter[str] = Counter()
+    for p in sorted((staging_dir / "json").glob("*.json")):
+        payload = json.loads(p.read_text(encoding="utf-8"))
+        core = payload.get("a_fast_core") or {}
+        position_counts[str(core.get("canonical_position"))] += 1
+        strategy_state_counts[str(core.get("strategy_state"))] += 1
+        action_counts[str(core.get("action"))] += 1
+    return {
+        "canonical_position_distribution": dict(position_counts),
+        "strategy_state_distribution": dict(strategy_state_counts),
+        "action_distribution": dict(action_counts),
+    }
+
+
 @dataclass
 class GenerationOutcome:
     ticker: str
     status: str  # "OK" or "ERROR"
     error: str | None = None
+
+
+def _generate_one(
+    ticker: str, *, target_as_of: str, reference_market_date: str, repository: Any, root: Path, staging_dir: Path,
+) -> GenerationOutcome:
+    try:
+        fundamentals_section = load_fundamentals_section_from_production_artifact(
+            ticker, target_as_of, root,
+        )
+        generate_stock_report(
+            ticker=ticker,
+            as_of=target_as_of,
+            repo_root=root,
+            repository=repository,
+            fundamentals_section=fundamentals_section,
+            reference_market_date=reference_market_date,
+            output_dir=staging_dir,
+            save_artifacts=True,
+        )
+        return GenerationOutcome(ticker=ticker, status="OK")
+    except FundamentalsArtifactUnavailable as exc:
+        return GenerationOutcome(ticker=ticker, status="ERROR", error=f"FUNDAMENTALS_FAIL_CLOSED: {exc}")
+    except Exception as exc:  # noqa: BLE001 -- collected for full-batch visibility, not swallowed
+        return GenerationOutcome(ticker=ticker, status="ERROR", error=str(exc))
+
+
+# PHASE4B_STOCK_REPORT_PERFORMANCE_V01 (§14 병렬화, 공통 I/O/중복 계산 제거 후에도
+# 1850개 예상 시간이 60분을 크게 초과해 마지막 수단으로 적용): 종목별 report 생성은
+# 서로 완전히 독립적이고(공유 mutable state 없음, 파일도 ticker별로 분리되어 씀) 이미
+# scripts/regenerate_stock_reports.py가 동일한 generate_stock_report() 호출에 대해
+# ProcessPoolExecutor를 쓰는 선례가 있다. build_production_repository_v2()는
+# 종목별이 아니라 실행당 1회 비용(약 130초)이므로, 워커 프로세스마다 최초 1회만
+# 만들어 그 프로세스가 맡은 모든 티커에서 재사용한다(초기화 함수로 프로세스당 1회).
+_POOL_STATE: dict[str, Any] = {}
+
+
+def _pool_worker_init(root_str: str, target_as_of: str, staging_dir_str: str) -> None:
+    root = Path(root_str)
+    _POOL_STATE["root"] = root
+    _POOL_STATE["staging_dir"] = Path(staging_dir_str)
+    _POOL_STATE["repository"] = build_production_repository_v2(root, end=target_as_of)
+
+
+def _pool_worker_generate(ticker: str, target_as_of: str, reference_market_date: str) -> GenerationOutcome:
+    return _generate_one(
+        ticker,
+        target_as_of=target_as_of,
+        reference_market_date=reference_market_date,
+        repository=_POOL_STATE["repository"],
+        root=_POOL_STATE["root"],
+        staging_dir=_POOL_STATE["staging_dir"],
+    )
 
 
 def generate_candidate_reports(
@@ -114,36 +288,54 @@ def generate_candidate_reports(
     repository: Any,
     root: Path,
     staging_dir: Path,
+    max_workers: int = 1,
 ) -> list[GenerationOutcome]:
     """staging_dir에 후보별 Stock Report v0.5를 생성한다. 개별 실패는 수집해 계속 진행하고
-    (전체 생성 -> 전체 검증 -> promote 흐름을 위해), 최종 승격 여부는 호출자가 판단한다."""
-    outcomes: list[GenerationOutcome] = []
+    (전체 생성 -> 전체 검증 -> promote 흐름을 위해), 최종 승격 여부는 호출자가 판단한다.
+
+    ``max_workers <= 1``(기본값)이면 기존과 동일한 순차 in-process 경로를 그대로
+    사용한다 -- 테스트가 ``generate_stock_report``를 monkeypatch로 대체할 수 있는
+    것은 이 경로뿐이다(``ProcessPoolExecutor`` 자식 프로세스는 모듈을 새로 import하므로
+    부모 프로세스의 monkeypatch를 볼 수 없다). ``max_workers > 1``이면 종목별로
+    완전히 독립적인 계산을 별도 프로세스에 분산한다.
+    """
     total = len(candidate_tickers)
-    for i, ticker in enumerate(candidate_tickers, start=1):
-        try:
-            fundamentals_section = load_fundamentals_section_from_production_artifact(
-                ticker, target_as_of, root,
+    if max_workers <= 1:
+        outcomes: list[GenerationOutcome] = []
+        for i, ticker in enumerate(candidate_tickers, start=1):
+            outcomes.append(
+                _generate_one(
+                    ticker, target_as_of=target_as_of, reference_market_date=reference_market_date,
+                    repository=repository, root=root, staging_dir=staging_dir,
+                )
             )
-            generate_stock_report(
-                ticker=ticker,
-                as_of=target_as_of,
-                repo_root=root,
-                repository=repository,
-                fundamentals_section=fundamentals_section,
-                reference_market_date=reference_market_date,
-                output_dir=staging_dir,
-                save_artifacts=True,
-            )
-            outcomes.append(GenerationOutcome(ticker=ticker, status="OK"))
-        except FundamentalsArtifactUnavailable as exc:
-            outcomes.append(GenerationOutcome(ticker=ticker, status="ERROR", error=f"FUNDAMENTALS_FAIL_CLOSED: {exc}"))
-        except Exception as exc:  # noqa: BLE001 -- collected for full-batch visibility, not swallowed
-            outcomes.append(GenerationOutcome(ticker=ticker, status="ERROR", error=str(exc)))
+            if i % 25 == 0 or i == total:
+                logger.info("Generated %d/%d candidate reports", i, total)
+        return outcomes
 
-        if i % 25 == 0 or i == total:
-            logger.info("Generated %d/%d candidate reports", i, total)
+    outcomes_by_ticker: dict[str, GenerationOutcome] = {}
+    completed = 0
+    with ProcessPoolExecutor(
+        max_workers=max_workers,
+        initializer=_pool_worker_init,
+        initargs=(str(root), target_as_of, str(staging_dir)),
+    ) as executor:
+        futures = {
+            executor.submit(_pool_worker_generate, ticker, target_as_of, reference_market_date): ticker
+            for ticker in candidate_tickers
+        }
+        for future in as_completed(futures):
+            ticker = futures[future]
+            try:
+                outcome = future.result()
+            except Exception as exc:  # noqa: BLE001 -- worker-process crash, still collected per ticker
+                outcome = GenerationOutcome(ticker=ticker, status="ERROR", error=f"WORKER_PROCESS_ERROR: {exc}")
+            outcomes_by_ticker[outcome.ticker] = outcome
+            completed += 1
+            if completed % 25 == 0 or completed == total:
+                logger.info("Generated %d/%d candidate reports", completed, total)
 
-    return outcomes
+    return [outcomes_by_ticker[t] for t in candidate_tickers]
 
 
 def validate_corpus(
@@ -209,18 +401,36 @@ def promote_staging(staging_dir: Path, canonical_dir: Path) -> None:
         new_dir.rename(canonical_dir)
 
 
-def run_phase4b(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
+def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -> dict[str, Any]:
     rows, summary = load_and_validate_scanner_input(root, target_as_of)
     reference_market_date = str(summary["reference_market_date"])
-    candidate_tickers = select_candidate_tickers(rows)
-    candidate_ticker_set = set(candidate_tickers)
+    current_common = compute_current_common(rows)
+    current_candidates = set(select_candidate_tickers(rows))
+
+    previous_dir = find_previous_canonical_report_dir(root, target_as_of)
+    previous_audit = audit_previous_corpus(previous_dir)
+
+    target_tickers = compute_report_target(
+        previous_common=previous_audit.common,
+        previous_open=previous_audit.open_tickers,
+        current_common=current_common,
+        current_candidates=current_candidates,
+    )
+    target_ticker_set = set(target_tickers)
+    continuity_count = len(previous_audit.common & current_common)
 
     logger.info(
-        "Phase 4B target=%s: scanner rows=%d, candidate count=%d",
-        target_as_of, len(rows), len(candidate_tickers),
+        "Phase 4B target=%s: previous_dir=%s previous_common=%d previous_open=%d "
+        "current_common=%d current_candidates=%d continuity=%d final_target=%d max_workers=%d",
+        target_as_of, previous_dir.name, len(previous_audit.common), len(previous_audit.open_tickers),
+        len(current_common), len(current_candidates), continuity_count, len(target_tickers), max_workers,
     )
 
-    repository = build_production_repository_v2(root, end=target_as_of)
+    # max_workers > 1이면 각 워커 프로세스가 자신만의 Repository V2를 1회 생성해
+    # 재사용한다(_pool_worker_init) -- 메인 프로세스에서 미리 만들어도 자식
+    # 프로세스로 넘겨줄 수 없으므로(피클 비용/불필요한 메모리) 순차 경로에서만
+    # 여기서 만든다.
+    repository = build_production_repository_v2(root, end=target_as_of) if max_workers <= 1 else None
 
     canonical_dir = root / "artifacts/reporting/stock_reports" / target_as_of.replace("-", "")
     staging_parent = canonical_dir.parent
@@ -231,22 +441,24 @@ def run_phase4b(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
         staging_dir.mkdir(parents=True, exist_ok=True)
 
         outcomes = generate_candidate_reports(
-            candidate_tickers,
+            target_tickers,
             target_as_of=target_as_of,
             reference_market_date=reference_market_date,
             repository=repository,
             root=root,
             staging_dir=staging_dir,
+            max_workers=max_workers,
         )
         errors = [o for o in outcomes if o.status == "ERROR"]
 
-        corpus = validate_corpus(staging_dir, candidate_ticker_set, target_as_of, reference_market_date)
+        corpus = validate_corpus(staging_dir, target_ticker_set, target_as_of, reference_market_date)
+        positions = summarize_corpus_positions(staging_dir)
 
         promoted = False
         success = (
             not errors
-            and corpus["json_count"] == len(candidate_tickers)
-            and corpus["markdown_count"] == len(candidate_tickers)
+            and corpus["json_count"] == len(target_tickers)
+            and corpus["markdown_count"] == len(target_tickers)
             and not corpus["missing_tickers"]
             and not corpus["extra_tickers"]
             and not corpus["markdown_missing_tickers"]
@@ -268,11 +480,21 @@ def run_phase4b(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
         "requested_as_of": target_as_of,
         "reference_market_date": reference_market_date,
         "scanner_rows": len(rows),
-        "scanner_candidate_count": len(candidate_tickers),
-        "report_target_count": len(candidate_tickers),
+        "scanner_common_count": len(current_common),
+        "scanner_candidate_count": len(current_candidates),
+        "previous_corpus_dir": str(previous_dir),
+        "previous_total": previous_audit.total,
+        "previous_common_count": len(previous_audit.common),
+        "previous_non_common_count": len(previous_audit.non_common),
+        "previous_open_count": len(previous_audit.open_tickers),
+        "continuity_count": continuity_count,
+        "new_candidate_count": len(current_candidates - previous_audit.common),
+        "previous_common_removed_count": len(previous_audit.common - current_common),
+        "report_target_count": len(target_tickers),
         "generation_error_count": len(errors),
         "generation_errors": [{"ticker": o.ticker, "error": o.error} for o in errors],
         **corpus,
+        **positions,
         "promoted": promoted,
         "canonical_dir": str(canonical_dir) if promoted else None,
     }
@@ -282,13 +504,21 @@ def run_phase4b(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target-as-of", required=True, help="explicit YYYY-MM-DD target (no default)")
+    parser.add_argument(
+        "--max-workers", type=int, default=1,
+        help=(
+            "candidate report 생성에 사용할 프로세스 수 (기본 1=순차). "
+            "종목별 계산은 완전히 독립적이므로 >1이면 ProcessPoolExecutor로 병렬 생성한다 "
+            "(PHASE4B_STOCK_REPORT_PERFORMANCE_V01 §14)."
+        ),
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    result = run_phase4b(args.target_as_of)
+    result = run_phase4b(args.target_as_of, max_workers=args.max_workers)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2, default=str))
     return 0 if result["promoted"] else 1
 

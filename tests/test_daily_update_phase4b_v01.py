@@ -1,9 +1,10 @@
 """Phase 4B production runner (scripts/run_daily_update_phase4b_v01.py) targeted tests.
 
-Runner orchestration만 검증한다 (Scanner 입력 로딩/검증, candidate_state == CANDIDATE
-선택, staging/promote, fail-closed 처리). ``generate_stock_report()`` 자체의 내부 산식은
-기존 test_stock_report*.py / test_a_fast_core_stock_report.py 스위트가 이미 검증하므로
-여기서는 monkeypatch로 대체해 무겁고 느린 실제 전체 리포트 계산을 반복하지 않는다.
+Runner orchestration만 검증한다 (Scanner 입력 로딩/검증, 발행 target
+집합(continuity ∪ candidate) 계산, staging/promote, fail-closed 처리).
+``generate_stock_report()`` 자체의 내부 산식은 기존 test_stock_report*.py /
+test_a_fast_core_stock_report.py 스위트가 이미 검증하므로 여기서는 monkeypatch로
+대체해 무겁고 느린 실제 전체 리포트 계산을 반복하지 않는다.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from trend_scanner.reporting.fundamentals_report import FundamentalsArtifactUnav
 
 
 TARGET = "2026-09-17"
+PREVIOUS = "2026-09-04"
 SCANNER_COLUMNS = ["ticker", "name", "market", "candidate_state"]
 
 
@@ -80,6 +82,36 @@ def _write_fundamentals_artifact(root: Path, target_as_of: str, ticker: str, *, 
     (fund_dir / f"{ticker}.json").write_text(json.dumps(payload), encoding="utf-8")
 
 
+def _write_previous_corpus(
+    root: Path,
+    previous_date: str,
+    entries: list[tuple[str, str, str | None]],
+) -> Path:
+    """entries: [(ticker, asset_type, canonical_position_or_None), ...]"""
+    dt_clean = previous_date.replace("-", "")
+    corpus_dir = root / "artifacts/reporting/stock_reports" / dt_clean
+    json_dir = corpus_dir / "json"
+    json_dir.mkdir(parents=True, exist_ok=True)
+    for ticker, asset_type, position in entries:
+        payload: dict = {
+            "ticker": ticker,
+            "asset_type": asset_type,
+            "report_version": "0.5",
+            "requested_as_of": previous_date,
+        }
+        if position is not None:
+            payload["a_fast_core"] = {"canonical_position": position}
+        (json_dir / f"{ticker}.json").write_text(json.dumps(payload), encoding="utf-8")
+        (corpus_dir / f"{ticker}.md").write_text(f"# {ticker}", encoding="utf-8")
+    return corpus_dir
+
+
+def _default_previous_corpus(root: Path, previous_date: str = PREVIOUS) -> Path:
+    """target 티커들과 겹치지 않는 최소 previous corpus. continuity에 영향 없이
+    ``find_previous_canonical_report_dir`` / ``audit_previous_corpus``가 정상 동작하게 한다."""
+    return _write_previous_corpus(root, previous_date, [("900000", "COMMON", "FLAT")])
+
+
 def _fake_generate_stock_report(
     *, ticker, as_of, repo_root, repository, fundamentals_section, reference_market_date, output_dir, save_artifacts,
 ):
@@ -117,23 +149,32 @@ def _candidate_rows(tickers: list[str]) -> list[dict[str, str]]:
     return [{"ticker": t, "name": f"종목{t}", "market": "KOSPI", "candidate_state": "candidate"} for t in tickers]
 
 
+def _rows_with_states(states: dict[str, str]) -> list[dict[str, str]]:
+    return [
+        {"ticker": t, "name": f"종목{t}", "market": "KOSPI", "candidate_state": s}
+        for t, s in states.items()
+    ]
+
+
 # --- A. exact-target scanner artifact만 사용 -------------------------------------
 
 
 def test_a_loads_exact_target_scanner_artifact_only(tmp_path, patched_runner):
+    _default_previous_corpus(tmp_path)
     _write_scanner_artifacts(tmp_path, TARGET, _candidate_rows(["000050"]))
-    # 다른 날짜 artifact가 존재해도 무시되어야 한다.
-    _write_scanner_artifacts(tmp_path, "2026-09-04", _candidate_rows(["999999"]))
+    # 다른 날짜 scanner artifact가 존재해도 무시되어야 한다.
+    _write_scanner_artifacts(tmp_path, "2026-09-10", _candidate_rows(["999999"]))
     _write_fundamentals_artifact(tmp_path, TARGET, "000050")
 
     result = phase4b.run_phase4b(TARGET, root=tmp_path)
 
     assert result["requested_as_of"] == TARGET
     assert result["scanner_candidate_count"] == 1
+    assert result["report_target_count"] == 1
     assert result["promoted"] is True
 
 
-# --- B. wrong-date scanner → fail ------------------------------------------------
+# --- B. wrong-date scanner → fail (previous corpus 조회 이전에 fail-closed) -------
 
 
 def test_b_wrong_date_scanner_summary_fails_closed(tmp_path, patched_runner):
@@ -162,6 +203,15 @@ def test_b_duplicate_ticker_fails_closed(tmp_path, patched_runner):
         phase4b.run_phase4b(TARGET, root=tmp_path)
 
 
+def test_b_no_previous_corpus_fails_closed(tmp_path, patched_runner):
+    """previous canonical report directory가 전혀 없으면 fail-closed한다."""
+    _write_scanner_artifacts(tmp_path, TARGET, _candidate_rows(["000050"]))
+    _write_fundamentals_artifact(tmp_path, TARGET, "000050")
+
+    with pytest.raises(phase4b.Phase4BError, match="PREVIOUS_CORPUS_NOT_FOUND"):
+        phase4b.run_phase4b(TARGET, root=tmp_path)
+
+
 # --- C. scanner 재실행 없음 --------------------------------------------------------
 
 
@@ -173,6 +223,7 @@ def test_c_scanner_is_never_re_invoked(tmp_path, patched_runner, monkeypatch):
 
     monkeypatch.setattr(scanner_module, "scan_pattern_a_universe", _forbidden)
 
+    _default_previous_corpus(tmp_path)
     _write_scanner_artifacts(tmp_path, TARGET, _candidate_rows(["000050"]))
     _write_fundamentals_artifact(tmp_path, TARGET, "000050")
 
@@ -180,7 +231,7 @@ def test_c_scanner_is_never_re_invoked(tmp_path, patched_runner, monkeypatch):
     assert result["promoted"] is True
 
 
-# --- D. candidate_state == CANDIDATE만 선택 ---------------------------------------
+# --- D. candidate_state == CANDIDATE만 선택 (pure function) ------------------------
 
 
 def test_d_only_candidate_state_rows_are_selected():
@@ -196,10 +247,12 @@ def test_d_only_candidate_state_rows_are_selected():
     assert selected == ["000001", "000006"]
 
 
-# --- E. 과거 report directory가 target set에 영향 없음 -----------------------------
+# --- E. 과거 report directory(target 당일)가 target set에 영향 없음 -----------------
 
 
 def test_e_stale_canonical_directory_is_fully_replaced_not_merged(tmp_path, patched_runner):
+    _default_previous_corpus(tmp_path)
+
     canonical_dir = tmp_path / "artifacts/reporting/stock_reports" / TARGET.replace("-", "")
     canonical_dir.mkdir(parents=True)
     (canonical_dir / "json").mkdir()
@@ -222,6 +275,7 @@ def test_e_stale_canonical_directory_is_fully_replaced_not_merged(tmp_path, patc
 
 
 def test_f_missing_fundamentals_artifact_fails_closed_and_does_not_promote(tmp_path, patched_runner):
+    _default_previous_corpus(tmp_path)
     _write_scanner_artifacts(tmp_path, TARGET, _candidate_rows(["000050", "000060"]))
     _write_fundamentals_artifact(tmp_path, TARGET, "000050")
     # 000060 fundamentals artifact 없음 (fail-closed 대상)
@@ -297,6 +351,30 @@ def test_f_fundamentals_helper_raises_on_requested_as_of_mismatch(tmp_path):
         load_fundamentals_section_from_production_artifact("000050", TARGET, tmp_path)
 
 
+def test_g_f5_ready_inner_as_of_mismatch_fails_closed_even_if_outer_matches(tmp_path):
+    """상위 artifact 날짜(payload.requested_as_of)가 맞아도 f5_ready.requested_as_of가
+    다르면 fail-closed해야 한다."""
+    from trend_scanner.reporting.fundamentals_report import load_fundamentals_section_from_production_artifact
+
+    fund_dir = tmp_path / "artifacts/fundamentals/production" / TARGET.replace("-", "") / "tickers"
+    fund_dir.mkdir(parents=True)
+    payload = {
+        "ticker": "000050",
+        "requested_as_of": TARGET,  # outer 일치
+        "f5_ready": {
+            "applicability": "APPLICABLE", "data_status": "PARTIAL", "reason": None,
+            "requested_as_of": "2026-09-04",  # inner 불일치
+            "company_family": "NON_FINANCIAL", "currency": "KRW",
+            "filter_status": "PASS", "filter_passed": True, "filter_reasons": [],
+            "summary": {}, "quarterly": [], "annual": [], "diagnostics": [],
+        },
+    }
+    (fund_dir / "000050.json").write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(FundamentalsArtifactUnavailable, match="F5_READY_AS_OF_MISMATCH"):
+        load_fundamentals_section_from_production_artifact("000050", TARGET, tmp_path)
+
+
 def test_f_fundamentals_helper_terminal_data_unavailable_is_not_a_failure(tmp_path):
     """artifact 내부의 정상 terminal 상태(DATA_UNAVAILABLE)는 실패가 아니다."""
     from trend_scanner.reporting.fundamentals_report import load_fundamentals_section_from_production_artifact
@@ -337,6 +415,7 @@ def test_non_trading_day_reference_market_date_is_passed_through(tmp_path, patch
     scanner summary 값을 그대로 report에 전달해야 한다 (재계산하지 않음)."""
     target = "2026-09-12"  # 토요일(비거래일) 가정
     ref_date = "2026-09-11"
+    _write_previous_corpus(tmp_path, "2026-09-01", [("900000", "COMMON", "FLAT")])
     _write_scanner_artifacts(tmp_path, target, _candidate_rows(["000050"]), reference_market_date=ref_date)
     _write_fundamentals_artifact(tmp_path, target, "000050")
 
@@ -353,3 +432,150 @@ def test_non_trading_day_reference_market_date_is_passed_through(tmp_path, patch
     assert captured["reference_market_date"] == ref_date
     assert result["requested_as_of"] == target
     assert result["reference_market_date"] == ref_date
+
+
+# ==================================================================================
+# Report target continuity (PHASE4B_REPORT_TARGET_CONTINUITY_FIX_V01)
+# ==================================================================================
+
+
+# --- pure function: compute_report_target -----------------------------------------
+
+
+def test_continuity_a_target_is_intersection_union_candidate():
+    """previous COMMON {A,B,C}, current COMMON {A,B,D}, current CANDIDATE {D}
+    -> target {A,B,D}."""
+    target = phase4b.compute_report_target(
+        previous_common={"A", "B", "C"},
+        previous_open=set(),
+        current_common={"A", "B", "D"},
+        current_candidates={"D"},
+    )
+    assert set(target) == {"A", "B", "D"}
+
+
+def test_continuity_c_new_candidate_not_in_previous_common_is_included():
+    target = phase4b.compute_report_target(
+        previous_common={"A"},
+        previous_open=set(),
+        current_common={"A", "D"},
+        current_candidates={"D"},
+    )
+    assert "D" in target
+
+
+def test_continuity_d_past_common_dropped_from_current_common_and_not_open_is_excluded():
+    """previous COMMON {A,B,C}, C가 current COMMON에 없고 OPEN도 아니면 target에서 제외."""
+    target = phase4b.compute_report_target(
+        previous_common={"A", "B", "C"},
+        previous_open=set(),
+        current_common={"A", "B"},
+        current_candidates=set(),
+    )
+    assert "C" not in target
+    assert set(target) == {"A", "B"}
+
+
+def test_continuity_e_previous_open_in_current_common_is_preserved():
+    target = phase4b.compute_report_target(
+        previous_common={"A", "B"},
+        previous_open={"B"},
+        current_common={"A", "B"},
+        current_candidates=set(),
+    )
+    assert "B" in target
+
+
+def test_continuity_e_previous_open_missing_from_current_common_fails_closed():
+    with pytest.raises(phase4b.Phase4BError, match="OPEN_POSITION_OUTSIDE_CURRENT_COMMON"):
+        phase4b.compute_report_target(
+            previous_common={"A", "B"},
+            previous_open={"C"},  # OPEN이었지만 current_common에 없음
+            current_common={"A", "B"},
+            current_candidates=set(),
+        )
+
+
+# --- B. non-COMMON 제외 (audit_previous_corpus 레벨) --------------------------------
+
+
+def test_continuity_b_previous_non_common_excluded_from_previous_common(tmp_path):
+    corpus_dir = _write_previous_corpus(
+        tmp_path, PREVIOUS,
+        [
+            ("000010", "COMMON", "FLAT"),
+            ("500001", "ETF", None),
+            ("005935", "PREFERRED", None),
+        ],
+    )
+    audit = phase4b.audit_previous_corpus(corpus_dir)
+    assert audit.common == {"000010"}
+    assert audit.non_common == {"500001", "005935"}
+
+
+# --- F. target-day partial(기존 20260917) 무시 -------------------------------------
+
+
+def test_continuity_f_target_day_partial_directory_never_used_as_previous_source(tmp_path, patched_runner):
+    """기존 target 당일(20260917) partial corpus가 있어도 previous source로 쓰지 않는다."""
+    _default_previous_corpus(tmp_path, PREVIOUS)
+    # target 당일에 잘못 좁게 만들어진 기존 285개짜리 partial-style corpus를 시뮬레이션.
+    _write_previous_corpus(tmp_path, TARGET, [("111111", "COMMON", "OPEN")])
+
+    _write_scanner_artifacts(tmp_path, TARGET, _candidate_rows(["000050"]))
+    _write_fundamentals_artifact(tmp_path, TARGET, "000050")
+
+    result = phase4b.run_phase4b(TARGET, root=tmp_path)
+
+    assert result["previous_corpus_dir"].endswith(PREVIOUS.replace("-", ""))
+    assert result["promoted"] is True
+    # target 당일 partial에만 있던 111111이 continuity로 새어 들어오지 않아야 한다.
+    json_tickers = {p.stem for p in (tmp_path / "artifacts/reporting/stock_reports" / TARGET.replace("-", "") / "json").glob("*.json")}
+    assert "111111" not in json_tickers
+
+
+# --- 전체 통합: continuity + candidate 조합이 실제 run_phase4b에 반영되는지 ----------
+
+
+def test_continuity_full_run_target_includes_continuity_and_candidates(tmp_path, patched_runner):
+    _write_previous_corpus(
+        tmp_path, PREVIOUS,
+        [
+            ("000010", "COMMON", "OPEN"),      # continuity 유지 대상(OPEN)
+            ("000020", "COMMON", "FLAT"),      # continuity 유지 대상(FLAT, current COMMON에 존재)
+            ("000030", "COMMON", "FLAT"),      # current COMMON에서 빠짐, OPEN 아니므로 제외되어야 함
+            ("500001", "ETF", None),           # 비COMMON, target 제외
+        ],
+    )
+    rows = _rows_with_states({
+        "000010": "watch",       # current에서는 candidate 아님 -> continuity로만 포함
+        "000020": "blocked",
+        "000040": "candidate",   # 신규 candidate
+    })
+    _write_scanner_artifacts(tmp_path, TARGET, rows)
+    for t in ("000010", "000020", "000040"):
+        _write_fundamentals_artifact(tmp_path, TARGET, t)
+
+    result = phase4b.run_phase4b(TARGET, root=tmp_path)
+
+    assert result["promoted"] is True
+    assert result["previous_common_count"] == 3
+    assert result["previous_open_count"] == 1
+    assert result["continuity_count"] == 2  # 000010, 000020 (000030은 current_common에 없음)
+    assert result["new_candidate_count"] == 1  # 000040
+    assert result["report_target_count"] == 3  # 000010, 000020, 000040
+    json_tickers = {p.stem for p in (tmp_path / "artifacts/reporting/stock_reports" / TARGET.replace("-", "") / "json").glob("*.json")}
+    assert json_tickers == {"000010", "000020", "000040"}
+
+
+def test_continuity_open_outside_current_common_fails_closed_end_to_end(tmp_path, patched_runner):
+    _write_previous_corpus(
+        tmp_path, PREVIOUS,
+        [("000030", "COMMON", "OPEN")],  # OPEN인데 current scanner COMMON에서 사라질 예정
+    )
+    rows = _rows_with_states({"000040": "candidate"})
+    _write_scanner_artifacts(tmp_path, TARGET, rows)
+    _write_fundamentals_artifact(tmp_path, TARGET, "000040")
+
+    with pytest.raises(phase4b.Phase4BError, match="OPEN_POSITION_OUTSIDE_CURRENT_COMMON"):
+        phase4b.run_phase4b(TARGET, root=tmp_path)
