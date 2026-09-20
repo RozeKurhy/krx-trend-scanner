@@ -338,6 +338,73 @@ def test_requested_as_of_and_reference_market_date_role_separation(mock_scanner_
     assert res.summary.reference_market_date == reference_market_date
 
 
+def test_offline_universe_missing_fails_closed_without_pykrx_fallback(monkeypatch, tmp_path):
+    """production default 경로(universe_securities 미지정)에서 local offline
+    authority(_default_offline_universe)가 None을 반환하면 명확한 예외로 fail-closed
+    해야 하며, 외부 PyKRX 조회(load_krx_equity_universe)로 우회해서는 안 된다.
+
+    Phase 4A 운영 계약: Phase 1~3 로컬 권위만 소비, 외부 PyKRX 조회 금지, 로컬
+    authority 부족 시 fail-closed.
+    """
+    from trend_scanner.universe import krx_universe as krx_universe_module
+
+    pykrx_calls: list[tuple[Any, Any]] = []
+
+    def fake_load_krx_equity_universe(*args, **kwargs):
+        pykrx_calls.append((args, kwargs))
+        raise AssertionError("load_krx_equity_universe() must not be called from production default path")
+
+    monkeypatch.setattr(scanner_module, "_default_offline_universe", lambda repo_root, as_of: None)
+    monkeypatch.setattr(krx_universe_module, "load_krx_equity_universe", fake_load_krx_equity_universe)
+
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+
+    with pytest.raises(RuntimeError, match="PRODUCTION_SCANNER_LOCAL_UNIVERSE_UNAVAILABLE"):
+        scan_pattern_a_universe(cache=cache_dir, as_of="2026-09-17")
+
+    assert pykrx_calls == []
+
+
+def test_offline_universe_present_uses_local_authority_normally(mock_scanner_env, monkeypatch):
+    """local offline authority(_default_offline_universe)가 정상 값을 반환하면 fail-closed
+    가드 추가 이후에도 기존처럼 그 값을 그대로 사용해 정상 스캔해야 한다."""
+    from trend_scanner.universe.instrument_metadata import InstrumentMetadata
+
+    def fake_offline_universe(repo_root, as_of):
+        return [
+            UniverseSecurity(
+                "005930", "삼성전자", MarketType.KOSPI,
+                metadata_source="ROLLING_AUTHORITY_MERGED_PIT_V01",
+            )
+        ]
+
+    def fake_resolve(ticker, as_of=None, repo_root=None):
+        return InstrumentMetadata(
+            ticker=ticker,
+            name="삼성전자",
+            market="KOSPI",
+            asset_type="COMMON",
+            metadata_source="TEST",
+            effective_date=as_of,
+            is_identified=True,
+            classification_authority="FORMAL_SECURITY_TYPE",
+            asset_type_source="FORMAL_SECURITY_TYPE",
+        )
+
+    monkeypatch.setattr(scanner_module, "_default_offline_universe", fake_offline_universe)
+    monkeypatch.setattr(scanner_module, "resolve_instrument_metadata", fake_resolve)
+
+    res = scan_pattern_a_universe(
+        cache=mock_scanner_env["cache"],
+        as_of=mock_scanner_env["as_of"],
+    )
+
+    assert [r.ticker for r in res.rows] == ["005930"]
+    assert res.summary.official_common_total == 1
+    assert res.summary.scan_target_count == 1
+
+
 def test_missing_cache_ticker_row_preserved_and_fail_closed(mock_scanner_env):
     """캐시가 없는 보통주 종목도 row가 삭제되지 않고 INSUFFICIENT_DATA로 fail closed 보존되는지 검증."""
     res = scan_pattern_a_universe(

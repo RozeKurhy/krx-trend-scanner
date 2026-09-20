@@ -86,10 +86,7 @@ from trend_scanner.relative_strength.repository_adapter import (
 )
 from trend_scanner.universe.asset_classifier import classify_asset_type
 from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
-from trend_scanner.universe.krx_universe import (
-    get_latest_market_trading_date,
-    load_krx_equity_universe,
-)
+from trend_scanner.universe.krx_universe import get_latest_market_trading_date
 from trend_scanner.universe.models import (
     AssetType,
     FreshnessStatus,
@@ -158,9 +155,10 @@ def _default_offline_universe(repo_root: Path, as_of: str) -> list[UniverseSecur
     COMMON universe from the rolling authority's merged PIT (currently-open COMMON identities as
     of ``as_of``) with names resolved from the rolling Basic Info snapshot -- zero network, never
     falls through to the live-PyKRX ``load_krx_equity_universe``. Returns ``None`` if the rolling
-    PIT artifact (or a usable Basic Info name source) is unavailable, so callers can fall back to
-    their own prior behavior (e.g. isolated historical test fixtures predating the rolling
-    authority)."""
+    PIT artifact (or a usable Basic Info name source) is unavailable; the production caller in
+    :func:`scan_pattern_a_universe` treats that as fail-closed
+    (``PRODUCTION_SCANNER_LOCAL_UNIVERSE_UNAVAILABLE``) rather than falling back to live PyKRX
+    (PRODUCTION_SCANNER_PYKRX_FALLBACK_REMOVAL_V01)."""
     from trend_scanner.data.rolling_market_data_refresh import DEFAULT_MERGED_PIT_PATH
 
     pit_path = repo_root / DEFAULT_MERGED_PIT_PATH
@@ -971,8 +969,20 @@ def scan_pattern_a_universe(
         # classify_asset_type() 수정 검증 재스캔이 수정 전 결과를 그대로 재사용한 사고).
         # Production default는 항상 local offline authority(merged PIT -> as-of OPEN
         # COMMON -> rolling Basic Info -> asset classification)를 사용한다.
+        # PRODUCTION_SCANNER_PYKRX_FALLBACK_REMOVAL_V01: local offline authority가
+        # 없을 때(merged PIT 부재, requested_as_of active COMMON 없음, Basic Info
+        # name source 부재) 실제 PyKRX 외부 조회(load_krx_equity_universe())로
+        # 우회하던 fallback을 제거했다. Phase 4A 운영 계약은 "Phase 1~3 로컬 권위
+        # 소비, 외부 PyKRX 조회 금지, 로컬 authority 부족 시 fail-closed"이므로
+        # 여기서 조용히 네트워크로 넘어가지 않고 명시적으로 실패한다.
         offline_univ = _default_offline_universe(repo_root, req_as_of_str)
-        raw_univ = offline_univ if offline_univ is not None else load_krx_equity_universe(as_of=req_as_of_str)
+        if offline_univ is None:
+            raise RuntimeError(
+                "PRODUCTION_SCANNER_LOCAL_UNIVERSE_UNAVAILABLE: "
+                f"local offline authority (rolling PIT + Basic Info) unavailable for "
+                f"requested_as_of={req_as_of_str}; refusing to fall back to live PyKRX"
+            )
+        raw_univ = offline_univ
     else:
         raw_univ = universe_securities
 
