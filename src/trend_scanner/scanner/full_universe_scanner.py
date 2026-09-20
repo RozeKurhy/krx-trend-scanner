@@ -85,6 +85,7 @@ from trend_scanner.relative_strength.repository_adapter import (
     resolve_market_rs_repository_input,
 )
 from trend_scanner.universe.asset_classifier import classify_asset_type
+from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
 from trend_scanner.universe.krx_universe import (
     get_latest_market_trading_date,
     load_krx_equity_universe,
@@ -130,9 +131,14 @@ def _default_market_rs_repository(repo_root: Path) -> MarketDataRepositoryV2:
 
 
 # _default_offline_universe()가 붙이는 metadata_source. 이 값을 가진 UniverseSecurity는
-# rolling PIT authority가 이미 state == COMMON으로 확정한 종목이므로, classify_asset_type()
-# 이름/티커 휴리스틱으로 재필터링하지 않는다(예: "우"로 끝나지만 우선주가 아닌 이름,
-# 실제 상장명에 "스팩"이 들어간 정상 COMMON 종목이 오탐으로 탈락하는 문제).
+# rolling PIT authority가 이미 identity state == COMMON(상장/거래 유지 상태)으로 확정한
+# 종목이라는 뜻일 뿐, 최종 canonical asset_type(보통주/우선주/SPAC/...)까지 확정한 것은
+# 아니다. 이름/티커 휴리스틱(classify_asset_type())으로 최종 판정하지 않되, 그렇다고
+# 무조건 COMMON으로 편입하지도 않는다 — 최종 eligibility는 반드시
+# resolve_instrument_metadata()의 canonical asset_type(is_common_stock_for_production)
+# 으로 판정한다(예: 이름이 "우"로 끝나지만 우선주가 아닌 종목은 canonical COMMON이면
+# 포함하고, 이름에 "스팩"이 들어갔거나 formal 신원 정보가 부족한 종목은 canonical
+# 판정에 따라 그대로 제외/UNKNOWN fail-closed 처리한다).
 _AUTHORITATIVE_PIT_METADATA_SOURCE = "ROLLING_AUTHORITY_MERGED_PIT_V01"
 
 
@@ -991,7 +997,7 @@ def scan_pattern_a_universe(
             t = item.ticker
             n = item.name
             m = item.market
-            is_authoritative_common = item.metadata_source == _AUTHORITATIVE_PIT_METADATA_SOURCE
+            is_authoritative_pit = item.metadata_source == _AUTHORITATIVE_PIT_METADATA_SOURCE
         else:
             t = str(item["ticker"]).strip().zfill(6)
             n = str(item.get("name", "")).strip()
@@ -1000,10 +1006,18 @@ def scan_pattern_a_universe(
                 m = MarketType(m_str)
             except ValueError:
                 m = MarketType.UNKNOWN
-            is_authoritative_common = False
+            is_authoritative_pit = False
 
         if m in (MarketType.KOSPI, MarketType.KOSDAQ):
-            if is_authoritative_common or classify_asset_type(t, n) == AssetType.COMMON:
+            if is_authoritative_pit:
+                # authoritative rolling PIT identity는 이름 휴리스틱으로 재판정하지 않되,
+                # 무조건 COMMON으로 편입하지도 않는다 -- canonical instrument metadata
+                # authority(FORMAL_SECURITY_TYPE)가 production-trusted COMMON으로 확정한
+                # 경우에만 포함한다. UNKNOWN/untrusted는 fail-closed로 제외한다.
+                canonical = resolve_instrument_metadata(t, as_of=ref_market_date, repo_root=repo_root)
+                if canonical.is_common_stock_for_production:
+                    all_common_targets.append((t, n, m))
+            elif classify_asset_type(t, n) == AssetType.COMMON:
                 all_common_targets.append((t, n, m))
 
     all_common_targets.sort(key=lambda x: (x[2].value, x[0]))

@@ -175,25 +175,76 @@ def test_output_row_count_matches_resolved_common_count(mock_scanner_env):
     assert len(res.rows) == 4
 
 
-def test_authoritative_pit_common_not_excluded_by_name_heuristic(mock_scanner_env):
-    """rolling PIT authority가 이미 state==COMMON으로 확정한 종목은 이름/티커 휴리스틱
-    재분류로 오탈락하지 않아야 한다 (authoritative PIT state wins).
+def test_authoritative_pit_common_uses_canonical_asset_type_not_name_heuristic(
+    mock_scanner_env, monkeypatch
+):
+    """rolling PIT authority가 identity state==COMMON으로 확정한 종목이라도, 최종
+    eligibility는 이름/티커 휴리스틱(classify_asset_type())도, rolling PIT identity
+    그 자체도 아닌 canonical instrument metadata authority(resolve_instrument_metadata)의
+    asset_type으로 판정해야 한다.
 
-    회귀 대상: 2026-09-17 authoritative COMMON 2559 vs Scanner 2553 갭. 실제 누락 6종목 중
-    "이오플로우"(이름이 "우"로 끝나 PREFERRED 오탐)와 "하나31호스팩"(이름에 "스팩" 포함돼
-    SPAC 오탐)을 대표로 사용한다.
+    회귀 대상: (1) 2026-09-17 최초 gap-fix 이전 - 이름이 "우"로 끝난다는 이유로
+    canonical COMMON 종목이 PREFERRED로 오탐돼 탈락하던 문제. (2) 그 gap-fix가 과교정한
+    문제 - rolling PIT identity가 COMMON이라는 이유만으로, canonical하게는 SPAC이거나
+    formal 신원 정보가 부족(UNKNOWN/untrusted)한 종목까지 Scanner COMMON에 편입되던 문제.
     """
+    from trend_scanner.universe.instrument_metadata import InstrumentMetadata
+
+    canonical_by_ticker = {
+        # A. 이름이 "우"로 끝나지만 canonical하게는 실제 COMMON -> 포함돼야 함
+        "294090": InstrumentMetadata(
+            ticker="294090",
+            name="이오플로우",
+            market="KOSDAQ",
+            asset_type="COMMON",
+            metadata_source="KRX_MDC_VERIFIED_EXACT_20260904",
+            effective_date="2026-09-04",
+            is_identified=True,
+            classification_authority="FORMAL_SECURITY_TYPE",
+            asset_type_source="FORMAL_SECURITY_TYPE",
+        ),
+        # B. rolling PIT identity는 COMMON이지만 canonical하게는 실제 SPAC -> 제외돼야 함
+        "600001": InstrumentMetadata(
+            ticker="600001",
+            name="어떤스팩",
+            market="KOSDAQ",
+            asset_type="SPAC",
+            metadata_source="KRX_MDC_VERIFIED_EXACT_20260904",
+            effective_date="2026-09-04",
+            is_identified=True,
+            classification_authority="FORMAL_SECURITY_TYPE",
+            asset_type_source="FORMAL_SECURITY_TYPE",
+        ),
+        # C. canonical이 UNKNOWN/untrusted(formal 신원 정보 부족) -> fail-closed 제외
+        "469900": InstrumentMetadata(
+            ticker="469900",
+            name="하나31호스팩",
+            market="KOSDAQ",
+            asset_type="UNKNOWN",
+            metadata_source="KRX_MDC_VERIFIED_EXACT_20260904",
+            effective_date="2026-09-04",
+            is_identified=True,
+            classification_authority="FORMAL_SECURITY_TYPE",
+            asset_type_source="INSUFFICIENT_FORMAL_IDENTITY",
+        ),
+    }
+
+    def fake_resolve(ticker, as_of=None, repo_root=None):
+        return canonical_by_ticker[ticker]
+
+    monkeypatch.setattr(scanner_module, "resolve_instrument_metadata", fake_resolve)
+
     universe = list(mock_scanner_env["universe"]) + [
         UniverseSecurity(
-            "294090",
-            "이오플로우",
-            MarketType.KOSDAQ,
+            "294090", "이오플로우", MarketType.KOSDAQ,
             metadata_source="ROLLING_AUTHORITY_MERGED_PIT_V01",
         ),
         UniverseSecurity(
-            "469900",
-            "하나31호스팩",
-            MarketType.KOSDAQ,
+            "600001", "어떤스팩", MarketType.KOSDAQ,
+            metadata_source="ROLLING_AUTHORITY_MERGED_PIT_V01",
+        ),
+        UniverseSecurity(
+            "469900", "하나31호스팩", MarketType.KOSDAQ,
             metadata_source="ROLLING_AUTHORITY_MERGED_PIT_V01",
         ),
     ]
@@ -206,11 +257,12 @@ def test_authoritative_pit_common_not_excluded_by_name_heuristic(mock_scanner_en
 
     by_ticker = {r.ticker: r for r in res.rows}
     assert "294090" in by_ticker
-    assert "469900" in by_ticker
     assert by_ticker["294090"].asset_type == AssetType.COMMON
-    assert by_ticker["469900"].asset_type == AssetType.COMMON
+    assert "600001" not in by_ticker  # canonical SPAC -> rolling PIT COMMON이어도 제외
+    assert "469900" not in by_ticker  # canonical UNKNOWN/untrusted -> fail-closed 제외
 
-    # 비authoritative(fixture) 소스는 여전히 이름 휴리스틱으로 정상 제외된다.
+    # D. 비authoritative(fixture) 소스는 resolver를 거치지 않고 여전히 이름 휴리스틱으로
+    # 정상 제외된다 (legacy/synthetic fixture 의미 보존).
     assert "005935" not in by_ticker  # PREFERRED
     assert "400001" not in by_ticker  # SPAC
 
