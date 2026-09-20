@@ -442,13 +442,24 @@ def build_sector_rs_web_payload(
     basic_info_dir: Path = DEFAULT_BASIC_INFO_DIR,
     stocks_dir: Path = DEFAULT_STOCKS_DIR,
     expected_as_of: str = "2026-09-04",
+    requested_as_of: str | None = None,
+    reference_market_date: str | None = None,
 ) -> dict[str, Any]:
     """Project the closed authority without recomputing any Sector RS value.
 
     ``expected_as_of``(PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01): 기존 하드코딩된
     "2026-09-04" 검증을 명시적 파라미터로 바꿔, exact-target(예: 2026-09-17) 호출도
     ranking authority의 as_of를 정확히 검증할 수 있게 한다. 생략하면 기존과 동일한
-    기본값(2026-09-04)을 그대로 쓴다."""
+    기본값(2026-09-04)을 그대로 쓴다.
+
+    ``requested_as_of``/``reference_market_date``(선택, PHASE4C_FINAL_FIX_V01):
+    명시하면 Phase 4 날짜 계약(requested_as_of=target_as_of, reference_market_date=
+    실제 시장 거래일, as_of=reference_market_date)에 맞춰 payload 최상위에 세 필드를
+    모두 노출하고, reference_market_date가 ranking authority의 실제 as_of와
+    일치하는지도 함께 검증한다(``expected_as_of``를 명시적으로 덮어쓴다). 생략하면
+    기존과 완전히 동일하게 ``as_of``만 노출한다(하위 호환)."""
+    if reference_market_date is not None:
+        expected_as_of = reference_market_date
 
     _install_network_guard()
     ranking, meta = _load_core(ranking_path, meta_path)
@@ -463,6 +474,8 @@ def build_sector_rs_web_payload(
     payload: dict[str, Any] = {
         "schema_version": 1,
         "as_of": str(meta["as_of"]),
+        **({"requested_as_of": requested_as_of} if requested_as_of is not None else {}),
+        **({"reference_market_date": reference_market_date} if reference_market_date is not None else {}),
         "scope": {
             "type": "EXACT_SECTOR_MEMBERSHIP_POPULATION",
             "population_count": source_validation["population_count"],

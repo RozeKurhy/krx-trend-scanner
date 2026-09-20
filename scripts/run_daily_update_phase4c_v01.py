@@ -74,17 +74,25 @@ def load_scanner_summary(root: Path, target_as_of: str) -> dict[str, Any]:
 
 
 def resolve_basic_info_dir(root: Path, target_as_of: str) -> Path:
-    """target_as_of 이하 가장 최신 basic_info snapshot을 선택한다(없으면 best-effort로
-    가장 이른 가용 snapshot). 이름 표시 전용이며 종목 멤버십/state 판정에는 쓰이지
-    않는다 -- src/trend_scanner/scanner/full_universe_scanner.py::_default_offline_universe()의
-    기존 선택 규칙과 동일한 원칙을 재사용한다(새 fallback 프레임워크 아님)."""
+    """target_as_of 이하(과거 또는 동일) 가장 최신 basic_info snapshot을 선택한다.
+    이름 표시 전용이며 종목 멤버십/state 판정에는 쓰이지 않는다.
+
+    PHASE4C_FINAL_FIX_V01: target_as_of 이전/동일 snapshot이 하나도 없으면
+    미래 snapshot으로 대체(fallback)하지 않고 fail-closed한다 -- 표시용이라도
+    미래 정보를 과거 기준일에 역적용하지 않는다는 Strict PIT 원칙은 그대로
+    지킨다."""
     basic_info_root = root / "data/reference/source/history/krx_instrument_master/v01/rolling/basic_info"
     target_clean = target_as_of.replace("-", "")
     all_dirs = sorted((p for p in basic_info_root.glob("*/*") if p.is_dir()), key=lambda p: p.name)
     if not all_dirs:
         raise Phase4CError(f"PHASE4C_BASIC_INFO_DIR_NOT_FOUND: no snapshot under {basic_info_root}")
     past_dirs = [p for p in all_dirs if p.name <= target_clean]
-    return past_dirs[-1] if past_dirs else all_dirs[0]
+    if not past_dirs:
+        raise Phase4CError(
+            f"PHASE4C_BASIC_INFO_NO_SNAPSHOT_ON_OR_BEFORE_TARGET: target={target_as_of}, "
+            f"earliest available={all_dirs[0].name}"
+        )
+    return past_dirs[-1]
 
 
 # --------------------------------------------------------------------------
@@ -212,8 +220,17 @@ def run_phase4c(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
             meta_path=sector_meta_path,
             basic_info_dir=basic_info_dir,
             stocks_dir=temp_stocks_dir,
-            expected_as_of=reference_market_date,
+            requested_as_of=target_as_of,
+            reference_market_date=reference_market_date,
         )
+        if sector_rs_payload.get("requested_as_of") != target_as_of:
+            raise Phase4CError(
+                f"PHASE4C_SECTOR_RS_REQUESTED_AS_OF_MISMATCH: {sector_rs_payload.get('requested_as_of')!r}"
+            )
+        if sector_rs_payload.get("reference_market_date") != reference_market_date:
+            raise Phase4CError(
+                f"PHASE4C_SECTOR_RS_REFERENCE_MARKET_DATE_MISMATCH: {sector_rs_payload.get('reference_market_date')!r}"
+            )
         if sector_rs_payload["as_of"] != reference_market_date:
             raise Phase4CError(f"PHASE4C_SECTOR_RS_AS_OF_MISMATCH: {sector_rs_payload['as_of']!r}")
         sector_rs_mismatches = sum(
@@ -243,7 +260,19 @@ def run_phase4c(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
             sector_path=sector_membership_path,
             common_authority_path=common_authority_path,
             as_of=reference_market_date,
+            requested_as_of=target_as_of,
+            reference_market_date=reference_market_date,
+            repo_root=root,
         )
+        if foreign_net_buy.get("requested_as_of") != target_as_of:
+            raise Phase4CError(
+                f"PHASE4C_FOREIGN_NET_BUY_REQUESTED_AS_OF_MISMATCH: {foreign_net_buy.get('requested_as_of')!r}"
+            )
+        if foreign_net_buy.get("reference_market_date") != reference_market_date:
+            raise Phase4CError(
+                f"PHASE4C_FOREIGN_NET_BUY_REFERENCE_MARKET_DATE_MISMATCH: "
+                f"{foreign_net_buy.get('reference_market_date')!r}"
+            )
         if foreign_net_buy["as_of"] != reference_market_date:
             raise Phase4CError(f"PHASE4C_FOREIGN_NET_BUY_AS_OF_MISMATCH: {foreign_net_buy['as_of']!r}")
         # stock-index는 foreign ranking의 모집단 authority가 아니라 report_available
@@ -287,6 +316,14 @@ def run_phase4c(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
     changed_paths |= {k for k in web_data_before.keys() & web_data_after.keys() if web_data_before[k] != web_data_after[k]}
     web_data_writes = len(changed_paths)
 
+    # MINOR 1 (PHASE4C_FINAL_FIX_V01): web/data가 하나라도 바뀌면 PASS를 허용하지
+    # 않는다 -- 4C는 read-only여야 하고, 실제 투영은 Phase 4D 책임이다.
+    if web_data_writes != 0:
+        raise Phase4CError(
+            f"PHASE4C_WEB_DATA_WRITE_DETECTED: {web_data_writes} path(s) changed under web/data/: "
+            f"{sorted(changed_paths)[:5]}"
+        )
+
     result = {
         "target_as_of": target_as_of,
         "requested_as_of": target_as_of,
@@ -307,11 +344,15 @@ def run_phase4c(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
             "counts": strategy_monitor["counts"],
         },
         "sector_rs_ranking": {
+            "requested_as_of": sector_rs_payload.get("requested_as_of"),
+            "reference_market_date": sector_rs_payload.get("reference_market_date"),
             "as_of": sector_rs_payload["as_of"],
             "population_count": sector_rs_payload["scope"]["population_count"],
             "report_available_count": sum(1 for item in sector_rs_payload["items"] if item["report_available"]),
         },
         "foreign_net_buy_ranking": {
+            "requested_as_of": foreign_net_buy.get("requested_as_of"),
+            "reference_market_date": foreign_net_buy.get("reference_market_date"),
             "as_of": foreign_net_buy["as_of"],
             "target_common_universe_count": foreign_net_buy["coverage"]["target_common_universe_count"],
             "flow_covered_count": foreign_net_buy["coverage"]["flow_covered_count"],

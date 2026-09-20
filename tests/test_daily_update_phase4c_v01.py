@@ -11,11 +11,14 @@ from __future__ import annotations
 
 import json
 import shutil
+import tempfile
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 import scripts.run_daily_update_phase4c_v01 as phase4c
+from scripts import export_foreign_net_buy_ranking_web as foreign_net_buy_web
 from scripts import export_stock_report_web as stock_report_web
 from scripts import export_strategy_monitor_web as strategy_monitor_web
 
@@ -87,6 +90,20 @@ def test_basic_info_dir_picks_nearest_past_snapshot(tmp_path):
 
 def test_basic_info_dir_missing_fails_closed(tmp_path):
     with pytest.raises(phase4c.Phase4CError, match="PHASE4C_BASIC_INFO_DIR_NOT_FOUND"):
+        phase4c.resolve_basic_info_dir(tmp_path, "2026-09-17")
+
+
+# --- H. Basic Info future-only snapshot fail-closed (미래 fallback 제거) -----------
+
+
+def test_h_basic_info_future_only_snapshots_fail_closed(tmp_path):
+    """target=2026-09-17인데 가용 snapshot이 전부 미래(20260918/20260919)뿐이면
+    과거 구현처럼 미래 snapshot으로 대체하지 않고 fail-closed해야 한다."""
+    basic_info_root = tmp_path / "data/reference/source/history/krx_instrument_master/v01/rolling/basic_info"
+    (basic_info_root / "2026/20260918").mkdir(parents=True)
+    (basic_info_root / "2026/20260919").mkdir(parents=True)
+
+    with pytest.raises(phase4c.Phase4CError, match="PHASE4C_BASIC_INFO_NO_SNAPSHOT_ON_OR_BEFORE_TARGET"):
         phase4c.resolve_basic_info_dir(tmp_path, "2026-09-17")
 
 
@@ -267,8 +284,169 @@ def test_g_foreign_ranking_population_authority_is_not_stock_index(real_phase4c_
     assert real_phase4c_result["sector_rs_ranking"]["population_count"] != stock_report["available_report_count"]
 
 
-# --- H. web/data 무변경 -------------------------------------------------------------
+# --- 4C runner 실행 후 web/data 무변경 ----------------------------------------------
 
 
-def test_h_no_web_data_writes(real_phase4c_result):
+def test_no_web_data_writes(real_phase4c_result):
     assert real_phase4c_result["web_data_writes"] == 0
+
+
+# ==================================================================================
+# Phase 4C Final Fix (PHASE4C_FINAL_FIX_V01) — 날짜 계약 보강 / identity 경계 / 미래
+# fallback 제거 / web_data_writes fail-closed
+# ==================================================================================
+
+
+# --- A. Sector RS requested/reference/as_of 세 필드 정상 ---------------------------
+
+
+def test_a_sector_rs_exposes_requested_reference_as_of(real_phase4c_result):
+    sector_rs = real_phase4c_result["sector_rs_ranking"]
+    assert sector_rs["requested_as_of"] == REAL_TARGET
+    assert sector_rs["reference_market_date"] == REAL_TARGET
+    assert sector_rs["as_of"] == REAL_TARGET
+    assert sector_rs["as_of"] == sector_rs["reference_market_date"]
+
+
+# --- B. Foreign requested/reference/as_of 세 필드 정상 -----------------------------
+
+
+def test_b_foreign_net_buy_exposes_requested_reference_as_of(real_phase4c_result):
+    foreign = real_phase4c_result["foreign_net_buy_ranking"]
+    assert foreign["requested_as_of"] == REAL_TARGET
+    assert foreign["reference_market_date"] == REAL_TARGET
+    assert foreign["as_of"] == REAL_TARGET
+    assert foreign["as_of"] == foreign["reference_market_date"]
+
+
+# --- D. Sector mixed date fail-closed -----------------------------------------------
+
+
+def test_d_sector_rs_reference_market_date_mismatch_fails_closed(monkeypatch):
+    """runner가 sector_rs payload의 reference_market_date를 scanner authority
+    reference_market_date와 대조해 fail-closed하는지 확인한다(as_of 하나만 보는
+    과거 구현으로는 잡히지 않던 문제)."""
+    original = phase4c.sector_rs_web.build_sector_rs_web_payload
+
+    def _tampered(**kwargs):
+        payload = original(**kwargs)
+        payload["reference_market_date"] = "2026-09-16"  # 실제와 다르게 조작
+        return payload
+
+    monkeypatch.setattr(phase4c.sector_rs_web, "build_sector_rs_web_payload", _tampered)
+    with pytest.raises(phase4c.Phase4CError, match="PHASE4C_SECTOR_RS_REFERENCE_MARKET_DATE_MISMATCH"):
+        phase4c.run_phase4c(REAL_TARGET, root=ROOT)
+
+
+def test_d_sector_rs_authority_as_of_mismatch_fails_closed():
+    """ranking authority 자체의 as_of가 기대값과 다르면 _validate_core가
+    fail-closed한다(하드코딩된 "2026-09-04" 대신 명시적 expected_as_of/
+    reference_market_date로 검증)."""
+    from scripts import export_sector_rs_ranking_web as sector_rs_web
+
+    basic_info_dir = phase4c.resolve_basic_info_dir(ROOT, REAL_TARGET)
+    with tempfile.TemporaryDirectory() as tmp_name, pytest.raises(ValueError, match="unexpected ranking as_of"):
+        sector_rs_web.build_sector_rs_web_payload(
+            ranking_path=ROOT / "data/analytics/sector_rs_ranking/v01/sector_rs_ranking_20260917.parquet",
+            meta_path=ROOT / "data/analytics/sector_rs_ranking/v01/sector_rs_ranking_20260917_meta.json",
+            basic_info_dir=basic_info_dir,
+            stocks_dir=Path(tmp_name),
+            requested_as_of=REAL_TARGET,
+            reference_market_date="2026-09-16",  # 실제 ranking authority as_of(2026-09-17)와 다름
+        )
+
+
+# --- E. Foreign mixed date fail-closed ----------------------------------------------
+
+
+def test_e_foreign_net_buy_requested_as_of_mismatch_fails_closed(monkeypatch):
+    original = phase4c.foreign_net_buy_web.build_foreign_net_buy_ranking
+
+    def _tampered(**kwargs):
+        payload = original(**kwargs)
+        payload["requested_as_of"] = "2026-09-16"  # 실제와 다르게 조작
+        return payload
+
+    monkeypatch.setattr(phase4c.foreign_net_buy_web, "build_foreign_net_buy_ranking", _tampered)
+    with pytest.raises(phase4c.Phase4CError, match="PHASE4C_FOREIGN_NET_BUY_REQUESTED_AS_OF_MISMATCH"):
+        phase4c.run_phase4c(REAL_TARGET, root=ROOT)
+
+
+# --- F/G. Foreign name authority는 공식 PIT identity이지 stock-index가 아님 --------
+# stock-index는 report_available 표시에만 쓰인다 --------------------------------------
+
+
+def test_fg_foreign_name_authority_is_pit_identity_not_stock_index(tmp_path):
+    """stock-index에 고의로 틀린 종목명을 넣어도 foreign net buy 결과의 이름은
+    공식 PIT identity authority(InstrumentMetadataResolver) 값을 그대로 써야
+    하고, report_available만 stock-index에서 읽어야 한다."""
+    index_path = tmp_path / "stock-index.json"
+    index_path.write_text(
+        json.dumps({
+            "schema_version": 1,
+            "items": [{"ticker": "005930", "name": "가짜이름_이건_authority가_아님", "report_available": True}],
+        }),
+        encoding="utf-8",
+    )
+
+    common_authority_path = tmp_path / "common.csv"
+    common_authority_path.write_text("ticker,market\n005930,KOSPI\n", encoding="utf-8")
+
+    sector_path = tmp_path / "sector.parquet"
+    pd.DataFrame({"ticker": ["005930"], "sector_name": ["전기전자"]}).to_parquet(sector_path)
+
+    universe, _snapshot_date = foreign_net_buy_web.load_common_universe(
+        index_path=index_path,
+        sector_path=sector_path,
+        common_authority_path=common_authority_path,
+        as_of=REAL_TARGET,
+        repo_root=ROOT,
+    )
+    item = next(i for i in universe if i["ticker"] == "005930")
+    assert item["name"] != "가짜이름_이건_authority가_아님"
+    assert item["name"] == "삼성전자"  # 공식 PIT identity authority(InstrumentMetadataResolver) 값
+    assert item["market"] == "KOSPI"  # market은 common authority가 그대로 제공(덮어쓰지 않음)
+    assert item["report_available"] is True  # report_available만 stock-index에서 읽음
+
+
+def test_fg_foreign_report_available_still_read_from_stock_index(tmp_path):
+    """동일 tmp_path 셋업에서 report_available=False인 경우도 stock-index 값을
+    그대로 반영하는지 확인한다(이름과 무관하게 report_available lookup은 유지)."""
+    index_path = tmp_path / "stock-index.json"
+    index_path.write_text(
+        json.dumps({
+            "schema_version": 1,
+            "items": [{"ticker": "005930", "name": "무시되는이름", "report_available": False}],
+        }),
+        encoding="utf-8",
+    )
+    common_authority_path = tmp_path / "common.csv"
+    common_authority_path.write_text("ticker,market\n005930,KOSPI\n", encoding="utf-8")
+    sector_path = tmp_path / "sector.parquet"
+    pd.DataFrame({"ticker": ["005930"], "sector_name": ["전기전자"]}).to_parquet(sector_path)
+
+    universe, _snapshot_date = foreign_net_buy_web.load_common_universe(
+        index_path=index_path,
+        sector_path=sector_path,
+        common_authority_path=common_authority_path,
+        as_of=REAL_TARGET,
+        repo_root=ROOT,
+    )
+    item = next(i for i in universe if i["ticker"] == "005930")
+    assert item["report_available"] is False
+    assert item["name"] == "삼성전자"
+
+
+# --- I. web_data_writes > 0이면 fail -------------------------------------------------
+
+
+def test_i_web_data_writes_nonzero_fails_closed(monkeypatch):
+    calls = {"n": 0}
+
+    def _fake_snapshot(root):
+        calls["n"] += 1
+        return {"stock-index.json": (1.0, 100)} if calls["n"] == 1 else {"stock-index.json": (2.0, 100)}
+
+    monkeypatch.setattr(phase4c, "snapshot_web_data", _fake_snapshot)
+    with pytest.raises(phase4c.Phase4CError, match="PHASE4C_WEB_DATA_WRITE_DETECTED"):
+        phase4c.run_phase4c(REAL_TARGET, root=ROOT)

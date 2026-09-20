@@ -45,19 +45,58 @@ def _display_path(path: Path) -> str:
         return str(path)
 
 
+def _load_pit_identity_names(repo_root: Path, as_of: str) -> dict[str, str]:
+    """공식 PIT identity authority(InstrumentMetadataResolver)에서 as_of 이하 최신
+    snapshot의 ticker -> name만 읽는다.
+
+    PHASE4C_FINAL_FIX_V01: ``stock-index.json``은 4B 발행 여부(report_available)
+    확인에만 쓴다는 Phase 4 계약이 있어, 종목명 authority로 쓰지 않는다. 시장
+    (market)은 기존 ``common_authority_path``가 이미 제공하므로 여기서는 이름만
+    조인한다 -- 새 identity source를 만들지 않고 기존 공식 resolver를 재사용한다.
+    """
+    import sys
+
+    src_dir = str(repo_root / "src")
+    if src_dir not in sys.path:
+        sys.path.insert(0, src_dir)
+    from trend_scanner.universe.instrument_metadata import InstrumentMetadataResolver
+
+    frame = InstrumentMetadataResolver.load_master_dataframe(repo_root).copy()
+    required = {"ticker", "name", "effective_date"}
+    if frame.empty or not required.issubset(frame.columns):
+        raise ValueError("PIT identity authority is empty or incomplete")
+    frame["ticker"] = frame["ticker"].astype(str).str.strip().str.upper()
+    frame["effective_date"] = pd.to_datetime(frame["effective_date"], errors="coerce")
+    eligible = frame[frame["effective_date"].notna() & (frame["effective_date"] <= pd.Timestamp(as_of))]
+    if eligible.empty:
+        raise ValueError("PIT identity authority has no PIT-eligible rows")
+    snapshot_date = eligible["effective_date"].max()
+    current = eligible[eligible["effective_date"] == snapshot_date].copy()
+    if current["ticker"].duplicated().any():
+        raise ValueError("PIT identity authority contains duplicate PIT tickers")
+    return {
+        str(row["ticker"]): str(row["name"]).strip()
+        for row in current.to_dict("records")
+        if str(row.get("name") or "").strip()
+    }
+
+
 def load_common_universe(
     index_path: Path = DEFAULT_INDEX_PATH,
     sector_path: Path = DEFAULT_SECTOR_PATH,
     common_authority_path: Path = DEFAULT_COMMON_AUTHORITY_PATH,
     as_of: str = AS_OF,
+    *,
+    repo_root: Path = ROOT,
 ) -> tuple[list[dict[str, Any]], str | None]:
     """Resolve the exact production common-stock authority and sector labels."""
 
     index = _read_json(index_path)
     if index.get("schema_version") != 1 or not isinstance(index.get("items"), list):
         raise ValueError("stock-index schema is incomplete")
+    # stock-index는 report_available 확인에만 쓴다 (Phase 4 계약) -- 종목명/시장
+    # authority로 쓰지 않는다.
     report_by_ticker: dict[str, bool] = {}
-    name_by_ticker: dict[str, str] = {}
     for item in index["items"]:
         if not isinstance(item, dict) or not item.get("ticker"):
             continue
@@ -65,8 +104,6 @@ def load_common_universe(
         if ticker in report_by_ticker:
             raise ValueError("stock-index contains duplicate tickers")
         report_by_ticker[ticker] = bool(item.get("report_available", False))
-        if item.get("name"):
-            name_by_ticker[ticker] = str(item["name"])
 
     authority = pd.read_csv(common_authority_path, dtype=str)
     required_authority = {"ticker", "market"}
@@ -74,14 +111,14 @@ def load_common_universe(
         raise ValueError(
             f"common authority schema is incomplete: {sorted(required_authority - set(authority.columns))}"
         )
-    # PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01: exact-target(2026-09-17) market RS
-    # universe authority 스키마에는 name 컬럼이 없다(0904 스키마와 다름). 종목명은
-    # 이미 로드한 stock-index(PIT COMMON 전체 실제 이름 authority, krx_instrument_
-    # metadata 기반)에서 조인한다 -- 새 이름 소스를 만들지 않고 이미 신뢰하는
-    # authority를 재사용한다.
+    # PHASE4C_FINAL_FIX_V01: exact-target(2026-09-17) market RS universe authority
+    # 스키마에는 name 컬럼이 없다(0904 스키마와 다름). 종목명은 공식 PIT identity
+    # authority(InstrumentMetadataResolver)에서 조인한다 -- market_rs_universe는
+    # ticker/market 모집단 authority 역할을 그대로 유지한다.
     if "name" not in authority.columns:
+        name_by_ticker = _load_pit_identity_names(repo_root, as_of)
         authority = authority[["ticker", "market"]].copy()
-        authority["name"] = authority["ticker"].astype(str).str.strip().map(name_by_ticker)
+        authority["name"] = authority["ticker"].astype(str).str.strip().str.upper().map(name_by_ticker)
     authority = authority.loc[authority["market"].isin({"KOSPI", "KOSDAQ"}), ["ticker", "name", "market"]].copy()
     if authority.empty or authority[["ticker", "name", "market"]].isna().any().any():
         raise ValueError("common authority is empty or has incomplete identity")
@@ -214,8 +251,20 @@ def build_foreign_net_buy_ranking(
     common_authority_path: Path = DEFAULT_COMMON_AUTHORITY_PATH,
     repository: Any | None = None,
     as_of: str = AS_OF,
+    requested_as_of: str | None = None,
+    reference_market_date: str | None = None,
+    repo_root: Path = ROOT,
 ) -> dict[str, Any]:
-    universe, universe_snapshot_date = load_common_universe(index_path, sector_path, common_authority_path, as_of)
+    """``requested_as_of``/``reference_market_date``(선택, PHASE4C_FINAL_FIX_V01):
+    명시하면 Phase 4 날짜 계약(requested_as_of=target_as_of, reference_market_date=
+    실제 시장 거래일, as_of=reference_market_date)에 맞춰 payload 최상위에 세 필드를
+    모두 노출한다. 생략하면 기존과 완전히 동일하게 ``as_of``만 노출한다(하위 호환).
+    ``as_of``(실제 조회 기준일)는 항상 그대로 유지한다 -- reference_market_date와
+    다른 값을 의도적으로 넘기는 호출자(과거 검증 스크립트 등)를 깨지 않기 위함이다.
+    """
+    universe, universe_snapshot_date = load_common_universe(
+        index_path, sector_path, common_authority_path, as_of, repo_root=repo_root,
+    )
     flow, flow_meta = load_flow_source(flow_path)
     target_tickers = {item["ticker"] for item in universe}
     flow_values, source_dates, eligible_counts = _flow_values_by_horizon(flow, target_tickers, as_of)
@@ -251,6 +300,8 @@ def build_foreign_net_buy_ranking(
     return {
         "schema_version": 1,
         "as_of": as_of,
+        **({"requested_as_of": requested_as_of} if requested_as_of is not None else {}),
+        **({"reference_market_date": reference_market_date} if reference_market_date is not None else {}),
         "scope": {
             "type": "KRX_COMMON_STOCKS",
             "markets": ["KOSPI", "KOSDAQ"],
