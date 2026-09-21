@@ -11,10 +11,10 @@
     "report_status": "READY"
   },
   "decision": {
-    "action": "ENTER_NEXT_OPEN",
-    "strategy_state": "ENTRY",
-    "canonical_position": "FLAT",
-    "action_reason": "ALL_ENTRY_CONDITIONS_MET",
+    "action": "HOLD",
+    "strategy_state": "HOLD_PRE_PROGRESSED",
+    "canonical_position": "OPEN",
+    "action_reason": "OPEN_POSITION_PRE_PROGRESSED",
     "is_investable": true
   },
   "summary": {
@@ -475,11 +475,11 @@
     ]
   },
   "strategy": {
-    "action": "ENTER_NEXT_OPEN",
-    "state": "ENTRY",
-    "position": "FLAT",
-    "reason": "ALL_ENTRY_CONDITIONS_MET",
-    "interpretation": "패스트 코어 V2 전략의 모든 8대 진입 조건이 충족되었습니다. 다음 로컬 거래일 시가에 진입합니다 (Trade #2).",
+    "action": "HOLD",
+    "state": "HOLD_PRE_PROGRESSED",
+    "position": "OPEN",
+    "reason": "OPEN_POSITION_PRE_PROGRESSED",
+    "interpretation": "패스트 코어 V2 전략 포지션을 보유 중이며 아직 PROGRESSED 이전입니다. Pre-PROGRESSED Loss Guard(-15%)가 활성화되어 있습니다.",
     "history": [
       {
         "trade_id": "003350_01",
@@ -495,6 +495,21 @@
         "trade_status": "REALIZED",
         "return_pct": 70.59,
         "lifecycle_class": "NORMAL_EARLY_TREND_HANDOFF"
+      },
+      {
+        "trade_id": "003350_02",
+        "trade_sequence": 2,
+        "entry_signal_date": "2026-09-11",
+        "entry_execution_date": "2026-09-14",
+        "entry_open": 16100.0,
+        "entry_pattern_a_stage": "TRANSITION",
+        "exit_type": "NO_PROGRESSED_BEFORE_CUTOFF",
+        "exit_signal_date": null,
+        "exit_execution_date": null,
+        "exit_price": null,
+        "trade_status": "OPEN_AT_CUTOFF",
+        "return_pct": -7.58,
+        "lifecycle_class": "NEVER_PROGRESSED"
       }
     ]
   },

@@ -227,6 +227,7 @@ def _build_a_fast_core_section_impl(
             score_contract=score_contract,
             stage_contract=stage_contract,
             cutoff_date=requested_as_of,
+            market_calendar=market_calendar,
         )
     except Exception as exc:
         logger.error("Simulation error for %s on %s: %s", ticker, as_of_str, exc)

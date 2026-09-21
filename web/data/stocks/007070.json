@@ -12,9 +12,9 @@
   },
   "decision": {
     "action": "HOLD",
-    "strategy_state": "HOLD_PRE_PROGRESSED",
+    "strategy_state": "HOLD_PROGRESSED",
     "canonical_position": "OPEN",
-    "action_reason": "OPEN_POSITION_PRE_PROGRESSED",
+    "action_reason": "OPEN_POSITION_PROGRESSED",
     "is_investable": true
   },
   "summary": {
@@ -476,10 +476,10 @@
   },
   "strategy": {
     "action": "HOLD",
-    "state": "HOLD_PRE_PROGRESSED",
+    "state": "HOLD_PROGRESSED",
     "position": "OPEN",
-    "reason": "OPEN_POSITION_PRE_PROGRESSED",
-    "interpretation": "패스트 코어 V2 전략 포지션을 보유 중이며 아직 PROGRESSED 이전입니다. Pre-PROGRESSED Loss Guard(-15%)가 활성화되어 있습니다.",
+    "reason": "OPEN_POSITION_PROGRESSED",
+    "interpretation": "패스트 코어 V2 전략 포지션은 PROGRESSED 구간에 있습니다. 초기 Loss Guard는 비활성화되었으며 Exit3 / Exit4 기준으로 추세 종료 여부를 관찰합니다.",
     "history": [
       {
         "trade_id": "007070_01",
@@ -509,7 +509,7 @@
         "exit_price": 35493.0,
         "trade_status": "REALIZED",
         "return_pct": -20.5,
-        "lifecycle_class": "NEVER_PROGRESSED"
+        "lifecycle_class": "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
       },
       {
         "trade_id": "007070_03",
@@ -524,7 +524,7 @@
         "exit_price": 29336.0,
         "trade_status": "REALIZED",
         "return_pct": -21.96,
-        "lifecycle_class": "NEVER_PROGRESSED"
+        "lifecycle_class": "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
       },
       {
         "trade_id": "007070_04",
@@ -539,7 +539,7 @@
         "exit_price": 27368.0,
         "trade_status": "REALIZED",
         "return_pct": -17.21,
-        "lifecycle_class": "NEVER_PROGRESSED"
+        "lifecycle_class": "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
       },
       {
         "trade_id": "007070_05",
@@ -554,7 +554,7 @@
         "exit_price": 18890.0,
         "trade_status": "REALIZED",
         "return_pct": -13.35,
-        "lifecycle_class": "NEVER_PROGRESSED"
+        "lifecycle_class": "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
       },
       {
         "trade_id": "007070_06",
@@ -563,13 +563,13 @@
         "entry_execution_date": "2026-08-10",
         "entry_open": 28000.0,
         "entry_pattern_a_stage": "TRANSITION",
-        "exit_type": "NO_PROGRESSED_BEFORE_CUTOFF",
+        "exit_type": "NO_EXIT_BEFORE_CUTOFF",
         "exit_signal_date": null,
         "exit_execution_date": null,
         "exit_price": null,
         "trade_status": "OPEN_AT_CUTOFF",
         "return_pct": -14.11,
-        "lifecycle_class": "NEVER_PROGRESSED"
+        "lifecycle_class": "SKIPPED_EARLY_TREND_HANDOFF"
       }
     ]
   },

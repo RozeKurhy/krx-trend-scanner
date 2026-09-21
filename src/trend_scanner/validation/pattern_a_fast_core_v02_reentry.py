@@ -27,6 +27,7 @@ from trend_scanner.backtest.snapshot_context import (
     build_historical_snapshot_from_context,
     build_precomputed_ticker_context,
 )
+from trend_scanner.data.market_calendar import MarketCalendarAuthority, MarketCalendarUnavailableError
 from trend_scanner.data.resampler import to_monthly, to_weekly
 from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
 from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
@@ -96,7 +97,14 @@ def simulate_ticker_core_v02_reentry(
     cutoff_date: pd.Timestamp = DATA_CUTOFF,
     snapshot_context: PrecomputedTickerContext | None = None,
     use_precomputed_context: bool = True,
+    market_calendar: MarketCalendarAuthority | None = None,
 ) -> list[V02TradeRecord]:
+    """Replay one ticker's V2 trade state through ``cutoff_date``.
+
+    ``market_calendar`` is the production rolling authority used for every
+    completed-period judgement in this replay.  Omitting it preserves the
+    frozen canonical-calendar behavior required by historical regressions.
+    """
     if daily is None or daily.empty:
         return []
 
@@ -155,6 +163,7 @@ def simulate_ticker_core_v02_reentry(
                         score_contract,
                         stage_contract,
                         context=snapshot_context,
+                        market_calendar=market_calendar,
                     )
                 else:
                     res = evaluate_pattern_a_fast(
@@ -164,6 +173,7 @@ def simulate_ticker_core_v02_reentry(
                         w,
                         score_contract,
                         stage_contract,
+                        market_calendar=market_calendar,
                     )
                 is_trigger = (res["fast_machine_stage"] == "TRIGGER" and res["fast_machine_stage_status"] == "READY")
                 is_permitted = (res["fast_monthly_permission_state"] == "PERMITTED_REGIME")
@@ -178,6 +188,10 @@ def simulate_ticker_core_v02_reentry(
                     found_signal_w = w
                     found_signal_res = res
                     break
+            except MarketCalendarUnavailableError:
+                # A calendar boundary is a production-authority failure, not
+                # an ineligible signal.  Do not silently turn it into FLAT.
+                raise
             except Exception:
                 continue
 
@@ -215,6 +229,7 @@ def simulate_ticker_core_v02_reentry(
                         snapshot_context,
                         m,
                         include_incomplete_periods=False,
+                        market_calendar=market_calendar,
                     )
                 else:
                     snap = build_historical_snapshot(
@@ -223,6 +238,7 @@ def simulate_ticker_core_v02_reentry(
                         daily[daily.index <= m],
                         m,
                         include_incomplete_periods=False,
+                        market_calendar=market_calendar,
                     )
                 eval_res = evaluate_pattern_a(snap)
                 st = eval_res.stage.value.upper() if eval_res.stage else "UNAVAILABLE"

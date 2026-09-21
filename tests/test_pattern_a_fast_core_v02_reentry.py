@@ -7,6 +7,10 @@ import pandas as pd
 import pytest
 
 from trend_scanner.data.cache import ParquetCache
+from trend_scanner.data.market_calendar import (
+    MarketCalendarUnavailableError,
+    load_rolling_production_market_calendar,
+)
 from trend_scanner.data.resampler import to_monthly
 from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
@@ -27,6 +31,41 @@ V01_CSV_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/strategy_fin
 V02_CSV_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/trades.csv"
 V02_TICKER_CSV_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/ticker_summary.csv"
 DEEP_LOSS_CSV_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/deep_loss_reentry_cases.csv"
+
+
+def _load_production_daily_through_20260917(
+    ticker: str,
+    market_calendar,
+) -> pd.DataFrame:
+    """Build the local production OHLCV view without a full raw-store scan.
+
+    The frozen raw cache is authoritative through 2026-08-14.  This regression
+    appends only the certified rolling KOSPI partitions needed after that date,
+    while preserving the production composition: adjusted OHLC plus raw KRX
+    volume/trading value.
+    """
+    adjusted = pd.read_parquet(ROOT / "data/market/adjusted/stocks" / f"{ticker}.parquet")
+    adjusted = adjusted.set_index("date").sort_index()
+
+    frozen_raw = ParquetCache(base_dir=ROOT / "data/raw/stocks").load(ticker)
+    rolling_rows: list[pd.DataFrame] = []
+    for date in market_calendar.trading_dates:
+        if not (pd.Timestamp("2026-08-17") <= date <= pd.Timestamp("2026-09-17")):
+            continue
+        partition = (
+            ROOT
+            / "data/market/raw/krx_stocks/v01/market=KOSPI/year=2026"
+            / f"{date.strftime('%Y-%m-%d')}.parquet"
+        )
+        if partition.exists():
+            rolling_rows.append(pd.read_parquet(partition))
+
+    rolling_raw = pd.concat(rolling_rows, ignore_index=True)
+    rolling_raw = rolling_raw[rolling_raw["ticker"] == ticker].set_index("date")
+    raw = pd.concat(
+        [frozen_raw[["volume", "trading_value"]], rolling_raw[["volume", "trading_value"]]]
+    ).sort_index()
+    return adjusted.join(raw, how="inner")
 
 
 @pytest.fixture
@@ -156,6 +195,85 @@ def test_v02_reentry_loss_guard_then_reentry(contracts):
     assert t2.previous_exit_type == "LOSS_GUARD_CLOSE_LE_NEG_15"
     assert t2.previous_exit_execution_date == "2026-03-05"
     assert t2.entry_execution_date > t1.exit_execution_date
+
+
+def test_rolling_calendar_keeps_september_entry_connected_to_open_position(contracts):
+    """A 9/4 ENTRY must become an OPEN trade on 9/7, not silent FLAT state.
+
+    This is the production regression that failed when replay fell back to the
+    frozen calendar and the broad signal-scan handler swallowed its boundary
+    error.  It uses the exact local 2026-09-17 rolling inputs for the three
+    affected tickers and also records the independently discovered 003350
+    entry boundary.
+    """
+    score_contract, stage_contract = contracts
+    calendar = load_rolling_production_market_calendar(ROOT)
+    assert calendar is not None
+
+    affected = {
+        "138040": "메리츠금융지주",
+        "005180": "빙그레",
+        "122900": "아이마켓코리아",
+    }
+    for ticker, name in affected.items():
+        daily = _load_production_daily_through_20260917(ticker, calendar)
+
+        # Calendar authority errors must remain visible rather than silently
+        # discarding every post-frozen-boundary candidate week.
+        with pytest.raises(MarketCalendarUnavailableError):
+            simulate_ticker_core_v02_reentry(
+                ticker=ticker,
+                name=name,
+                market="KOSPI",
+                daily=daily,
+                score_contract=score_contract,
+                stage_contract=stage_contract,
+                cutoff_date=pd.Timestamp("2026-09-07"),
+            )
+
+        at_execution = simulate_ticker_core_v02_reentry(
+            ticker=ticker,
+            name=name,
+            market="KOSPI",
+            daily=daily,
+            score_contract=score_contract,
+            stage_contract=stage_contract,
+            cutoff_date=pd.Timestamp("2026-09-07"),
+            market_calendar=calendar,
+        )
+        current = at_execution[-1]
+        assert current.entry_signal_date == "2026-09-04"
+        assert current.entry_execution_date == "2026-09-07"
+        assert current.entry_open == float(daily.loc[pd.Timestamp("2026-09-07"), "open"])
+        assert current.trade_status == "OPEN_AT_CUTOFF"
+
+        at_target = simulate_ticker_core_v02_reentry(
+            ticker=ticker,
+            name=name,
+            market="KOSPI",
+            daily=daily,
+            score_contract=score_contract,
+            stage_contract=stage_contract,
+            cutoff_date=pd.Timestamp("2026-09-17"),
+            market_calendar=calendar,
+        )
+        assert at_target[-1].entry_signal_date == "2026-09-04"
+        assert at_target[-1].trade_status == "OPEN_AT_CUTOFF"
+
+    daily_003350 = _load_production_daily_through_20260917("003350", calendar)
+    replay_003350 = simulate_ticker_core_v02_reentry(
+        ticker="003350",
+        name="한국화장품제조",
+        market="KOSPI",
+        daily=daily_003350,
+        score_contract=score_contract,
+        stage_contract=stage_contract,
+        cutoff_date=pd.Timestamp("2026-09-17"),
+        market_calendar=calendar,
+    )
+    assert replay_003350[-1].entry_signal_date == "2026-09-11"
+    assert replay_003350[-1].entry_execution_date == "2026-09-14"
+    assert replay_003350[-1].entry_open == float(daily_003350.loc[pd.Timestamp("2026-09-14"), "open"])
 
 
 def test_v02_exit3_then_reentry(contracts):
