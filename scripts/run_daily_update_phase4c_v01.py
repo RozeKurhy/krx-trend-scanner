@@ -30,6 +30,10 @@ from scripts import export_sector_rs_ranking_web as sector_rs_web
 from scripts import export_stock_report_web as stock_report_web
 from scripts import export_strategy_monitor_web as strategy_monitor_web
 from scripts import export_web_data as health_web
+from trend_scanner.data.sector_membership import (
+    SectorMembershipSnapshotUnavailable,
+    resolve_sector_membership_snapshot_for_target,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("run_daily_update_phase4c_v01")
@@ -37,6 +41,19 @@ logger = logging.getLogger("run_daily_update_phase4c_v01")
 
 class Phase4CError(RuntimeError):
     """Phase 4C fail-closed error (input validation, cross-payload validation)."""
+
+
+def resolve_sector_membership_for_target(target_as_of: str, *, root: Path) -> tuple[str, Path]:
+    """Return the approved periodic membership snapshot for ``target_as_of``."""
+
+    try:
+        _snapshot, effective_date, path, _meta = resolve_sector_membership_snapshot_for_target(
+            target_as_of,
+            repo_root=root,
+        )
+    except SectorMembershipSnapshotUnavailable as exc:
+        raise Phase4CError(f"PHASE4C_FOREIGN_NET_BUY_AUTHORITY_MISSING: {exc}") from exc
+    return effective_date, Path(path)
 
 
 # --------------------------------------------------------------------------
@@ -244,8 +261,9 @@ def run_phase4c(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
         flow_path = (
             root / "artifacts/patterns/pattern_a/production/flow/source" / f"foreign_flow_daily_{dt_clean}.parquet"
         )
-        sector_membership_path = (
-            root / "data/market/sector_membership/v01" / f"sector_membership_{dt_clean}.parquet"
+        sector_membership_effective_date, sector_membership_path = resolve_sector_membership_for_target(
+            target_as_of,
+            root=root,
         )
         common_authority_path = (
             root / "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01"
@@ -357,6 +375,10 @@ def run_phase4c(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
             "as_of": foreign_net_buy["as_of"],
             "target_common_universe_count": foreign_net_buy["coverage"]["target_common_universe_count"],
             "flow_covered_count": foreign_net_buy["coverage"]["flow_covered_count"],
+        },
+        "sector_membership": {
+            "effective_date": sector_membership_effective_date,
+            "path": str(sector_membership_path),
         },
         "health": {
             "overall_status": health["overall_status"],

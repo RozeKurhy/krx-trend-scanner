@@ -175,6 +175,10 @@ def _stage_payloads(
     _write_json(stage_data / "strategy-monitor.json", strategy)
 
     dt_clean = target_as_of.replace("-", "")
+    sector_membership_effective_date, sector_membership_path = phase4c.resolve_sector_membership_for_target(
+        target_as_of,
+        root=ROOT,
+    )
     sector = sector_web.build_sector_rs_web_payload(
         ranking_path=ROOT / "data/analytics/sector_rs_ranking/v01" / f"sector_rs_ranking_{dt_clean}.parquet",
         meta_path=ROOT / "data/analytics/sector_rs_ranking/v01" / f"sector_rs_ranking_{dt_clean}_meta.json",
@@ -187,7 +191,7 @@ def _stage_payloads(
     foreign = foreign_web.build_foreign_net_buy_ranking(
         index_path=stage_data / "stock-index.json",
         flow_path=ROOT / "artifacts/patterns/pattern_a/production/flow/source" / f"foreign_flow_daily_{dt_clean}.parquet",
-        sector_path=ROOT / "data/market/sector_membership/v01" / f"sector_membership_{dt_clean}.parquet",
+        sector_path=sector_membership_path,
         common_authority_path=ROOT / "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01" / f"market_rs_universe_{dt_clean}.csv",
         as_of=reference_market_date,
         requested_as_of=target_as_of,
@@ -202,6 +206,10 @@ def _stage_payloads(
     return {
         "phase4c": phase4c_result,
         "reference_market_date": reference_market_date,
+        "sector_membership": {
+            "effective_date": sector_membership_effective_date,
+            "path": str(sector_membership_path),
+        },
         "report_stats": report_stats,
     }
 
@@ -330,6 +338,7 @@ def run_phase4d(
             "reference_market_date": context["reference_market_date"],
             "execute_live": execute_live,
             "network_calls": 0,
+            "sector_membership": context["sector_membership"],
             "staging": validation,
             "post_promote_readback": readback,
         }

@@ -115,6 +115,23 @@ def test_report_corpus_missing_fails_closed(tmp_path):
         phase4c.validate_report_corpus_directory(tmp_path, "2026-09-17")
 
 
+def test_phase4c_uses_approved_periodic_sector_membership_snapshot(monkeypatch, tmp_path):
+    selected_path = tmp_path / "sector_membership_20260917.parquet"
+    calls = []
+
+    def _resolver(target_as_of, *, repo_root):
+        calls.append((target_as_of, repo_root))
+        return object(), "2026-09-17", selected_path, {"snapshot_effective_date": "2026-09-17"}
+
+    monkeypatch.setattr(phase4c, "resolve_sector_membership_snapshot_for_target", _resolver)
+
+    effective_date, path = phase4c.resolve_sector_membership_for_target("2026-09-18", root=tmp_path)
+
+    assert calls == [("2026-09-18", tmp_path)]
+    assert effective_date == "2026-09-17"
+    assert path == selected_path
+
+
 # --- C. non-trading date: requested/reference 분리 정상 처리 -----------------------
 
 
