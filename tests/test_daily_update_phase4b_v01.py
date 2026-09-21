@@ -54,7 +54,16 @@ def _write_scanner_artifacts(
     summary_path.write_text(json.dumps(summary), encoding="utf-8")
 
 
-def _write_fundamentals_artifact(root: Path, target_as_of: str, ticker: str, *, valid: bool = True) -> None:
+def _write_fundamentals_artifact(
+    root: Path,
+    target_as_of: str,
+    ticker: str,
+    *,
+    valid: bool = True,
+    operating_income: int | None = 1,
+    latest_quarter: str = "2026Q2",
+    ttm_operating_income: int | None = None,
+) -> None:
     dt_clean = target_as_of.replace("-", "")
     fund_dir = root / "artifacts/fundamentals/production" / dt_clean / "tickers"
     fund_dir.mkdir(parents=True, exist_ok=True)
@@ -63,6 +72,20 @@ def _write_fundamentals_artifact(root: Path, target_as_of: str, ticker: str, *, 
     payload = {
         "ticker": ticker,
         "requested_as_of": target_as_of,
+        "asset_type": "COMMON",
+        "f2_latest_quarter": latest_quarter,
+        "f2": {
+            "latest_quarter": latest_quarter,
+            "quarters": ([{
+                "fiscal_year": latest_quarter[:4],
+                "fiscal_period": latest_quarter[4:],
+                "metric": "operating_income",
+                "period_semantics": "STANDALONE_QUARTER",
+                "resolution_status": "READY",
+                "value": operating_income,
+            }] if operating_income is not None else []),
+        },
+        "f4": {"ttm_operating_income": ttm_operating_income},
         "f5_ready": {
             "applicability": "APPLICABLE",
             "data_status": "PARTIAL",
@@ -304,16 +327,16 @@ def test_f_missing_fundamentals_artifact_fails_closed_and_does_not_promote(tmp_p
     _default_previous_corpus(tmp_path)
     _write_scanner_artifacts(tmp_path, TARGET, _candidate_rows(["000050", "000060"]))
     _write_fundamentals_artifact(tmp_path, TARGET, "000050")
-    # 000060 fundamentals artifact 없음 (fail-closed 대상)
+    # 000060 fundamentals artifact 없음 -> publication filter에서 제외
 
     result = phase4b.run_phase4b(TARGET, root=tmp_path)
 
-    assert result["promoted"] is False
-    assert result["generation_error_count"] == 1
-    errored = {e["ticker"] for e in result["generation_errors"]}
-    assert errored == {"000060"}
+    assert result["promoted"] is True
+    assert result["generation_error_count"] == 0
+    assert result["fundamentals_unavailable_count"] == 1
+    assert result["report_target_count"] == 1
     canonical_dir = tmp_path / "artifacts/reporting/stock_reports" / TARGET.replace("-", "")
-    assert not canonical_dir.exists()
+    assert {p.stem for p in (canonical_dir / "json").glob("*.json")} == {"000050"}
 
 
 def test_f_fundamentals_helper_raises_on_missing_artifact(tmp_path):
@@ -520,6 +543,110 @@ def test_continuity_e_previous_open_missing_from_current_common_fails_closed():
             current_common={"A", "B"},
             current_candidates=set(),
         )
+
+
+# ==================================================================================
+# Latest-quarter standalone operating-profit publication filter
+# ==================================================================================
+
+
+def _latest_profit_artifact(value: int | None, *, ttm: int | None = None) -> dict:
+    return {
+        "requested_as_of": TARGET,
+        "f2_latest_quarter": "2026Q2",
+        "f2": {
+            "latest_quarter": "2026Q2",
+            "quarters": ([{
+                "fiscal_year": "2026",
+                "fiscal_period": "Q2",
+                "metric": "operating_income",
+                "period_semantics": "STANDALONE_QUARTER",
+                "resolution_status": "READY",
+                "value": value,
+            }] if value is not None else []),
+        },
+        "f4": {"ttm_operating_income": ttm},
+    }
+
+
+def test_fundamentals_filter_latest_quarter_positive_includes():
+    result = phase4b.classify_latest_quarter_operating_profit(_latest_profit_artifact(10), target_as_of=TARGET)
+    assert result.status == phase4b.LATEST_QUARTER_OPERATING_PROFIT_POSITIVE
+
+
+def test_fundamentals_filter_zero_excludes():
+    result = phase4b.classify_latest_quarter_operating_profit(_latest_profit_artifact(0), target_as_of=TARGET)
+    assert result.status == phase4b.LATEST_QUARTER_OPERATING_PROFIT_NON_POSITIVE
+
+
+def test_fundamentals_filter_negative_excludes():
+    result = phase4b.classify_latest_quarter_operating_profit(_latest_profit_artifact(-10), target_as_of=TARGET)
+    assert result.status == phase4b.LATEST_QUARTER_OPERATING_PROFIT_NON_POSITIVE
+
+
+def test_fundamentals_filter_unavailable_excludes():
+    result = phase4b.classify_latest_quarter_operating_profit(_latest_profit_artifact(None), target_as_of=TARGET)
+    assert result.status == phase4b.LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE
+
+
+def test_fundamentals_filter_previous_open_positive_is_included():
+    target, _ = phase4b.filter_report_target_by_fundamentals(
+        existing_report_target={"A"}, previous_open={"A"},
+        statuses={"A": phase4b.LatestQuarterOperatingProfit("POSITIVE", value=10)},
+    )
+    assert target == ["A"]
+
+
+def test_fundamentals_filter_previous_open_non_positive_is_rescued():
+    target, audit = phase4b.filter_report_target_by_fundamentals(
+        existing_report_target={"A"}, previous_open={"A"},
+        statuses={"A": phase4b.LatestQuarterOperatingProfit("NON_POSITIVE", value=-1)},
+    )
+    assert target == ["A"]
+    assert audit["rescued_previous_open_count"] == 1
+
+
+def test_fundamentals_filter_previous_open_unavailable_is_rescued():
+    target, audit = phase4b.filter_report_target_by_fundamentals(
+        existing_report_target={"A"}, previous_open={"A"},
+        statuses={"A": phase4b.LatestQuarterOperatingProfit("UNAVAILABLE")},
+    )
+    assert target == ["A"]
+    assert audit["rescued_previous_open_count"] == 1
+
+
+def test_fundamentals_filter_ttm_positive_does_not_rescue_latest_loss():
+    status = phase4b.classify_latest_quarter_operating_profit(
+        _latest_profit_artifact(-1, ttm=100), target_as_of=TARGET,
+    )
+    target, _ = phase4b.filter_report_target_by_fundamentals(
+        existing_report_target={"A"}, previous_open=set(),
+        statuses={"A": status},
+    )
+    assert target == []
+
+
+def test_fundamentals_filter_latest_positive_ignores_ttm_value():
+    status = phase4b.classify_latest_quarter_operating_profit(
+        _latest_profit_artifact(1, ttm=-100), target_as_of=TARGET,
+    )
+    target, _ = phase4b.filter_report_target_by_fundamentals(
+        existing_report_target={"A"}, previous_open=set(),
+        statuses={"A": status},
+    )
+    assert target == ["A"]
+
+
+def test_fundamentals_filter_does_not_add_ticker_outside_existing_target():
+    target, audit = phase4b.filter_report_target_by_fundamentals(
+        existing_report_target={"A"}, previous_open=set(),
+        statuses={
+            "A": phase4b.LatestQuarterOperatingProfit("POSITIVE", value=1),
+            "B": phase4b.LatestQuarterOperatingProfit("POSITIVE", value=1),
+        },
+    )
+    assert target == ["A"]
+    assert audit["filtered_target_count"] == 1
 
 
 # --- B. non-COMMON 제외 (audit_previous_corpus 레벨) --------------------------------

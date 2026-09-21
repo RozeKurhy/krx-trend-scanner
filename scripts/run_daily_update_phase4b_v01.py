@@ -23,6 +23,13 @@ target day's own -- possibly partial -- directory). Every previously published
 out of the current Scanner COMMON universe, this run fails closed
 (``OPEN_POSITION_OUTSIDE_CURRENT_COMMON``) instead of silently including or
 dropping it.
+
+The existing target is then filtered by the canonical latest-quarter standalone
+operating-income observation:
+
+    (existing_report_target ∩ latest_quarter_operating_profit_positive) ∪ previous_open
+
+The filter never reads TTM/annual values and never turns unavailable data into zero.
 """
 
 from __future__ import annotations
@@ -31,9 +38,11 @@ import argparse
 import csv
 import json
 import logging
+import math
 import re
 import shutil
 import tempfile
+import time
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import dataclass
@@ -55,6 +64,9 @@ logger = logging.getLogger("run_daily_update_phase4b_v01")
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
 EXPECTED_REPORT_VERSION = "0.5"
+LATEST_QUARTER_OPERATING_PROFIT_POSITIVE = "POSITIVE"
+LATEST_QUARTER_OPERATING_PROFIT_NON_POSITIVE = "NON_POSITIVE"
+LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE = "UNAVAILABLE"
 
 
 class Phase4BError(RuntimeError):
@@ -239,6 +251,168 @@ def compute_report_target(
         )
     continuity = previous_common & current_common
     return sorted(continuity | current_candidates)
+
+
+@dataclass(frozen=True)
+class LatestQuarterOperatingProfit:
+    """Canonical latest-quarter standalone operating-income classification."""
+
+    status: str
+    latest_quarter: str | None = None
+    value: int | float | None = None
+    reason: str | None = None
+
+
+def classify_latest_quarter_operating_profit(
+    artifact: dict[str, Any], *, target_as_of: str | None = None,
+) -> LatestQuarterOperatingProfit:
+    """Classify only the canonical latest standalone quarter operating income.
+
+    The source is the production F2 artifact's ``latest_quarter`` and
+    ``quarters`` observations. TTM, annual, margins, revenue and net income
+    are deliberately not consulted. Missing, ambiguous or future observations
+    remain unavailable.
+    """
+    f2 = artifact.get("f2")
+    if not isinstance(f2, dict):
+        return LatestQuarterOperatingProfit(
+            LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE, reason="F2_MISSING",
+        )
+    top_level_latest = artifact.get("f2_latest_quarter")
+    f2_latest = f2.get("latest_quarter")
+    if top_level_latest and f2_latest and str(top_level_latest) != str(f2_latest):
+        return LatestQuarterOperatingProfit(
+            LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE, reason="LATEST_QUARTER_MISMATCH",
+        )
+    latest = str(top_level_latest or f2_latest or "").strip()
+    match = re.fullmatch(r"(\d{4})(Q[1-4])", latest)
+    if match is None:
+        return LatestQuarterOperatingProfit(
+            LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE,
+            latest_quarter=latest or None,
+            reason="LATEST_QUARTER_UNAVAILABLE",
+        )
+
+    year, quarter = match.groups()
+    observations = [
+        item for item in (f2.get("quarters") or ())
+        if isinstance(item, dict)
+        and str(item.get("fiscal_year")) == year
+        and str(item.get("fiscal_period")) == quarter
+        and item.get("metric") == "operating_income"
+        and item.get("period_semantics") == "STANDALONE_QUARTER"
+        and item.get("resolution_status") == "READY"
+    ]
+    if target_as_of is not None:
+        target_clean = target_as_of.replace("-", "")
+        observations = [
+            item for item in observations
+            if not item.get("pit_available_from")
+            or str(item.get("pit_available_from")).replace("-", "")[:8] <= target_clean
+        ]
+    numeric = [
+        item for item in observations
+        if isinstance(item.get("value"), (int, float))
+        and not isinstance(item.get("value"), bool)
+        and math.isfinite(float(item.get("value")))
+    ]
+    if len(numeric) != 1:
+        return LatestQuarterOperatingProfit(
+            LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE,
+            latest_quarter=latest,
+            reason="LATEST_QUARTER_OPERATING_INCOME_UNAVAILABLE",
+        )
+    value = numeric[0]["value"]
+    return LatestQuarterOperatingProfit(
+        LATEST_QUARTER_OPERATING_PROFIT_POSITIVE if value > 0 else LATEST_QUARTER_OPERATING_PROFIT_NON_POSITIVE,
+        latest_quarter=latest,
+        value=value,
+    )
+
+
+def load_latest_quarter_operating_profit(
+    root: Path, ticker: str, target_as_of: str,
+) -> LatestQuarterOperatingProfit:
+    """Read one exact-target production Fundamentals artifact read-only."""
+    day = target_as_of.replace("-", "")
+    ticker_dir = root / "artifacts/fundamentals/production" / day / "tickers"
+    if not ticker_dir.is_dir():
+        raise Phase4BError(f"PHASE4B_FUNDAMENTALS_SOURCE_MISSING: {ticker_dir}")
+    if not any(ticker_dir.glob("*.json")):
+        raise Phase4BError(f"PHASE4B_FUNDAMENTALS_SOURCE_EMPTY: {ticker_dir}")
+    path = ticker_dir / f"{ticker}.json"
+    if not path.exists():
+        return LatestQuarterOperatingProfit(
+            LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE, reason="FUNDAMENTALS_ARTIFACT_MISSING",
+        )
+    try:
+        artifact = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return LatestQuarterOperatingProfit(
+            LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE, reason="FUNDAMENTALS_ARTIFACT_INVALID",
+        )
+    if artifact.get("requested_as_of") != target_as_of:
+        return LatestQuarterOperatingProfit(
+            LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE, reason="FUNDAMENTALS_REQUESTED_AS_OF_MISMATCH",
+        )
+    if artifact.get("asset_type") not in (None, "COMMON"):
+        return LatestQuarterOperatingProfit(
+            LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE, reason="FUNDAMENTALS_NOT_COMMON",
+        )
+    return classify_latest_quarter_operating_profit(artifact, target_as_of=target_as_of)
+
+
+def filter_report_target_by_fundamentals(
+    *,
+    existing_report_target: set[str],
+    previous_open: set[str],
+    statuses: dict[str, LatestQuarterOperatingProfit],
+) -> tuple[list[str], dict[str, Any]]:
+    """Apply the Phase 4B publication filter while protecting previous OPEN."""
+    missing_open = previous_open - existing_report_target
+    if missing_open:
+        raise Phase4BError(
+            f"PREVIOUS_OPEN_NOT_IN_EXISTING_REPORT_TARGET: {sorted(missing_open)}"
+        )
+    positive = {
+        ticker for ticker in existing_report_target
+        if statuses.get(ticker, LatestQuarterOperatingProfit(
+            LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE,
+            reason="STATUS_MISSING",
+        )).status == LATEST_QUARTER_OPERATING_PROFIT_POSITIVE
+    }
+    non_positive = {
+        ticker for ticker in existing_report_target
+        if statuses.get(ticker, LatestQuarterOperatingProfit(
+            LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE,
+            reason="STATUS_MISSING",
+        )).status == LATEST_QUARTER_OPERATING_PROFIT_NON_POSITIVE
+    }
+    unavailable = existing_report_target - positive - non_positive
+    rescued = previous_open & (non_positive | unavailable)
+    final_target = sorted((existing_report_target & positive) | previous_open)
+    reason_counts = Counter(
+        (statuses.get(ticker) or LatestQuarterOperatingProfit(
+            LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE,
+            reason="STATUS_MISSING",
+        )).reason or "NONE"
+        for ticker in unavailable
+    )
+    return final_target, {
+        "existing_report_target_count": len(existing_report_target),
+        "fundamentals_positive_count": len(positive),
+        "fundamentals_non_positive_count": len(non_positive),
+        "fundamentals_unavailable_count": len(unavailable),
+        "previous_open_count": len(previous_open),
+        "rescued_previous_open_count": len(rescued),
+        "filtered_target_count": len(final_target),
+        "target_reduction_count": len(existing_report_target) - len(final_target),
+        "target_reduction_pct": (
+            (len(existing_report_target) - len(final_target)) / len(existing_report_target) * 100
+            if existing_report_target else 0.0
+        ),
+        "fundamentals_unavailable_reason_counts": dict(reason_counts),
+    }
 
 
 def summarize_corpus_positions(staging_dir: Path) -> dict[str, Any]:
@@ -440,6 +614,7 @@ def promote_staging(staging_dir: Path, canonical_dir: Path) -> None:
 
 
 def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -> dict[str, Any]:
+    phase4b_started = time.perf_counter()
     rows, summary = load_and_validate_scanner_input(root, target_as_of)
     reference_market_date = str(summary["reference_market_date"])
     current_common = compute_current_common(rows)
@@ -448,20 +623,36 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
     previous_dir = find_previous_canonical_report_dir(root, target_as_of)
     previous_audit = audit_previous_corpus(previous_dir)
 
-    target_tickers = compute_report_target(
+    existing_report_target = set(compute_report_target(
         previous_common=previous_audit.common,
         previous_open=previous_audit.open_tickers,
         current_common=current_common,
         current_candidates=current_candidates,
+    ))
+    fundamentals_statuses = {
+        ticker: load_latest_quarter_operating_profit(root, ticker, target_as_of)
+        for ticker in sorted(existing_report_target)
+    }
+    target_tickers, fundamentals_filter = filter_report_target_by_fundamentals(
+        existing_report_target=existing_report_target,
+        previous_open=previous_audit.open_tickers,
+        statuses=fundamentals_statuses,
     )
     target_ticker_set = set(target_tickers)
     continuity_count = len(previous_audit.common & current_common)
 
     logger.info(
         "Phase 4B target=%s: previous_dir=%s previous_common=%d previous_open=%d "
-        "current_common=%d current_candidates=%d continuity=%d final_target=%d max_workers=%d",
+        "current_common=%d current_candidates=%d continuity=%d existing_target=%d "
+        "positive=%d non_positive=%d unavailable=%d rescued_open=%d final_target=%d max_workers=%d",
         target_as_of, previous_dir.name, len(previous_audit.common), len(previous_audit.open_tickers),
-        len(current_common), len(current_candidates), continuity_count, len(target_tickers), max_workers,
+        len(current_common), len(current_candidates), continuity_count,
+        fundamentals_filter["existing_report_target_count"],
+        fundamentals_filter["fundamentals_positive_count"],
+        fundamentals_filter["fundamentals_non_positive_count"],
+        fundamentals_filter["fundamentals_unavailable_count"],
+        fundamentals_filter["rescued_previous_open_count"],
+        len(target_tickers), max_workers,
     )
 
     # max_workers > 1이면 각 워커 프로세스가 자신만의 Repository V2를 1회 생성해
@@ -513,6 +704,7 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
         else:
             logger.error("Phase 4B validation failed; canonical directory NOT promoted (staging discarded).")
 
+    phase4b_runtime_seconds = time.perf_counter() - phase4b_started
     result = {
         "target_as_of": target_as_of,
         "requested_as_of": target_as_of,
@@ -528,11 +720,18 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
         "continuity_count": continuity_count,
         "new_candidate_count": len(current_candidates - previous_audit.common),
         "previous_common_removed_count": len(previous_audit.common - current_common),
+        **fundamentals_filter,
         "report_target_count": len(target_tickers),
         "generation_error_count": len(errors),
         "generation_errors": [{"ticker": o.ticker, "error": o.error} for o in errors],
         **corpus,
         **positions,
+        "report_generated_count": corpus["json_count"],
+        "phase4b_runtime_seconds": phase4b_runtime_seconds,
+        "reports_per_minute": (
+            corpus["json_count"] / (phase4b_runtime_seconds / 60)
+            if phase4b_runtime_seconds > 0 else 0.0
+        ),
         "promoted": promoted,
         "canonical_dir": str(canonical_dir) if promoted else None,
     }
