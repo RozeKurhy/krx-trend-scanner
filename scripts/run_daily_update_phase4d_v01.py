@@ -83,8 +83,56 @@ def _report_tickers(index: dict[str, Any]) -> set[str]:
     }
 
 
-def _stage_payloads(target_as_of: str, stage_data: Path) -> dict[str, Any]:
-    phase4c_result = phase4c.run_phase4c(target_as_of, root=ROOT)
+_STALE_PUBLISHED_CODES = frozenset(
+    {
+        "PHASE4D_STOCK_DATE_MISMATCH",
+        "PHASE4D_DATE_MISMATCH",
+        "PHASE4D_MARKET_AS_OF_MISMATCH",
+    }
+)
+
+
+def inspect_published_payload(root: Path, target_as_of: str) -> dict[str, Any] | None:
+    """Validate an already-published exact-target payload without writing.
+
+    ``None`` means the publication is absent or belongs to another target, so the
+    caller may proceed with the normal staging path.  A present-but-malformed or
+    internally inconsistent exact-target publication raises the existing Phase 4D
+    validation error instead of being silently treated as a NOOP.
+    """
+
+    web_data = root / "web/data"
+    if any(not (web_data / name).is_file() for name in REQUIRED_FILES):
+        return None
+    if not (web_data / "stocks").is_dir():
+        return None
+
+    try:
+        scanner_summary = phase4c.load_scanner_summary(root, target_as_of)
+    except phase4c.Phase4CError:
+        return None
+    reference_market_date = str(scanner_summary["reference_market_date"])
+    try:
+        validation = validate_staging(web_data, target_as_of, reference_market_date)
+    except Phase4DError as exc:
+        code = str(exc).split(":", 1)[0]
+        if code in _STALE_PUBLISHED_CODES:
+            return None
+        raise
+    return {
+        "reference_market_date": reference_market_date,
+        "validation": validation,
+    }
+
+
+def _stage_payloads(
+    target_as_of: str,
+    stage_data: Path,
+    *,
+    phase4c_result: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if phase4c_result is None:
+        phase4c_result = phase4c.run_phase4c(target_as_of, root=ROOT)
     if phase4c_result.get("status") != "PASS" or phase4c_result.get("network_calls") != 0:
         raise Phase4DError("PHASE4D_PHASE4C_PREREQUISITE_FAILED")
     if phase4c_result.get("web_data_writes") != 0:
@@ -229,15 +277,33 @@ def promote(stage_data: Path, web_data: Path) -> None:
             shutil.rmtree(backup)
 
 
-def run_phase4d(target_as_of: str, *, execute_live: bool, root: Path = ROOT) -> dict[str, Any]:
+def run_phase4d(
+    target_as_of: str,
+    *,
+    execute_live: bool,
+    root: Path = ROOT,
+    phase4c_result: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     if root != ROOT:
         raise Phase4DError("PHASE4D_REPOSITORY_ROOT_MISMATCH")
+    published = inspect_published_payload(root, target_as_of)
+    if published is not None:
+        return {
+            "status": "NOOP_ALREADY_COMPLETE",
+            "target_as_of": target_as_of,
+            "requested_as_of": target_as_of,
+            "reference_market_date": published["reference_market_date"],
+            "execute_live": execute_live,
+            "network_calls": 0,
+            "web_data_writes": 0,
+            "published": published["validation"],
+        }
     web_data = root / "web/data"
     stage_root = Path(tempfile.mkdtemp(prefix=".phase4d-stage-", dir=web_data.parent))
     try:
         stage_data = stage_root / "data"
         stage_data.mkdir()
-        context = _stage_payloads(target_as_of, stage_data)
+        context = _stage_payloads(target_as_of, stage_data, phase4c_result=phase4c_result)
         validation = validate_staging(stage_data, target_as_of, context["reference_market_date"])
         if execute_live:
             promote(stage_data, web_data)

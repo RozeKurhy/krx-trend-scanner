@@ -11,10 +11,12 @@ from __future__ import annotations
 import argparse
 from collections.abc import Iterable, Mapping
 from datetime import date
+import inspect
 import json
 from pathlib import Path
 import re
 import sys
+from types import SimpleNamespace
 from typing import Any, Callable
 
 
@@ -91,23 +93,166 @@ def synthesize_overall_status(statuses: Iterable[str]) -> str:
     return PASS
 
 
-def _exception_status(exc: BaseException) -> str:
-    """Classify expected fail-closed phase errors without inventing statuses."""
+_BLOCKED_ERROR_CODES = frozenset(
+    {
+        "ROLLING_PRODUCTION_CALENDAR_UNAVAILABLE",
+        "ROLLING_PRODUCTION_CALENDAR_INVALID",
+        "ROLLING_PRODUCTION_CALENDAR_NO_DATE_AT_OR_BEFORE",
+        "PHASE4B_SCANNER_CSV_MISSING",
+        "PHASE4B_SCANNER_SUMMARY_MISSING",
+        "PHASE4B_SCANNER_REQUESTED_AS_OF_MISMATCH",
+        "PHASE4B_SCANNER_REFERENCE_MARKET_DATE_MISSING",
+        "PHASE4B_SCANNER_REFERENCE_MARKET_DATE_AFTER_TARGET",
+        "PHASE4B_PREVIOUS_CORPUS_NOT_FOUND",
+        "OPEN_POSITION_OUTSIDE_CURRENT_COMMON",
+        "PHASE4C_SCANNER_SUMMARY_MISSING",
+        "PHASE4C_SCANNER_REQUESTED_AS_OF_MISMATCH",
+        "PHASE4C_SCANNER_REFERENCE_MARKET_DATE_MISSING",
+        "PHASE4C_SCANNER_REFERENCE_MARKET_DATE_AFTER_TARGET",
+        "PHASE4C_BASIC_INFO_DIR_NOT_FOUND",
+        "PHASE4C_BASIC_INFO_NO_SNAPSHOT_ON_OR_BEFORE_TARGET",
+        "PHASE4C_REPORT_CORPUS_MISSING",
+        "PHASE4C_REPORT_CORPUS_EMPTY",
+        "PHASE4C_SECTOR_RS_AUTHORITY_MISSING",
+        "PHASE4C_FOREIGN_NET_BUY_AUTHORITY_MISSING",
+        "PHASE4C_SECTOR_RS_REQUESTED_AS_OF_MISMATCH",
+        "PHASE4C_SECTOR_RS_REFERENCE_MARKET_DATE_MISMATCH",
+        "PHASE4C_SECTOR_RS_AS_OF_MISMATCH",
+        "PHASE4C_FOREIGN_NET_BUY_REQUESTED_AS_OF_MISMATCH",
+        "PHASE4C_FOREIGN_NET_BUY_REFERENCE_MARKET_DATE_MISMATCH",
+        "PHASE4C_FOREIGN_NET_BUY_AS_OF_MISMATCH",
+        "PHASE4C_MARKET_RS_REQUESTED_AS_OF_MISMATCH",
+        "PHASE4C_MARKET_RS_REFERENCE_MARKET_DATE_MISMATCH",
+        "PHASE4C_HEALTH_DATE_MISMATCH",
+        "PHASE4D_REPOSITORY_ROOT_MISMATCH",
+        "PHASE4D_PHASE4C_PREREQUISITE_FAILED",
+        "PHASE4D_REFERENCE_MARKET_DATE_INVALID",
+    }
+)
 
-    name = type(exc).__name__
-    message = str(exc).upper()
-    if name in {"Phase4BError", "Phase4CError", "Phase4DError"}:
+
+def _exception_status(exc: BaseException, *, phase_name: str | None = None) -> str:
+    """Classify errors using explicit contract codes, never exception class names."""
+
+    del phase_name  # Reserved for phase-specific mappings added by the owning contract.
+    if isinstance(exc, FileNotFoundError):
         return BLOCKED
-    blocked_markers = (
-        "BLOCKED",
-        "MISSING",
-        "UNAVAILABLE",
-        "NO_DATE",
-        "MISMATCH",
-        "REQUIRED_INPUT",
-        "AUTHORITY",
+    if isinstance(exc, json.JSONDecodeError):
+        return FAILED
+    code = str(exc).split(":", 1)[0]
+    return BLOCKED if code in _BLOCKED_ERROR_CODES else FAILED
+
+
+def _failed_precheck(exc: BaseException) -> dict[str, Any]:
+    return {
+        "status": _exception_status(exc),
+        "error": str(exc),
+        "error_type": type(exc).__name__,
+    }
+
+
+def _phase4a_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] | None:
+    csv_path, summary_path = phase4b._scanner_paths(root, target_as_of)
+    if not csv_path.is_file() or not summary_path.is_file():
+        return None
+    rows, summary = phase4b.load_and_validate_scanner_input(root, target_as_of)
+    phase4a.validate_full_common_scan(
+        SimpleNamespace(**summary),
+        is_full_common_scan=True,
     )
-    return BLOCKED if any(marker in message for marker in blocked_markers) else FAILED
+    return {
+        "status": NOOP_ALREADY_COMPLETE,
+        "target_as_of": target_as_of,
+        "requested_as_of": target_as_of,
+        "reference_market_date": summary["reference_market_date"],
+        "scanner_rows": len(rows),
+        "reason": "VALID_EXACT_TARGET_SCANNER_ARTIFACTS",
+    }
+
+
+def _phase4b_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] | None:
+    canonical_dir = root / "artifacts/reporting/stock_reports" / target_as_of.replace("-", "")
+    json_dir = canonical_dir / "json"
+    json_paths = list(json_dir.glob("*.json")) if json_dir.is_dir() else []
+    markdown_paths = list(canonical_dir.glob("*.md")) if canonical_dir.is_dir() else []
+    if not json_paths and not markdown_paths:
+        return None
+
+    rows, summary = phase4b.load_and_validate_scanner_input(root, target_as_of)
+    reference_market_date = str(summary["reference_market_date"])
+    previous_dir = phase4b.find_previous_canonical_report_dir(root, target_as_of)
+    previous_audit = phase4b.audit_previous_corpus(previous_dir)
+    target_tickers = set(
+        phase4b.compute_report_target(
+            previous_common=previous_audit.common,
+            previous_open=previous_audit.open_tickers,
+            current_common=phase4b.compute_current_common(rows),
+            current_candidates=set(phase4b.select_candidate_tickers(rows)),
+        )
+    )
+    corpus = phase4b.validate_corpus(
+        canonical_dir,
+        target_tickers,
+        target_as_of,
+        reference_market_date,
+    )
+    valid = (
+        corpus["json_count"] == len(target_tickers)
+        and corpus["markdown_count"] == len(target_tickers)
+        and not corpus["missing_tickers"]
+        and not corpus["extra_tickers"]
+        and not corpus["markdown_missing_tickers"]
+        and not corpus["markdown_extra_tickers"]
+        and corpus["json_ticker_duplicate_count"] == 0
+        and corpus["markdown_ticker_duplicate_count"] == 0
+        and corpus["report_version_mismatch_count"] == 0
+        and corpus["strategy_id_mismatch_count"] == 0
+        and corpus["date_mismatch_count"] == 0
+    )
+    if not valid:
+        return {
+            "status": FAILED,
+            "target_as_of": target_as_of,
+            "requested_as_of": target_as_of,
+            "error": "PHASE4B_EXISTING_CORPUS_INVALID",
+            "validation": corpus,
+        }
+    return {
+        "status": NOOP_ALREADY_COMPLETE,
+        "target_as_of": target_as_of,
+        "requested_as_of": target_as_of,
+        "reference_market_date": reference_market_date,
+        "report_target_count": len(target_tickers),
+        "reason": "VALID_EXACT_TARGET_REPORT_CORPUS",
+    }
+
+
+def _phase4c_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] | None:
+    published = phase4d.inspect_published_payload(root, target_as_of)
+    if published is None:
+        return None
+    return {
+        "status": NOOP_ALREADY_COMPLETE,
+        "target_as_of": target_as_of,
+        "requested_as_of": target_as_of,
+        "reference_market_date": published["reference_market_date"],
+        "validation": published["validation"],
+        "reason": "VALID_PUBLISHED_PHASE4D_PAYLOAD",
+    }
+
+
+def _phase4d_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] | None:
+    published = phase4d.inspect_published_payload(root, target_as_of)
+    if published is None:
+        return None
+    return {
+        "status": NOOP_ALREADY_COMPLETE,
+        "target_as_of": target_as_of,
+        "requested_as_of": target_as_of,
+        "reference_market_date": published["reference_market_date"],
+        "validation": published["validation"],
+        "reason": "VALID_EXACT_TARGET_WEB_PAYLOAD",
+    }
 
 
 def run_phase4a(target_as_of: str, *, root: Path = ROOT) -> dict[str, Any]:
@@ -133,10 +278,16 @@ def run_phase4d(
     *,
     execute_live: bool,
     root: Path = ROOT,
+    phase4c_result: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Call the existing Phase 4D runner with its explicit live flag."""
 
-    return phase4d.run_phase4d(target_as_of, execute_live=execute_live, root=root)
+    return phase4d.run_phase4d(
+        target_as_of,
+        execute_live=execute_live,
+        root=root,
+        phase4c_result=phase4c_result,
+    )
 
 
 def _run_one(
@@ -146,17 +297,25 @@ def _run_one(
     *,
     execute_live: bool = False,
     root: Path,
+    phase4c_result: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     try:
+        kwargs: dict[str, Any] = {"root": root}
         if phase_name == "4D":
-            raw_result = runner(target_as_of, execute_live=execute_live, root=root)
-        else:
-            raw_result = runner(target_as_of, root=root)
+            kwargs["execute_live"] = execute_live
+            parameters = inspect.signature(runner).parameters
+            accepts_context = "phase4c_result" in parameters or any(
+                parameter.kind is inspect.Parameter.VAR_KEYWORD
+                for parameter in parameters.values()
+            )
+            if phase4c_result is not None and accepts_context:
+                kwargs["phase4c_result"] = phase4c_result
+        raw_result = runner(target_as_of, **kwargs)
         status = normalize_status(raw_result)
         return {"status": status, "result": raw_result}
     except Exception as exc:  # phase boundary: preserve the error as structured diagnostic
         return {
-            "status": _exception_status(exc),
+            "status": _exception_status(exc, phase_name=phase_name),
             "error": str(exc),
             "error_type": type(exc).__name__,
         }
@@ -178,16 +337,34 @@ def run_phase4e(
         ("4C", run_phase4c),
         ("4D", run_phase4d),
     )
+    phase_prechecks: dict[str, Callable[..., dict[str, Any] | None]] = {
+        "4A": _phase4a_noop_precheck,
+        "4B": _phase4b_noop_precheck,
+        "4C": _phase4c_noop_precheck,
+        "4D": _phase4d_noop_precheck,
+    }
 
     phases: dict[str, dict[str, Any]] = {}
     for phase_name, runner in phase_runners:
-        phase_result = _run_one(
-            phase_name,
-            target_as_of,
-            runner,
-            execute_live=execute_live,
-            root=root,
-        )
+        try:
+            prechecked = phase_prechecks[phase_name](target_as_of, root=root)
+        except Exception as exc:
+            prechecked = _failed_precheck(exc)
+        if prechecked is not None:
+            phase_result = {
+                "status": normalize_status(prechecked),
+                "result": prechecked,
+            }
+        else:
+            phase4c_context = (phases.get("4C") or {}).get("result")
+            phase_result = _run_one(
+                phase_name,
+                target_as_of,
+                runner,
+                execute_live=execute_live,
+                root=root,
+                phase4c_result=phase4c_context if isinstance(phase4c_context, dict) else None,
+            )
         phases[phase_name] = phase_result
         if phase_result["status"] in {FAILED, BLOCKED}:
             break
