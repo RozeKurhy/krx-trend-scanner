@@ -3,9 +3,9 @@
 ## 목적
 
 이 문서는 `MultiPeriodFundamentalsResult` 또는 동일한 정본
-`PeriodizedFinancialObservation` 집합에서 계산하는 일반회사(NON_FINANCIAL)
+`PeriodizedFinancialObservation` 집합에서 계산하는 일반회사(`NON_FINANCIAL`)
 자본효율성 파생지표의 계약을 정의한다. 원천 API/XBRL을 직접 호출하지
-않으며 기존 DerivedMetricsEngine의 PIT와 출처 추적(provenance) 경계를
+않으며 기존 `DerivedMetricsEngine`의 PIT와 출처 추적 정보 경계를
 재사용한다.
 
 ## 지표 정의
@@ -29,10 +29,9 @@ annual net income / ((previous FY-end equity + current FY-end equity) / 2) * 100
 
 `TTM_ROE`
 
-기존 DerivedMetricsEngine의 최신 4개 연속 독립 분기(standalone quarter)
-`TTM` 순이익 결과를 사용한다. TTM 시작 직전 분기말 자기자본과 종료 시점
-분기말 자기자본의 평균을 분모로 사용한다. 분기별 연환산(annualized) ROE는
-만들지 않는다.
+기존 `DerivedMetricsEngine`의 최신 4개 연속 독립 분기 `TTM` 순이익 결과를
+사용한다. TTM 시작 직전 분기말 자기자본과 종료 시점 분기말 자기자본의
+평균을 분모로 사용한다. 분기별 연환산 ROE는 만들지 않는다.
 
 ### 부채비율
 
@@ -46,21 +45,21 @@ annual net income / ((previous FY-end equity + current FY-end equity) / 2) * 100
 liabilities / equity * 100
 ```
 
-대차대조표 시점 지표(balance-sheet instant metric)이며 TTM으로 계산하거나
+대차대조표 시점 지표이며 TTM으로 계산하거나
 `TTM Debt Ratio`로 이름 붙이지 않는다. `Q1_END`, `H1_END`, `Q3_END`,
 `FY_END` 시점에서만 생성한다.
 
 ## 입력과 안전성 규칙
 
 - 입력은 `MultiPeriodFundamentalsResult`의 `canonical_observations`를
-  직접 소비할 수 있으며, 기존 PeriodizationResult/iterable 입력도 계속
-  지원한다.
+  직접 소비할 수 있으며, 기존 `PeriodizationResult`/`iterable` 입력도
+  계속 지원한다.
 - 모든 원천 관측값은 `pit_available_from <= requested_as_of`여야 한다.
   미래·미확인·모호한 입력은 `READY`로 승격하지 않는다.
 - 연간 ROE의 순이익/직전 자기자본/당기 자기자본, TTM ROE의 네 분기
   순이익/기초 자기자본/기말 자기자본, 부채비율의 부채/자기자본은
   재무제표 기준(`fs_div_used`)과 통화가 일치해야 한다. 불일치하면 각각
-  `BASIS_MISMATCH` 또는 `CURRENCY_MISMATCH`로 fail-closed한다.
+  `BASIS_MISMATCH` 또는 `CURRENCY_MISMATCH`로 실패 시 차단한다.
 - ROE 평균 자기자본이 0 이하이면 `UNDEFINED_BASE`/
   `NON_POSITIVE_AVERAGE_EQUITY_BASE`이다.
 - 부채비율 자기자본이 0 이하이면 `UNDEFINED_BASE`/
