@@ -67,7 +67,7 @@ artifacts/patterns/pattern_a/production/scanner/
 
 4단계 운영 호출은 `target_as_of`와 1단계가 인증한
 `reference_market_date`, Repository V2, PIT COMMON 유니버스를 명시적으로
-전달한다. 시스템 날짜, 최신 파일 날짜, 생략 인자 fallback을 기준일로
+전달한다. 시스템 날짜, 최신 파일 날짜, 생략 인자 대체 경로를 기준일로
 사용하지 않는다.
 
 ### 3.2 공식 전략과 Stock Report
@@ -80,7 +80,7 @@ artifacts/patterns/pattern_a/production/scanner/
 `generate_stock_report()`와 `build_a_fast_core_section()`은
 `requested_as_of` 이하의 입력을 사용한다. 리포트는 외국인 수급, 펀더멘털,
 시장 RS, 업종 RS와 A FAST Core V2를 기존 섹션으로 소비하며, v0.5의
-펀더멘털 section은 이미 생성된 F2/F3/F4 결과를 주입받을 뿐 OpenDART를
+펀더멘털 섹션은 이미 생성된 F2/F3/F4 결과를 주입받을 뿐 OpenDART를
 호출하거나 필터를 다시 계산하지 않는다.
 
 리포트 공식 버전은 Stock Report v0.5뿐이며 출력 위치는 다음과 같다.
@@ -94,7 +94,7 @@ artifacts/reporting/stock_reports/{YYYYMMDD}/
 4단계의 모든 리포트 생성은 `requested_as_of == target_as_of`와
 `reference_market_date ==` 스캐너가 확정한 실제 시장 기준 거래일을 명시하고,
 스캐너 결과를 유일한 후보 입력으로 소비한다. 리포트가 스캐너를 독립
-재실행하거나 다른 reference date·날짜 후보를 fallback하는 것은 허용하지
+재실행하거나 다른 기준 거래일·날짜 후보를 대체 경로로 사용하는 것은 허용하지
 않는다.
 
 ### 3.3 웹 정적 투영
@@ -105,7 +105,7 @@ artifacts/reporting/stock_reports/{YYYYMMDD}/
 | 구분 | 입력 | 웹 출력 | 계약상 역할 |
 |---|---|---|---|
 | 종목 리포트 | 날짜별 Stock Report v0.5, PIT 메타데이터, 정확한 일별 종가 | `stock-index.json`, `stocks/*.json` | 필수 구성 요소 |
-| 마켓 RS | 공개 종목 리포트 웹 payload | `market-ranking.json` | 필수 구성 요소 |
+| 마켓 RS | 공개 종목 리포트 웹 전달 데이터 | `market-ranking.json` | 필수 구성 요소 |
 | 전략 모니터 | `stock-index.json`, `stocks/*.json` | `strategy-monitor.json` | 필수 구성 요소 |
 | 섹터 RS | 업종 RS 권위, 메타데이터, 리포트 집합 | `sector-rs-ranking.json` | 필수 구성 요소 |
 | 외인 순매수 | 외국인 수급, PIT COMMON 권위, 섹터 구성; `stock-index.json`은 리포트 보유 여부만 확인 | `foreign-net-buy-ranking.json` | 필수 구성 요소 |
@@ -114,7 +114,7 @@ artifacts/reporting/stock_reports/{YYYYMMDD}/
 | ETF 랭킹 | 고정 ETF 메타데이터와 Repository V2 | `etf-ranking.json` | 선택 보조 구성 요소 |
 
 `export_market_ranking_web.py`와 `export_strategy_monitor_web.py`는 Stock
-Report 웹 payload를 입력으로 사용한다. 따라서 둘은 종목 리포트 웹 투영 후에만
+Report 웹 전달 데이터를 입력으로 사용한다. 따라서 둘은 종목 리포트 웹 투영 후에만
 실행한다. 외인 순매수의 `stock-index.json` 사용은 보통주 모집단을 정하는
 근거가 아니라 `report_available` 표시에만 한정된다.
 
@@ -124,7 +124,7 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
 `market_data`, `universe`, `fundamentals`, `stock_reports` 네 영역의 상태를
 합성하며 `analysis`와 `backtest`를 계약상 영역으로 포함하지 않는다.
 
-공포지수 exporter와 ETF exporter는 각각 승인된 연구 산출물과 Repository V2를
+공포지수 투영 스크립트와 ETF 투영 스크립트는 각각 승인된 연구 산출물과 Repository V2를
 정적 웹 결과로 투영한다. 두 결과는 선택 보조 구성 요소이며 필수 구성 요소의
 상태 합성에 포함하지 않는다.
 
@@ -132,29 +132,30 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
 
 ```text
 1~3단계의 동일 `target_as_of` 입력 인증
-  → 4A 전체 PIT COMMON 스캐너
-  → 4B A FAST Core V2 + Stock Report v0.5
-  → 4C 필수 랭킹·상태 웹 투영 입력
-  → 4D web/data 정적 투영
-  → 4E 결과 조율·상태 합성
-  → 4F 실제 1회 + 동일 기준일 재실행 검증
+  → 4E 조율기
+     ├─ 4A 전체 PIT COMMON 스캐너
+     ├─ 4B A FAST Core V2 + Stock Report v0.5
+     ├─ 4C 필수 분석 표시 결과 검증
+     └─ 4D web/data 정적 투영
 ```
 
-4C에는 마켓 RS, 섹터 RS, 외인 순매수, 전략 모니터와 웹 상태가 포함된다.
+4E 조율기는 4A~4D를 같은 `target_as_of`와 `reference_market_date`로 호출하고
+각 단계의 입력·출력을 검증한 뒤 전체 상태를 합성한다. 4C에는 마켓 RS, 섹터 RS,
+외인 순매수, 전략 모니터와 웹 상태가 포함된다.
 공포지수와 ETF는 이 순서에 붙일 수 있는 선택 보조 투영이지만, 실패해도
 필수 결과를 같은 성공으로 승격하거나 필수 완료를 차단하지 않는다. 정기적인
 섹터 구성 갱신 같은 관리 작업은 4단계 일일 완료 게이트가 아니라 3단계의
 별도 운영 주기를 따른다.
 
-## 5. 4A~4F 계약
+## 5. 4A~4E 계약
 
 ### 4A. 전체 PIT COMMON 스캐너
 
 - 입력: 인증된 1~3단계 결과와 명시적 `target_as_of`.
 - 처리: Repository V2와 rolling PIT COMMON을 사용해 전체 KOSPI/KOSDAQ 보통주를
   한 번 스캔한다. subset·limit·이전 scanner 산출물 재사용은 운영 결과가 아니다.
-- 출력: 기준일 이름의 scanner CSV와 summary JSON.
-- 검증: summary의 `requested_as_of == target_as_of`와
+- 출력: 기준일 이름의 scanner CSV와 요약 JSON.
+- 검증: 요약의 `requested_as_of == target_as_of`와
   `reference_market_date ==` 1단계 인증 시장 권위의 실제 기준 거래일을
   확인한다. `reference_market_date <= target_as_of`여야 하며, 비거래일에는
   엄격히 더 이를 수 있다. 또한 공식 COMMON 총수와 emitted row 수의 관계를
@@ -164,7 +165,7 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
 
 - 입력: 4A scanner 결과와 3단계의 외국인 수급·펀더멘털·시장 RS·업종 RS.
 - 처리: 후보를 scanner 결과에서만 받아 A FAST Core V2 상태와 Stock Report v0.5를
-  생성한다. 스캐너 재실행, 전략 재정의, 펀더멘털 hydration 또는 새 산식은 하지 않는다.
+  생성한다. 스캐너 재실행, 전략 재정의, 펀더멘털 수집·주입 또는 새 산식은 하지 않는다.
 - 출력: `artifacts/reporting/stock_reports/{YYYYMMDD}/`의 Markdown/JSON.
 - 검증: 모든 발행 리포트의 `requested_as_of`와 date directory가
   `target_as_of`에 일치하고, `reference_market_date`가 4A scanner가 확정한
@@ -175,7 +176,7 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
 
 - 입력: 4B 리포트와 3단계 권위 산출물.
 - 처리: 기존 마켓 RS, 섹터 RS, 외인 순매수, 전략 모니터, 상태 투영을 사용한다.
-- 검증: 각 필수 payload의 `requested_as_of == target_as_of`,
+- 검증: 각 필수 전달 데이터의 `requested_as_of == target_as_of`,
   `reference_market_date ==` 해당 실행의 실제 시장 기준 거래일, 입력 집합과
   공개 리포트 집합을 확인한다. 마켓 RS와 전략 모니터는 `stock-index.json` 및
   `stocks/*.json`의 일치도 함께 확인한다.
@@ -185,7 +186,7 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
 - 입력: 4B와 4C의 검증된 결과.
 - 처리: 기존 `export_*_web.py`만 사용해 `web/data/`에 투영한다. 웹 계층에서
   전략·RS·펀더멘털을 재계산하지 않는다.
-- 검증: `stock-index.json` 및 종목 JSON, 필수 ranking/monitor/health JSON에
+- 검증: `stock-index.json` 및 종목 JSON, 필수 순위·모니터·상태 JSON에
   `requested_as_of == target_as_of`와 동일 실행의 `reference_market_date`가
   일관되게 기록되고, 화면 입력 파일이 존재하며 JSON 형식이 유효한지 확인한다.
   비거래일에는 `reference_market_date < target_as_of`를 정상으로 처리한다.
@@ -209,16 +210,10 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
 `NOOP_ALREADY_COMPLETE`, 나머지 정상 조합은 `PASS`다. 선택 보조 투영과
 정기 관리 작업은 전체 상태 합성에 포함하지 않고 별도로 기록한다.
 
-### 4F. 실운영 검증
+### 동일 기준일 멱등성 원칙
 
-검증은 동일한 `target_as_of`로 두 번 수행한다.
-
-1. 첫 실행: 모든 필수 4A~4D 결과의 날짜·입력·출력·상태를 검증한다.
-2. 같은 기준일 재실행: 새 외부 호출·새 계산·파일 변경 없이 모든 필수 단위가
-   `NOOP_ALREADY_COMPLETE`인지 검증한다.
-
-두 실행 중 하나라도 기준일 혼합, 독립 scanner 재실행, 대체 경로 또는 필수
-검증 실패가 있으면 4단계는 완료로 승격하지 않는다.
+동일한 입력과 동일한 `target_as_of`로 다시 실행했을 때 이미 유효한 결과가
+존재하면 불필요한 재계산이나 쓰기를 하지 않고 멱등적으로 처리한다.
 
 ## 6. 저장·권위 경계
 
@@ -242,7 +237,7 @@ web/data/
 ## 7. 제외 범위와 연결 원칙
 
 이 문서는 코드·테스트·데이터 갱신·외부 API 호출·실행·웹 배포의 계약과
-경계만 정의한다. 4A~4F의 구현과 운영 호출은 이 문서의 입력·권위·상태
+경계만 정의한다. 4A~4E의 구현과 운영 호출은 이 문서의 입력·권위·상태
 계약을 따르며, 필수 구성 요소와 선택 보조 구성 요소를 상태 합성에서
 구분한다.
 

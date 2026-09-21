@@ -75,8 +75,8 @@ foreign_flow_daily_{YYYYMMDD}_meta.json
 ```
 
 현재 `update_foreign_flow_snapshot()`은 필요한 거래일을 계산해 누락일만
-수집·병합하고, 정확한 target snapshot을 만든다. 동일한 `target_as_of`의
-정상 snapshot은 추가 수집이나 쓰기 없이 `NOOP_ALREADY_COMPLETE`로 종료한다.
+수집·병합하고, 정확한 target 스냅샷을 만든다. 동일한 `target_as_of`의
+정상 스냅샷은 추가 수집이나 쓰기 없이 `NOOP_ALREADY_COMPLETE`로 종료한다.
 
 ### 4.2 펀더멘털
 
@@ -106,14 +106,14 @@ filing availability date <= target_as_of
 `target_as_of`를 하나의 날짜로 취급하지 않는다.
 
 출력 위치는 기존 그대로 `artifacts/fundamentals/production/{YYYYMMDD}/`를
-재사용한다. 같은 기준일의 유효 ticker output은 재사용한다. 새 기준일에서는
-기존 filing cache를 재사용하고, stale cache는 필요한 receipt-date delta
+재사용한다. 같은 기준일의 유효 ticker 출력은 재사용한다. 새 기준일에서는
+기존 filing 캐시를 재사용하고, 오래된 캐시는 필요한 receipt-date delta
 구간만 확장한다. 따라서 펀더멘털 갱신은 매일 전체 재수집이 아니라
 `target_as_of`까지 새 공시·정정 여부를 증분 확인하는 경로다.
 
-동일 target의 full `PASS` artifact가 있으면 통합 조율기는
+동일 target의 full `PASS` 산출물이 있으면 통합 조율기는
 `NOOP_ALREADY_COMPLETE`로 종료한다. 실제 hydration이 필요하고 full `PASS`
-artifact가 없으면 OpenDART quota 회계일인 `run_date`를 별도로 제공해야 한다.
+산출물이 없으면 OpenDART 할당량 회계일인 `run_date`를 별도로 제공해야 한다.
 
 ### 4.3 시장 RS
 
@@ -270,7 +270,7 @@ OpenDART 호출 주체가 아니다.
 
 ## 6. 공식 실행 순서
 
-공식 coordinator는 다음 순서로 동일한 `target_as_of`를 전달한다.
+공식 조율기는 다음 순서로 동일한 `target_as_of`를 전달한다.
 
 ```text
 1. foreign_flow
@@ -283,8 +283,8 @@ OpenDART 호출 주체가 아니다.
 ```
 
 `sector_index`는 별도 최상위 입력이 아니라 `sector_rs` 내부 선행 단계다.
-`sector_membership`이 `BLOCKED` 또는 `FAILED`이면 sector index와 ranking을
-실행하지 않는다. sector index가 `BLOCKED` 또는 `FAILED`이면 ranking을
+`sector_membership`이 `BLOCKED` 또는 `FAILED`이면 업종 지수와 순위 계산을
+실행하지 않는다. 업종 지수가 `BLOCKED` 또는 `FAILED`이면 순위 계산을
 실행하지 않는다.
 
 섹터 구성 스냅샷 생성은 일일 실행 항목이 아니다. 기본 운영 주기는 월 1회
@@ -430,12 +430,12 @@ data/analytics/sector_rs_ranking/v01/
 
 | 입력 | 현재 운영 경로 | 재사용 경계 |
 |---|---|---|
-| 외국인 수급 | `update_foreign_flow_snapshot()` | `ForeignFlowDataProvider`와 기존 snapshot 저장소 |
-| 펀더멘털 | `hydrate_fundamentals_v1_production.py --as-of` | 기존 OpenDART/F2/F3/F4 계층과 filing cache |
+| 외국인 수급 | `update_foreign_flow_snapshot()` | `ForeignFlowDataProvider`와 기존 스냅샷 저장소 |
+| 펀더멘털 | `hydrate_fundamentals_v1_production.py --as-of` | 기존 OpenDART/F2/F3/F4 계층과 filing 캐시 |
 | 시장 RS | `build_market_rs_snapshot_v01.py` | `relative_strength`/`cross_section` 계산과 1단계 권위 |
 | 업종 지수(업종 RS 내부 선행 단계) | `update_sector_index_rolling()` | `KrxSectorIndexCacheBuilder.update()` / `update_sector_index_cache()` |
 | 섹터 구성 | 승인 스냅샷 선택 함수 | `build_rolling_sector_membership()`과 기준일 PIT COMMON 대조 |
-| 업종 RS | `build_sector_rs_ranking_v01.py` | 기존 랭킹 빌더와 현재 선택 membership |
+| 업종 RS | `build_sector_rs_ranking_v01.py` | 기존 랭킹 빌더와 현재 선택 구성 정보 |
 
 ## 13. 구성 요소 관계
 
@@ -454,8 +454,8 @@ scripts/run_daily_update_phase3_v01.py
 --execute-live
 ```
 
-펀더멘털 full `PASS` artifact가 없어서 실제 hydration이 필요한 경우에만
-`--fundamentals-run-date`로 OpenDART quota 회계일을 별도 전달한다.
+펀더멘털 full `PASS` 산출물이 없어서 실제 hydration이 필요한 경우에만
+`--fundamentals-run-date`로 OpenDART 할당량 회계일을 별도 전달한다.
 
 ## 15. 관련 현재 기준 문서
 
