@@ -133,14 +133,16 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
 ```text
 1~3단계의 동일 `target_as_of` 입력 인증
   → 4E 조율기
-     ├─ 4A 전체 PIT COMMON 스캐너
-     ├─ 4B A FAST Core V2 + Stock Report v0.5
-     ├─ 4C 필수 분석 표시 결과 검증
-     └─ 4D web/data 정적 투영
+     → 4A 전체 PIT COMMON 스캐너
+     → 4B A FAST Core V2 + Stock Report v0.5
+     → 4C 필수 분석 표시 결과 검증
+     → 4D web/data 정적 투영
+     → 전체 상태 합성
 ```
 
-4E 조율기는 4A~4D를 같은 `target_as_of`와 `reference_market_date`로 호출하고
-각 단계의 입력·출력을 검증한 뒤 전체 상태를 합성한다. 4C에는 마켓 RS, 섹터 RS,
+4E 조율기는 4A~4D를 같은 `target_as_of`와 `reference_market_date`로 순서대로
+호출하고 각 단계의 입력·출력을 검증한 뒤 전체 상태를 합성한다. 4A~4D 중
+`BLOCKED` 또는 `FAILED`가 발생하면 이후 단계는 진행하지 않는다. 4C에는 마켓 RS, 섹터 RS,
 외인 순매수, 전략 모니터와 웹 상태가 포함된다.
 공포지수와 ETF는 이 순서에 붙일 수 있는 선택 보조 투영이지만, 실패해도
 필수 결과를 같은 성공으로 승격하거나 필수 완료를 차단하지 않는다. 정기적인

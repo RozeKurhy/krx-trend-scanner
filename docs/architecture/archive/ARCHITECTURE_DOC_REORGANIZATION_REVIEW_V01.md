@@ -18,16 +18,16 @@ Branch: `main`
 
 | 문서 | 현재 권위와 역할 |
 |---|---|
-| [`krx_production_data_architecture_v01.md`](krx_production_data_architecture_v01.md) | production data authority, 저장소, PIT, provenance를 포함한 현재 운영 아키텍처 전체 구조 |
-| [`market_data_repository_v02.md`](market_data_repository_v02.md) | 현재 read-only 시장데이터 조합 계층. `AdjustedPriceStore`와 `KrxRawStockStore`를 결합해 `MarketDataRepositoryV2`에 제공 |
-| [`instrument_metadata_authority.md`](instrument_metadata_authority.md) | 종목 메타데이터·자산 유형·PIT 분류의 현재 authority |
-| [`survivorship_safe_denominator_freeze_v01.md`](survivorship_safe_denominator_freeze_v01.md) | survivorship-safe population과 PIT denominator freeze의 현재 기준 |
+| [`krx_production_data_architecture_v01.md`](../krx_production_data_architecture_v01.md) | production data authority, 저장소, PIT, provenance를 포함한 현재 운영 아키텍처 전체 구조 |
+| [`market_data_repository_v02.md`](../market_data_repository_v02.md) | 현재 read-only 시장데이터 조합 계층. `AdjustedPriceStore`와 `KrxRawStockStore`를 결합해 `MarketDataRepositoryV2`에 제공 |
+| [`instrument_metadata_authority.md`](../instrument_metadata_authority.md) | 종목 메타데이터·자산 유형·PIT 분류의 현재 authority |
+| [`survivorship_safe_denominator_freeze_v01.md`](../survivorship_safe_denominator_freeze_v01.md) | survivorship-safe population과 PIT denominator freeze의 현재 기준 |
 
 ### Adjusted price와 Data Layer 경계
 
-- 현재 수정주가 저장소는 [`adjusted_price_store_v02.md`](adjusted_price_store_v02.md)다. 현재 계약 토큰은 `AdjustedPriceStore`, `ADJUSTED_PRICE_V02`, `ADJUSTED_PRICE_STORE_V02`를 사용한다.
-- [`archive/adjusted_price_store_v01.md`](archive/adjusted_price_store_v01.md)는 과거 V01 기록이며 현재 authority가 아니다.
-- [`data_layer.md`](data_layer.md)는 historical common Data Layer v0.1 기록이다. 현재 시장데이터 경계는 `AdjustedPriceStore + KrxRawStockStore -> MarketDataRepositoryV2`이며, 전체 운영 구조는 [`krx_production_data_architecture_v01.md`](krx_production_data_architecture_v01.md)가 정의한다.
+- 현재 수정주가 저장소는 [`adjusted_price_store_v02.md`](../adjusted_price_store_v02.md)다. 현재 계약 토큰은 `AdjustedPriceStore`, `ADJUSTED_PRICE_V02`, `ADJUSTED_PRICE_STORE_V02`를 사용한다.
+- [`adjusted_price_store_v01.md`](adjusted_price_store_v01.md)는 과거 V01 기록이며 현재 authority가 아니다.
+- [`data_layer.md`](data_layer.md)는 historical common Data Layer v0.1 기록이다. 현재 시장데이터 경계는 `AdjustedPriceStore + KrxRawStockStore -> MarketDataRepositoryV2`이며, 전체 운영 구조는 [`krx_production_data_architecture_v01.md`](../krx_production_data_architecture_v01.md)가 정의한다.
 
 ### 현재 archive 경계
 

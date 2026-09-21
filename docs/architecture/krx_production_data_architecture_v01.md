@@ -114,7 +114,7 @@ AdjustedPriceStore (ADJUSTED_PRICE_STORE_V02 계약) + KrxRawStockStore
 
 ## 7. 레거시 경계
 
-- [data_layer.md](data_layer.md)는 과거 공용 Data Layer v0.1 기록이며 현재 운영 데이터 레이어가 아니다.
+- [data_layer.md](archive/data_layer.md)는 과거 공용 Data Layer v0.1 기록이며 현재 운영 데이터 레이어가 아니다.
 - `data/raw/stocks/<ticker>.parquet`는 PyKRX 수정주가와 원천 부가 데이터가 섞인 `LEGACY_COMPOSITE_STOCK_CACHE`다. 이를 `KRXRawStockStore`로 부르지 않는다.
 - 과거 PyKRX 수정주가 경로와 `ADJUSTED_PRICE_V01` 캐시는 레거시 호환 또는 검증 비교기로만 읽을 수 있으며 현재 수정주가 기준이 아니다.
 - 일부 기존 분석/보고서 흐름의 `artifacts/` 소비는 `LEGACY_RUNTIME_DEPENDENCIES`에 전환 기술 부채로 추적한다. 이는 현재 운영 Store/Repository의 권위가 아니다.

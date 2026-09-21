@@ -4,15 +4,15 @@
 
 종목별 일봉 OHLCV를 PyKRX에서 가져와 표준 스키마로 정규화하고, 로컬 Parquet 캐시에
 저장·증분 업데이트하는 최소 구현이다. Pattern A 점수 로직과는 무관하다
-(Pattern A는 [docs/patterns/pattern_a/README.md](../patterns/pattern_a/README.md) 참고).
+(Pattern A는 [docs/patterns/pattern_a/README.md](../../patterns/pattern_a/README.md) 참고).
 
 현재 구현 경계
 ----------------------------------------------------------------------
 
 이 문서는 legacy 공용 데이터 레이어 v0.1의 계약·구현 기록이다. 현재 운영 데이터
 기준과 사용 코드 경로는
-[KRX Production Data Architecture](krx_production_data_architecture_v01.md)와
-[Market Data Repository V2](market_data_repository_v02.md)를 따른다. 아래의
+[KRX Production Data Architecture](../krx_production_data_architecture_v01.md)와
+[Market Data Repository V2](../market_data_repository_v02.md)를 따른다. 아래의
 PyKRX, `MarketDataRepository`, `ParquetCache`, `adjusted=True` 설명은 legacy
 호환성/과거 기록으로 읽으며, 현재 운영 기준을 정의하지 않는다.
 

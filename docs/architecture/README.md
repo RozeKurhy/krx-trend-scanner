@@ -54,13 +54,14 @@
 | 문서 | 역할 |
 |---|---|
 | [archive/adjusted_price_store_v01.md](archive/adjusted_price_store_v01.md) | 과거 V01 수정주가 저장소 구현·검증 계약 기록 |
-| [data_layer.md](data_layer.md) | 과거 공용 데이터 레이어 v0.1 기록이며 현재 운영 데이터 레이어가 아님 |
-| [krx_dual_provider_contract_v01.md](krx_dual_provider_contract_v01.md) | 과거 데이터 제공자 전환 계약 |
 | [errata/krx_identifier_contract_errata_v01.md](errata/krx_identifier_contract_errata_v01.md) | KRX 식별자 계약 보정 기록 |
-| [artifacts/artifacts_information_architecture_audit_v01.md](artifacts/artifacts_information_architecture_audit_v01.md) | 산출물 정보 구조와 계보 감사 |
 | [validation/](validation/) | 아키텍처 검증과 테스트 기반 문서 |
 | [archive/validation/](archive/validation/) | 과거·대체된 KRX 원천 검증과 조사 기록 |
 
 `archive/`와 이 영역의 과거 문서는 현재 운영 권위를 대신하지 않는다. 현재
 무엇을 먼저 읽어야 하는지는 A 영역의 다섯 문서와 해당 문서의 링크를 기준으로
 판단한다.
+
+아키텍처 역사 기록은 [문서 재정리 검토](archive/ARCHITECTURE_DOC_REORGANIZATION_REVIEW_V01.md),
+[공용 데이터 레이어](archive/data_layer.md), [KRX 이중 데이터 제공자 계약](archive/krx_dual_provider_contract_v01.md),
+[산출물 정보 구조 감사](archive/artifacts/artifacts_information_architecture_audit_v01.md)에서 확인한다.
