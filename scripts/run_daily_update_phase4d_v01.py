@@ -29,6 +29,7 @@ from scripts import export_stock_report_web as stock_web
 from scripts import export_strategy_monitor_web as strategy_web
 from scripts import export_web_data as health_web
 from scripts import run_daily_update_phase4c_v01 as phase4c
+from scripts import run_pattern_a_universe_scanner as phase4a
 
 
 class Phase4DError(RuntimeError):
@@ -109,9 +110,21 @@ def inspect_published_payload(root: Path, target_as_of: str) -> dict[str, Any] |
 
     try:
         scanner_summary = phase4c.load_scanner_summary(root, target_as_of)
-    except phase4c.Phase4CError:
-        return None
+    except phase4c.Phase4CError as exc:
+        code = str(exc).split(":", 1)[0]
+        if code == "PHASE4C_SCANNER_SUMMARY_MISSING":
+            return None
+        raise
     reference_market_date = str(scanner_summary["reference_market_date"])
+    expected_reference_market_date = phase4a.resolve_reference_market_date(
+        target_as_of,
+        phase4a.load_rolling_production_market_calendar(root),
+    )
+    if reference_market_date != expected_reference_market_date:
+        raise Phase4DError(
+            "PHASE4D_REFERENCE_MARKET_DATE_AUTHORITY_MISMATCH: "
+            f"expected {expected_reference_market_date}, got {reference_market_date}"
+        )
     try:
         validation = validate_staging(web_data, target_as_of, reference_market_date)
     except Phase4DError as exc:

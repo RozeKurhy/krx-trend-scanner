@@ -127,6 +127,8 @@ _BLOCKED_ERROR_CODES = frozenset(
         "PHASE4D_REPOSITORY_ROOT_MISMATCH",
         "PHASE4D_PHASE4C_PREREQUISITE_FAILED",
         "PHASE4D_REFERENCE_MARKET_DATE_INVALID",
+        "PHASE4A_REFERENCE_MARKET_DATE_AUTHORITY_MISMATCH",
+        "PHASE4D_REFERENCE_MARKET_DATE_AUTHORITY_MISMATCH",
     }
 )
 
@@ -151,6 +153,11 @@ def _failed_precheck(exc: BaseException) -> dict[str, Any]:
     }
 
 
+def _expected_reference_market_date(root: Path, target_as_of: str) -> str:
+    calendar = phase4a.load_rolling_production_market_calendar(root)
+    return phase4a.resolve_reference_market_date(target_as_of, calendar)
+
+
 def _phase4a_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] | None:
     csv_path, summary_path = phase4b._scanner_paths(root, target_as_of)
     if not csv_path.is_file() or not summary_path.is_file():
@@ -160,6 +167,12 @@ def _phase4a_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
         SimpleNamespace(**summary),
         is_full_common_scan=True,
     )
+    expected_reference_market_date = _expected_reference_market_date(root, target_as_of)
+    if str(summary["reference_market_date"]) != expected_reference_market_date:
+        raise Phase4EError(
+            "PHASE4A_REFERENCE_MARKET_DATE_AUTHORITY_MISMATCH: "
+            f"expected {expected_reference_market_date}, got {summary['reference_market_date']}"
+        )
     return {
         "status": NOOP_ALREADY_COMPLETE,
         "target_as_of": target_as_of,

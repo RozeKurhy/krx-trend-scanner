@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -12,6 +13,7 @@ from scripts import run_daily_update_phase4e_v01 as phase4e
 from scripts import run_daily_update_phase4c_v01 as phase4c
 from scripts import run_daily_update_phase4d_v01 as phase4d
 from scripts import run_daily_update_phase4b_v01 as phase4b
+from scripts import run_pattern_a_universe_scanner as phase4a
 
 
 @pytest.mark.parametrize(
@@ -88,7 +90,11 @@ def test_parser_requires_target_and_exposes_explicit_live_flag() -> None:
     assert args.execute_live is True
 
 
-def _write_scanner_fixture(root: Path, target: str = "2026-09-17") -> None:
+def _write_scanner_fixture(
+    root: Path,
+    target: str = "2026-09-17",
+    reference_market_date: str | None = None,
+) -> None:
     scanner_dir = root / "artifacts/patterns/pattern_a/production/scanner"
     scanner_dir.mkdir(parents=True)
     dt = target.replace("-", "")
@@ -100,7 +106,7 @@ def _write_scanner_fixture(root: Path, target: str = "2026-09-17") -> None:
         json.dumps(
             {
                 "requested_as_of": target,
-                "reference_market_date": target,
+                "reference_market_date": reference_market_date or target,
                 "official_common_total": 1,
                 "scan_target_count": 1,
                 "rows_emitted": 1,
@@ -133,11 +139,15 @@ def _write_report(path: Path, target: str, ticker: str = "000001") -> None:
     (path / f"{ticker}_stock_report.md").write_text("# report\n", encoding="utf-8")
 
 
-def _write_web_fixture(root: Path, target: str = "2026-09-17") -> None:
+def _write_web_fixture(
+    root: Path,
+    target: str = "2026-09-17",
+    reference_market_date: str | None = None,
+) -> None:
     web = root / "web/data"
     stocks = web / "stocks"
     stocks.mkdir(parents=True)
-    ref = target
+    ref = reference_market_date or target
     common = {"requested_as_of": target, "reference_market_date": ref}
     index = {
         **common,
@@ -182,8 +192,17 @@ def _write_web_fixture(root: Path, target: str = "2026-09-17") -> None:
     (stocks / "000001.json").write_text(json.dumps(report), encoding="utf-8")
 
 
+def _patch_calendar(monkeypatch: pytest.MonkeyPatch, *trading_dates: str) -> None:
+    monkeypatch.setattr(
+        phase4a,
+        "load_rolling_production_market_calendar",
+        lambda root: SimpleNamespace(trading_dates=list(trading_dates)),
+    )
+
+
 def test_phase4a_valid_exact_artifact_skips_runner(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _write_scanner_fixture(tmp_path)
+    _patch_calendar(monkeypatch, "2026-09-17")
     monkeypatch.setattr(phase4e, "run_phase4a", lambda *args, **kwargs: pytest.fail("4A reran"))
     monkeypatch.setattr(phase4e, "run_phase4b", lambda *args, **kwargs: {"status": "PASS"})
     monkeypatch.setattr(phase4e, "run_phase4c", lambda *args, **kwargs: {"status": "PASS"})
@@ -196,6 +215,7 @@ def test_phase4a_valid_exact_artifact_skips_runner(monkeypatch: pytest.MonkeyPat
 
 def test_phase4b_valid_exact_corpus_skips_runner(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _write_scanner_fixture(tmp_path)
+    _patch_calendar(monkeypatch, "2026-09-17")
     reports = tmp_path / "artifacts/reporting/stock_reports"
     _write_report(reports / "20260916", "2026-09-16")
     _write_report(reports / "20260917", "2026-09-17")
@@ -211,6 +231,7 @@ def test_phase4b_valid_exact_corpus_skips_runner(monkeypatch: pytest.MonkeyPatch
 
 def test_all_noop_uses_read_only_prechecks(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _write_scanner_fixture(tmp_path)
+    _patch_calendar(monkeypatch, "2026-09-17")
     reports = tmp_path / "artifacts/reporting/stock_reports"
     _write_report(reports / "20260916", "2026-09-16")
     _write_report(reports / "20260917", "2026-09-17")
@@ -236,12 +257,75 @@ def test_phase4d_standalone_valid_payload_returns_noop(
 ) -> None:
     _write_scanner_fixture(tmp_path)
     _write_web_fixture(tmp_path)
+    _patch_calendar(monkeypatch, "2026-09-17")
     monkeypatch.setattr(phase4d, "ROOT", tmp_path)
 
     result = phase4d.run_phase4d("2026-09-17", execute_live=True, root=tmp_path)
 
     assert result["status"] == "NOOP_ALREADY_COMPLETE"
     assert result["web_data_writes"] == 0
+
+
+def test_trading_day_reference_authority_allows_noop(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _write_scanner_fixture(tmp_path, "2026-09-17", "2026-09-17")
+    _patch_calendar(monkeypatch, "2026-09-17")
+
+    result = phase4e._phase4a_noop_precheck("2026-09-17", root=tmp_path)
+
+    assert result is not None
+    assert result["status"] == "NOOP_ALREADY_COMPLETE"
+
+
+def test_non_trading_day_reference_authority_allows_noop(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    target = "2026-09-20"  # Sunday
+    reference = "2026-09-18"  # Friday
+    _write_scanner_fixture(tmp_path, target, reference)
+    _patch_calendar(monkeypatch, "2026-09-17", reference)
+
+    result = phase4e._phase4a_noop_precheck(target, root=tmp_path)
+
+    assert result is not None
+    assert result["status"] == "NOOP_ALREADY_COMPLETE"
+    assert result["reference_market_date"] == reference
+
+
+def test_stale_reference_is_blocked_and_not_recomputed(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    target = "2026-09-20"
+    _write_scanner_fixture(tmp_path, target, "2026-09-17")
+    _patch_calendar(monkeypatch, "2026-09-18")
+    monkeypatch.setattr(phase4e, "run_phase4a", lambda *args, **kwargs: pytest.fail("4A recomputed"))
+
+    result = phase4e.run_phase4e(target, root=tmp_path)
+
+    assert result["overall_status"] == "BLOCKED"
+    assert result["phases"]["4A"]["status"] == "BLOCKED"
+    assert "PHASE4A_REFERENCE_MARKET_DATE_AUTHORITY_MISMATCH" in result["phases"]["4A"]["result"]["error"]
+
+
+def test_scanner_and_web_stale_reference_is_blocked_even_when_they_match(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    target = "2026-09-20"
+    stale_reference = "2026-09-17"
+    _write_scanner_fixture(tmp_path, target, stale_reference)
+    _write_web_fixture(tmp_path, target, stale_reference)
+    _patch_calendar(monkeypatch, "2026-09-18")
+
+    with pytest.raises(phase4d.Phase4DError, match="PHASE4D_REFERENCE_MARKET_DATE_AUTHORITY_MISMATCH"):
+        phase4d.inspect_published_payload(tmp_path, target)
+
+
+def test_future_reference_is_blocked(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    target = "2026-09-20"
+    _write_scanner_fixture(tmp_path, target, "2026-09-21")
+    _patch_calendar(monkeypatch, "2026-09-18")
+
+    result = phase4e.run_phase4e(target, root=tmp_path)
+
+    assert result["overall_status"] == "BLOCKED"
+    assert result["phases"]["4A"]["status"] == "BLOCKED"
 
 
 def test_phase4c_is_called_once_and_4d_reuses_its_result(
