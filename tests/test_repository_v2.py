@@ -590,6 +590,24 @@ def test_indexed_raw_reader_validates_once_and_reuses_ticker_locations(tmp_path)
     assert stats_after_first["full_store_scans_per_ticker"] == 0
     assert stats_after_second["full_store_scans"] == 1
     assert stats_after_second["index_lookups"] == 2
+    assert stats_after_second["ticker_frame_cache_hits"] == 2
+    assert stats_after_second["ticker_position_index_hits"] == 2
+    assert stats_after_second["partition_cache_hits"] == 0
+
+
+def test_indexed_raw_reader_retains_global_frame_and_position_index(tmp_path):
+    repo, _, _ = _repo(tmp_path)
+    reader = repo._raw_index
+    assert reader is not None
+    assert reader._built is True
+    assert "005930" in reader._ticker_positions
+    assert len(reader._global_frame) == 3
+    assert reader._ticker_positions["005930"].tolist() == [0, 1, 2]
+
+    sliced = reader.load_ticker("005930", "2024-01-03", "2024-01-03")
+    assert len(sliced) == 1
+    assert sliced.loc[0, "date"] == pd.Timestamp("2024-01-03")
+    assert list(sliced.columns) == list(RAW_COLUMNS)
 
 
 def test_analytic_view_is_distinct_from_lossless_source_history(tmp_path):

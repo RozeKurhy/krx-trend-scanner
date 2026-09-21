@@ -91,28 +91,25 @@ KNOWN_OUTSIDE_IDENTITY_LIFECYCLE_DATES: dict[tuple[str, str], str] = {
 
 
 class _IndexedRawTickerReader:
-    """Single-pass, authority-validating raw partition index.
+    """Single-pass, authority-validating raw ticker representation.
 
     ``KrxRawStockStore.load_ticker`` historically scanned and verified every
     partition for every ticker.  This reader validates the canonical
-    partitions once while building a derived in-memory index of ticker/date
-    locations.  Subsequent ticker reads touch only partitions containing that
-    ticker; the canonical manifest and parquet files are never modified.
+    partitions once while retaining one derived global raw frame plus a
+    ticker-to-global-row-position index.  Subsequent reads select only the
+    indexed rows; the canonical manifest and parquet files are never modified.
     """
 
     def __init__(self, store: KrxRawStockStore) -> None:
         self.store = store
-        self._locations: dict[str, list[tuple[str, str, tuple[int, ...]]]] = {}
-        # Retain one validated partition copy for indexed reads.  OHLC values
-        # are downcast to int32 during build (without value loss under the
-        # KRX contract) to keep the full raw evidence below the consumer
-        # shadow's memory ceiling.
-        self._partition_frames: dict[tuple[str, str], pd.DataFrame] = {}
+        self._global_frame = pd.DataFrame(columns=list(RAW_COLUMNS))
+        self._ticker_positions: dict[str, np.ndarray] = {}
         self._built = False
         self.stats = {
             "partition_files_opened": 0,
             "partition_cache_hits": 0,
             "ticker_frame_cache_hits": 0,
+            "ticker_position_index_hits": 0,
             "manifest_rows_scanned": 0,
             "index_lookups": 0,
             "ticker_rows_returned": 0,
@@ -125,6 +122,8 @@ class _IndexedRawTickerReader:
             "partition_compact_seconds": 0.0,
             "ticker_location_index_seconds": 0.0,
             "location_sort_seconds": 0.0,
+            "global_frame_materialize_seconds": 0.0,
+            "ticker_position_index_seconds": 0.0,
         }
 
     @staticmethod
@@ -142,6 +141,7 @@ class _IndexedRawTickerReader:
         if self._built:
             return
         build_started = time.perf_counter()
+        partition_frames: list[pd.DataFrame] = []
         manifest_started = time.perf_counter()
         manifests = self.store.list_manifest()
         self.stats["manifest_list_seconds"] = time.perf_counter() - manifest_started
@@ -159,31 +159,31 @@ class _IndexedRawTickerReader:
             compact_started = time.perf_counter()
             compact = frame.loc[:, list(RAW_COLUMNS)].copy()
             # KRX OHLC values are bounded well below int32 for this contract;
-            # retain exact integer values while halving the four price-column
-            # footprint in the long-lived index.
+            # retain exact integer values while reducing the long-lived
+            # contiguous representation footprint.
             for column in ("open", "high", "low", "close"):
                 compact[column] = compact[column].astype("int32")
-            self._partition_frames[(market, day)] = compact
-            self.stats["index_memory_bytes"] += int(compact.memory_usage(deep=True).sum())
             self.stats["partition_compact_seconds"] += time.perf_counter() - compact_started
             location_started = time.perf_counter()
-            if frame.empty:
-                self.stats["ticker_location_index_seconds"] += time.perf_counter() - location_started
-                continue
-            # Store row positions rather than copying every ticker's rows into
-            # separate DataFrames.  This keeps index construction bounded by
-            # one validated partition copy while making each ticker lookup
-            # select only its own rows.
-            for ticker, positions in frame.groupby("ticker", sort=False).indices.items():
-                key = str(ticker)
-                self._locations.setdefault(key, []).append(
-                    (market, day, tuple(int(position) for position in positions))
-                )
+            if not compact.empty:
+                partition_frames.append(compact)
             self.stats["ticker_location_index_seconds"] += time.perf_counter() - location_started
-        sort_started = time.perf_counter()
-        for key in self._locations:
-            self._locations[key] = sorted(self._locations[key], key=lambda item: item[1])
-        self.stats["location_sort_seconds"] = time.perf_counter() - sort_started
+        materialize_started = time.perf_counter()
+        if partition_frames:
+            global_frame = pd.concat(partition_frames, ignore_index=True)
+            partition_frames.clear()
+            self._global_frame = global_frame
+            self.stats["index_memory_bytes"] = int(global_frame.memory_usage(deep=True).sum())
+        self.stats["global_frame_materialize_seconds"] = time.perf_counter() - materialize_started
+        position_index_started = time.perf_counter()
+        if not self._global_frame.empty:
+            for ticker, positions in self._global_frame.groupby("ticker", sort=False).indices.items():
+                self._ticker_positions[str(ticker)] = np.asarray(positions, dtype=np.int64)
+            self.stats["index_memory_bytes"] += sum(
+                int(positions.nbytes) for positions in self._ticker_positions.values()
+            )
+        self.stats["ticker_position_index_seconds"] = time.perf_counter() - position_index_started
+        self.stats["location_sort_seconds"] = 0.0
         self._built = True
         self.stats["build_total_seconds"] = time.perf_counter() - build_started
 
@@ -192,28 +192,24 @@ class _IndexedRawTickerReader:
         self.stats["index_lookups"] += 1
         start_day = pd.Timestamp(start).normalize() if start is not None else None
         end_day = pd.Timestamp(end).normalize() if end is not None else None
-        locations = self._locations.get(str(ticker), [])
-        if not locations:
+        positions = self._ticker_positions.get(str(ticker))
+        if positions is None:
             return self._empty()
-        rows: list[pd.DataFrame] = []
-        for market, day, positions in locations:
-            day_ts = pd.Timestamp(day)
-            if start_day is not None and day_ts < start_day:
-                continue
-            if end_day is not None and day_ts > end_day:
-                continue
-            frame = self._partition_frames[(market, day)]
-            self.stats["partition_cache_hits"] += 1
-            matched = frame.take(list(positions)).loc[:, list(RAW_COLUMNS)]
-            if not matched.empty:
-                rows.append(matched)
-        if not rows:
+        self.stats["ticker_frame_cache_hits"] += 1
+        self.stats["ticker_position_index_hits"] += 1
+        frame = self._global_frame.take(positions)
+        mask = pd.Series(True, index=frame.index)
+        if start_day is not None:
+            mask &= frame["date"] >= start_day
+        if end_day is not None:
+            mask &= frame["date"] <= end_day
+        result = frame.loc[mask.to_numpy(), list(RAW_COLUMNS)].copy().reset_index(drop=True)
+        if result.empty:
             return self._empty()
-        result = pd.concat(rows, ignore_index=True)
         if result["date"].duplicated().any():
             raise MarketDataError("CROSS_MARKET_TICKER_CONFLICT")
         self.stats["ticker_rows_returned"] += len(result)
-        return result.sort_values(["date", "ticker"], kind="mergesort").reset_index(drop=True)
+        return result
 
 def _empty_frame(columns: tuple[str, ...]) -> pd.DataFrame:
     return pd.DataFrame(
@@ -739,6 +735,9 @@ class MarketDataRepositoryV2:
                 "partition_compact_seconds": 0.0,
                 "ticker_location_index_seconds": 0.0,
                 "location_sort_seconds": 0.0,
+                "global_frame_materialize_seconds": 0.0,
+                "ticker_position_index_seconds": 0.0,
+                "ticker_position_index_hits": 0,
             }
         return dict(self._raw_index.stats)
 
