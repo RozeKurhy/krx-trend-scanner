@@ -29,6 +29,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("run_pattern_a_universe_scanner")
 
+ROOT = Path(__file__).resolve().parents[1]
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -123,10 +125,76 @@ def validate_full_common_scan(summary: object, *, is_full_common_scan: bool) -> 
         raise RuntimeError(f"FULL_COMMON_SCAN_SCANNER_ERRORS:{summary.scanner_error_count}")
 
 
+def run_phase4a(
+    target_as_of: str,
+    *,
+    root: Path = ROOT,
+    cache_dir: str | Path = "data/raw/stocks",
+    output_dir: str | Path = "artifacts/patterns/pattern_a/production/scanner",
+    market: str | None = None,
+    tickers: list[str] | None = None,
+    limit: int | None = None,
+    enrich_market_rs_cross_section: bool = False,
+) -> dict[str, object]:
+    """Run the existing full-universe scanner and return a small structured result.
+
+    This is an adapter for Phase 4E; scanner calculations and artifact contracts remain
+    owned by :func:`scan_pattern_a_universe` and the existing CLI.
+    """
+
+    root = Path(root)
+    markets = [market] if market else None
+    resolved_cache_dir = Path(cache_dir)
+    if not resolved_cache_dir.is_absolute():
+        resolved_cache_dir = root / resolved_cache_dir
+    resolved_output_dir = Path(output_dir)
+    if not resolved_output_dir.is_absolute():
+        resolved_output_dir = root / resolved_output_dir
+
+    repository = build_production_repository_v2(root, end=target_as_of)
+    production_calendar = load_rolling_production_market_calendar(root)
+    reference_market_date = resolve_reference_market_date(target_as_of, production_calendar)
+
+    _, membership_effective_date, membership_path, _ = (
+        resolve_sector_membership_snapshot_for_target(target_as_of, repo_root=root)
+    )
+    sector_mapping = load_sector_mapping_exact_snapshot(
+        membership_effective_date,
+        path=membership_path,
+        repo_root=root,
+    )
+
+    result = scan_pattern_a_universe(
+        cache=resolved_cache_dir,
+        as_of=target_as_of,
+        reference_market_date=reference_market_date,
+        target_markets=markets,
+        target_tickers=tickers,
+        limit=limit,
+        repository=repository,
+        sector_mapping=sector_mapping,
+        sector_mapping_snapshot_date=membership_effective_date,
+        enrich_market_rs_cross_section=enrich_market_rs_cross_section,
+    )
+    summary = result.summary
+    validate_full_common_scan(
+        summary,
+        is_full_common_scan=(market is None and tickers is None and limit is None),
+    )
+    csv_path, json_path = result.save_artifacts(output_dir=resolved_output_dir)
+    return {
+        "status": "PASS",
+        "requested_as_of": target_as_of,
+        "target_as_of": target_as_of,
+        "reference_market_date": reference_market_date,
+        "csv_path": str(csv_path),
+        "summary_path": str(json_path),
+        "summary": summary,
+    }
+
+
 def main() -> None:
     args = parse_args()
-
-    markets = [args.market] if args.market else None
 
     logger.info("==================================================")
     logger.info("Starting Pattern A Full Universe Scanner v0.1")
@@ -140,42 +208,19 @@ def main() -> None:
     # PRODUCTION_ROLLING_MODE: --as-of is caller-supplied and can be a live date, so the rolling
     # certified boundary must be enforced unconditionally (directive
     # ROLLING_MARKET_DATA_AUTHORITY_FINALIZATION_V01 section 7).
-    repo_root = Path(__file__).resolve().parents[1]
-    repository = build_production_repository_v2(repo_root, end=args.as_of)
-    production_calendar = load_rolling_production_market_calendar(repo_root)
-    reference_market_date = resolve_reference_market_date(args.as_of, production_calendar)
-
-    _, membership_effective_date, membership_path, _ = (
-        resolve_sector_membership_snapshot_for_target(args.as_of, repo_root=repo_root)
-    )
-    sector_mapping = load_sector_mapping_exact_snapshot(
-        membership_effective_date,
-        path=membership_path,
-        repo_root=repo_root,
-    )
-    logger.info("  Reference Market Date: %s", reference_market_date)
-    logger.info("  Sector Membership Effective Date: %s", membership_effective_date)
-
-    result = scan_pattern_a_universe(
-        cache=Path(args.cache_dir),
-        as_of=args.as_of,
-        reference_market_date=reference_market_date,
-        target_markets=markets,
-        target_tickers=args.tickers,
+    run_result = run_phase4a(
+        args.as_of,
+        root=ROOT,
+        cache_dir=args.cache_dir,
+        output_dir=args.output_dir,
+        market=args.market,
+        tickers=args.tickers,
         limit=args.limit,
-        repository=repository,
-        sector_mapping=sector_mapping,
-        sector_mapping_snapshot_date=membership_effective_date,
         enrich_market_rs_cross_section=args.enrich_market_rs_cross_section,
     )
-
-    summary = result.summary
-    validate_full_common_scan(
-        summary,
-        is_full_common_scan=(
-            args.market is None and args.tickers is None and args.limit is None
-        ),
-    )
+    reference_market_date = str(run_result["reference_market_date"])
+    summary = run_result["summary"]
+    logger.info("  Reference Market Date: %s", reference_market_date)
 
     logger.info("==================================================")
     logger.info("Pattern A Universe Scan Completed!")
@@ -214,10 +259,9 @@ def main() -> None:
     )
     logger.info("==================================================")
 
-    csv_path, json_path = result.save_artifacts(output_dir=args.output_dir)
     logger.info("Artifacts saved:")
-    logger.info("  CSV:  %s", csv_path)
-    logger.info("  JSON: %s", json_path)
+    logger.info("  CSV:  %s", run_result["csv_path"])
+    logger.info("  JSON: %s", run_result["summary_path"])
 
 
 if __name__ == "__main__":
