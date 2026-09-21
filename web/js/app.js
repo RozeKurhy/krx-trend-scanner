@@ -165,35 +165,6 @@
     );
   }
 
-  function renderReadiness(health) {
-    const list = byId("readiness-list");
-    if (!list) return;
-    while (list.firstChild) list.removeChild(list.firstChild);
-
-    [
-      ["분석", health.analysis],
-      ["백테스트", health.backtest],
-    ].forEach(([name, section]) => {
-      const item = document.createElement("li");
-      item.className = "readiness-item";
-      const copy = document.createElement("span");
-      const title = document.createElement("span");
-      title.textContent = name;
-      copy.appendChild(title);
-      if (section && section.reason) {
-        const reason = document.createElement("small");
-        reason.className = "readiness-reason";
-        reason.textContent = reasonLabel(section.reason);
-        copy.appendChild(reason);
-      }
-      const status = document.createElement("span");
-      status.className = "status-dot";
-      setStatus(status, section && section.status);
-      item.append(copy, status);
-      list.appendChild(item);
-    });
-  }
-
   function renderSources(health) {
     const sourcePath = (section, child) => {
       if (!section || !section.source) return "—";
@@ -238,7 +209,6 @@
 
     setText("generated-at", formatDateTime(health.generated_at));
     renderSources(health);
-    renderReadiness(health);
   }
 
   function showError() {

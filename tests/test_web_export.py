@@ -39,6 +39,14 @@ def test_exporter_writes_valid_compact_public_health_json(tmp_path, exporter, he
     assert loaded["overall_status"] in exporter.VALID_STATUSES
     for section in ("market_data", "universe", "fundamentals", "stock_reports"):
         assert isinstance(loaded[section], dict)
+    assert {key for key, value in loaded.items() if isinstance(value, dict) and "status" in value} == {
+        "market_data",
+        "universe",
+        "fundamentals",
+        "stock_reports",
+    }
+    assert "analysis" not in loaded
+    assert "backtest" not in loaded
 
 
 def test_health_uses_actual_resolved_authority_values(health, exporter):
@@ -71,12 +79,10 @@ def test_health_uses_actual_resolved_authority_values(health, exporter):
     assert fundamentals["run_status"] == "COMPLETE"
     assert fundamentals["completed"] == fundamentals["total"] == 4415
     expected_overall = exporter._overall_status(
-        {
-            key: health[key]
-            for key in ("market_data", "universe", "fundamentals", "stock_reports", "analysis", "backtest")
-        }
+        {key: health[key] for key in ("market_data", "universe", "fundamentals", "stock_reports")}
     )
-    assert health["overall_status"] == expected_overall
+    assert expected_overall == "NORMAL"
+    assert health["overall_status"] == "NORMAL"
     report_artifact_count = len(list((ROOT / "artifacts/reporting/stock_reports/20260917").glob("*.md")))
     stock_index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
     assert health["stock_reports"]["existing_artifact_count"] == report_artifact_count
@@ -96,8 +102,8 @@ def test_health_uses_actual_resolved_authority_values(health, exporter):
     assert health["stock_reports"]["web_compact_count"] == expected_report_count
     assert health["stock_reports"]["web_fundamentals_integrated_count"] == expected_report_count
     assert health["stock_reports"]["web_index_available_report_count"] == expected_report_count
-    assert health["analysis"]["status"] == "UNKNOWN"
-    assert health["backtest"]["status"] == "UNKNOWN"
+    assert "analysis" not in health
+    assert "backtest" not in health
 
 
 def test_date_key_drives_fundamentals_and_stock_report_paths(exporter, health):
@@ -151,6 +157,9 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     assert 'src="/js/app.js"' not in html
     assert '"/data/health.json"' not in js
     assert 'if (typeof source === "string") return source;' in js
+    assert "renderReadiness" not in js
+    assert "health.analysis" not in js
+    assert "health.backtest" not in js
     assert 'id="theme-toggle"' in html
     assert 'id="theme-toggle" class="theme-toggle" type="button"' in html
     assert 'aria-label="어둡게 보기"' in html

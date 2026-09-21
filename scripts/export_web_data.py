@@ -595,23 +595,11 @@ def build_health(
         stock_reports_dir=paths["stock_reports"],
         readiness=stock_report_readiness,
     )
-    analysis = _build_downstream_section(
-        fundamentals["status"],
-        checkpoint_path=paths["fundamentals_checkpoint"],
-        requested_as_of=requested_as_of,
-    )
-    backtest = _build_downstream_section(
-        fundamentals["status"],
-        checkpoint_path=paths["fundamentals_checkpoint"],
-        requested_as_of=requested_as_of,
-    )
     sections = {
         "market_data": market_data,
         "universe": _build_universe(snapshot_date, universe_tickers, asset_counts),
         "fundamentals": fundamentals,
         "stock_reports": stock_reports,
-        "analysis": analysis,
-        "backtest": backtest,
     }
     status_sections = {
         key: value for key, value in sections.items() if isinstance(value, Mapping)
