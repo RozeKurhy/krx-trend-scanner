@@ -1,15 +1,16 @@
 opendart_fundamentals_v1_multi_period.md
 
 ======================================================================
-OpenDART Fundamentals V1 — F2 Multi-period Production Boundary
+OpenDART Fundamentals V1 — Multi-period Production Boundary
 ======================================================================
 
 목적
 ----------------------------------------------------------------------
 
-F2는 기존 PeriodizationProvider가 만든 canonical observation을 소비해
-Stock Report가 요구하는 비교 이력을 표현한다. 이 모듈은 OpenDART endpoint를
-직접 호출하지 않으며 기간화, 누적 차분, TTM/YoY 산식을 다시 구현하지 않는다.
+MultiPeriodFundamentalsResult는 기존 PeriodizationProvider가 만든 canonical
+observation을 소비해 Stock Report가 요구하는 비교 이력을 표현한다. 이
+모듈은 OpenDART endpoint를 직접 호출하지 않으며 기간화, 누적 차분, TTM/YoY
+산식을 다시 구현하지 않는다.
 
 사용 경계
 ----------------------------------------------------------------------
@@ -67,7 +68,7 @@ Boundary 계약
 - `annual_coverage`: 동일 구조의 FY metadata
 - `latest_quarter`, `latest_fy`, `diagnostics`
 
-F2가 다루지 않는 범위
+다루지 않는 범위
 ----------------------------------------------------------------------
 
 ROE/부채비율은 [ROE/부채비율 기준 문서](opendart_fundamentals_v1_roe_debt_ratio.md),
@@ -76,7 +77,7 @@ Stock Report schema·Markdown·JSON 통합은
 [Stock Report v0.5 계약](../reporting/stock_report/contract_v05.md)이 각각
 관리한다. 전체 KRX hydration과 strategy/backtest는 별도 운영 스크립트와
 전략 문서의 범위다. PyKRX, KRX scraping, OpenDART live 호출, 외부 시세
-데이터, manual injection은 F2에서 사용하지 않는다.
+데이터, manual injection은 이 모듈에서 사용하지 않는다.
 
 검증
 ----------------------------------------------------------------------
@@ -84,4 +85,4 @@ Stock Report schema·Markdown·JSON 통합은
 `tests/test_opendart_fundamentals_multi_period_v1.py`에서 synthetic positive와
 missing/ambiguous/future/basis/currency/FINANCIAL negative를 검증한다. 기존
 Periodization 및 DerivedMetrics 회귀 테스트와 함께 실행하며 Full Repository
-Pytest는 F2 범위에서 실행하지 않는다.
+Pytest는 이 범위에서 실행하지 않는다.

@@ -3,7 +3,7 @@ opendart_fundamentals_v1_filter.md
 
 목적
 ----
-F2 MultiPeriodFundamentalsResult와 F3 DerivedMetricsResult의 정본 관측값만
+MultiPeriodFundamentalsResult와 DerivedMetricsResult의 정본 관측값만
 사용해 일반 기업(NON_FINANCIAL)의 Fundamentals Filter V1을 평가한다.
 이 계층은 OpenDART, 네트워크, 스캐너, 리포트 생성기를 직접 호출하지 않는다.
 
@@ -17,11 +17,12 @@ FINANCIAL 기업은 항상 NOT_APPLICABLE이며 passed=false이다. 금융업에
 ---------
 NON_FINANCIAL 기업은 아래 네 조건을 모두 만족해야 PASS이다.
 
-  1. F2의 latest_fy가 가리키는 최신 V1 usable FY revenue >= 50,000,000,000 KRW
-  2. F2의 latest_quarter가 끝점인 최신 4개 연속 standalone quarter revenue의
-     평균 >= 10,000,000,000 KRW
-  3. F3가 이미 계산한 최신 TTM operating_income > 0
-  4. F3가 이미 계산한 최신 TTM net_income > 0
+  1. MultiPeriodFundamentalsResult의 latest_fy가 가리키는 최신 V1 usable FY
+     revenue >= 50,000,000,000 KRW
+  2. MultiPeriodFundamentalsResult의 latest_quarter가 끝점인 최신 4개 연속
+     standalone quarter revenue의 평균 >= 10,000,000,000 KRW
+  3. DerivedMetricsResult가 이미 계산한 최신 TTM operating_income > 0
+  4. DerivedMetricsResult가 이미 계산한 최신 TTM net_income > 0
 
 매출 두 기준은 경계값을 포함하고, 영업이익/순이익은 0을 통과시키지 않는다.
 최신 분기가 누락되면 이전 분기 네 개를 당겨 쓰지 않고 DATA_UNAVAILABLE이다.
@@ -29,18 +30,19 @@ NON_FINANCIAL 기업은 아래 네 조건을 모두 만족해야 PASS이다.
 
 정본 및 일관성 규칙
 --------------------
-  * FY와 분기 revenue는 F2의 latest_fy/latest_quarter 및 슬롯 상태를 따른다.
+  * FY와 분기 revenue는 MultiPeriodFundamentalsResult의 latest_fy/
+    latest_quarter 및 슬롯 상태를 따른다.
   * threshold가 KRW 기준이므로 annual revenue는 KRW만 허용한다. 자동 FX 환산은
     하지 않는다.
   * 최신 네 분기 revenue도 모두 KRW여야 하며, 네 observation의 fs_div_used가
     동일해야 평균을 계산한다. 비-KRW 또는 basis 불일치는 DATA_UNAVAILABLE이다.
-  * TTM 영업이익/순이익은 F3 metric_type=TTM 관측값만 읽는다. F4에서 분기
-    합산이나 재계산을 하지 않는다.
+  * TTM 영업이익/순이익은 DerivedMetricsResult의 metric_type=TTM 관측값만
+    읽는다. 이 필터에서 분기 합산이나 재계산을 하지 않는다.
   * revenue와 TTM 이익의 latest endpoint가 다르면 DATA_UNAVAILABLE이다.
-  * F2와 F3는 동일 ticker를 가져야 한다. corp_code가 양쪽에 있으면 일치해야
-    하고, company_family도 일치해야 한다. 다른 종목의 더 최신 TTM을 사용하지
-    않는다.
-  * F2/F3 requested_as_of가 다르거나 required 관측값이 READY가 아니거나,
+  * MultiPeriodFundamentalsResult와 DerivedMetricsResult는 동일 ticker를
+    가져야 한다. corp_code가 양쪽에 있으면 일치해야 하고, company_family도
+    일치해야 한다. 다른 종목의 더 최신 TTM을 사용하지 않는다.
+  * 두 결과의 requested_as_of가 다르거나 required 관측값이 READY가 아니거나,
     period/basis/currency/PIT 판정이 모호하면 DATA_UNAVAILABLE이다. 원본
     상태와 reason은 diagnostics에 보존한다.
   * 더 오래된 FY/분기 또는 다른 데이터 제공자에 대한 조용한 fallback은 없다.

@@ -15,9 +15,9 @@ Naver Finance 등 외부 데이터는 sanity validation 참고 역할만 하며 
 
 ## PIT 원칙
 
-기준일(as_of)에 filing availability date가 이미 지난 공시 데이터만
-사용하며, 미래 공시가 과거 시점 결과에 섞이는 것(future filing leakage)을
-금지한다.
+PIT는 `DAILY_EOD_KST` 기준이며, as_of 당일을 포함해 그 시점까지 이용
+가능해진 공시 데이터만 사용한다(filing availability date `<= as_of`).
+미래 공시가 과거 시점 결과에 섞이는 것(future filing leakage)을 금지한다.
 
 ## 지원 범위
 

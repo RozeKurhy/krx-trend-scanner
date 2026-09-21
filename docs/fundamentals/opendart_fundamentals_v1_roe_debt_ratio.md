@@ -7,7 +7,7 @@ OpenDART Fundamentals V1 — ROE & Debt Ratio Derived Metrics
 목적
 ----------------------------------------------------------------------
 
-이 문서는 F2 MultiPeriodFundamentalsResult 또는 동일한 canonical
+이 문서는 MultiPeriodFundamentalsResult 또는 동일한 canonical
 PeriodizedFinancialObservation 집합에서 계산하는 일반회사(NON_FINANCIAL)
 자본효율성 파생지표의 계약을 정의한다. 원천 API/XBRL을 직접 호출하지 않으며
 기존 DerivedMetricsEngine의 PIT와 provenance 경계를 재사용한다.
@@ -31,8 +31,9 @@ PeriodizedFinancialObservation 집합에서 계산하는 일반회사(NON_FINANC
 입력 및 안전성
 ----------------------------------------------------------------------
 
-- 입력은 F2 `canonical_observations`를 직접 소비할 수 있으며, 기존
-  PeriodizationResult/iterable 입력도 계속 지원한다.
+- 입력은 MultiPeriodFundamentalsResult의 `canonical_observations`를 직접
+  소비할 수 있으며, 기존 PeriodizationResult/iterable 입력도 계속
+  지원한다.
 - 모든 source observation은 `pit_available_from <= requested_as_of`여야 한다.
   미래·미확인·ambiguous 입력은 READY로 승격하지 않는다.
 - Annual ROE의 net income/prior equity/current equity, TTM ROE의 네 분기

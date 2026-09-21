@@ -16,9 +16,10 @@ OpenDART Fundamentals V1 — 적용 범위와 경계
 ----------------------------------------------------------------------
 
 OpenDART/XBRL이 Fundamentals V1의 유일한 production 데이터 권위 원천이다.
-filing availability date가 as_of 이전인 공시 데이터만 사용하며, 미래 공시가
-과거 시점 결과에 섞이는 것을 금지한다. Naver Finance 등 외부 데이터는 sanity
-validation 참고 역할만 하며 production 권위를 대신하지 않는다.
+PIT는 `DAILY_EOD_KST` 기준이며, as_of 당일을 포함해 그 시점까지 이용
+가능해진 공시 데이터만 사용한다(filing availability date `<= as_of`). 미래
+공시가 과거 시점 결과에 섞이는 것을 금지한다. Naver Finance 등 외부 데이터는
+sanity validation 참고 역할만 하며 production 권위를 대신하지 않는다.
 
 지원 회사 범위
 ----------------------------------------------------------------------
@@ -37,7 +38,17 @@ validation 참고 역할만 하며 production 권위를 대신하지 않는다.
 - TTM 매출/영업이익/순이익/OCF와 TTM 마진
 - Annual ROE, TTM ROE, 부채비율
 
-산식, fail-closed 조건, basis/currency 일관성 규칙은
+핵심 산식
+----------------------------------------------------------------------
+
+- TTM = 최신 4개 연속 standalone quarter의 합
+- Quarterly YoY = 현재 분기와 4분기 전 동일 분기 비교
+- Annual YoY = 현재 FY와 직전 FY 비교
+- Operating margin = operating income / revenue * 100
+- Net margin = net income / revenue * 100
+- OCF margin = operating cash flow / revenue * 100
+
+ROE와 부채비율 산식, fail-closed 조건, basis/currency 일관성 규칙은
 [ROE/부채비율 기준 문서](opendart_fundamentals_v1_roe_debt_ratio.md)에서
 관리한다.
 
