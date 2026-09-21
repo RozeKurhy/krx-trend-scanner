@@ -6,18 +6,23 @@ import argparse
 import json
 import math
 from pathlib import Path
+import sys
 from typing import Any
 
 import pandas as pd
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.run_pattern_a_universe_scanner import resolve_reference_market_date
+from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
 from trend_scanner.data.repository_v2_instrument_contract import repository_v2_contract_for_metadata
 from trend_scanner.data.repository_v2_loader import build_repository_v2
 from trend_scanner.universe.instrument_metadata import InstrumentMetadataResolver
 
 
-ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT_PATH = ROOT / "web" / "data" / "etf-ranking.json"
-AS_OF = "2026-09-04"
 HORIZONS = {"2w": 10, "1m": 21, "3m": 63, "6m": 126, "12m": 252}
 READ_START = "2023-01-01"
 
@@ -64,10 +69,15 @@ def _validate_universe() -> None:
         raise ValueError("ETF universe must contain exactly 24 unique tickers")
 
 
-def _load_metadata(repo_root: Path) -> dict[str, Any]:
+def _resolve_reference_market_date(target_as_of: str, repo_root: Path) -> str:
+    calendar = load_rolling_production_market_calendar(repo_root)
+    return resolve_reference_market_date(target_as_of, calendar)
+
+
+def _load_metadata(repo_root: Path, *, reference_market_date: str) -> dict[str, Any]:
     metadata_by_ticker: dict[str, Any] = {}
     for ticker, _group, _category in ETF_UNIVERSE:
-        metadata = InstrumentMetadataResolver.resolve(ticker, as_of=AS_OF, repo_root=repo_root)
+        metadata = InstrumentMetadataResolver.resolve(ticker, as_of=reference_market_date, repo_root=repo_root)
         if metadata.ticker != ticker or not metadata.is_identified:
             raise ValueError(f"ETF metadata identity is unavailable: {ticker}")
         if not metadata.is_trusted_for_production or metadata.asset_type != "ETF":
@@ -122,15 +132,23 @@ def _calculate_horizon_metrics(frame: pd.DataFrame, session_count: int, *, ticke
     return metrics
 
 
-def _project_item(repo: Any, ticker: str, group: str, category: str, metadata: Any) -> dict[str, Any]:
-    frame = repo.get_daily(ticker, READ_START, AS_OF)
+def _project_item(
+    repo: Any,
+    ticker: str,
+    group: str,
+    category: str,
+    metadata: Any,
+    *,
+    reference_market_date: str,
+) -> dict[str, Any]:
+    frame = repo.get_daily(ticker, READ_START, reference_market_date)
     if frame is None or frame.empty:
         raise ValueError(f"ETF ranking data is unavailable: {ticker}")
     frame = frame.sort_index()
     if not isinstance(frame.index, pd.DatetimeIndex) or frame.index.has_duplicates:
         raise ValueError(f"ETF ranking dates are invalid: {ticker}")
-    if frame.index.max().strftime("%Y-%m-%d") != AS_OF:
-        raise ValueError(f"ETF ranking latest close is not as-of {AS_OF}: {ticker}")
+    if frame.index.max().strftime("%Y-%m-%d") != reference_market_date:
+        raise ValueError(f"ETF ranking latest close is not as-of {reference_market_date}: {ticker}")
 
     close = pd.to_numeric(frame["close"], errors="coerce")
     if len(close) < max(HORIZONS.values()) + 1 or close.isna().any() or not close.map(math.isfinite).all() or (close <= 0).any():
@@ -147,7 +165,7 @@ def _project_item(repo: Any, ticker: str, group: str, category: str, metadata: A
         "group": group,
         "category": category,
         "latest_close": latest_close,
-        "latest_close_as_of": AS_OF,
+        "latest_close_as_of": reference_market_date,
         "external_links": {
             "naver_finance": f"https://finance.naver.com/item/main.naver?code={ticker}",
             "naver_chart": f"https://stock.naver.com/fchart/domestic/stock/{ticker}",
@@ -159,13 +177,17 @@ def _project_item(repo: Any, ticker: str, group: str, category: str, metadata: A
     return item
 
 
-def build_etf_ranking(repo_root: Path | str = ROOT) -> dict[str, Any]:
+def build_etf_ranking(target_as_of: str, repo_root: Path | str = ROOT) -> dict[str, Any]:
     root = Path(repo_root)
+    reference_market_date = _resolve_reference_market_date(target_as_of, root)
     _validate_universe()
-    metadata_by_ticker = _load_metadata(root)
-    repo = build_repository_v2(root, end=AS_OF)
+    metadata_by_ticker = _load_metadata(root, reference_market_date=reference_market_date)
+    repo = build_repository_v2(root, end=reference_market_date)
     items = [
-        _project_item(repo, ticker, group, category, metadata_by_ticker[ticker])
+        _project_item(
+            repo, ticker, group, category, metadata_by_ticker[ticker],
+            reference_market_date=reference_market_date,
+        )
         for ticker, group, category in ETF_UNIVERSE
     ]
     if len(items) != 24 or {item["ticker"] for item in items} != {ticker for ticker, _group, _category in ETF_UNIVERSE}:
@@ -173,15 +195,17 @@ def build_etf_ranking(repo_root: Path | str = ROOT) -> dict[str, Any]:
     items.sort(key=lambda item: (-float(item["return_1m"]), str(item["name"]), str(item["ticker"])))
     return {
         "schema_version": 1,
-        "as_of": AS_OF,
+        "requested_as_of": target_as_of,
+        "reference_market_date": reference_market_date,
+        "as_of": reference_market_date,
         "scope": {"type": "FIXED_ETF_UNIVERSE", "count": 24},
         "horizons": HORIZONS.copy(),
         "items": items,
     }
 
 
-def export_etf_ranking(output_path: Path = DEFAULT_OUTPUT_PATH) -> dict[str, Any]:
-    payload = build_etf_ranking()
+def export_etf_ranking(target_as_of: str, output_path: Path = DEFAULT_OUTPUT_PATH) -> dict[str, Any]:
+    payload = build_etf_ranking(target_as_of)
     _write_json(output_path, payload)
     return {
         "output": str(output_path.relative_to(ROOT)),
@@ -192,9 +216,10 @@ def export_etf_ranking(output_path: Path = DEFAULT_OUTPUT_PATH) -> dict[str, Any
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--target-as-of", required=True, help="Required target as-of date (YYYY-MM-DD)")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_PATH)
     args = parser.parse_args()
-    print(json.dumps(export_etf_ranking(args.output), ensure_ascii=False, sort_keys=True))
+    print(json.dumps(export_etf_ranking(args.target_as_of, args.output), ensure_ascii=False, sort_keys=True))
     return 0
 
 

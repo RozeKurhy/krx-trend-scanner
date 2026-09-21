@@ -10,11 +10,11 @@ working tree: clean after push
 ## Data
 
 - V-KOSPI source: KRX Data Marketplace official export
-- Official files: 9 chunked CSVs
-- Date range: `2010-01-04 ~ 2026-09-04`
-- Rows: `4105`; duplicate `0`; null `0`
+- Official files: `9`; requested as-of: `2026-09-21`; reference market date: `2026-09-17`
+- Date range: `2010-01-04 ~ 2026-09-17`
+- Rows: `4114`; duplicate `0`; null `0`
 - KOSPI source: `data/market/index/v01/market_index.parquet`, index code `1001`
-- Exact join: `4105` rows
+- Exact join: `4114` rows
 - External financial network: `0`
 
 ## Fear Score FIX
@@ -50,17 +50,17 @@ working tree: clean after push
 
 ## Current
 
-- date: `2026-09-04`
-- V-KOSPI: `39.33`
-- KOSPI: `6687.21`
-- trading_value: `17723233066259.0`
-- fear_score: `30.180237`
+- date: `2026-09-17`
+- V-KOSPI: `43.02`
+- KOSPI: `6715.41`
+- trading_value: `17143708606910.0`
+- fear_score: `43.308778`
 - market_regime: `ANXIOUS`
 
 ## Flicker
 
-- RAW: `{'valid_days': 3980, 'switch_count': 538, 'switch_rate': 0.13517587939698492, 'one_day_runs': 186, 'two_day_runs': 86, 'median_run_length': 2.0, 'mean_run_length': 7.38404452690167, 'max_run_length': 160}`
-- STABILIZED: `{'valid_days': 3980, 'switch_count': 272, 'switch_rate': 0.06834170854271357, 'one_day_runs': 5, 'two_day_runs': 51, 'median_run_length': 6.0, 'mean_run_length': 14.578754578754578, 'max_run_length': 182}`
+- RAW: `{'valid_days': 3989, 'switch_count': 538, 'switch_rate': 0.13487089496114316, 'one_day_runs': 186, 'two_day_runs': 86, 'median_run_length': 2.0, 'mean_run_length': 7.400742115027829, 'max_run_length': 160}`
+- STABILIZED: `{'valid_days': 3989, 'switch_count': 272, 'switch_rate': 0.06818751566808724, 'one_day_runs': 5, 'two_day_runs': 51, 'median_run_length': 6.0, 'mean_run_length': 14.611721611721611, 'max_run_length': 182}`
 - Hysteresis selected: `YES`
 - Exact rule: PANIC immediate; all other changes require two consecutive raw sessions.
 
@@ -90,4 +90,4 @@ working tree: clean after push
 
 ## Scope
 
-No official source, KOSPI canonical, web, or production model/data was modified. 2008 remains `NOT IN COMMON SOURCE RANGE`.
+Official KRX V-KOSPI source and derived Fear Index artifacts were refreshed through the reference market date; KOSPI canonical and production model logic were not modified. 2008 remains `NOT IN COMMON SOURCE RANGE`.

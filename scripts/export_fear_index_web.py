@@ -14,11 +14,17 @@ from datetime import date
 import json
 import math
 from pathlib import Path
+import sys
 import tempfile
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from scripts.run_pattern_a_universe_scanner import resolve_reference_market_date
+from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
+
 SOURCE_CSV = ROOT / "artifacts/fear_index/research_v01/final_daily_regimes.csv"
 SUMMARY_PATH = ROOT / "artifacts/fear_index/research_v01/research_summary.json"
 FORMULA_PATH = ROOT / "artifacts/fear_index/research_v01/final_formula.md"
@@ -101,8 +107,10 @@ def _project_item(row: dict[str, str]) -> dict[str, Any] | None:
     }
 
 
-def build_web_payload() -> dict[str, Any]:
+def build_web_payload(target_as_of: str, repo_root: Path = ROOT) -> dict[str, Any]:
     """Build the public payload from the approved local artifacts."""
+    calendar = load_rolling_production_market_calendar(repo_root)
+    reference_market_date = resolve_reference_market_date(target_as_of, calendar)
     if not SOURCE_CSV.exists():
         raise FileNotFoundError(f"Fear Index CSV authority missing: {SOURCE_CSV}")
     if not SUMMARY_PATH.exists():
@@ -125,10 +133,22 @@ def build_web_payload() -> dict[str, Any]:
     if len(dates) != len(set(dates)):
         raise ValueError("Fear Index authority contains duplicate valid dates")
 
+    projected = [item for item in projected if item["date"] <= reference_market_date]
+    if not projected:
+        raise ValueError(f"Fear Index authority has no rows at or before {reference_market_date}")
+    if projected[-1]["date"] != reference_market_date:
+        raise ValueError(
+            f"Fear Index authority does not reach exact reference market date: {reference_market_date}"
+        )
     current = projected[-1]
+    summary_current = summary.get("current")
+    if not isinstance(summary_current, dict) or str(summary_current.get("date"))[:10] != reference_market_date:
+        raise ValueError("Fear Index summary current date does not match reference market date")
     return {
         "schema_version": "FEAR_INDEX_WEB_V01",
-        "as_of": current["date"],
+        "requested_as_of": target_as_of,
+        "reference_market_date": reference_market_date,
+        "as_of": reference_market_date,
         "model": {
             "study": str(summary.get("study") or ""),
             "candidate": str(summary.get("final_candidate") or ""),
@@ -141,17 +161,18 @@ def build_web_payload() -> dict[str, Any]:
     }
 
 
-def export_fear_index(output_path: Path = DEFAULT_OUTPUT_PATH) -> dict[str, Any]:
-    payload = build_web_payload()
+def export_fear_index(target_as_of: str, output_path: Path = DEFAULT_OUTPUT_PATH) -> dict[str, Any]:
+    payload = build_web_payload(target_as_of)
     _write_json(output_path, payload)
     return payload
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--target-as-of", required=True, help="Required target as-of date (YYYY-MM-DD)")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_PATH)
     args = parser.parse_args()
-    payload = export_fear_index(args.output)
+    payload = export_fear_index(args.target_as_of, args.output)
     print(
         f"exported {len(payload['items'])} rows "
         f"({payload['available_from']}..{payload['as_of']}) to {args.output}"

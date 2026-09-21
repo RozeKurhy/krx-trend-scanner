@@ -8,12 +8,21 @@ three deterministic fear-score candidates without adding macro inputs.
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 from pathlib import Path
+import sys
 from typing import Iterable
 
 import numpy as np
 import pandas as pd
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from scripts.run_pattern_a_universe_scanner import resolve_reference_market_date
+from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
 
 
 REGIMES = ("OVERHEATED", "NORMAL", "ANXIOUS", "PANIC", "APATHY")
@@ -24,7 +33,6 @@ CANDIDATE_COMPLEXITY = {
     "downside_heavy_v01": 4,
 }
 DATE_MIN = pd.Timestamp("2010-01-04")
-DATE_MAX = pd.Timestamp("2026-09-04")
 VALIDATION_CUTOFF = pd.Timestamp("2022-01-01")
 
 
@@ -572,12 +580,31 @@ def build_false_regime_review(frame: pd.DataFrame) -> tuple[pd.DataFrame, dict[s
     return review, summary
 
 
-def run_research(export_dir: Path, kospi_path: Path, output_root: Path) -> dict[str, object]:
+def run_research(
+    export_dir: Path,
+    kospi_path: Path,
+    output_root: Path,
+    *,
+    target_as_of: str,
+    repo_root: Path | None = None,
+) -> dict[str, object]:
     output_root.mkdir(parents=True, exist_ok=True)
     source_dir = output_root / "source"
+    root = Path(repo_root) if repo_root is not None else Path.cwd()
+    calendar = load_rolling_production_market_calendar(root)
+    reference_market_date = resolve_reference_market_date(target_as_of, calendar)
     v_kospi, acquisition = load_v_kospi_exports(export_dir)
     kospi = load_kospi_canonical(kospi_path)
+    reference_timestamp = pd.Timestamp(reference_market_date)
+    v_kospi = v_kospi.loc[v_kospi["date"] <= reference_timestamp].copy()
+    kospi = kospi.loc[kospi["date"] <= reference_timestamp].copy()
+    if v_kospi.empty or v_kospi["date"].max() != reference_timestamp:
+        raise ValueError(f"V-KOSPI official source does not reach exact reference market date: {reference_market_date}")
+    if kospi.empty or kospi["date"].max() != reference_timestamp:
+        raise ValueError(f"KOSPI canonical source does not reach exact reference market date: {reference_market_date}")
     joined = exact_date_join(kospi, v_kospi)
+    if joined.empty or joined["date"].max() != reference_timestamp:
+        raise ValueError(f"Fear Index exact join does not reach exact reference market date: {reference_market_date}")
     features = build_features(joined)
     scored = build_candidate_scores(features)
     candidate_frames = {candidate: assign_regimes(scored, candidate) for candidate in CANDIDATES}
@@ -629,23 +656,22 @@ def run_research(export_dir: Path, kospi_path: Path, output_root: Path) -> dict[
     regime_counts = {
         regime: int(final_frame["regime"].eq(regime).sum()) for regime in REGIMES
     }
+    downloaded_files = [
+        {
+            "file": path.name,
+            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        }
+        for path in sorted(export_dir.glob("v_kospi200_*_official.csv"))
+    ]
     acquisition.update(
         {
             "official_url": "https://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201010303",
             "krx_menu_path": "통계 > 기본 통계 > 지수 > 파생 및 기타지수 > 개별지수 시세 추이",
             "login": "SUCCESS",
             "download": "chunked",
-            "downloaded_files": [
-                {"period": "2010-01-04~2011-12-31", "file": "data_5119_20260909.csv", "sha256": "c9ffbe3ed723fe2fcda9250365edabe4851a9540539a0f7b37024ced9d8fb09d"},
-                {"period": "2012-01-01~2013-12-31", "file": "data_5624_20260909.csv", "sha256": "38af893fba8771928d8abcec03e79abac85832be9cce0b4901efb94b7720b755"},
-                {"period": "2014-01-01~2015-12-31", "file": "data_5209_20260909.csv", "sha256": "c74c94e7fce48674aa27977ee87f92b0f5863800484b3f5872614545e2ab2602"},
-                {"period": "2016-01-01~2017-12-31", "file": "data_5418_20260909.csv", "sha256": "35401fe02d5c3a473983863e1fa10d4154e05c457965e012f92ac0dafe53106b"},
-                {"period": "2018-01-01~2019-12-31", "file": "data_5219_20260909.csv", "sha256": "6f61a003f0b410976e422800b47d1309524f04d25e7eb1b3876d3b278ad03b5e"},
-                {"period": "2020-01-01~2021-12-31", "file": "data_5513_20260909.csv", "sha256": "e8e3bb0913619e2c4a260e1da9970ba4b6a96676532082d9363c729bd7534577"},
-                {"period": "2022-01-01~2023-12-31", "file": "data_5229_20260909.csv", "sha256": "093770884b12487f3f8789afd2daf81f541eea6a4316e5cc64721130003bfa41"},
-                {"period": "2024-01-01~2025-12-31", "file": "data_5609_20260909.csv", "sha256": "8de975ac3f6d0a1e41764b7896f334567d0d7f59ddd863efe5c536fe3749cc62"},
-                {"period": "2026-01-01~2026-09-04", "file": "data_5239_20260909.csv", "sha256": "f0941ee4786d1610cb458f825247292f72f607f01b6c46a7610fc83de4c1bc0c"},
-            ],
+            "downloaded_files": downloaded_files,
+            "target_as_of": target_as_of,
+            "reference_market_date": reference_market_date,
             "official_date_range": {
                 "min": acquisition["date_min"],
                 "max": acquisition["date_max"],
@@ -668,11 +694,13 @@ def run_research(export_dir: Path, kospi_path: Path, output_root: Path) -> dict[
         (metrics["candidate"] == final_candidate) & (metrics["split"] == "validation")
     ]
     selected_diagnostic_row = selected_diagnostic.iloc[0].to_dict() if not selected_diagnostic.empty else {}
-    current = final_frame.loc[final_frame["date"].eq(DATE_MAX)].iloc[0]
+    current = final_frame.loc[final_frame["date"].eq(reference_timestamp)].iloc[0]
     period_rows = period_validation.set_index("period").to_dict(orient="index")
     summary = {
         "study": "Fear Index Research & Market Regime Backtest V01 — FIX01",
         "inputs": ["V-KOSPI 200", "KOSPI", "KOSPI trading_value"],
+        "target_as_of": target_as_of,
+        "reference_market_date": reference_market_date,
         "date_range": {"min": joined["date"].min(), "max": joined["date"].max()},
         "joined_rows": len(joined),
         "candidate_count": len(CANDIDATES),
@@ -715,6 +743,18 @@ def run_research(export_dir: Path, kospi_path: Path, output_root: Path) -> dict[
         return ", ".join(f"{regime}={row[regime.lower()]}" for regime in REGIMES)
 
     report = f"""# Fear Index Research & Market Regime Backtest V01 — FIX01\n\nSTART_HEAD: `d48b1ebc7dcb842b615f39625b2ea94b8e1864f4`\nFINAL_HEAD: pending commit\ncommit: pending\npush: pending\nHEAD == origin/main: pending\nworking tree: pending\n\n## Data\n\n- V-KOSPI source: KRX Data Marketplace official export\n- Official files: 9 chunked CSVs\n- Date range: `{acquisition['date_min']:%Y-%m-%d} ~ {acquisition['date_max']:%Y-%m-%d}`\n- Rows: `{acquisition['normalized_row_count']}`; duplicate `{acquisition['duplicate_dates']}`; null `{acquisition['null_values']}`\n- KOSPI source: `data/market/index/v01/market_index.parquet`, index code `1001`\n- Exact join: `{len(joined)}` rows\n- External financial network: `0`\n\n## Fear Score FIX\n\n- Previous participation problem: `1 - participation_pct_252` had a positive fear weight, so low participation increased fear and could create false PANIC.\n- New participation role: excluded from the selected fear score; used for high-participation PANIC confirmation and low-participation APATHY classification.\n- Candidate count: `{len(CANDIDATES)}`\n- Selected candidate: `{final_candidate}`\n- Exact formula: `100 * clip(0.40*v_level_pct_252 + 0.10*v_spike + 0.40*downside + 0.10*v_momentum, 0, 100)`\n- Does low participation raise fear? `NO`\n- Candidate selection: historical mandatory gates, contextual contradictions, flicker, then simplicity. Forward Brier/correlation are diagnostic only.\n\n## Market Regime Rules\n\n- PANIC: `(fear_score >= 70 AND downside AND high_participation AND NOT bull_context) OR (fear_score >= 88 AND severe_downside AND NOT bull_context)`\n- OVERHEATED: `strong_up AND participation_pct_252 >= 0.55 AND (NOT downside OR bull_context)`\n- APATHY: `fear_score <= 50 AND low_participation AND kospi_return_60 <= 0.05 AND NOT sharp_downside`\n- ANXIOUS: `fear_score >= 50 OR downside`\n- NORMAL: fallback for remaining available observations\n- Precedence: `PANIC > OVERHEATED > APATHY > ANXIOUS > NORMAL`\n\n## Period Validation\n\n- 2011-08~09: `{dist('2011_08_09')}`; verdict: anchor PANIC cluster present\n- 2012~2016: `{dist('2012_2016')}`; APATHY longest run `{period_rows['2012_2016']['apathy_longest_run']}`; verdict: NORMAL/APATHY coexist\n- 2017: `{dist('2017')}`; PANIC `{period_rows['2017']['panic_days']}`, APATHY `{period_rows['2017']['apathy_days']}`; verdict: not dominated\n- 2018: `{dist('2018')}`; verdict: ANXIOUS/PANIC downside explanation\n- 2020-02-20~04-30: `{dist('2020_covid')}`; 2020-03-19 `{events.loc[events['date'].eq(pd.Timestamp('2020-03-19')), 'regime'].iloc[0]}`; verdict: COVID PANIC cluster\n- 2021: `{dist('2021')}`; verdict: NORMAL/OVERHEATED 중심\n- 2022: `{dist('2022')}`; PANIC `{period_rows['2022']['panic_days']}`, ANXIOUS `{period_rows['2022']['anxious_days']}`; 2022-07-04 `{final_frame.loc[final_frame['date'].eq(pd.Timestamp('2022-07-04')), 'regime'].iloc[0]}`; verdict: ANXIOUS 중심\n- 2024-08-01~08-09: `{dist('2024_08')}`; 2024-08-05 `{events.loc[events['date'].eq(pd.Timestamp('2024-08-05')), 'regime'].iloc[0]}`; verdict: PANIC anchor\n- 2026-06: `{dist('2026_06')}`; 2026-06-18 `{events.loc[events['date'].eq(pd.Timestamp('2026-06-18')), 'regime'].iloc[0]}`, 2026-06-29 `{events.loc[events['date'].eq(pd.Timestamp('2026-06-29')), 'regime'].iloc[0]}`; PANIC false positives `{period_rows['2026_06']['panic_days']}`\n\n## Current\n\n- date: `2026-09-04`\n- V-KOSPI: `{current['v_kospi200_close']}`\n- KOSPI: `{current['kospi_close']}`\n- trading_value: `{current['trading_value']}`\n- fear_score: `{current['fear_score']:.6f}`\n- market_regime: `{current['regime']}`\n\n## Flicker\n\n- RAW: `{raw_stats}`\n- STABILIZED: `{stabilized_stats}`\n- Hysteresis selected: `{"YES" if use_stabilization else "NO"}`\n- Exact rule: PANIC immediate; all other changes require two consecutive raw sessions.\n\n## Forward Diagnostics\n\n- Forward return metrics calculated: `YES`\n- Used for formula: `NO`\n- Used for candidate selection: `NO`\n- Brier used as selection objective: `NO`\n\n## False Regime Review\n\n{chr(10).join(f"- {label}: {detail['count']} examples={detail['examples']}" for label, detail in false_regime_summary.items())}\n\n## Artifacts\n\n- `candidate_gate_comparison.csv`\n- `regime_period_validation.csv`\n- `regime_run_stats.json`\n- `false_regime_review.csv`\n- `final_formula.md` (exact numeric formula/thresholds)\n- `final_daily_regimes.csv`\n\n## Scope\n\nNo official source, KOSPI canonical, web, or production model/data was modified. 2008 remains `NOT IN COMMON SOURCE RANGE`.\n"""
+    report = report.replace(
+        "Official files: 9 chunked CSVs",
+        f"Official files: `{len(downloaded_files)}`; requested as-of: `{target_as_of}`; reference market date: `{reference_market_date}`",
+    )
+    report = report.replace(
+        "- date: `2026-09-04`",
+        f"- date: `{reference_market_date}`",
+    )
+    report = report.replace(
+        "No official source, KOSPI canonical, web, or production model/data was modified.",
+        "Official KRX V-KOSPI source and derived Fear Index artifacts were refreshed through the reference market date; KOSPI canonical and production model logic were not modified.",
+    )
     report = report.replace(
         "`strong_up AND participation_pct_252 >= 0.55 AND (NOT downside OR bull_context)`",
         "`strong_up AND participation_pct_252 >= 0.55 AND NOT sharp_downside AND (NOT downside OR bull_context)`",

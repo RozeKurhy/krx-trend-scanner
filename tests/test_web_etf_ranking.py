@@ -35,14 +35,16 @@ def _load_ranking() -> dict:
 def test_etf_ranking_has_exact_fixed_scope_and_complete_finite_values():
     ranking = _load_ranking()
     assert ranking["schema_version"] == 1
-    assert ranking["as_of"] == "2026-09-04"
+    assert ranking["requested_as_of"] == "2026-09-21"
+    assert ranking["reference_market_date"] == "2026-09-17"
+    assert ranking["as_of"] == ranking["reference_market_date"]
     assert ranking["scope"] == {"type": "FIXED_ETF_UNIVERSE", "count": 24}
     assert ranking["horizons"] == HORIZONS
     assert len(ranking["items"]) == 24
     assert {item["ticker"] for item in ranking["items"]} == ETF_TICKERS
     assert len({item["ticker"] for item in ranking["items"]}) == 24
     for item in ranking["items"]:
-        assert item["latest_close_as_of"] == "2026-09-04"
+        assert item["latest_close_as_of"] == ranking["as_of"]
         assert item["group"] in {"MARKET", "SECTOR", "OVERSEAS"}
         assert item["category"]
         for key in (
@@ -69,7 +71,6 @@ def test_etf_exporter_contract_is_fixed_and_uses_repository_authority():
     assert len(exporter.ETF_UNIVERSE) == 24
     assert len({ticker for ticker, _group, _category in exporter.ETF_UNIVERSE}) == 24
     assert {ticker for ticker, _group, _category in exporter.ETF_UNIVERSE} == ETF_TICKERS
-    assert exporter.AS_OF == "2026-09-04"
     assert exporter.HORIZONS == HORIZONS
     source = EXPORTER_PATH.read_text(encoding="utf-8")
     assert "build_repository_v2" in source
@@ -113,7 +114,7 @@ def test_etf_page_has_required_tabs_controls_and_no_report_or_search_ui():
     assert [text for text in expected_tabs if text in html] == list(expected_tabs)
     assert html.count('data-horizon=') == 5
     assert 'data-horizon="1m" aria-pressed="true"' in html
-    assert '기준일 2026.09.04 · 24개 ETF' in html
+    assert '기준일 확인 중 · 24개 ETF' in html
     assert 'id="etf-ranking-list"' in html
     assert "기간 수익률" not in html and "기간 수익률" not in js
     assert "기간 등락" in js
@@ -126,6 +127,7 @@ def test_etf_page_has_required_tabs_controls_and_no_report_or_search_ui():
     assert 'const RANKING_URL = "./data/etf-ranking.json";' in js
     assert 'let activeHorizon = "1m";' in js
     assert 'Number(right[field]) - Number(left[field])' in js
+    assert 'value.as_of !== value.reference_market_date' in js
     assert 'String(left.name || "").localeCompare(String(right.name || ""), "ko-KR")' in js
     assert 'String(left.ticker || "").localeCompare(String(right.ticker || ""))' in js
     for field in ("RETURN_FIELDS", "MFE_FIELDS", "MDD_FIELDS", "AVG_VOLUME_FIELDS", "AVG_TRADING_VALUE_FIELDS"):

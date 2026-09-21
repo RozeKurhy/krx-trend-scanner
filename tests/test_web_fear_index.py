@@ -26,7 +26,7 @@ def exporter():
 
 @pytest.fixture(scope="session")
 def payload(exporter):
-    return exporter.build_web_payload()
+    return exporter.build_web_payload("2026-09-21")
 
 
 def test_payload_projects_approved_authority(payload, exporter):
@@ -35,7 +35,9 @@ def test_payload_projects_approved_authority(payload, exporter):
     assert payload["model"]["study"] == summary["study"]
     assert payload["model"]["candidate"] == "downside_heavy_v01"
     assert payload["model"]["hysteresis"] is True
-    assert payload["as_of"] == "2026-09-04"
+    assert payload["requested_as_of"] == "2026-09-21"
+    assert payload["reference_market_date"] == "2026-09-17"
+    assert payload["as_of"] == payload["reference_market_date"]
     assert payload["available_from"] == payload["items"][0]["date"]
     assert payload["items"][-1]["date"] == payload["as_of"]
     assert payload["current"] == payload["items"][-1]
@@ -48,7 +50,7 @@ def test_payload_projects_approved_authority(payload, exporter):
 
 def test_payload_rows_are_valid_ascending_and_compact(payload):
     dates = [item["date"] for item in payload["items"]]
-    assert len(dates) == 3980
+    assert len(dates) == 3989
     assert dates == sorted(dates)
     assert len(dates) == len(set(dates))
     assert all(item["regime"] in VALID_REGIMES for item in payload["items"])
@@ -68,11 +70,12 @@ def test_historical_anchor_states_are_preserved(payload):
     assert by_date["2026-06-29"]["regime"] == "ANXIOUS"
     assert by_date["2026-09-04"]["regime"] == "ANXIOUS"
     assert by_date["2026-09-04"]["fear_score"] == pytest.approx(30.1802365595)
+    assert by_date["2026-09-17"]["regime"] == "ANXIOUS"
 
 
 def test_exporter_writes_payload_without_manual_json(tmp_path, exporter, payload):
     output = tmp_path / "data" / "fear-index.json"
-    written = exporter.export_fear_index(output)
+    written = exporter.export_fear_index("2026-09-21", output)
     assert written == payload
     assert json.loads(output.read_text(encoding="utf-8")) == payload
 
