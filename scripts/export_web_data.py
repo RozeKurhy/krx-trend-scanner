@@ -160,6 +160,7 @@ def _production_paths(requested_as_of: str) -> dict[str, Path]:
     return {
         "fundamentals_root": fundamentals_root,
         "fundamentals_tickers": fundamentals_root / "tickers",
+        "fundamentals_manifest": fundamentals_root / "manifest.json",
         "fundamentals_checkpoint": fundamentals_root / "daily_quota_checkpoint.json",
         "stock_reports": STOCK_REPORTS_ROOT / date_key,
     }
@@ -267,7 +268,11 @@ def _valid_fundamentals_outputs(
     return valid, counts
 
 
-def _fundamentals_status(*, completed: int, total: int, integrity_ok: bool) -> str:
+def _fundamentals_status(
+    *, completed: int, total: int, integrity_ok: bool, authority_ok: bool = True
+) -> str:
+    if not authority_ok:
+        return "CHECK_REQUIRED"
     if not integrity_ok:
         return "CHECK_REQUIRED"
     if completed < total:
@@ -293,9 +298,54 @@ def _build_fundamentals(
     remaining = total - completed
     percentage = round((completed / total) * 100, 1) if total else 0.0
 
+    manifest_path = paths.get(
+        "fundamentals_manifest",
+        paths["fundamentals_root"] / "manifest.json",
+    )
     checkpoint_path = paths["fundamentals_checkpoint"]
-    checkpoint = _read_json(checkpoint_path)
-    run_status = str(checkpoint.get("status") or "UNKNOWN")
+    manifest_present = manifest_path.is_file()
+    manifest_valid = False
+    if manifest_present:
+        manifest = _read_json(manifest_path)
+        manifest_valid = (
+            manifest.get("requested_as_of") == requested_as_of
+            and manifest.get("mode") == "full"
+            and manifest.get("final_status") == "PASS"
+        )
+
+    checkpoint_present = checkpoint_path.is_file()
+    checkpoint: dict[str, Any] | None = None
+    if manifest_valid:
+        # A completed full run is authorized by its date-scoped manifest;
+        # quota checkpoints are optional for this mode.
+        run_status = "COMPLETE"
+        authority_path = manifest_path
+        authority_key = "manifest"
+        authority_ok = True
+    elif checkpoint_present:
+        # Preserve the existing priority/remaining checkpoint semantics when
+        # there is no valid full manifest to authorize the outputs.
+        checkpoint = _read_json(checkpoint_path)
+        run_status = str(checkpoint.get("status") or "UNKNOWN")
+        authority_path = checkpoint_path
+        authority_key = "checkpoint"
+        authority_ok = not manifest_present
+    elif manifest_present:
+        # An invalid date/mode/status manifest is an explicit authority
+        # mismatch, not a reason to promote complete ticker coverage to
+        # NORMAL.
+        run_status = "UNKNOWN"
+        authority_path = manifest_path
+        authority_key = "manifest"
+        authority_ok = False
+    else:
+        # Keep the prior failure-closed behavior when neither authority exists.
+        checkpoint = _read_json(checkpoint_path)
+        run_status = str(checkpoint.get("status") or "UNKNOWN")
+        authority_path = checkpoint_path
+        authority_key = "checkpoint"
+        authority_ok = True
+
     output_integrity_ok = not any(
         counts[key] for key in (
             "invalid_output_count",
@@ -307,7 +357,14 @@ def _build_fundamentals(
         completed=completed,
         total=total,
         integrity_ok=output_integrity_ok,
+        authority_ok=authority_ok,
     )
+
+    source = {
+        "production_directory": _relative(paths["fundamentals_root"]),
+        authority_key: _source(authority_path, as_of=requested_as_of),
+        "outputs": _source(paths["fundamentals_tickers"], as_of=requested_as_of),
+    }
 
     return {
         "status": status,
@@ -325,11 +382,7 @@ def _build_fundamentals(
             "outside_universe_count": counts["outside_universe_count"],
             "duplicate_payload_count": counts["duplicate_payload_count"],
         },
-        "source": {
-            "production_directory": _relative(paths["fundamentals_root"]),
-            "checkpoint": _source(checkpoint_path, as_of=requested_as_of),
-            "outputs": _source(paths["fundamentals_tickers"], as_of=requested_as_of),
-        },
+        "source": source,
     }
 
 
@@ -476,7 +529,7 @@ def _stock_report_readiness(
 def _build_downstream_section(
     fundamentals_status: str,
     *,
-    checkpoint_path: Path,
+    source_path: Path,
     requested_as_of: str,
     existing_artifact_count: int | None = None,
     stock_reports_dir: Path | None = None,
@@ -502,7 +555,7 @@ def _build_downstream_section(
     value: dict[str, Any] = {
         "status": status,
         "reason": reason,
-        "source": _source(checkpoint_path, as_of=requested_as_of),
+        "source": _source(source_path, as_of=requested_as_of),
     }
     if existing_artifact_count is not None and stock_reports_dir is not None:
         value["existing_artifact_count"] = existing_artifact_count
@@ -589,7 +642,11 @@ def build_health(
     )
     stock_reports = _build_downstream_section(
         fundamentals["status"],
-        checkpoint_path=paths["fundamentals_checkpoint"],
+        source_path=(
+            paths["fundamentals_manifest"]
+            if "manifest" in fundamentals["source"]
+            else paths["fundamentals_checkpoint"]
+        ),
         requested_as_of=requested_as_of,
         existing_artifact_count=stock_report_count,
         stock_reports_dir=paths["stock_reports"],

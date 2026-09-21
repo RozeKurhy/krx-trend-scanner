@@ -116,6 +116,7 @@ def test_date_key_drives_fundamentals_and_stock_report_paths(exporter, health):
     assert summary_path.name.endswith(f"{date_key}_summary.json")
     assert paths["fundamentals_root"].name == date_key
     assert paths["fundamentals_tickers"] == paths["fundamentals_root"] / "tickers"
+    assert paths["fundamentals_manifest"] == paths["fundamentals_root"] / "manifest.json"
     assert paths["fundamentals_checkpoint"] == paths["fundamentals_root"] / "daily_quota_checkpoint.json"
     assert paths["stock_reports"].name == date_key
     assert health["fundamentals"]["source"]["production_directory"] == paths["fundamentals_root"].relative_to(exporter.ROOT).as_posix()
@@ -127,6 +128,121 @@ def test_fundamentals_status_rule_is_invariant(exporter):
     assert exporter._fundamentals_status(completed=0, total=1, integrity_ok=False) == "CHECK_REQUIRED"
     assert exporter._fundamentals_status(completed=0, total=1, integrity_ok=True) == "CHECK_REQUIRED"
     assert exporter._fundamentals_status(completed=1, total=1, integrity_ok=True) == "NORMAL"
+    assert exporter._fundamentals_status(
+        completed=1, total=1, integrity_ok=True, authority_ok=False
+    ) == "CHECK_REQUIRED"
+
+
+def _temporary_fundamentals_paths(exporter, tmp_path, monkeypatch):
+    monkeypatch.setattr(exporter, "ROOT", tmp_path)
+    root = tmp_path / "fundamentals" / "20260918"
+    tickers = root / "tickers"
+    tickers.mkdir(parents=True)
+    return {
+        "fundamentals_root": root,
+        "fundamentals_tickers": tickers,
+        "fundamentals_manifest": root / "manifest.json",
+        "fundamentals_checkpoint": root / "daily_quota_checkpoint.json",
+    }
+
+
+def _write_ticker_output(path: Path, ticker: str, *, requested_as_of: str = "2026-09-18", terminal_status: str = "PASS"):
+    path.write_text(
+        json.dumps({
+            "ticker": ticker,
+            "requested_as_of": requested_as_of,
+            "terminal_status": terminal_status,
+            "data_status": "READY",
+        }),
+        encoding="utf-8",
+    )
+
+
+def _write_full_manifest(path: Path, **overrides):
+    payload = {
+        "requested_as_of": "2026-09-18",
+        "mode": "full",
+        "final_status": "PASS",
+    }
+    payload.update(overrides)
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+
+def test_fundamentals_full_manifest_is_authority_without_checkpoint(exporter, tmp_path, monkeypatch):
+    paths = _temporary_fundamentals_paths(exporter, tmp_path, monkeypatch)
+    _write_ticker_output(paths["fundamentals_tickers"] / "000001.json", "000001")
+    _write_full_manifest(paths["fundamentals_manifest"])
+
+    result = exporter._build_fundamentals("2026-09-18", {"000001"}, paths)
+
+    assert result["status"] == "NORMAL"
+    assert result["run_status"] == "COMPLETE"
+    assert "manifest" in result["source"]
+    assert "checkpoint" not in result["source"]
+    assert result["source"]["manifest"]["path"].endswith(
+        "fundamentals/20260918/manifest.json"
+    )
+
+
+@pytest.mark.parametrize("field, value", [
+    ("requested_as_of", "2026-09-17"),
+    ("mode", "priority"),
+    ("final_status", "IN_PROGRESS"),
+])
+def test_fundamentals_manifest_mismatch_cannot_be_normal(
+    exporter, tmp_path, monkeypatch, field, value
+):
+    paths = _temporary_fundamentals_paths(exporter, tmp_path, monkeypatch)
+    _write_ticker_output(paths["fundamentals_tickers"] / "000001.json", "000001")
+    _write_full_manifest(paths["fundamentals_manifest"], **{field: value})
+
+    result = exporter._build_fundamentals("2026-09-18", {"000001"}, paths)
+
+    assert result["status"] == "CHECK_REQUIRED"
+    assert result["source"]["manifest"]["path"].endswith(
+        "fundamentals/20260918/manifest.json"
+    )
+
+
+@pytest.mark.parametrize("outputs", [
+    {"000001": {"requested_as_of": "2026-09-18", "terminal_status": "PASS"}},
+    {
+        "000001": {"requested_as_of": "2026-09-18", "terminal_status": "PASS"},
+        "000002": {"requested_as_of": "2026-09-17", "terminal_status": "PASS"},
+    },
+])
+def test_fundamentals_manifest_pass_keeps_coverage_and_integrity_gates(
+    exporter, tmp_path, monkeypatch, outputs
+):
+    paths = _temporary_fundamentals_paths(exporter, tmp_path, monkeypatch)
+    for ticker, fields in outputs.items():
+        _write_ticker_output(
+            paths["fundamentals_tickers"] / f"{ticker}.json",
+            ticker,
+            **fields,
+        )
+    _write_full_manifest(paths["fundamentals_manifest"])
+
+    result = exporter._build_fundamentals("2026-09-18", {"000001", "000002"}, paths)
+
+    assert result["status"] == "CHECK_REQUIRED"
+
+
+def test_fundamentals_checkpoint_remains_authority_for_quota_path(
+    exporter, tmp_path, monkeypatch
+):
+    paths = _temporary_fundamentals_paths(exporter, tmp_path, monkeypatch)
+    _write_ticker_output(paths["fundamentals_tickers"] / "000001.json", "000001")
+    paths["fundamentals_checkpoint"].write_text(
+        json.dumps({"status": "COMPLETE"}), encoding="utf-8"
+    )
+
+    result = exporter._build_fundamentals("2026-09-18", {"000001"}, paths)
+
+    assert result["status"] == "NORMAL"
+    assert result["run_status"] == "COMPLETE"
+    assert "checkpoint" in result["source"]
+    assert "manifest" not in result["source"]
 
 
 def test_overall_status_uses_declared_priority(exporter):
