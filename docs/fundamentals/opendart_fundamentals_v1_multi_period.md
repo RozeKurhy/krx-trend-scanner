@@ -35,30 +35,30 @@ result = provider.build("005930", ("2021", "2022", "2023"), "YYYY-MM-DD")
 - 분기 비교 슬롯은 16개(12분기 표시 + 전년 동기 비교 4분기)다.
 - 연간 비교 슬롯은 6FY(5개 연도 표시 + 비교용 1개 연도)다.
 - `quarters`/`annuals`는 슬롯에 포함된 평탄화된 정본 관측값이며,
-  `quarter_slots`/`annual_slots`는 기간 identity와 상태를 보존한다.
+  `quarter_slots`/`annual_slots`는 기간 식별자와 상태를 보존한다.
 - 상태가 없는 분기는 `DATA_UNAVAILABLE`, 모호한 분기는 `PERIOD_AMBIGUOUS`로
   남는다. 중간 기간을 압축하지 않는다.
-- `pit_available_from` 또는 anchor receipt가 `requested_as_of` 이후인
-  원천은 제외되고 diagnostics에 기록된다. 미래 filing을 정본 결과에 넣지
-  않는다.
+- `pit_available_from` 또는 기준 접수일(anchor receipt)이
+  `requested_as_of` 이후인 원천은 제외되고 `diagnostics`에 기록된다.
+  미래 공시를 정본 결과에 넣지 않는다.
 - 분기 슬롯은 `revenue`, `operating_income`, `net_income`,
   `operating_cash_flow`가 모두 정본 `READY` 상태여야 한다. 연간 슬롯은
   `revenue`, `operating_income`, `net_income`, `equity`, `liabilities`가
   필요하며 연간 OCF는 선택 지표(optional metric)다. 필수 지표 누락은
   `DATA_UNAVAILABLE`/`REQUIRED_METRIC_MISSING`으로 남는다.
-- window 단위의 `fs_div_used`/currency 일관성은 각 window의 V1 필수
-  지표에만 사용 가능 여부(readiness)를 반영한다. 필수 지표가 섞이면
-  `basis_consistent`/`currency_consistent`가 false가 되고 비교·표시 사용
-  가능 여부가 false가 된다. 선택 지표의 불일치는 diagnostics에 남기지만
-  완전한 필수 window를 무효화하지 않는다.
-- FINANCIAL company family는 일반회사 계열(general-company series)을
-  `NOT_APPLICABLE`로 유지하며 금융 전용 지표를 만들지 않는다.
+- 창(window) 단위의 `fs_div_used`/통화 일관성은 각 창의 V1 필수 지표에만
+  사용 가능 여부를 반영한다. 필수 지표가 섞이면
+  `basis_consistent`/`currency_consistent`가 `false`가 되고 비교·표시 사용
+  가능 여부가 `false`가 된다. 선택 지표의 불일치는 `diagnostics`에
+  남기지만 완전한 필수 창을 무효화하지 않는다.
+- FINANCIAL 회사 유형은 일반회사 계열을 `NOT_APPLICABLE`로 유지하며 금융
+  전용 지표를 만들지 않는다.
 
 ## 주요 결과 필드
 
 - `has_16q_comparison_window`, `has_12q_display_window`
 - `has_6fy_comparison_window`, `has_5y_display_window`
-- `quarter_coverage`: 요청/준비/누락/모호 건수, 슬롯, basis/currency
+- `quarter_coverage`: 요청/준비/누락/모호 건수, 슬롯, 재무제표 기준/통화
   일관성, 사용 가능 여부 플래그
 - `annual_coverage`: 동일 구조의 FY 메타데이터
 - `latest_quarter`, `latest_fy`, `diagnostics`
@@ -69,14 +69,14 @@ ROE/부채비율은 [ROE/부채비율 기준 문서](opendart_fundamentals_v1_ro
 Fundamentals Filter는 [필터 기준 문서](opendart_fundamentals_v1_filter.md),
 Stock Report schema·Markdown·JSON 통합은
 [Stock Report v0.5 계약](../reporting/stock_report/contract_v05.md)이 각각
-관리한다. 전체 KRX hydration과 strategy/backtest는 별도 운영 스크립트와
-전략 문서의 범위다. PyKRX, KRX scraping, OpenDART live 호출, 외부 시세
+관리한다. 전체 KRX 데이터 갱신과 전략/백테스트는 별도 운영 스크립트와
+전략 문서의 범위다. PyKRX, KRX 웹 수집, OpenDART 실시간 호출, 외부 시세
 데이터, 수동 데이터 주입은 이 모듈에서 사용하지 않는다.
 
 ## 검증 범위
 
 `tests/test_opendart_fundamentals_multi_period_v1.py`에서 합성 정상 사례
-(synthetic positive)와 결측/모호/미래/basis/currency/FINANCIAL 실패 사례
-(negative case)를 검증한다. 기존 Periodization 및 DerivedMetrics 회귀
+(synthetic positive)와 결측/모호/미래/재무제표 기준/통화/FINANCIAL 실패
+사례(negative case)를 검증한다. 기존 Periodization 및 DerivedMetrics 회귀
 테스트와 함께 실행하며 전체 저장소 pytest 실행은 이 범위에서 수행하지
 않는다.

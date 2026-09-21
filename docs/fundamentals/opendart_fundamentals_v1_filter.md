@@ -9,7 +9,7 @@
 ## 적용 대상
 
 FINANCIAL 기업은 항상 `NOT_APPLICABLE`이며 `passed=false`다. 금융업에 같은
-매출/이익 기준을 적용하지 않는다. ROE, 부채비율, OCF, 전략 threshold는 이
+매출/이익 기준을 적용하지 않는다. ROE, 부채비율, OCF, 전략 임계값은 이
 필터의 조건이 아니다.
 
 ## 필터 조건
@@ -25,28 +25,29 @@ NON_FINANCIAL 기업은 아래 네 조건을 모두 만족해야 `PASS`다.
 
 매출 두 기준은 경계값을 포함하고(값이 정확히 같아도 통과), 영업이익/순이익은
 0을 통과시키지 않는다. 최신 분기가 누락되면 이전 분기 네 개를 당겨 쓰지
-않고 `DATA_UNAVAILABLE`이다. 분기 중간의 빈 identity도 압축하지 않는다.
+않고 `DATA_UNAVAILABLE`이다. 분기 중간의 빈 식별자도 압축하지 않는다.
 
 ## 정본 및 일관성 규칙
 
 - FY와 분기 revenue는 `MultiPeriodFundamentalsResult`의 `latest_fy`/
   `latest_quarter` 및 슬롯 상태를 따른다.
-- threshold가 KRW 기준이므로 연간 revenue는 KRW만 허용한다. 자동 환율
+- 임계값이 KRW 기준이므로 연간 revenue는 KRW만 허용한다. 자동 환율
   변환(FX 환산)은 하지 않는다.
 - 최신 네 분기 revenue도 모두 KRW여야 하며, 네 관측값의 `fs_div_used`가
-  동일해야 평균을 계산한다. KRW가 아니거나 basis가 불일치하면
+  동일해야 평균을 계산한다. KRW가 아니거나 재무제표 기준이 불일치하면
   `DATA_UNAVAILABLE`이다.
 - TTM 영업이익/순이익은 `DerivedMetricsResult`의 `metric_type=TTM`
   관측값만 읽는다. 이 필터에서 분기 합산이나 재계산을 하지 않는다.
 - revenue와 TTM 이익의 최신 기준 기간(latest endpoint)이 다르면
   `DATA_UNAVAILABLE`이다.
 - `MultiPeriodFundamentalsResult`와 `DerivedMetricsResult`는 동일
-  ticker를 가져야 한다. corp_code가 양쪽에 있으면 일치해야 하고,
-  company_family도 일치해야 한다. 다른 종목의 더 최신 TTM을 사용하지
+  `ticker`를 가져야 한다. `corp_code`가 양쪽에 있으면 일치해야 하고,
+  `company_family`도 일치해야 한다. 다른 종목의 더 최신 TTM을 사용하지
   않는다.
 - 두 결과의 `requested_as_of`가 다르거나 필수 관측값이 `READY`가
-  아니거나, 기간/basis/currency/PIT 판정이 모호하면 `DATA_UNAVAILABLE`이다.
-  원본 상태와 사유(reason)는 diagnostics에 보존한다.
+  아니거나, 기간/재무제표 기준/통화/PIT 판정이 모호하면
+  `DATA_UNAVAILABLE`이다. 원본 상태와 사유(reason)는 `diagnostics`에
+  보존한다.
 - 더 오래된 FY/분기 또는 다른 데이터 제공자로의 조용한 대체 경로
   (fallback)는 없다.
 

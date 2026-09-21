@@ -59,21 +59,21 @@ liabilities / equity * 100
   미래·미확인·모호한 입력은 `READY`로 승격하지 않는다.
 - 연간 ROE의 순이익/직전 자기자본/당기 자기자본, TTM ROE의 네 분기
   순이익/기초 자기자본/기말 자기자본, 부채비율의 부채/자기자본은
-  basis(`fs_div_used`)와 통화(currency)가 일치해야 한다. 불일치하면 각각
+  재무제표 기준(`fs_div_used`)과 통화가 일치해야 한다. 불일치하면 각각
   `BASIS_MISMATCH` 또는 `CURRENCY_MISMATCH`로 fail-closed한다.
 - ROE 평균 자기자본이 0 이하이면 `UNDEFINED_BASE`/
   `NON_POSITIVE_AVERAGE_EQUITY_BASE`이다.
 - 부채비율 자기자본이 0 이하이면 `UNDEFINED_BASE`/
   `NON_POSITIVE_EQUITY_BASE`이다.
-- 같은 시점 identity에 PIT 사용 가능 후보가 여러 개면 임의로 하나를
+- 같은 시점 식별자에 PIT 사용 가능 후보가 여러 개면 임의로 하나를
   선택하지 않고 `PERIOD_AMBIGUOUS`로 남긴다.
 
 ## 출처 추적 정보
 
-새 관측값도 기존 `DerivedMetricObservation`을 사용한다. 원천 receipt
+새 관측값도 기존 `DerivedMetricObservation`을 사용한다. 원천 접수
 번호·일자·SHA, `requested_as_of`, `pit_available_from`을 기존
-`_period_context()` 경로로 보존하며, metadata에는 계산에 필요한 최소한의
-기간 정보만 기록한다.
+`_period_context()` 경로로 보존하며, 메타데이터에는 계산에 필요한
+최소한의 기간 정보만 기록한다.
 
 ## 금융회사 처리
 
@@ -87,7 +87,7 @@ liabilities / equity * 100
 이 문서는 ROE/부채비율 산식만 다룬다. Fundamentals Filter는
 [필터 기준 문서](opendart_fundamentals_v1_filter.md), Stock Report/Markdown/
 JSON 통합은 [Stock Report v0.5 계약](../reporting/stock_report/contract_v05.md),
-운영 데이터 갱신(production hydration)은 별도 운영 스크립트가 각각
-관리한다. ROA/ROIC/ROCE, valuation, DuPont 분해, 금융업 전용 프로파일은
-V1 범위에서 제외한다. PyKRX, KRX Open API, OpenDART live API, scraping,
-외부 시세 데이터 요청은 이 지표 계산에서 사용하지 않는다.
+운영 데이터 갱신은 별도 운영 스크립트가 각각 관리한다. ROA/ROIC/ROCE,
+가치평가, DuPont 분해, 금융업 전용 프로파일은 V1 범위에서 제외한다.
+PyKRX, KRX Open API, OpenDART live API, 웹 수집, 외부 시세 데이터 요청은
+이 지표 계산에서 사용하지 않는다.
