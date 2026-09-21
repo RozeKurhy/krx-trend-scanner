@@ -1,52 +1,54 @@
 # KRX Trend Scanner
 
-코스피·코스닥 일반 종목을 대상으로 상승 추세가 시작되는 후보를 구조적으로
-탐색하고, 투자 판단에 필요한 여러 정보를 한 곳에서 확인하는 의사결정 지원
-시스템이다.
+코스피·코스닥 일반 종목에서 상승 추세가 시작되는 후보를 구조적으로 탐색하고,
+투자 판단에 필요한 정보를 한 곳에서 확인하는 의사결정 지원 시스템이다.
 
-이미 크게 오른 종목만 찾는 것이 아니라 가격 구조의 변화와 추세 전환 가능성을
-살핀다. 후보를 찾은 뒤 투자 적합성, 수급, 시장·업종 상대강도, 기업 실적과
-현재 전략 상태를 함께 확인할 수 있도록 구성한다.
+이미 크게 오른 종목만 찾는 대신 가격 구조의 변화와 추세 전환 가능성을 살핀다.
+후보를 찾은 뒤 투자 적합성, 수급, 시장·업종 상대강도, 기업 실적·재무, 전략
+규칙을 함께 확인할 수 있도록 구성한다.
 
 자동 주문을 실행하는 시스템이 아니며, 종목과 전략을 검토하기 위한 분석 도구다.
 
 ## 무엇을 분석하는가
 
-**가격 구조 → 투자 적합성 → 외국인 수급 → 시장·업종 상대강도 → 기업 실적·재무 → 전략 상태 → 종목 분석 리포트**
+**가격 구조 → 투자 적합성 → 외국인 수급 → 시장·업종 상대강도 → 기업 실적·재무 → 전략 규칙 → 종목 분석 리포트**
 
 각 분석 축은 가능한 한 독립적으로 관리한다. 세부 산식과 데이터 계약은
-[문서 안내](docs/README.md)의 각 영역별 기준 문서에서 확인한다.
+[문서 안내](docs/README.md)의 영역별 기준 문서에서 확인한다.
+
+## 패턴과 전략
+
+패턴은 무엇이 보이는지 판단하고, 전략은 그 판단을 바탕으로 무엇을 할지 정한다.
+
+### Pattern A
+
+장기 가격 구조와 상승 초기 후보를 탐지하는 패턴이다.
+
+### Pattern A FAST
+
+Pattern A의 가격 구조에서 빠른 전환 징후를 살피는 패턴이다.
+
+### A FAST Core V2
+
+일반 종목의 진입·보유·청산 규칙을 정의하는 전략이다.
+
+- 공식 전략 ID: `PATTERN_A_FAST_FINAL_STRATEGY_V02`
+- 자동매매가 아닌 투자 의사결정 지원을 위한 규칙
+
+패턴과 전략의 세부 규격은 [Pattern A 공식 규격](docs/patterns/pattern_a/spec/production_authority.md),
+[Pattern A FAST 명세](docs/patterns/pattern_a_fast/spec/README.md),
+[A FAST Core V2 계약](docs/patterns/pattern_a_fast/strategy/version_02/README.md)에서 확인한다.
 
 ## 주요 기능
 
-- **가격 패턴 분석** — 장기 가격 구조와 추세 전환 상태를 분석해 후보를 찾는다.
-- **투자 적합성 확인** — 시장 규모와 유동성 등 거래 가능성을 별도로 확인한다.
+- **가격 패턴 분석** — 장기 가격 구조와 추세 전환을 분석해 후보를 찾는다.
+- **투자 적합성 확인** — 시장 규모와 유동성 등 거래 가능성을 별도로 살핀다.
 - **외국인 수급** — 기간별 외국인 순매수와 관련 보조 지표를 제공한다.
 - **시장·업종 상대강도** — 종목의 시장 및 업종 대비 상대적인 흐름을 확인한다.
 - **기업 실적·재무 분석** — OpenDART/XBRL 기반 실적과 주요 재무 지표를 제공한다.
-- **전략 상태 확인** — 현재 전략 기준의 진입·보유·청산 상태를 보여준다.
+- **전략 규칙 적용** — 진입·보유·청산 규칙에 따른 분석 결과를 제공한다.
 - **종목 분석 리포트** — 위 결과를 종목별 리포트로 통합한다.
 - **웹 조회** — 생성된 리포트를 검색하고 읽기 전용 화면에서 확인한다.
-
-## 현재 공식 패턴과 전략
-
-| 구분 | 역할 | 현재 상태 |
-|---|---|---|
-| Pattern A | 장기 가격 구조와 상승 초기 후보 탐지 | 현재 공식 패턴 |
-| Pattern A FAST | Pattern A보다 빠른 전환 신호 탐지 | 보조 패턴 |
-| A FAST Core V2 | 진입·보유·청산 규칙 | 현재 일반 종목 기본 전략 |
-
-현재 기본 전략의 공식 ID는 \`PATTERN_A_FAST_FINAL_STRATEGY_V02\`다. 이 전략은
-\`PRODUCTION_DECISION_SUPPORT\` 상태의 의사결정 지원용이며 자동매매용으로
-승인되지 않았다.
-
-세부 규칙은 [Pattern A 공식 규격](docs/patterns/pattern_a/spec/production_authority.md),
-[Pattern A FAST 명세](docs/patterns/pattern_a_fast/spec/README.md),
-[A FAST Core V2 계약](docs/patterns/pattern_a_fast/strategy/version_02/README.md)에서
-확인한다.
-
-과거 전략과 후보 전략의 연구 기록은 문서 영역에 보존되어 있으며 현재 기본
-전략과 구분한다.
 
 ## 데이터 구성
 
@@ -61,15 +63,15 @@
 
 ## 종목 리포트와 웹 조회
 
-Stock Report는 한 종목의 가격 패턴, 투자 적합성, 전략 상태, 외국인 수급,
+Stock Report는 한 종목의 가격 패턴, 투자 적합성, 전략 규칙, 외국인 수급,
 시장·업종 상대강도, 기업 실적·재무 정보를 하나의 결과로 묶는다.
 
 리포트는 Markdown과 JSON 산출물로 제공되며, 웹 화면에서는 종목을 검색하고
-리포트 내용을 읽을 수 있다. 웹 화면은 생성된 공식 산출물을 조회하는
-읽기 전용 기능이다.
+리포트 내용을 읽을 수 있다. 웹 화면은 생성된 공식 산출물을 조회하는 읽기 전용
+기능이다.
 
-리포트의 문서 역할과 계약은 [Stock Report 안내](docs/reporting/stock_report/README.md)와
-해당 영역의 현재 계약 문서에서 확인한다.
+리포트의 역할과 계약은 [Stock Report 안내](docs/reporting/stock_report/README.md)와
+해당 영역의 기준 문서에서 확인한다.
 
 ## 프로젝트 구조
 
@@ -78,24 +80,23 @@ Stock Report는 한 종목의 가격 패턴, 투자 적합성, 전략 상태, �
 | `src/` | 핵심 분석·데이터 처리 코드 |
 | `scripts/` | 데이터 처리와 운영 스크립트 |
 | `data/` | 로컬 데이터와 캐시 |
-| `docs/` | 현재 기준 문서와 연구·검증 기록 |
+| `docs/` | 기준 문서와 연구·검증 기록 |
 | `artifacts/` | 생성 결과와 검증 산출물 |
 | `web/` | 리포트 조회 화면 |
 | `tests/` | 테스트 모음 |
 
-\`docs/\` 아래의 세부 영역과 문서 종류는 [문서 안내](docs/README.md)에서
-확인한다. 과거 연구·검증 문서는 현재 구현과 혼동하지 않도록 역할과 상태를
-구분해 보존한다.
+세부 영역과 문서 종류는 [문서 안내](docs/README.md)에서 확인한다. 과거
+연구·검증 문서는 구현과 혼동하지 않도록 역할을 구분해 보존한다.
 
 ## 문서 안내
 
 - [문서 안내와 작성 원칙](docs/README.md)
-- [향후 작업 계획](ROADMAP.md)
-- [Pattern A 공식 규격](docs/patterns/pattern_a/spec/production_authority.md)
-- [Pattern A FAST 명세](docs/patterns/pattern_a_fast/spec/README.md)
-- [A FAST Core V2 계약](docs/patterns/pattern_a_fast/strategy/version_02/README.md)
+- [프로젝트 확장 방향과 작업 선택 원칙](ROADMAP.md)
+- [아키텍처 안내](docs/architecture/README.md)
+- [패턴 안내](docs/patterns/README.md)
+- [전략 문서](docs/strategies/README.md)
 - [Fundamentals 안내](docs/fundamentals/README.md)
 - [Stock Report 안내](docs/reporting/stock_report/README.md)
 
-README는 프로젝트를 안내하고 핵심 상태를 요약하는 문서다. 세부 산식, 임계값,
-계약, 검증 결과는 각 영역의 권위 문서에서 관리한다.
+README는 프로젝트 목적과 구조를 안내한다. 세부 산식, 임계값, 데이터 계약,
+검증 결과는 각 영역의 권위 문서에서 관리한다.

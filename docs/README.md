@@ -7,9 +7,9 @@
 ## 어디부터 읽을지
 
 1. 프로젝트 전체 이해 → [README.md](../README.md)
-2. 현재 진행 상태와 향후 작업 → [ROADMAP.md](../ROADMAP.md)
+2. 프로젝트 확장 방향과 작업 선택 원칙 → [ROADMAP.md](../ROADMAP.md)
 3. 세부 문서 위치와 작성 기준 → 이 문서
-4. 세부 산식·계약·검증 결과 → 각 영역의 현재 기준 문서
+4. 세부 산식·계약·검증 결과 → 각 영역의 기준 문서
 
 ## 패턴과 전략의 차이
 
@@ -39,12 +39,12 @@
 Pattern A FAST와 강하게 결합되어 있으므로 해당 패턴 아래에서 관리한다.
 여러 패턴을 조합하거나 특정 패턴과 독립적인 전략은 `strategies/`에 둔다.
 
-## 현재 사용 중인 핵심 문서
+## 핵심 기준 문서
 
 - **Pattern A** — 공식 패턴 규격은 [공식 규격 문서](patterns/pattern_a/spec/production_authority.md)를 따른다.
 - **Pattern A FAST** — 의미와 생애주기는 [FAST 명세](patterns/pattern_a_fast/spec/README.md)를 따른다.
-- **A FAST Core V2** — 일반 종목의 현재 기본 전략은 [V2 계약](patterns/pattern_a_fast/strategy/version_02/README.md)의 `PATTERN_A_FAST_FINAL_STRATEGY_V02`다.
-- **Fundamentals V1** — 현재 기준은 [Fundamentals 안내](fundamentals/README.md)와 해당 영역의 기준 문서에서 확인한다.
+- **A FAST Core V2** — 일반 종목 전략 규칙은 [V2 계약](patterns/pattern_a_fast/strategy/version_02/README.md)의 `PATTERN_A_FAST_FINAL_STRATEGY_V02`다.
+- **Fundamentals V1** — 기준은 [Fundamentals 안내](fundamentals/README.md)와 해당 영역의 기준 문서에서 확인한다.
 - **Stock Report v0.5** — 보고서 계약은 [Stock Report 안내](reporting/stock_report/README.md)와 [v0.5 계약](reporting/stock_report/contract_v05.md)을 따른다.
 - **전략 채택 절차** — 기본 전략 변경과 후보 전략의 공식 채택은 [전략 생애주기와 채택 절차](strategies/strategy_lifecycle.md)를 따른다.
 
@@ -77,7 +77,7 @@ Pattern A FAST와 강하게 결합되어 있으므로 해당 패턴 아래에서
 
 - 문서는 공통 영역, 패턴, 문서 역할, 구체적인 기준 문서 순으로 찾을 수 있게 구성한다.
 - README는 안내와 요약을 담당한다. 세부 산식, 임계값, 계약, 검증 결과는 해당 권위 문서에서 관리한다.
-- README는 필요한 현재 상태를 짧게 요약하고 권위 문서로 연결한다. 상위 README가 하위 권위 문서를 대체하지 않도록 한다.
+- README는 프로젝트 목적, 구조, 문서 위치를 짧게 안내하고 권위 문서로 연결한다. 상위 README가 하위 권위 문서를 대체하지 않도록 한다.
 - 같은 사실을 여러 README에서 장문으로 반복하지 않는다. 기존 권위 문서가 있으면 링크하거나 참조한다.
 - 경로가 패턴과 역할을 설명하므로 파일명에서 같은 말을 불필요하게 반복하지 않는다.
 - `prereg/` 안에서는 파일명에 `_prereg`나 `_preregistration`을 다시 붙이지 않는다.
