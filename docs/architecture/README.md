@@ -26,9 +26,9 @@
 
 | 단계 | 상세 계약 | 한 줄 역할 |
 |---|---|---|
-| 2단계 | [주봉·월봉 파생 기준 V01](daily_update_phase2_weekly_monthly_derivation_contract_v01.md) | 인증된 일봉에서 주봉·월봉을 파생하고 기간 완료 상태를 판정하는 기준 (`COMPLETE`) |
-| 3단계 | [분석 입력 갱신 기준 V01](daily_update_phase3_analysis_inputs_contract_v01.md) | 수급·펀더멘털·시장·업종 RS 등 분석 입력을 기준일에 맞춰 갱신하는 기준 (`COMPLETE`) |
-| 4단계 | [분석·리포트·웹 반영 기준 V01](daily_update_phase4_analysis_reporting_web_contract_v01.md) | 스캐너·공식 전략·Stock Report v0.5·필수 웹 투영을 같은 기준일에 연결하는 기준 (상세 계약 확정 / 구현 예정) |
+| 2단계 | [주봉·월봉 파생 기준 V01](daily_update_phase2_weekly_monthly_derivation_contract_v01.md) | 인증된 일봉에서 주봉·월봉을 파생하고 기간 완료 상태를 판정하는 기준 |
+| 3단계 | [분석 입력 갱신 기준 V01](daily_update_phase3_analysis_inputs_contract_v01.md) | 수급·펀더멘털·시장·업종 RS 등 분석 입력의 기준일·권위·상태를 조율하는 기준 |
+| 4단계 | [분석·리포트·웹 반영 기준 V01](daily_update_phase4_analysis_reporting_web_contract_v01.md) | 스캐너·공식 전략·Stock Report v0.5·필수 웹 투영을 같은 기준일에 연결하는 기준 |
 
 ## B. 현재 세부 데이터 계약
 
@@ -43,8 +43,8 @@
 | [sector_rs_krx_migration_v01.md](sector_rs_krx_migration_v01.md) | Sector RS 지수와 기준일별 구성 종목 기준 |
 | [historical_snapshot.md](historical_snapshot.md) | 과거 시점 검증과 엄격한 PIT 스냅샷 |
 
-세부 계약의 원문을 이 README에 반복하지 않는다. 각 문서의 현재 상태와
-권위 표기를 따른다.
+세부 계약의 원문을 이 README에 반복하지 않는다. 각 문서의 역할과 권위
+표기를 따른다.
 
 ## C. 과거·보조·검증 문서
 

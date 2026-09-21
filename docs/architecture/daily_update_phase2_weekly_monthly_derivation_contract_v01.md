@@ -1,36 +1,17 @@
 # 주봉·월봉 파생 기준 V01
 
-## 1. 문서 역할과 현재 상태
+## 1. 문서 역할
 
 이 문서는 [데일리 업데이트 기준 V01](daily_update_contract_v01.md) §6.1이 개요만
 정의한 2단계(주봉·월봉 파생)의 상세 계약이다. 1단계 데일리 업데이트 기준은
 상위 계약으로 그대로 유지하며, 이 문서는 그 위에서 주봉·월봉 파생에만
 적용되는 세부 기준을 정의한다.
 
-이 문서는 계약 문서다. 아래에서 정의하는 `DERIVED_WEEK_COMPLETE`를 포함한
-개념은 모두 `src/trend_scanner/data/period_derivation.py`(`derive_periods()`)로
-구현이 끝났고, 실제 운영 입력으로도 검증됐다. 각 절의 "현재 구현과의 관계"는
-이 최종 구현을 기준으로 기록한다.
-
-1단계는 이미 완료됐다.
-
-```text
-DAILY_UPDATE_PHASE1 = COMPLETE
-```
-
-2단계도 완료됐다.
-
-```text
-DAILY_UPDATE_PHASE2 = COMPLETE
-```
-
-2단계의 기본 방향은 기존 주봉·월봉 파생 로직을 재사용하고, 하나의
-`target_as_of`와 기간 완료 판정 의미를 명확히 묶는 것이었다. 새로운 주봉·월봉
-시스템을 만드는 작업이 아니었고, 실제로도 만들지 않았다.
-
-구현·실운영 검증의 코드 기준 HEAD는 `cc48dab5795cb1d67615310e18b3a493b0e3e2e2`다.
-이 문서를 마감하는 커밋의 HEAD는 그 이후 값이며, 코드 자체는 이 마감 커밋에서
-변경되지 않는다. 실운영 검증 근거는 §14에 기록한다.
+이 문서는 계약 문서다. `DERIVED_WEEK_COMPLETE`를 포함한 개념은
+`src/trend_scanner/data/period_derivation.py`(`derive_periods()`)의 입력·출력
+경계와 연결되며, 각 절은 기존 집계 규칙과 소비 계층의 의미를 보존하는
+기준을 정의한다. 개별 실행 결과와 검증 일지는 이 문서의 범위에 포함하지
+않는다.
 
 ## 2. 2단계 입력 권위
 
@@ -82,18 +63,18 @@ DAILY_UPDATE_PHASE2 = COMPLETE
 
 전제는 2단계에 전달되는 일봉이 이미 1단계 인증 범위 안이라는 것이다(§2, §8).
 이 전제 위에서 이 의미는 금요일이 휴장일인 주간도 처리할 수 있어야 한다.
-예를 들어 그 주의 실제 마지막 거래일이 목요일이고 `target_as_of`가 금요일이면,
-목요일까지의 일봉이 이미 1단계 인증 범위 안에 있으므로 일반적인 파생 주봉은
-`COMPLETE`로 볼 수 있다.
+그 주의 실제 마지막 거래일이 주봉 라벨보다 이르더라도, 해당 거래일까지의
+일봉이 1단계 인증 범위 안에 있으면 일반적인 파생 주봉은 `COMPLETE`로 볼 수
+있다.
 
-**현재 구현과의 관계**: `_weekly_status()`(`period_derivation.py`)는 W-FRI
+**구현 경계**: `_weekly_status()`(`period_derivation.py`)는 W-FRI
 라벨과 `target_as_of`의 단순 비교만 수행하며, `MarketCalendarAuthority`(마지막
 실제 거래일 등)를 별도로 참조하지 않는다. 2단계는 "그 주의 필요 일봉이 실제로
 확보됐는지"를 캘린더로 다시 검증하지 않는다 — 1단계가 이미 인증한 일봉
 범위를 그대로 신뢰한다(§8의 `daily_gap_authority = INHERITED_FROM_PHASE1`와
 같은 원칙). 초기 구현은 `calendar.max_observed_trading_date`로 이 신뢰를
-대신 재검증하려 했으나, 이는 마지막 실제 거래일과 "권위가 실제로 확인한
-경계"를 혼동하는 오류였고 이후 제거됐다.
+대신 재검증하지 않는다. 이는 마지막 실제 거래일과 권위가 확인한 경계를
+구분하기 위한 것이다.
 `src/trend_scanner/validation/historical_snapshot.py`의
 `_drop_incomplete_weekly()`는 목적이 다른 기존 로직(가장 마지막 트레일링
 주봉만 대상)이며, 이 절의 `DERIVED_WEEK_COMPLETE` 판정 자체를 대신하지
@@ -113,9 +94,8 @@ W-FRI 리샘플 라벨(금요일) 자체가 실제 종목 일봉 날짜와 일�
 
 금요일이 휴장인 주간은 이 신호 기준점에서 제외될 수 있다.
 
-**현재 구현과의 관계**: 이 의미는 `src/trend_scanner/reporting/pattern_a_fast_report.py`
-`build_pattern_a_fast_section()`에 정확히 그대로 존재한다(코드 주석의 표현으로
-"Phase 13 completed-week contract"). 모든 주봉 라벨에 대해
+**구현 경계**: 이 의미는 `src/trend_scanner/reporting/pattern_a_fast_report.py`
+`build_pattern_a_fast_section()`에 그대로 적용된다. 모든 주봉 라벨에 대해
 `week_daily.index.max().normalize() != week_label.normalize()`이면 그 주를
 FAST 관측에서 완전히 제외한다(`continue`). 즉 가장 마지막 주간뿐 아니라,
 과거의 이미 완료된 휴장 단축 주간도 FAST 신호 이력에서 영구적으로 빠진다.
@@ -144,12 +124,11 @@ DERIVED_WEEK_COMPLETE != FAST_W_FRI_SIGNAL_ANCHOR
 그 외(아직 완료 월로 확정되지 않은 경우) → PROVISIONAL
 ```
 
-거래정지·장기 미거래로 마지막 월봉이 과거 달에 머물러 있으면(예: 종목 마지막
-거래일이 2025-12-05이고 `target_as_of`가 2026-01-15로 다음 달인 경우), 마지막
-월봉은 2025-12이므로 `target_as_of`의 (연, 월)인 2026-01이 아니라 2025-12의
-완료 여부로 판정한다. 2단계에서 월봉 완료 판정 구조를 새로 만들지 않는다.
+거래정지·장기 미거래로 마지막 월봉이 과거 달에 머물러 있으면,
+`target_as_of`가 속한 달이 아니라 실제로 반환된 마지막 월봉의 완료 여부로
+판정한다. 2단계에서 월봉 완료 판정 구조를 새로 만들지 않는다.
 
-**현재 구현과의 관계**: `_monthly_status()`(`period_derivation.py`)는
+**구현 경계**: `_monthly_status()`(`period_derivation.py`)는
 `monthly.index[-1]`의 (연, 월)로 `calendar.get_actual_month_end()`를 조회하고,
 반환값이 있고 `target_as_of`가 그 값 이상이면 `COMPLETE`로 판정한다.
 `get_actual_month_end()`는 완료 월 목록에 없는 (연, 월)에 대해 예외 없이
@@ -165,7 +144,7 @@ DERIVED_WEEK_COMPLETE != FAST_W_FRI_SIGNAL_ANCHOR
 
 ## 6. PROVISIONAL 의미
 
-2단계 계약에서는 진행 중인 기간을 다음 두 상태로 명확히 정의한다.
+2단계 계약에서는 아직 완료되지 않은 기간을 다음 두 상태로 구분한다.
 
 ```text
 COMPLETE
@@ -278,7 +257,7 @@ daily_gap_authority = INHERITED_FROM_PHASE1
 `NOOP`은 필요한 경우에만 사용한다. 영구 산출물이 없는 실행 시점 파생에 억지로
 `NOOP` 개념을 도입하지 않는다.
 
-## 13. 현재 구조 재사용 결론
+## 13. 구조 재사용 원칙
 
 ```text
 2단계 기본 전략 = 기존 구조 재사용 + 최소 조율 계층 추가 (`REUSE_WITH_MINIMAL_WRAPPER`)
@@ -300,34 +279,13 @@ daily_gap_authority = INHERITED_FROM_PHASE1
 
 별도 주봉·월봉 저장소는 기본 범위가 아니다.
 
-## 14. 실운영 검증 근거
+## 14. 검증 경계
 
-이 계약과 구현은 합성 시험 데이터뿐 아니라 실제 운영 입력으로도 읽기 전용
-검증을 거쳤다.
-
-```text
-운영 certified_through = 2026-09-17
-
-실제 검증 종목:
-005930
-068270
-035420
-
-검증 시나리오:
-- 완료 금요일 2026-09-11 → weekly COMPLETE
-- 비거래일 2026-09-12 → weekly COMPLETE
-- 주중 2026-09-17 → weekly PROVISIONAL
-- 완료 월 2026-08-31 → monthly COMPLETE
-- 최신 미완료 월 2026-09-17 → monthly PROVISIONAL
-- 동일 입력 재실행 → 결정적 동일 결과
-
-최종 결과: PASS
-```
-
-실제 `RepositoryV2DailyLoader`/`MarketDataRepositoryV2`로 일봉을 읽고,
-`load_rolling_production_market_calendar()`로 실제 운영 캘린더 권위를 읽어서
-`derive_periods()`에 그대로 전달했다(합성 `MarketCalendarAuthority.from_dates()`
-사용 안 함). 세부 행 단위 결과는 이 문서에 포함하지 않는다.
+검증은 `RepositoryV2DailyLoader`/`MarketDataRepositoryV2`로 읽은 1단계 인증
+일봉과 `load_rolling_production_market_calendar()`의 운영 캘린더 권위를
+`derive_periods()`에 전달하는 방식으로 수행한다. 합성
+`MarketCalendarAuthority.from_dates()`를 운영 권위로 사용하지 않는다.
+검증 결과의 실행별 날짜·종목·버전 정보는 이 문서에 기록하지 않는다.
 
 ## 15. 관련 현재 기준 문서
 

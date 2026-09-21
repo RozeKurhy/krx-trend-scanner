@@ -1,6 +1,6 @@
 # 분석 입력 갱신 기준 V01
 
-## 1. 문서 역할과 현재 상태
+## 1. 문서 역할
 
 이 문서는 [데일리 업데이트 기준 V01](daily_update_contract_v01.md) §6.2가
 요약한 3단계(분석 입력 갱신)의 상세 계약이다. 1단계·2단계 상위 계약은
@@ -15,20 +15,10 @@ sector_membership
 sector_rs
 ```
 
-이 문서는 계약 문서이며 작업 일지가 아니다. 3단계의 입력별 구현·검증
-상태와 이 문서가 정의하는 공통 계약은 구분한다. 이 문서는 각 입력의
-현재 운영 경로와 재사용 경계를 정의한다.
-
-```text
-DAILY_UPDATE_PHASE1 = COMPLETE
-DAILY_UPDATE_PHASE2 = COMPLETE
-DAILY_UPDATE_PHASE3 = COMPLETE
-```
-
-3단계는 기존 원천 수집·계산 로직을 재사용하고, 하나의 `target_as_of`로
-5개 입력을 일관되게 조율한다. 공식 통합 실운영 검증에서 동일 기준일
-재실행이 모두 `NOOP_ALREADY_COMPLETE`로 확인됐다. 새 데이터 엔진을
-만드는 작업이 아니다.
+이 문서는 계약 문서이며 작업 일지가 아니다. 3단계의 입력별 처리 경계와
+공통 계약을 정의하고, 기존 원천 수집·계산 로직을 하나의 `target_as_of`로
+조율하는 방법을 설명한다. 개별 실행 결과와 검증 일지는 이 문서의 범위에
+포함하지 않는다. 새 데이터 엔진이나 별도 권위 계층을 정의하지 않는다.
 
 ## 2. 공통 원칙
 
@@ -104,7 +94,7 @@ target_as_of를 --as-of YYYY-MM-DD로 명시적으로 받는다.
 
 - 스캐너 요약 파일명에서 기준일 역추론
 - 오늘 날짜 자동 사용
-- `2026-09-04` 고정값 사용
+- 임의의 고정 기준일 사용
 
 PIT 원칙은 기존 그대로 유지한다.
 
@@ -134,14 +124,12 @@ artifact가 없으면 OpenDART quota 회계일인 `run_date`를 별도로 제공
 
 스캐너는 `MarketDataRepositoryV2` + `IndexStore`로 실행 시점에 시장 RS를
 계산하며, 종목 리포트는 별도로 **정확한 날짜의 스냅샷 파일**을 요구한다.
-`src/trend_scanner/reporting/relative_strength_report.py`는 파일
-docstring부터 "Local exact-date consumer for the Phase 12 Market RS
-authority snapshot"이며,
+`src/trend_scanner/reporting/relative_strength_report.py`는 기준일이 정확히
+일치하는 시장 RS 권위 스냅샷의 소비자이며,
 `load_relative_strength_section(ticker, requested_as_of, ...)`가
 `RS_ARTIFACT_TEMPLATE = "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01/market_rs_universe_{date}.csv"`
 경로에서 `requested_as_of`와 정확히 일치하는 파일만 읽는다. 그 파일이
-없으면 다른 날짜로 대체하지 않고 `DATA_UNAVAILABLE`을 반환한다(코드
-주석: "never falls back to another snapshot date").
+없으면 다른 날짜로 대체하지 않고 `DATA_UNAVAILABLE`을 반환한다.
 
 **계약**: 3단계의 책임은 계산 엔진을 새로 만드는 것이 아니라,
 `target_as_of` 기준 전체 `COMMON`(보통주) 시장 RS의 정확한 날짜 스냅샷을
@@ -167,11 +155,11 @@ market_rs_universe_{YYYYMMDD}.csv
 ```
 
 `scripts/run_phase12_market_relative_strength_completion_v01.py`의
-계산 로직은 참고·재사용하되, 그 스크립트의 `AS_OF = "2026-08-14"`
-고정값은 운영 경로에서 사용하지 않는다.
+계산 로직은 참고·재사용하되, 스크립트에 남아 있는 고정 기준일은 운영
+경로에서 사용하지 않는다.
 
 3단계 운영 경로는 `target_as_of`의 PIT COMMON 전체 모집단으로 정확한 날짜
-snapshot을 생성하며, 유효한 same-target artifact는 `NOOP_ALREADY_COMPLETE`로
+스냅샷을 생성하며, 유효한 동일 기준일 산출물은 `NOOP_ALREADY_COMPLETE`로
 재사용한다.
 
 ### 4.4 업종 RS
@@ -196,10 +184,9 @@ API로 수집해서 기존 캐시와 병합하는(기존 같은 날짜 행은 �
 계산해서 기존 `update_sector_index_cache()`를 그 거래일마다 호출하는
 조율만 추가한다.
 
-**업종 RS 랭킹**: `scripts/build_sector_rs_ranking_v01.py`는 이미
-`--as-of`를 지원한다(기본값 `AS_OF = "2026-09-04"`). 3단계 운영
-조율에서는 이 기본값을 쓰지 않고 `target_as_of`를 명시적으로
-전달한다.
+**업종 RS 랭킹**: `scripts/build_sector_rs_ranking_v01.py`는 `--as-of`를
+지원한다. 3단계 운영 조율에서는 기본값을 쓰지 않고 `target_as_of`를
+명시적으로 전달한다.
 
 시장 RS와 업종 RS는 계산 엔진을 일부 공유하더라도 다음을 서로 다른
 권위로 구분한다.
@@ -450,19 +437,12 @@ data/analytics/sector_rs_ranking/v01/
 | 섹터 구성 | 승인 스냅샷 선택 함수 | `build_rolling_sector_membership()`과 기준일 PIT COMMON 대조 |
 | 업종 RS | `build_sector_rs_ranking_v01.py` | 기존 랭킹 빌더와 현재 선택 membership |
 
-## 13. 3단계 완료 상태
+## 13. 구성 요소 관계
 
-```text
-3A 외국인 수급 — 완료
-3B 펀더멘털 — 완료
-3C 시장 RS — 완료
-3D 업종 지수 — 완료
-3E 섹터 구성 — 완료
-3F 업종 RS 순위 — 완료
-3G 통합 조율 — 완료
-3H 통합 실운영 검증 — 완료
-3단계 — 완료
-```
+3단계는 외국인 수급, 펀더멘털, 시장 RS, 섹터 구성, 업종 RS를 최상위
+입력으로 다룬다. 업종 지수는 업종 RS 내부의 선행 입력이며 별도 최상위
+상태로 합성하지 않는다. 각 입력은 같은 `target_as_of`를 상속하고, 상태
+합성은 §7~§8의 계약을 따른다.
 
 ## 14. 공식 실행 진입점
 
