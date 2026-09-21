@@ -83,12 +83,13 @@ def test_health_uses_actual_resolved_authority_values(health, exporter):
     )
     assert expected_overall == "NORMAL"
     assert health["overall_status"] == "NORMAL"
-    report_artifact_count = len(list((ROOT / "artifacts/reporting/stock_reports/20260917").glob("*.md")))
+    report_artifact_dir = ROOT / "artifacts/reporting/stock_reports" / requested_as_of.replace("-", "")
+    report_artifact_count = len(list(report_artifact_dir.glob("*.md")))
     stock_index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
     assert health["stock_reports"]["existing_artifact_count"] == report_artifact_count
     assert health["stock_reports"]["existing_artifact_count"] == stock_index["available_report_count"]
     readiness = exporter._stock_report_readiness(
-        requested_as_of, ROOT / "artifacts/reporting/stock_reports/20260917"
+        requested_as_of, report_artifact_dir
     )
     expected_report_count = health["stock_reports"]["source_json_count"]
     assert readiness["ready"] is True
