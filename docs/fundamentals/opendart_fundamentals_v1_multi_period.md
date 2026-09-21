@@ -18,14 +18,14 @@ Stock Report가 요구하는 비교 이력을 표현한다. 이 모듈은 OpenDA
 from trend_scanner.fundamentals import MultiPeriodFundamentalsProvider
 
 result = MultiPeriodFundamentalsProvider(periodization_provider).build(
-    "005930", "2026-08-20", fiscal_years=("2021", "2022", "2023", "2024", "2025", "2026")
+    "005930", "YYYY-MM-DD", fiscal_years=("2021", "2022", "2023", "2024", "2025", "2026")
 )
 ```
 
 기존 DerivedMetricsProvider와 같은 positional 형태도 허용한다.
 
 ```python
-result = provider.build("005930", ("2021", "2022", "2023"), "2026-08-20")
+result = provider.build("005930", ("2021", "2022", "2023"), "YYYY-MM-DD")
 ```
 
 Boundary 계약
@@ -67,12 +67,16 @@ Boundary 계약
 - `annual_coverage`: 동일 구조의 FY metadata
 - `latest_quarter`, `latest_fy`, `diagnostics`
 
-F2에서 하지 않는 것
+F2가 다루지 않는 범위
 ----------------------------------------------------------------------
 
-ROE/부채비율, Fundamentals Filter, Stock Report schema·Markdown·JSON 통합,
-전체 KRX hydration, strategy/backtest 변경은 후속 단계다. PyKRX, KRX scraping,
-OpenDART live 호출, 외부 시세 데이터, manual injection은 사용하지 않는다.
+ROE/부채비율은 [ROE/부채비율 기준 문서](opendart_fundamentals_v1_roe_debt_ratio.md),
+Fundamentals Filter는 [필터 기준 문서](opendart_fundamentals_v1_filter.md),
+Stock Report schema·Markdown·JSON 통합은
+[Stock Report v0.5 계약](../reporting/stock_report/contract_v05.md)이 각각
+관리한다. 전체 KRX hydration과 strategy/backtest는 별도 운영 스크립트와
+전략 문서의 범위다. PyKRX, KRX scraping, OpenDART live 호출, 외부 시세
+데이터, manual injection은 F2에서 사용하지 않는다.
 
 검증
 ----------------------------------------------------------------------

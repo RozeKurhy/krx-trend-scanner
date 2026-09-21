@@ -63,7 +63,10 @@ FINANCIAL 회사
 범위 제외
 ----------------------------------------------------------------------
 
-Fundamentals Filter, Stock Report/Markdown/JSON, production hydration,
-strategy/backtest, ROA/ROIC/ROCE, valuation, DuPont, 금융업 전용 profile은
-후속 단계다. PyKRX, KRX Open API, OpenDART live API, scraping, 외부 시세
-데이터 요청은 이 지표 계산에서 사용하지 않는다.
+이 문서는 ROE/부채비율 산식만 다룬다. Fundamentals Filter는
+[필터 기준 문서](opendart_fundamentals_v1_filter.md), Stock Report/Markdown/
+JSON 통합은 [Stock Report v0.5 계약](../reporting/stock_report/contract_v05.md),
+production hydration은 별도 운영 스크립트가 각각 관리한다. ROA/ROIC/ROCE,
+valuation, DuPont 분해, 금융업 전용 profile은 V1 범위에서 제외한다. PyKRX,
+KRX Open API, OpenDART live API, scraping, 외부 시세 데이터 요청은 이 지표
+계산에서 사용하지 않는다.
