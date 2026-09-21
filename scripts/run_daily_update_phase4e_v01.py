@@ -277,7 +277,7 @@ def run_phase4a(target_as_of: str, *, root: Path = ROOT) -> dict[str, Any]:
 def run_phase4b(target_as_of: str, *, root: Path = ROOT) -> dict[str, Any]:
     """Call the existing Phase 4B runner."""
 
-    return phase4b.run_phase4b(target_as_of, root=root)
+    return phase4b.run_phase4b(target_as_of, root=root, max_workers=4)
 
 
 def run_phase4c(target_as_of: str, *, root: Path = ROOT) -> dict[str, Any]:

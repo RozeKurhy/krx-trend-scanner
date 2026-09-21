@@ -90,6 +90,33 @@ def test_parser_requires_target_and_exposes_explicit_live_flag() -> None:
     assert args.execute_live is True
 
 
+def test_phase4b_wrapper_uses_production_parallelism(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_run_phase4b(
+        target_as_of: str, *, root: Path, max_workers: int
+    ) -> dict[str, str]:
+        captured.update(
+            target_as_of=target_as_of,
+            root=root,
+            max_workers=max_workers,
+        )
+        return {"status": "PASS"}
+
+    monkeypatch.setattr(phase4b, "run_phase4b", fake_run_phase4b)
+
+    result = phase4e.run_phase4b("2026-09-17", root=tmp_path)
+
+    assert result == {"status": "PASS"}
+    assert captured == {
+        "target_as_of": "2026-09-17",
+        "root": tmp_path,
+        "max_workers": 4,
+    }
+
+
 def _write_scanner_fixture(
     root: Path,
     target: str = "2026-09-17",
