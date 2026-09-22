@@ -589,6 +589,56 @@ def test_fundamentals_filter_unavailable_excludes():
     assert result.status == phase4b.LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE
 
 
+def _write_production_fundamentals_payload(root: Path, ticker: str, payload: object) -> Path:
+    fund_dir = root / "artifacts/fundamentals/production" / TARGET.replace("-", "") / "tickers"
+    fund_dir.mkdir(parents=True, exist_ok=True)
+    path = fund_dir / f"{ticker}.json"
+    if isinstance(payload, str):
+        path.write_text(payload, encoding="utf-8")
+    else:
+        path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
+def test_fundamentals_normal_f2_unavailable_remains_excluded(tmp_path):
+    payload = {"requested_as_of": TARGET, "asset_type": "COMMON", "f2": {}}
+    _write_production_fundamentals_payload(tmp_path, "000050", payload)
+    result = phase4b.load_latest_quarter_operating_profit(
+        tmp_path, "000050", TARGET,
+    )
+    assert result.status == phase4b.LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE
+
+
+def test_fundamentals_invalid_json_fails_closed(tmp_path):
+    _write_production_fundamentals_payload(tmp_path, "000050", "{invalid")
+    with pytest.raises(phase4b.Phase4BError, match="PHASE4B_FUNDAMENTALS_ARTIFACT_INVALID"):
+        phase4b.load_latest_quarter_operating_profit(tmp_path, "000050", TARGET)
+
+
+def test_fundamentals_requested_as_of_mismatch_fails_closed(tmp_path):
+    payload = _latest_profit_artifact(1)
+    payload["requested_as_of"] = "2026-09-18"
+    _write_production_fundamentals_payload(tmp_path, "000050", payload)
+    with pytest.raises(phase4b.Phase4BError, match="PHASE4B_FUNDAMENTALS_REQUESTED_AS_OF_MISMATCH"):
+        phase4b.load_latest_quarter_operating_profit(tmp_path, "000050", TARGET)
+
+
+def test_fundamentals_latest_quarter_authority_mismatch_fails_closed(tmp_path):
+    payload = _latest_profit_artifact(1)
+    payload["f2"]["latest_quarter"] = "2026Q1"
+    _write_production_fundamentals_payload(tmp_path, "000050", payload)
+    with pytest.raises(phase4b.Phase4BError, match="PHASE4B_FUNDAMENTALS_LATEST_QUARTER_AUTHORITY_MISMATCH"):
+        phase4b.load_latest_quarter_operating_profit(tmp_path, "000050", TARGET)
+
+
+def test_fundamentals_missing_latest_quarter_authority_mirror_fails_closed(tmp_path):
+    payload = _latest_profit_artifact(1)
+    payload.pop("f2_latest_quarter")
+    _write_production_fundamentals_payload(tmp_path, "000050", payload)
+    with pytest.raises(phase4b.Phase4BError, match="PHASE4B_FUNDAMENTALS_LATEST_QUARTER_AUTHORITY_MISMATCH"):
+        phase4b.load_latest_quarter_operating_profit(tmp_path, "000050", TARGET)
+
+
 def test_fundamentals_filter_previous_open_positive_is_included():
     target, _ = phase4b.filter_report_target_by_fundamentals(
         existing_report_target={"A"}, previous_open={"A"},
@@ -742,9 +792,9 @@ def test_continuity_open_outside_current_common_fails_closed_end_to_end(tmp_path
 # --- A/B. CLI --max-workers 기본값/override ---------------------------------------
 
 
-def test_a_cli_default_max_workers_is_4():
+def test_a_cli_default_max_workers_is_5():
     args = phase4b.build_parser().parse_args(["--target-as-of", "2026-09-17"])
-    assert args.max_workers == 4
+    assert args.max_workers == 5
 
 
 def test_b_cli_explicit_max_workers_1_overrides_default():

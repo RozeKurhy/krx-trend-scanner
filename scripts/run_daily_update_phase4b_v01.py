@@ -271,18 +271,25 @@ def classify_latest_quarter_operating_profit(
     The source is the production F2 artifact's ``latest_quarter`` and
     ``quarters`` observations. TTM, annual, margins, revenue and net income
     are deliberately not consulted. Missing, ambiguous or future observations
-    remain unavailable.
+    remain unavailable; malformed or conflicting canonical authority metadata
+    raises ``Phase4BError``.
     """
     f2 = artifact.get("f2")
-    if not isinstance(f2, dict):
+    if f2 is None:
         return LatestQuarterOperatingProfit(
             LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE, reason="F2_MISSING",
         )
+    if not isinstance(f2, dict):
+        raise Phase4BError("PHASE4B_FUNDAMENTALS_F2_INVALID")
     top_level_latest = artifact.get("f2_latest_quarter")
     f2_latest = f2.get("latest_quarter")
-    if top_level_latest and f2_latest and str(top_level_latest) != str(f2_latest):
-        return LatestQuarterOperatingProfit(
-            LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE, reason="LATEST_QUARTER_MISMATCH",
+    top_level_present = top_level_latest not in (None, "")
+    f2_latest_present = f2_latest not in (None, "")
+    if top_level_present != f2_latest_present or (
+        top_level_present and str(top_level_latest) != str(f2_latest)
+    ):
+        raise Phase4BError(
+            "PHASE4B_FUNDAMENTALS_LATEST_QUARTER_AUTHORITY_MISMATCH"
         )
     latest = str(top_level_latest or f2_latest or "").strip()
     match = re.fullmatch(r"(\d{4})(Q[1-4])", latest)
@@ -294,10 +301,18 @@ def classify_latest_quarter_operating_profit(
         )
 
     year, quarter = match.groups()
+    quarters = f2.get("quarters")
+    if quarters is None:
+        return LatestQuarterOperatingProfit(
+            LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE,
+            latest_quarter=latest,
+            reason="LATEST_QUARTER_OPERATING_INCOME_UNAVAILABLE",
+        )
+    if not isinstance(quarters, list) or any(not isinstance(item, dict) for item in quarters):
+        raise Phase4BError("PHASE4B_FUNDAMENTALS_QUARTERS_INVALID")
     observations = [
-        item for item in (f2.get("quarters") or ())
-        if isinstance(item, dict)
-        and str(item.get("fiscal_year")) == year
+        item for item in quarters
+        if str(item.get("fiscal_year")) == year
         and str(item.get("fiscal_period")) == quarter
         and item.get("metric") == "operating_income"
         and item.get("period_semantics") == "STANDALONE_QUARTER"
@@ -347,13 +362,16 @@ def load_latest_quarter_operating_profit(
         )
     try:
         artifact = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return LatestQuarterOperatingProfit(
-            LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE, reason="FUNDAMENTALS_ARTIFACT_INVALID",
-        )
+    except (OSError, json.JSONDecodeError) as exc:
+        raise Phase4BError(
+            f"PHASE4B_FUNDAMENTALS_ARTIFACT_INVALID: {path}"
+        ) from exc
+    if not isinstance(artifact, dict):
+        raise Phase4BError(f"PHASE4B_FUNDAMENTALS_ARTIFACT_INVALID: {path}")
     if artifact.get("requested_as_of") != target_as_of:
-        return LatestQuarterOperatingProfit(
-            LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE, reason="FUNDAMENTALS_REQUESTED_AS_OF_MISMATCH",
+        raise Phase4BError(
+            "PHASE4B_FUNDAMENTALS_REQUESTED_AS_OF_MISMATCH: "
+            f"{ticker} expected {target_as_of}, got {artifact.get('requested_as_of')}"
         )
     if artifact.get("asset_type") not in (None, "COMMON"):
         return LatestQuarterOperatingProfit(
@@ -742,9 +760,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target-as-of", required=True, help="explicit YYYY-MM-DD target (no default)")
     parser.add_argument(
-        "--max-workers", type=int, default=4,
+        "--max-workers", type=int, default=5,
         help=(
-            "candidate report 생성에 사용할 프로세스 수 (기본 4=운영 병렬 경로, "
+            "candidate report 생성에 사용할 프로세스 수 (기본 5=운영 병렬 경로, "
             "PHASE4B_PRODUCTION_DEFAULT_FINAL_FIX_V01: 2026-09-17 1850개 full "
             "production이 이 경로로 40.4분에 PASS했다). 종목별 계산은 완전히 "
             "독립적이므로 ProcessPoolExecutor로 병렬 생성한다"

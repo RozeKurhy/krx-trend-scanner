@@ -113,7 +113,7 @@ def test_phase4b_wrapper_uses_production_parallelism(
     assert captured == {
         "target_as_of": "2026-09-17",
         "root": tmp_path,
-        "max_workers": 4,
+        "max_workers": 5,
     }
 
 
