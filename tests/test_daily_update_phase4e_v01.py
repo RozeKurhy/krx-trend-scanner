@@ -166,6 +166,149 @@ def _write_report(path: Path, target: str, ticker: str = "000001") -> None:
     (path / f"{ticker}_stock_report.md").write_text("# report\n", encoding="utf-8")
 
 
+def _write_reports(path: Path, target: str, tickers: set[str]) -> None:
+    for ticker in sorted(tickers):
+        _write_report(path, target, ticker)
+
+
+def _write_positive_fundamentals(root: Path, target: str, ticker: str = "000001") -> None:
+    fundamentals_dir = root / "artifacts/fundamentals/production" / target.replace("-", "") / "tickers"
+    fundamentals_dir.mkdir(parents=True, exist_ok=True)
+    (fundamentals_dir / f"{ticker}.json").write_text(
+        json.dumps(
+            {
+                "ticker": ticker,
+                "requested_as_of": target,
+                "asset_type": "COMMON",
+                "f2_latest_quarter": "2026Q2",
+                "f2": {
+                    "latest_quarter": "2026Q2",
+                    "quarters": [
+                        {
+                            "fiscal_year": "2026",
+                            "fiscal_period": "Q2",
+                            "metric": "operating_income",
+                            "period_semantics": "STANDALONE_QUARTER",
+                            "resolution_status": "READY",
+                            "value": 1,
+                        }
+                    ],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def _patch_phase4b_target_inputs(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    existing_report_target: set[str],
+    previous_open: set[str] | None = None,
+) -> None:
+    previous_open = previous_open or set()
+    monkeypatch.setattr(
+        phase4b,
+        "load_and_validate_scanner_input",
+        lambda root, target: ([], {"reference_market_date": target}),
+    )
+    monkeypatch.setattr(phase4b, "find_previous_canonical_report_dir", lambda root, target: tmp_path)
+    monkeypatch.setattr(
+        phase4b,
+        "audit_previous_corpus",
+        lambda path: SimpleNamespace(common=set(), open_tickers=set(previous_open)),
+    )
+    monkeypatch.setattr(phase4b, "compute_current_common", lambda rows: set())
+    monkeypatch.setattr(phase4b, "select_candidate_tickers", lambda rows: set())
+    monkeypatch.setattr(
+        phase4b,
+        "compute_report_target",
+        lambda **kwargs: sorted(existing_report_target),
+    )
+
+
+def test_phase4b_noop_precheck_applies_fundamentals_filter(monkeypatch, tmp_path):
+    target = "2026-09-17"
+    canonical = tmp_path / "artifacts/reporting/stock_reports/20260917"
+    _write_reports(canonical, target, {"A", "B"})
+    _patch_phase4b_target_inputs(monkeypatch, tmp_path, {"A", "B", "C"})
+    statuses = {
+        "A": phase4b.LatestQuarterOperatingProfit("POSITIVE", value=1),
+        "B": phase4b.LatestQuarterOperatingProfit("POSITIVE", value=1),
+        "C": phase4b.LatestQuarterOperatingProfit("NON_POSITIVE", value=-1),
+    }
+    monkeypatch.setattr(
+        phase4b,
+        "load_latest_quarter_operating_profit",
+        lambda root, ticker, requested: statuses[ticker],
+    )
+
+    result = phase4e._phase4b_noop_precheck(target, root=tmp_path)
+
+    assert result is not None
+    assert result["status"] == "NOOP_ALREADY_COMPLETE"
+    assert result["report_target_count"] == 2
+
+
+def test_phase4b_noop_precheck_rejects_prefilter_corpus(monkeypatch, tmp_path):
+    target = "2026-09-17"
+    canonical = tmp_path / "artifacts/reporting/stock_reports/20260917"
+    _write_reports(canonical, target, {"A", "B", "C"})
+    _patch_phase4b_target_inputs(monkeypatch, tmp_path, {"A", "B", "C"})
+    statuses = {
+        "A": phase4b.LatestQuarterOperatingProfit("POSITIVE", value=1),
+        "B": phase4b.LatestQuarterOperatingProfit("POSITIVE", value=1),
+        "C": phase4b.LatestQuarterOperatingProfit("NON_POSITIVE", value=-1),
+    }
+    monkeypatch.setattr(
+        phase4b,
+        "load_latest_quarter_operating_profit",
+        lambda root, ticker, requested: statuses[ticker],
+    )
+
+    result = phase4e._phase4b_noop_precheck(target, root=tmp_path)
+
+    assert result is not None
+    assert result["status"] == "FAILED"
+    assert result["validation"]["extra_tickers"] == ["C"]
+
+
+def test_phase4b_noop_precheck_rescues_previous_open(monkeypatch, tmp_path):
+    target = "2026-09-17"
+    canonical = tmp_path / "artifacts/reporting/stock_reports/20260917"
+    _write_reports(canonical, target, {"A", "C"})
+    _patch_phase4b_target_inputs(monkeypatch, tmp_path, {"A", "B", "C"}, {"C"})
+    statuses = {
+        "A": phase4b.LatestQuarterOperatingProfit("POSITIVE", value=1),
+        "B": phase4b.LatestQuarterOperatingProfit("NON_POSITIVE", value=-1),
+        "C": phase4b.LatestQuarterOperatingProfit("UNAVAILABLE"),
+    }
+    monkeypatch.setattr(
+        phase4b,
+        "load_latest_quarter_operating_profit",
+        lambda root, ticker, requested: statuses[ticker],
+    )
+
+    result = phase4e._phase4b_noop_precheck(target, root=tmp_path)
+
+    assert result is not None
+    assert result["status"] == "NOOP_ALREADY_COMPLETE"
+    assert result["report_target_count"] == 2
+
+
+def test_phase4b_noop_precheck_fails_closed_on_malformed_fundamentals(monkeypatch, tmp_path):
+    target = "2026-09-17"
+    canonical = tmp_path / "artifacts/reporting/stock_reports/20260917"
+    _write_report(canonical, target, "A")
+    _patch_phase4b_target_inputs(monkeypatch, tmp_path, {"A"})
+    fundamentals_dir = tmp_path / "artifacts/fundamentals/production/20260917/tickers"
+    fundamentals_dir.mkdir(parents=True)
+    (fundamentals_dir / "A.json").write_text("{invalid", encoding="utf-8")
+
+    with pytest.raises(phase4b.Phase4BError, match="PHASE4B_FUNDAMENTALS_ARTIFACT_INVALID"):
+        phase4e._phase4b_noop_precheck(target, root=tmp_path)
+
+
 def _write_web_fixture(
     root: Path,
     target: str = "2026-09-17",
@@ -246,6 +389,7 @@ def test_phase4b_valid_exact_corpus_skips_runner(monkeypatch: pytest.MonkeyPatch
     reports = tmp_path / "artifacts/reporting/stock_reports"
     _write_report(reports / "20260916", "2026-09-16")
     _write_report(reports / "20260917", "2026-09-17")
+    _write_positive_fundamentals(tmp_path, "2026-09-17")
     monkeypatch.setattr(phase4e, "run_phase4a", lambda *args, **kwargs: {"status": "PASS"})
     monkeypatch.setattr(phase4e, "run_phase4b", lambda *args, **kwargs: pytest.fail("4B reran"))
     monkeypatch.setattr(phase4e, "run_phase4c", lambda *args, **kwargs: {"status": "PASS"})
@@ -262,6 +406,7 @@ def test_all_noop_uses_read_only_prechecks(monkeypatch: pytest.MonkeyPatch, tmp_
     reports = tmp_path / "artifacts/reporting/stock_reports"
     _write_report(reports / "20260916", "2026-09-16")
     _write_report(reports / "20260917", "2026-09-17")
+    _write_positive_fundamentals(tmp_path, "2026-09-17")
     _write_web_fixture(tmp_path)
     monkeypatch.setattr(phase4e, "run_phase4a", lambda *args, **kwargs: pytest.fail("4A ran"))
     monkeypatch.setattr(phase4e, "run_phase4b", lambda *args, **kwargs: pytest.fail("4B ran"))

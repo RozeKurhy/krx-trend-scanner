@@ -195,7 +195,7 @@ def _phase4b_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
     reference_market_date = str(summary["reference_market_date"])
     previous_dir = phase4b.find_previous_canonical_report_dir(root, target_as_of)
     previous_audit = phase4b.audit_previous_corpus(previous_dir)
-    target_tickers = set(
+    existing_report_target = set(
         phase4b.compute_report_target(
             previous_common=previous_audit.common,
             previous_open=previous_audit.open_tickers,
@@ -203,15 +203,25 @@ def _phase4b_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
             current_candidates=set(phase4b.select_candidate_tickers(rows)),
         )
     )
+    fundamentals_statuses = {
+        ticker: phase4b.load_latest_quarter_operating_profit(root, ticker, target_as_of)
+        for ticker in sorted(existing_report_target)
+    }
+    target_tickers, _fundamentals_filter = phase4b.filter_report_target_by_fundamentals(
+        existing_report_target=existing_report_target,
+        previous_open=previous_audit.open_tickers,
+        statuses=fundamentals_statuses,
+    )
+    target_ticker_set = set(target_tickers)
     corpus = phase4b.validate_corpus(
         canonical_dir,
-        target_tickers,
+        target_ticker_set,
         target_as_of,
         reference_market_date,
     )
     valid = (
-        corpus["json_count"] == len(target_tickers)
-        and corpus["markdown_count"] == len(target_tickers)
+        corpus["json_count"] == len(target_ticker_set)
+        and corpus["markdown_count"] == len(target_ticker_set)
         and not corpus["missing_tickers"]
         and not corpus["extra_tickers"]
         and not corpus["markdown_missing_tickers"]
@@ -235,7 +245,7 @@ def _phase4b_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
         "target_as_of": target_as_of,
         "requested_as_of": target_as_of,
         "reference_market_date": reference_market_date,
-        "report_target_count": len(target_tickers),
+        "report_target_count": len(target_ticker_set),
         "reason": "VALID_EXACT_TARGET_REPORT_CORPUS",
     }
 
