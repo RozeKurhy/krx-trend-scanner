@@ -293,6 +293,8 @@ def classify_latest_quarter_operating_profit(
         )
     latest = str(top_level_latest or f2_latest or "").strip()
     match = re.fullmatch(r"(\d{4})(Q[1-4])", latest)
+    if top_level_present and match is None:
+        raise Phase4BError("PHASE4B_FUNDAMENTALS_LATEST_QUARTER_INVALID")
     if match is None:
         return LatestQuarterOperatingProfit(
             LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE,
@@ -763,8 +765,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--max-workers", type=int, default=5,
         help=(
             "candidate report 생성에 사용할 프로세스 수 (기본 5=운영 병렬 경로, "
-            "PHASE4B_PRODUCTION_DEFAULT_FINAL_FIX_V01: 2026-09-17 1850개 full "
-            "production이 이 경로로 40.4분에 PASS했다). 종목별 계산은 완전히 "
+            "2026-09-18 target 1452개 production이 worker=5로 1462.53초(24:23), "
+            "59.57 reports/min, errors=0, canonical PASS를 기록했다). 종목별 계산은 완전히 "
             "독립적이므로 ProcessPoolExecutor로 병렬 생성한다"
             "(PHASE4B_STOCK_REPORT_PERFORMANCE_V01 §14). --max-workers 1로 기존 "
             "순차 in-process 디버그 경로를 명시적으로 선택할 수 있다."

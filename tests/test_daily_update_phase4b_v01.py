@@ -639,6 +639,32 @@ def test_fundamentals_missing_latest_quarter_authority_mirror_fails_closed(tmp_p
         phase4b.load_latest_quarter_operating_profit(tmp_path, "000050", TARGET)
 
 
+@pytest.mark.parametrize("latest_quarter", ["2026-Q2", "2026Q5"])
+def test_fundamentals_malformed_latest_quarter_fails_closed(tmp_path, latest_quarter):
+    payload = _latest_profit_artifact(1)
+    payload["f2_latest_quarter"] = latest_quarter
+    payload["f2"]["latest_quarter"] = latest_quarter
+    _write_production_fundamentals_payload(tmp_path, "000050", payload)
+    with pytest.raises(phase4b.Phase4BError, match="PHASE4B_FUNDAMENTALS_LATEST_QUARTER_INVALID"):
+        phase4b.load_latest_quarter_operating_profit(tmp_path, "000050", TARGET)
+
+
+@pytest.mark.parametrize("mirrors_empty", [False, True])
+def test_fundamentals_latest_quarter_both_mirrors_empty_remains_unavailable(
+    tmp_path, mirrors_empty,
+):
+    payload = _latest_profit_artifact(1)
+    if mirrors_empty:
+        payload["f2_latest_quarter"] = ""
+        payload["f2"]["latest_quarter"] = ""
+    else:
+        payload.pop("f2_latest_quarter")
+        payload["f2"].pop("latest_quarter")
+    _write_production_fundamentals_payload(tmp_path, "000050", payload)
+    result = phase4b.load_latest_quarter_operating_profit(tmp_path, "000050", TARGET)
+    assert result.status == phase4b.LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE
+
+
 def test_fundamentals_filter_previous_open_positive_is_included():
     target, _ = phase4b.filter_report_target_by_fundamentals(
         existing_report_target={"A"}, previous_open={"A"},
