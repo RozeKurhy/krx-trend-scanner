@@ -10,11 +10,11 @@ working tree: clean after push
 ## Data
 
 - V-KOSPI source: KRX Data Marketplace official export
-- Official files: `9`; requested as-of: `2026-09-21`; reference market date: `2026-09-17`
-- Date range: `2010-01-04 ~ 2026-09-17`
-- Rows: `4114`; duplicate `0`; null `0`
+- Official files: `9`; requested as-of: `2026-09-21`; reference market date: `2026-09-21`
+- Date range: `2010-01-04 ~ 2026-09-21`
+- Rows: `4116`; duplicate `0`; null `0`
 - KOSPI source: `data/market/index/v01/market_index.parquet`, index code `1001`
-- Exact join: `4114` rows
+- Exact join: `4116` rows
 - External financial network: `0`
 
 ## Fear Score FIX
@@ -50,17 +50,17 @@ working tree: clean after push
 
 ## Current
 
-- date: `2026-09-17`
-- V-KOSPI: `43.02`
-- KOSPI: `6715.41`
-- trading_value: `17143708606910.0`
-- fear_score: `43.308778`
+- date: `2026-09-21`
+- V-KOSPI: `42.99`
+- KOSPI: `7007.72`
+- trading_value: `20810876648127.0`
+- fear_score: `28.371868`
 - market_regime: `ANXIOUS`
 
 ## Flicker
 
-- RAW: `{'valid_days': 3989, 'switch_count': 538, 'switch_rate': 0.13487089496114316, 'one_day_runs': 186, 'two_day_runs': 86, 'median_run_length': 2.0, 'mean_run_length': 7.400742115027829, 'max_run_length': 160}`
-- STABILIZED: `{'valid_days': 3989, 'switch_count': 272, 'switch_rate': 0.06818751566808724, 'one_day_runs': 5, 'two_day_runs': 51, 'median_run_length': 6.0, 'mean_run_length': 14.611721611721611, 'max_run_length': 182}`
+- RAW: `{'valid_days': 3991, 'switch_count': 538, 'switch_rate': 0.13480330744174393, 'one_day_runs': 186, 'two_day_runs': 86, 'median_run_length': 2.0, 'mean_run_length': 7.404452690166976, 'max_run_length': 160}`
+- STABILIZED: `{'valid_days': 3991, 'switch_count': 272, 'switch_rate': 0.0681533450263092, 'one_day_runs': 5, 'two_day_runs': 51, 'median_run_length': 6.0, 'mean_run_length': 14.619047619047619, 'max_run_length': 182}`
 - Hysteresis selected: `YES`
 - Exact rule: PANIC immediate; all other changes require two consecutive raw sessions.
 

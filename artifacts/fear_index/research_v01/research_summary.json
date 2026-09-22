@@ -6,12 +6,12 @@
     "KOSPI trading_value"
   ],
   "target_as_of": "2026-09-21",
-  "reference_market_date": "2026-09-17",
+  "reference_market_date": "2026-09-21",
   "date_range": {
     "min": "2010-01-04",
-    "max": "2026-09-17"
+    "max": "2026-09-21"
   },
-  "joined_rows": 4114,
+  "joined_rows": 4116,
   "candidate_count": 3,
   "final_candidate": "downside_heavy_v01",
   "candidate_selection": {
@@ -54,50 +54,50 @@
   "forward_diagnostics_only": {
     "candidate": "downside_heavy_v01",
     "split": "validation",
-    "rows": 1132,
-    "brier": 0.22172187105138377,
-    "spearman_adverse_return": 0.035375116282842456,
-    "top_quintile_cut": 58.71701855829987,
+    "rows": 1134,
+    "brier": 0.22177476707497357,
+    "spearman_adverse_return": 0.03588893100034625,
+    "top_quintile_cut": 58.70328273678048,
     "top_quintile_event_rate": 0.11894273127753303,
     "top_quintile_mean_future_min_return": -0.044188020180883456,
-    "overall_event_rate": 0.10954063604240283
+    "overall_event_rate": 0.10934744268077601
   },
   "regime_counts": {
     "OVERHEATED": 388,
     "NORMAL": 2435,
-    "ANXIOUS": 747,
+    "ANXIOUS": 749,
     "PANIC": 123,
     "APATHY": 296
   },
   "flicker": {
     "raw": {
-      "valid_days": 3989,
+      "valid_days": 3991,
       "switch_count": 538,
-      "switch_rate": 0.13487089496114316,
+      "switch_rate": 0.13480330744174393,
       "one_day_runs": 186,
       "two_day_runs": 86,
       "median_run_length": 2.0,
-      "mean_run_length": 7.400742115027829,
+      "mean_run_length": 7.404452690166976,
       "max_run_length": 160
     },
     "stabilized": {
-      "valid_days": 3989,
+      "valid_days": 3991,
       "switch_count": 272,
-      "switch_rate": 0.06818751566808724,
+      "switch_rate": 0.0681533450263092,
       "one_day_runs": 5,
       "two_day_runs": 51,
       "median_run_length": 6.0,
-      "mean_run_length": 14.611721611721611,
+      "mean_run_length": 14.619047619047619,
       "max_run_length": 182
     },
     "selected": {
-      "valid_days": 3989,
+      "valid_days": 3991,
       "switch_count": 272,
-      "switch_rate": 0.06818751566808724,
+      "switch_rate": 0.0681533450263092,
       "one_day_runs": 5,
       "two_day_runs": 51,
       "median_run_length": 6.0,
-      "mean_run_length": 14.611721611721611,
+      "mean_run_length": 14.619047619047619,
       "max_run_length": 182,
       "regime_switches": 272,
       "two_day_return_flickers": 2
@@ -264,11 +264,11 @@
     }
   },
   "current": {
-    "date": "2026-09-17",
-    "v_kospi200_close": 43.02,
-    "kospi_close": 6715.41,
-    "trading_value": 17143708606910.0,
-    "fear_score": 43.30877765149427,
+    "date": "2026-09-21",
+    "v_kospi200_close": 42.99,
+    "kospi_close": 7007.72,
+    "trading_value": 20810876648127.0,
+    "fear_score": 28.37186798457798,
     "regime": "ANXIOUS"
   },
   "historical_event_rows": 9,
