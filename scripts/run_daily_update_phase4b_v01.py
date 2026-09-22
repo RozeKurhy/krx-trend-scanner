@@ -291,10 +291,13 @@ def classify_latest_quarter_operating_profit(
         raise Phase4BError(
             "PHASE4B_FUNDAMENTALS_LATEST_QUARTER_AUTHORITY_MISMATCH"
         )
+    if top_level_present and (
+        not isinstance(top_level_latest, str)
+        or re.fullmatch(r"\d{4}Q[1-4]", top_level_latest) is None
+    ):
+        raise Phase4BError("PHASE4B_FUNDAMENTALS_LATEST_QUARTER_INVALID")
     latest = str(top_level_latest or f2_latest or "").strip()
     match = re.fullmatch(r"(\d{4})(Q[1-4])", latest)
-    if top_level_present and match is None:
-        raise Phase4BError("PHASE4B_FUNDAMENTALS_LATEST_QUARTER_INVALID")
     if match is None:
         return LatestQuarterOperatingProfit(
             LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE,
