@@ -1,0 +1,181 @@
+{
+  "status": "PASS",
+  "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "target_as_of": "2026-09-21",
+  "corpus": {
+    "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "target_as_of": "2026-09-21",
+    "report_count": 1451,
+    "source_report_count": 1451,
+    "history_trade_count": 3797,
+    "status_counts": {
+      "REALIZED": 3556,
+      "OPEN_AT_CUTOFF": 241
+    },
+    "duplicate_count": 0,
+    "corpus_as_of": [
+      "2026-09-21"
+    ],
+    "monitor_hold_count": 241,
+    "monitor_counts": {
+      "entry": 0,
+      "hold": 241,
+      "exit": 0,
+      "watch": 1195,
+      "unavailable": 15
+    }
+  },
+  "trade_count": 3797,
+  "realized_count": 3556,
+  "open_count": 241,
+  "score_status_counts": {
+    "READY": 3796,
+    "UNAVAILABLE": 1
+  },
+  "bucket_trade_count": 3796,
+  "non_ready_score_count": 1,
+  "diagnostics": {
+    "ticker_count": 1202,
+    "processed_ticker_count": 1202,
+    "error_counts": {
+      "PATTERN_A_SCORE_UNAVAILABLE": 1
+    },
+    "error_examples": [],
+    "network_requests": 0,
+    "max_workers": 8
+  },
+  "open_return_validation": {
+    "sample_size": 20,
+    "mismatch_count": 0,
+    "mismatches": []
+  },
+  "score_stats": {
+    "all": {
+      "count": 3796,
+      "avg_entry_score": 58.73,
+      "median_entry_score": 60.18
+    },
+    "realized": {
+      "count": 3555,
+      "avg_entry_score": 58.89,
+      "median_entry_score": 60.41
+    },
+    "open": {
+      "count": 241,
+      "avg_entry_score": 56.31,
+      "median_entry_score": 54.24
+    },
+    "wins": {
+      "count": 1201,
+      "avg_entry_score": 59.56,
+      "median_entry_score": 60.54
+    },
+    "losses": {
+      "count": 2590,
+      "avg_entry_score": 58.35,
+      "median_entry_score": 60.01
+    },
+    "return_le_neg30": {
+      "count": 72,
+      "avg_entry_score": 58.96,
+      "median_entry_score": 60.92
+    },
+    "return_le_neg50": {
+      "count": 36,
+      "avg_entry_score": 56.18,
+      "median_entry_score": 51.93
+    },
+    "return_ge_pos50": {
+      "count": 598,
+      "avg_entry_score": 60.13,
+      "median_entry_score": 61.21
+    }
+  },
+  "open_cohorts": {
+    "<= -20%": {
+      "count": 56,
+      "bucket_counts": {
+        "[10, 15)": 2,
+        "[15, 20)": 1,
+        "[20, 25)": 3,
+        "[25, 30)": 6,
+        "[30, 35)": 4,
+        "[35, 40)": 3,
+        "[40, 45)": 1,
+        "[45, 50)": 3,
+        "[50, 55)": 8,
+        "[55, 60)": 1,
+        "[60, 65)": 5,
+        "[65, 70)": 1,
+        "[70, 75)": 2,
+        "[75, 80)": 6,
+        "[80, 85)": 1,
+        "[85, 90)": 4,
+        "[90, 95)": 2,
+        "[95, 100]": 3
+      }
+    },
+    "<= -30%": {
+      "count": 50,
+      "bucket_counts": {
+        "[10, 15)": 2,
+        "[20, 25)": 3,
+        "[25, 30)": 5,
+        "[30, 35)": 3,
+        "[35, 40)": 3,
+        "[45, 50)": 3,
+        "[50, 55)": 8,
+        "[55, 60)": 1,
+        "[60, 65)": 4,
+        "[65, 70)": 1,
+        "[70, 75)": 2,
+        "[75, 80)": 5,
+        "[80, 85)": 1,
+        "[85, 90)": 4,
+        "[90, 95)": 2,
+        "[95, 100]": 3
+      }
+    },
+    "<= -40%": {
+      "count": 43,
+      "bucket_counts": {
+        "[10, 15)": 2,
+        "[20, 25)": 3,
+        "[25, 30)": 4,
+        "[30, 35)": 3,
+        "[35, 40)": 2,
+        "[45, 50)": 3,
+        "[50, 55)": 7,
+        "[60, 65)": 4,
+        "[65, 70)": 1,
+        "[70, 75)": 2,
+        "[75, 80)": 4,
+        "[80, 85)": 1,
+        "[85, 90)": 3,
+        "[90, 95)": 1,
+        "[95, 100]": 3
+      }
+    },
+    "<= -50%": {
+      "count": 33,
+      "bucket_counts": {
+        "[10, 15)": 2,
+        "[20, 25)": 1,
+        "[25, 30)": 3,
+        "[30, 35)": 3,
+        "[35, 40)": 2,
+        "[45, 50)": 3,
+        "[50, 55)": 5,
+        "[60, 65)": 4,
+        "[65, 70)": 1,
+        "[70, 75)": 1,
+        "[75, 80)": 3,
+        "[80, 85)": 1,
+        "[85, 90)": 2,
+        "[95, 100]": 2
+      }
+    }
+  },
+  "all_return_avg_pct": 11.26,
+  "all_return_median_pct": -15.21
+}
