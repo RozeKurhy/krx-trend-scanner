@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-strategy-sort-1">
+    <link rel="stylesheet" href="./css/app.css?v=web-strategy-sort-2">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -74,21 +74,23 @@
       <section class="panel strategy-controls" aria-label="전략 검색 및 필터">
         <label class="visually-hidden" for="strategy-search">종목명 또는 종목코드 검색</label>
         <input id="strategy-search" class="report-search-input" type="search" placeholder="종목명 또는 종목코드 검색" autocomplete="off" aria-controls="strategy-sections">
-        <div id="strategy-filters" class="strategy-filter-group" role="group" aria-label="전략 판단 필터">
-          <button class="strategy-filter is-active" type="button" data-filter="all" aria-pressed="true">전체 <span id="strategy-filter-count-all" class="strategy-filter-count">—</span></button>
-          <button class="strategy-filter" type="button" data-filter="hold" aria-pressed="false">보유 유지 <span id="strategy-filter-count-hold" class="strategy-filter-count">—</span></button>
-          <button class="strategy-filter" type="button" data-filter="entry" aria-pressed="false">진입 조건 충족 <span id="strategy-filter-count-entry" class="strategy-filter-count">—</span></button>
-          <button class="strategy-filter" type="button" data-filter="exit" aria-pressed="false">매도 조건 충족 <span id="strategy-filter-count-exit" class="strategy-filter-count">—</span></button>
-          <button class="strategy-filter" type="button" data-filter="watch" aria-pressed="false">관찰 중 <span id="strategy-filter-count-watch" class="strategy-filter-count">—</span></button>
-          <button class="strategy-filter" type="button" data-filter="unavailable" aria-pressed="false">기타 <span id="strategy-filter-count-unavailable" class="strategy-filter-count">—</span></button>
-        </div>
-        <div id="strategy-hold-sort-row" class="strategy-sort-row" hidden>
-          <label for="strategy-hold-sort">정렬</label>
-          <select id="strategy-hold-sort" class="strategy-sort-select">
-            <option value="entry-date" selected>진입 일자 순</option>
-            <option value="return">수익률 순</option>
-            <option value="name">이름 순</option>
-          </select>
+        <div class="strategy-filter-toolbar">
+          <div id="strategy-filters" class="strategy-filter-group" role="group" aria-label="전략 판단 필터">
+            <button class="strategy-filter is-active" type="button" data-filter="all" aria-pressed="true">전체 <span id="strategy-filter-count-all" class="strategy-filter-count">—</span></button>
+            <button class="strategy-filter" type="button" data-filter="hold" aria-pressed="false">보유 유지 <span id="strategy-filter-count-hold" class="strategy-filter-count">—</span></button>
+            <button class="strategy-filter" type="button" data-filter="entry" aria-pressed="false">진입 조건 충족 <span id="strategy-filter-count-entry" class="strategy-filter-count">—</span></button>
+            <button class="strategy-filter" type="button" data-filter="exit" aria-pressed="false">매도 조건 충족 <span id="strategy-filter-count-exit" class="strategy-filter-count">—</span></button>
+            <button class="strategy-filter" type="button" data-filter="watch" aria-pressed="false">관찰 중 <span id="strategy-filter-count-watch" class="strategy-filter-count">—</span></button>
+            <button class="strategy-filter" type="button" data-filter="unavailable" aria-pressed="false">기타 <span id="strategy-filter-count-unavailable" class="strategy-filter-count">—</span></button>
+          </div>
+          <div id="strategy-hold-sort-row" class="strategy-sort-row" hidden>
+            <label for="strategy-hold-sort">정렬</label>
+            <select id="strategy-hold-sort" class="strategy-sort-select">
+              <option value="entry-date" selected>진입 일자 순</option>
+              <option value="return">수익률 순</option>
+              <option value="name">이름 순</option>
+            </select>
+          </div>
         </div>
       </section>
 
@@ -117,6 +119,6 @@
       </section>
     </main>
 
-    <script src="./js/strategy.js?v=web-strategy-sort-1" defer></script>
+    <script src="./js/strategy.js?v=web-strategy-sort-2" defer></script>
   </body>
 </html>

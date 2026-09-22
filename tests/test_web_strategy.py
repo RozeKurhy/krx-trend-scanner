@@ -88,13 +88,13 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-strategy-sort-1"' in strategy_html
+    assert 'href="./css/app.css?v=web-strategy-sort-2"' in strategy_html
     assert 'href="./css/app.css?v=web-ui-density-11"' in index_html
     assert 'href="./css/app.css?v=web-ui-density-11"' in report_html
     for html in (index_html, report_html):
         assert "web-02a-final-2" not in html
         assert "web-03a-final-1" not in html
-    assert 'src="./js/strategy.js?v=web-strategy-sort-1"' in strategy_html
+    assert 'src="./js/strategy.js?v=web-strategy-sort-2"' in strategy_html
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert 'src="./js/report.js?v=web-02d-window-13"' in report_html
     assert 'href="./strategy.html"' in index_html
@@ -174,6 +174,8 @@ def test_strategy_hold_sort_contract_is_hold_only_and_session_scoped():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
     assert '<div id="strategy-hold-sort-row" class="strategy-sort-row" hidden>' in strategy_html
+    assert '<div class="strategy-filter-toolbar">' in strategy_html
+    assert strategy_html.index('<div class="strategy-filter-toolbar">') < strategy_html.index('id="strategy-filters"') < strategy_html.index('id="strategy-hold-sort-row"')
     assert '<label for="strategy-hold-sort">정렬</label>' in strategy_html
     assert '<select id="strategy-hold-sort" class="strategy-sort-select">' in strategy_html
     assert '<option value="entry-date" selected>진입 일자 순</option>' in strategy_html
@@ -189,6 +191,9 @@ def test_strategy_hold_sort_contract_is_hold_only_and_session_scoped():
     assert ".strategy-sort-row" in css
     assert ".strategy-sort-row label" in css
     assert ".strategy-sort-select" in css
+    assert ".strategy-filter-toolbar { display: flex;" in css
+    assert "flex: 1 1 auto" in css
+    assert "margin-left: auto" in css
 
 
 def test_strategy_ui_polish_uses_representative_source_returns_and_split_dates():

@@ -574,8 +574,9 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .strategy-option-detail { color: var(--ink-soft); font-size: 11px; }
 .strategy-scope { max-width: 100%; margin: 0; color: var(--ink-soft); font-size: 12px; text-align: right; }
 .strategy-controls { margin-bottom: 16px; }
-.strategy-filter-group { display: flex; gap: 7px; overflow-x: auto; padding: 10px 1px 1px; }
-.strategy-sort-row { display: flex; align-items: center; justify-content: flex-end; gap: 7px; min-width: 0; margin-top: 10px; }
+.strategy-filter-toolbar { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.strategy-filter-group { display: flex; flex: 1 1 auto; gap: 7px; min-width: 0; overflow-x: auto; padding: 10px 1px 1px; }
+.strategy-sort-row { display: flex; flex: 0 0 auto; align-items: center; justify-content: flex-end; gap: 7px; min-width: 0; margin-left: auto; }
 .strategy-sort-row label { color: var(--ink-soft); font-size: 11px; font-weight: 700; }
 .strategy-sort-select { max-width: 100%; border: 1px solid var(--line-strong); padding: 6px 28px 6px 9px; color: var(--ink-soft); background: var(--surface); border-radius: 7px; font: inherit; font-size: 11px; line-height: 1.25; }
 .strategy-sort-select:hover { border-color: var(--brand-red); }
@@ -758,7 +759,9 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
   .strategy-overview { padding: 16px; }
   .strategy-overview .panel-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
   .strategy-overview .strategy-scope { text-align: left; }
-  .strategy-sort-row { justify-content: flex-start; }
+  .strategy-filter-toolbar { flex-wrap: wrap; gap: 8px; }
+  .strategy-filter-group { flex: 1 1 100%; }
+  .strategy-sort-row { flex: 1 1 100%; justify-content: flex-start; margin-left: 0; }
   .strategy-sort-select { max-width: 100%; }
   .strategy-item { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
   .strategy-item-identity, .strategy-item-link { grid-column: 1 / -1; }
