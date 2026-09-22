@@ -201,6 +201,31 @@ def test_legacy_not_applicable_output_is_reusable(tmp_path: Path):
     assert value["terminal_status"] == "NOT_APPLICABLE"
 
 
+def test_exact_set_accepts_explicitly_reusable_legacy_not_applicable(tmp_path: Path):
+    tickers_dir = tmp_path / "tickers"
+    tickers_dir.mkdir()
+    (tickers_dir / "499660.json").write_text(json.dumps({
+        "runner_version": "F7-03-BOUNDED-FILING-PRELOAD-IDENTITY",
+        "ticker": "499660",
+        "requested_as_of": "2026-09-04",
+        "asset_type": "ETF",
+        "terminal_status": "NOT_APPLICABLE",
+        "f4_passed": False,
+        "api_request_count": 0,
+        "f5_ready": {"data_status": "NOT_APPLICABLE"},
+    }), encoding="utf-8")
+
+    inspection = f7.inspect_target_production_outputs(
+        tickers_dir,
+        expected_tickers={"499660"},
+        requested_as_of="2026-09-04",
+    )
+
+    assert inspection["invalid_count"] == 0
+    assert inspection["missing_count"] == 0
+    assert inspection["extra_count"] == 0
+
+
 def test_quota_stop_does_not_create_data_unavailable():
     client = f7.QuotaBoundOpenDartClient(
         "redacted-test-key",

@@ -198,11 +198,17 @@ def test_fundamentals_manifest_changes_requested_is_failed(
     assert result["manifest_final_status"] == "CHANGES_REQUESTED"
 
 
-def _write_fundamentals_output(path: Path, *, ticker: str, requested_as_of: str) -> None:
+def _write_fundamentals_output(
+    path: Path,
+    *,
+    ticker: str,
+    requested_as_of: str,
+    runner_version: str | None = None,
+) -> None:
     path.write_text(
         json.dumps(
             {
-                "runner_version": fundamentals.RUNNER_VERSION,
+                "runner_version": runner_version or fundamentals.RUNNER_VERSION,
                 "ticker": ticker,
                 "requested_as_of": requested_as_of,
                 "terminal_status": "PASS",
@@ -217,6 +223,7 @@ def _fundamentals_noop_fixture(
     monkeypatch: pytest.MonkeyPatch,
     *,
     outputs: dict[str, str],
+    runner_versions: dict[str, str] | None = None,
 ) -> tuple[Callable[[str], dict[str, object]], SimpleNamespace]:
     target = "2026-10-05"
     manifest_path = tmp_path / "artifacts/fundamentals/production/20261005/manifest.json"
@@ -240,7 +247,12 @@ def _fundamentals_noop_fixture(
         if payload == "MALFORMED":
             path.write_text("{not-json", encoding="utf-8")
         else:
-            _write_fundamentals_output(path, ticker=payload, requested_as_of=target)
+            _write_fundamentals_output(
+                path,
+                ticker=payload,
+                requested_as_of=target,
+                runner_version=(runner_versions or {}).get(filename),
+            )
     monkeypatch.setattr(
         phase3,
         "load_target_production_universe",
@@ -303,3 +315,26 @@ def test_fundamentals_noop_accepts_clean_exact_production_output_set(
     assert result["output_integrity"]["invalid_count"] == 0
     assert result["output_integrity"]["duplicate_count"] == 0
     assert called is False
+
+
+def test_fundamentals_noop_rejects_unsupported_runner_version(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner, module = _fundamentals_noop_fixture(
+        tmp_path,
+        monkeypatch,
+        outputs={"A.json": "A", "B.json": "B"},
+        runner_versions={"B.json": "UNSUPPORTED_OLD_RUNNER"},
+    )
+
+    inspection = module.inspect_target_production_outputs(
+        tmp_path / "artifacts/fundamentals/production/20261005/tickers",
+        expected_tickers={"A", "B"},
+        requested_as_of="2026-10-05",
+    )
+    result = runner("2026-10-05")
+
+    assert inspection["invalid_count"] == 1
+    assert inspection["invalid"] == ["B.json"]
+    assert result["status"] != NOOP_ALREADY_COMPLETE

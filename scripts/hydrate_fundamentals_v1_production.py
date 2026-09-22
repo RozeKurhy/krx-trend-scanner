@@ -1121,13 +1121,12 @@ def _is_systematic_transport_failure(error: F7TerminalError) -> bool:
     )
 
 
-def _load_existing(path: Path, *, ticker: str, requested_as_of: str) -> dict[str, Any] | None:
-    if not path.exists():
-        return None
-    try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
-        return None
+def _reusable_existing_payload(
+    value: Any,
+    *,
+    ticker: str,
+    requested_as_of: str,
+) -> dict[str, Any] | None:
     if not isinstance(value, dict):
         return None
     if value.get("ticker") != ticker or value.get("requested_as_of") != requested_as_of:
@@ -1146,6 +1145,20 @@ def _load_existing(path: Path, *, ticker: str, requested_as_of: str) -> dict[str
     return value if legacy_not_applicable else None
 
 
+def _load_existing(path: Path, *, ticker: str, requested_as_of: str) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    return _reusable_existing_payload(
+        value,
+        ticker=ticker,
+        requested_as_of=requested_as_of,
+    )
+
+
 def inspect_target_production_outputs(
     tickers_dir: Path,
     *,
@@ -1156,10 +1169,11 @@ def inspect_target_production_outputs(
 
     This deliberately reads only derived ticker JSONs below the caller-provided
     target-date directory.  Raw OpenDART/cache paths are not consulted or
-    modified.  A file is valid only when its payload is a terminal production
-    result for the requested target and its filename agrees with the payload
-    ticker.  Duplicate payload tickers are counted even when a second file has
-    a mismatched filename, so a duplicate cannot hide behind an invalid path.
+    modified.  A file is valid only when the shared ``_load_existing`` reuse
+    semantics accept its payload for the requested target and its filename
+    agrees with the payload ticker.  Duplicate payload tickers are counted even
+    when a second file has a mismatched filename, so a duplicate cannot hide
+    behind an invalid path.
     """
 
     expected = {
@@ -1188,12 +1202,16 @@ def inspect_target_production_outputs(
             duplicate_tickers.append(ticker)
         if ticker:
             payload_seen.add(ticker)
-        valid = bool(
-            ticker
-            and ticker == path.stem.strip().upper()
-            and value.get("requested_as_of") == requested_as_of
-            and value.get("terminal_status") in VALID_TERMINAL_STATUSES
+        reusable = (
+            _reusable_existing_payload(
+                value,
+                ticker=path.stem.strip().upper(),
+                requested_as_of=requested_as_of,
+            )
+            if ticker == path.stem.strip().upper()
+            else None
         )
+        valid = reusable is not None
         if not valid:
             invalid_files.append(path.name)
             continue
