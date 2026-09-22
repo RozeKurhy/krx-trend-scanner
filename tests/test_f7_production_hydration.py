@@ -115,7 +115,7 @@ def test_financial_common_is_not_applicable_at_f4(tmp_path: Path):
     company_dir.mkdir()
     (company_dir / "086790.json").write_text(json.dumps({
         "status": "000",
-        "selected_fields": {"corp_code": "123456", "stock_code": "086790", "induty_code": "641"},
+        "selected_fields": {"corp_code": "123456", "stock_code": "086790", "induty_code": "64100"},
     }), encoding="utf-8")
     row = {"ticker": "086790", "name": "테스트 금융", "market": "KOSPI", "asset_type": "COMMON"}
     repo = f7.ExactCorpCodeRepository(records=(
@@ -315,6 +315,71 @@ def test_date_rollover_keeps_completed_output_reusable(tmp_path: Path):
     value = f7._load_existing(output, ticker="000020", requested_as_of="2026-09-04")
     assert value == payload
     assert output.read_text(encoding="utf-8") == serialized
+
+
+def _write_exact_target_output(path: Path, *, ticker: str, requested_as_of: str) -> None:
+    path.write_text(json.dumps({
+        "runner_version": f7.RUNNER_VERSION,
+        "ticker": ticker,
+        "requested_as_of": requested_as_of,
+        "terminal_status": "PASS",
+        "f4_reasons": [],
+    }), encoding="utf-8")
+
+
+def test_full_reconciliation_removes_only_target_date_stale_outputs(tmp_path: Path):
+    requested_as_of = "2026-09-21"
+    output_dir = tmp_path / "artifacts/fundamentals/production/20260921"
+    tickers_dir = output_dir / "tickers"
+    tickers_dir.mkdir(parents=True)
+    for ticker in ("A", "B", "C"):
+        _write_exact_target_output(
+            tickers_dir / f"{ticker}.json",
+            ticker=ticker,
+            requested_as_of=requested_as_of,
+        )
+    raw_cache = tmp_path / "data/cache/opendart/filings/raw.json"
+    raw_cache.parent.mkdir(parents=True)
+    raw_cache.write_text("keep", encoding="utf-8")
+
+    completed, reconciliation = f7.reconcile_full_target_outputs(
+        output_dir,
+        universe=[{"ticker": "A"}, {"ticker": "B"}],
+        requested_as_of=requested_as_of,
+    )
+
+    assert {row["ticker"] for row in completed} == {"A", "B"}
+    assert not (tickers_dir / "C.json").exists()
+    assert reconciliation["removed_stale_tickers"] == ["C"]
+    assert reconciliation["output_integrity"]["missing_count"] == 0
+    assert reconciliation["output_integrity"]["extra_count"] == 0
+    assert reconciliation["output_integrity"]["invalid_count"] == 0
+    assert reconciliation["output_integrity"]["duplicate_count"] == 0
+    assert raw_cache.read_text(encoding="utf-8") == "keep"
+    index_rows = (output_dir / "ticker_index.csv").read_text(encoding="utf-8").splitlines()
+    assert {row.split(",", 1)[0] for row in index_rows[1:]} == {"A", "B"}
+
+
+def test_full_reconciliation_clean_exact_set_removes_nothing(tmp_path: Path):
+    requested_as_of = "2026-09-21"
+    output_dir = tmp_path / "artifacts/fundamentals/production/20260921"
+    tickers_dir = output_dir / "tickers"
+    tickers_dir.mkdir(parents=True)
+    for ticker in ("A", "B"):
+        _write_exact_target_output(
+            tickers_dir / f"{ticker}.json",
+            ticker=ticker,
+            requested_as_of=requested_as_of,
+        )
+
+    _completed, reconciliation = f7.reconcile_full_target_outputs(
+        output_dir,
+        universe=[{"ticker": "A"}, {"ticker": "B"}],
+        requested_as_of=requested_as_of,
+    )
+
+    assert reconciliation["removed_stale_ticker_count"] == 0
+    assert reconciliation["output_integrity"]["valid_output_count"] == 2
 
 
 def test_dynamic_daily_baseline_calculates_available_budget(tmp_path: Path):

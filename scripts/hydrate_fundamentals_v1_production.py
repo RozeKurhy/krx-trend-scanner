@@ -1146,6 +1146,143 @@ def _load_existing(path: Path, *, ticker: str, requested_as_of: str) -> dict[str
     return value if legacy_not_applicable else None
 
 
+def inspect_target_production_outputs(
+    tickers_dir: Path,
+    *,
+    expected_tickers: Iterable[str],
+    requested_as_of: str,
+) -> dict[str, Any]:
+    """Inspect one target-date ticker directory against its exact universe.
+
+    This deliberately reads only derived ticker JSONs below the caller-provided
+    target-date directory.  Raw OpenDART/cache paths are not consulted or
+    modified.  A file is valid only when its payload is a terminal production
+    result for the requested target and its filename agrees with the payload
+    ticker.  Duplicate payload tickers are counted even when a second file has
+    a mismatched filename, so a duplicate cannot hide behind an invalid path.
+    """
+
+    expected = {
+        str(ticker).strip().upper()
+        for ticker in expected_tickers
+        if str(ticker).strip()
+    }
+    paths = sorted(tickers_dir.glob("*.json"))
+    file_tickers = {path.stem.strip().upper() for path in paths}
+    valid_tickers: set[str] = set()
+    payload_seen: set[str] = set()
+    invalid_files: list[str] = []
+    duplicate_tickers: list[str] = []
+
+    for path in paths:
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            invalid_files.append(path.name)
+            continue
+        if not isinstance(value, Mapping):
+            invalid_files.append(path.name)
+            continue
+        ticker = str(value.get("ticker") or "").strip().upper()
+        if ticker and ticker in payload_seen:
+            duplicate_tickers.append(ticker)
+        if ticker:
+            payload_seen.add(ticker)
+        valid = bool(
+            ticker
+            and ticker == path.stem.strip().upper()
+            and value.get("requested_as_of") == requested_as_of
+            and value.get("terminal_status") in VALID_TERMINAL_STATUSES
+        )
+        if not valid:
+            invalid_files.append(path.name)
+            continue
+        valid_tickers.add(ticker)
+
+    missing = sorted(expected - valid_tickers)
+    extra = sorted(file_tickers - expected)
+    return {
+        "expected_count": len(expected),
+        "actual_json_count": len(paths),
+        "valid_output_count": len(valid_tickers),
+        "valid_tickers": sorted(valid_tickers),
+        "missing": missing,
+        "extra": extra,
+        "invalid": sorted(invalid_files),
+        "duplicate": sorted(duplicate_tickers),
+        "missing_count": len(missing),
+        "extra_count": len(extra),
+        "invalid_count": len(invalid_files),
+        "duplicate_count": len(duplicate_tickers),
+    }
+
+
+def _read_index_tickers(path: Path) -> tuple[list[str], int]:
+    if not path.is_file():
+        raise RuntimeError("production ticker_index.csv missing")
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    tickers = [str(row.get("ticker") or "").strip().upper() for row in rows]
+    return tickers, len(tickers) - len(set(tickers))
+
+
+def reconcile_full_target_outputs(
+    output_dir: Path,
+    *,
+    universe: Iterable[Mapping[str, Any]],
+    requested_as_of: str,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Remove only target-date stale outputs and prove all derived sets agree."""
+
+    universe_rows = [dict(row) for row in universe]
+    expected = {
+        str(row.get("ticker") or "").strip().upper()
+        for row in universe_rows
+        if str(row.get("ticker") or "").strip()
+    }
+    tickers_dir = output_dir / "tickers"
+    removed: list[str] = []
+    for path in sorted(tickers_dir.glob("*.json")):
+        if path.stem.strip().upper() not in expected:
+            path.unlink()
+            removed.append(path.name)
+
+    inspection = inspect_target_production_outputs(
+        tickers_dir,
+        expected_tickers=expected,
+        requested_as_of=requested_as_of,
+    )
+    if any(inspection[key] for key in ("missing_count", "extra_count", "invalid_count", "duplicate_count")):
+        raise RuntimeError(
+            "production output exact-set validation failed: "
+            + json.dumps(inspection, ensure_ascii=False, sort_keys=True)
+        )
+
+    completed_rows = _load_completed_rows(universe_rows, tickers_dir, requested_as_of)
+    completed_tickers = {str(row.get("ticker") or "").strip().upper() for row in completed_rows}
+    if completed_tickers != expected or len(completed_rows) != len(expected):
+        raise RuntimeError("completed production rows do not match target universe")
+
+    index_path = output_dir / "ticker_index.csv"
+    _write_index(index_path, completed_rows)
+    index_tickers, index_duplicate_count = _read_index_tickers(index_path)
+    if (
+        index_duplicate_count
+        or len(index_tickers) != len(expected)
+        or set(index_tickers) != expected
+    ):
+        raise RuntimeError("production ticker_index.csv does not match target universe")
+
+    reconciliation = {
+        "removed_stale_ticker_count": len(removed),
+        "removed_stale_tickers": [Path(name).stem.strip().upper() for name in removed],
+        "output_integrity": inspection,
+        "ticker_index_count": len(index_tickers),
+        "ticker_index_duplicate_count": index_duplicate_count,
+    }
+    return completed_rows, reconciliation
+
+
 def _select_remaining_rows(
     universe: Iterable[Mapping[str, Any]],
     completed_tickers: Iterable[str],
@@ -1782,6 +1919,7 @@ def run(
         }, ensure_ascii=False))
         return 0
 
+    reconciliation: dict[str, Any] | None = None
     # Full mode must account for every authority row.  Pilot mode is bounded
     # by design and is validated separately before the full run.
     if mode == "full":
@@ -1790,8 +1928,14 @@ def run(
         missing = sorted(target_tickers - observed_tickers)
         if missing:
             raise RuntimeError(f"missing production ticker outputs: {missing[:10]}")
+        rows, reconciliation = reconcile_full_target_outputs(
+            output_dir,
+            universe=universe,
+            requested_as_of=requested_as_of,
+        )
 
-    _write_index(output_dir / "ticker_index.csv", rows)
+    if mode != "full":
+        _write_index(output_dir / "ticker_index.csv", rows)
     completed = _now()
     manifest = _summary(
         rows,
@@ -1805,6 +1949,8 @@ def run(
     manifest["mode"] = mode
     manifest["force_recompute"] = force_recompute
     manifest["cache_only"] = cache_only
+    if reconciliation is not None:
+        manifest["production_output_reconciliation"] = reconciliation
     manifest["total_runtime_seconds"] = round(time.monotonic() - started_monotonic, 3)
     manifest["filing_registry_preload"] = {
         "year_fetches": filing_registry.preload_year_fetches,

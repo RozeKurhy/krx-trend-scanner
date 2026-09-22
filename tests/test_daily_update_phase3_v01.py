@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
+from scripts import hydrate_fundamentals_v1_production as fundamentals
 import trend_scanner.data.daily_update_phase3 as phase3
 from trend_scanner.data.daily_update_phase3 import (
     BLOCKED,
@@ -195,3 +196,110 @@ def test_fundamentals_manifest_changes_requested_is_failed(
 
     assert result["status"] == FAILED
     assert result["manifest_final_status"] == "CHANGES_REQUESTED"
+
+
+def _write_fundamentals_output(path: Path, *, ticker: str, requested_as_of: str) -> None:
+    path.write_text(
+        json.dumps(
+            {
+                "runner_version": fundamentals.RUNNER_VERSION,
+                "ticker": ticker,
+                "requested_as_of": requested_as_of,
+                "terminal_status": "PASS",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def _fundamentals_noop_fixture(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    outputs: dict[str, str],
+) -> tuple[Callable[[str], dict[str, object]], SimpleNamespace]:
+    target = "2026-10-05"
+    manifest_path = tmp_path / "artifacts/fundamentals/production/20261005/manifest.json"
+    tickers_dir = manifest_path.parent / "tickers"
+    tickers_dir.mkdir(parents=True)
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "requested_as_of": target,
+                "mode": "full",
+                "final_status": PASS,
+                "metadata_snapshot_date": "2026-10-01",
+                "total_universe": 2,
+                "universe_source": "target_basic_info_and_existing_product_metadata",
+            }
+        ),
+        encoding="utf-8",
+    )
+    for filename, payload in outputs.items():
+        path = tickers_dir / filename
+        if payload == "MALFORMED":
+            path.write_text("{not-json", encoding="utf-8")
+        else:
+            _write_fundamentals_output(path, ticker=payload, requested_as_of=target)
+    monkeypatch.setattr(
+        phase3,
+        "load_target_production_universe",
+        lambda *_args, **_kwargs: (
+            [{"ticker": "A"}, {"ticker": "B"}],
+            "2026-10-01",
+        ),
+    )
+    module = SimpleNamespace(
+        inspect_target_production_outputs=fundamentals.inspect_target_production_outputs,
+        run=lambda *_args, **_kwargs: 1,
+    )
+    monkeypatch.setattr(phase3, "_load_script_module", lambda *_args, **_kwargs: module)
+    return phase3._fundamentals_runner(tmp_path, tmp_path / "env.md", target), module
+
+
+@pytest.mark.parametrize(
+    "outputs",
+    [
+        {"A.json": "A", "B.json": "B", "C.json": "C"},
+        {"A.json": "A"},
+        {"A.json": "A", "B.json": "MALFORMED"},
+        {"A.json": "A", "B.json": "A"},
+    ],
+)
+def test_fundamentals_noop_rejects_non_exact_production_output_set(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    outputs: dict[str, str],
+) -> None:
+    runner, _module = _fundamentals_noop_fixture(tmp_path, monkeypatch, outputs=outputs)
+
+    result = runner("2026-10-05")
+
+    assert result["status"] != NOOP_ALREADY_COMPLETE
+
+
+def test_fundamentals_noop_accepts_clean_exact_production_output_set(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runner, module = _fundamentals_noop_fixture(
+        tmp_path,
+        monkeypatch,
+        outputs={"A.json": "A", "B.json": "B"},
+    )
+    called = False
+
+    def unexpected_run(*_args, **_kwargs):
+        nonlocal called
+        called = True
+        return 1
+
+    module.run = unexpected_run
+    result = runner("2026-10-05")
+
+    assert result["status"] == NOOP_ALREADY_COMPLETE
+    assert result["output_integrity"]["missing_count"] == 0
+    assert result["output_integrity"]["extra_count"] == 0
+    assert result["output_integrity"]["invalid_count"] == 0
+    assert result["output_integrity"]["duplicate_count"] == 0
+    assert called is False

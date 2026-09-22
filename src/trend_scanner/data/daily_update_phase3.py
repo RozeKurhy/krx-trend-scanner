@@ -254,6 +254,7 @@ def _foreign_flow_runner(repo_root: Path) -> StepRunner:
 def _fundamentals_runner(repo_root: Path, env_file: Path, run_date: str | None) -> StepRunner:
     def run(target: str) -> dict[str, Any]:
         manifest_path = repo_root / "artifacts/fundamentals/production" / target.replace("-", "") / "manifest.json"
+        module = None
         if manifest_path.is_file():
             manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
             if (
@@ -268,10 +269,26 @@ def _fundamentals_runner(repo_root: Path, env_file: Path, run_date: str | None) 
                     and int(manifest.get("total_universe", -1)) == len(expected_tickers)
                     and manifest.get("universe_source") == "target_basic_info_and_existing_product_metadata"
                 ):
-                    return {"status": NOOP_ALREADY_COMPLETE, "requested_as_of": target, "manifest": str(manifest_path)}
+                    module = _load_script_module(repo_root, "hydrate_fundamentals_v1_production.py")
+                    output_integrity = module.inspect_target_production_outputs(
+                        manifest_path.parent / "tickers",
+                        expected_tickers=expected_tickers,
+                        requested_as_of=target,
+                    )
+                    if not any(
+                        output_integrity[key]
+                        for key in ("missing_count", "extra_count", "invalid_count", "duplicate_count")
+                    ):
+                        return {
+                            "status": NOOP_ALREADY_COMPLETE,
+                            "requested_as_of": target,
+                            "manifest": str(manifest_path),
+                            "output_integrity": output_integrity,
+                        }
         if run_date is None:
             raise Phase3BlockedError("FUNDAMENTALS_RUN_DATE_REQUIRED")
-        module = _load_script_module(repo_root, "hydrate_fundamentals_v1_production.py")
+        if module is None:
+            module = _load_script_module(repo_root, "hydrate_fundamentals_v1_production.py")
         exit_code = module.run(
             "full",
             requested_as_of=target,
