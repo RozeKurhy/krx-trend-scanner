@@ -566,7 +566,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .strategy-selector { display: flex; flex-wrap: wrap; gap: 8px; }
 .strategy-option { display: flex; flex: 1 1 220px; min-width: 0; flex-direction: column; align-items: flex-start; gap: 4px; border: 1px solid var(--line-strong); padding: 10px 12px; color: var(--ink); background: var(--surface); border-radius: 9px; font: inherit; text-align: left; cursor: pointer; }
 .strategy-option:hover { border-color: var(--brand-red); }
-.strategy-option:focus-visible, .strategy-filter:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.strategy-option:focus-visible, .strategy-filter:focus-visible, .strategy-sort-select:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .strategy-option.is-active { border-color: var(--brand-red); background: var(--primary-soft); box-shadow: 0 0 0 2px var(--primary-soft); }
 .strategy-option[disabled] { cursor: not-allowed; opacity: 0.6; }
 .strategy-option[disabled]:hover { border-color: var(--line-strong); }
@@ -575,6 +575,11 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .strategy-scope { max-width: 100%; margin: 0; color: var(--ink-soft); font-size: 12px; text-align: right; }
 .strategy-controls { margin-bottom: 16px; }
 .strategy-filter-group { display: flex; gap: 7px; overflow-x: auto; padding: 10px 1px 1px; }
+.strategy-sort-row { display: flex; align-items: center; justify-content: flex-end; gap: 7px; min-width: 0; margin-top: 10px; }
+.strategy-sort-row label { color: var(--ink-soft); font-size: 11px; font-weight: 700; }
+.strategy-sort-select { max-width: 100%; border: 1px solid var(--line-strong); padding: 6px 28px 6px 9px; color: var(--ink-soft); background: var(--surface); border-radius: 7px; font: inherit; font-size: 11px; line-height: 1.25; }
+.strategy-sort-select:hover { border-color: var(--brand-red); }
+.strategy-sort-select:focus-visible { border-color: var(--brand-red); }
 .strategy-filter { flex: 0 0 auto; border: 1px solid var(--line-strong); padding: 8px 11px; color: var(--ink-soft); background: var(--surface); border-radius: 999px; font: inherit; font-size: 12px; font-weight: 750; white-space: nowrap; cursor: pointer; }
 .strategy-filter:hover { border-color: var(--brand-red); color: var(--brand-red); }
 .strategy-filter.is-active { border-color: var(--brand-red); color: var(--brand-red); background: var(--primary-soft); }
@@ -753,6 +758,8 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
   .strategy-overview { padding: 16px; }
   .strategy-overview .panel-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
   .strategy-overview .strategy-scope { text-align: left; }
+  .strategy-sort-row { justify-content: flex-start; }
+  .strategy-sort-select { max-width: 100%; }
   .strategy-item { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
   .strategy-item-identity, .strategy-item-link { grid-column: 1 / -1; }
   .strategy-item-link { justify-self: start; }

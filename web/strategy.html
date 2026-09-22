@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-11">
+    <link rel="stylesheet" href="./css/app.css?v=web-strategy-sort-1">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -82,6 +82,14 @@
           <button class="strategy-filter" type="button" data-filter="watch" aria-pressed="false">관찰 중 <span id="strategy-filter-count-watch" class="strategy-filter-count">—</span></button>
           <button class="strategy-filter" type="button" data-filter="unavailable" aria-pressed="false">기타 <span id="strategy-filter-count-unavailable" class="strategy-filter-count">—</span></button>
         </div>
+        <div id="strategy-hold-sort-row" class="strategy-sort-row" hidden>
+          <label for="strategy-hold-sort">정렬</label>
+          <select id="strategy-hold-sort" class="strategy-sort-select">
+            <option value="entry-date" selected>진입 일자 순</option>
+            <option value="return">수익률 순</option>
+            <option value="name">이름 순</option>
+          </select>
+        </div>
       </section>
 
       <section id="strategy-sections" class="strategy-sections" aria-live="polite">
@@ -109,6 +117,6 @@
       </section>
     </main>
 
-    <script src="./js/strategy.js?v=web-02c-toss-5" defer></script>
+    <script src="./js/strategy.js?v=web-strategy-sort-1" defer></script>
   </body>
 </html>

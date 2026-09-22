@@ -39,6 +39,7 @@
   let monitor = null;
   let activeFilter = "all";
   let searchQuery = "";
+  let holdSort = "entry-date";
 
   function setText(id, value) {
     const element = byId(id);
@@ -145,6 +146,54 @@
     return [item.ticker, item.name, item.sector_name].some((value) => String(value || "").toLocaleLowerCase("ko-KR").includes(normalized));
   }
 
+  function compareText(a, b) {
+    return String(a.name || "").localeCompare(String(b.name || ""), "ko");
+  }
+
+  function compareTicker(a, b) {
+    return String(a.ticker || "").localeCompare(String(b.ticker || ""));
+  }
+
+  function parseSortableDate(value) {
+    const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return null;
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return null;
+    return date.getTime();
+  }
+
+  function parseSortableNumber(value) {
+    if (value == null || String(value).trim() === "") return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+
+  function compareHoldItems(a, b) {
+    const tradeA = a && a.current_trade;
+    const tradeB = b && b.current_trade;
+    if (holdSort === "return") {
+      const returnA = parseSortableNumber(tradeA && tradeA.return_pct);
+      const returnB = parseSortableNumber(tradeB && tradeB.return_pct);
+      if (returnA == null && returnB != null) return 1;
+      if (returnA != null && returnB == null) return -1;
+      if (returnA != null && returnB != null && returnA !== returnB) return returnB - returnA;
+    } else if (holdSort === "name") {
+      const nameResult = compareText(a, b);
+      if (nameResult) return nameResult;
+    } else {
+      const dateA = parseSortableDate(tradeA && tradeA.entry_execution_date);
+      const dateB = parseSortableDate(tradeB && tradeB.entry_execution_date);
+      if (dateA == null && dateB != null) return 1;
+      if (dateA != null && dateB == null) return -1;
+      if (dateA != null && dateB != null && dateA !== dateB) return dateB - dateA;
+    }
+    const tieName = compareText(a, b);
+    return tieName || compareTicker(a, b);
+  }
+
   function createField(label, value, className) {
     const field = createElement("span", `strategy-item-field${className ? ` ${className}` : ""}`);
     field.appendChild(createElement("small", "strategy-item-label", label));
@@ -207,7 +256,20 @@
   }
 
   function filteredItems(category) {
-    return (monitor.items || []).filter((item) => item.bucket === category && itemMatches(item));
+    const items = (monitor.items || []).filter((item) => item.bucket === category && itemMatches(item));
+    if (category !== "hold" || activeFilter !== "hold") return items;
+    return items.slice().sort(compareHoldItems);
+  }
+
+  function syncHoldSortVisibility() {
+    const row = byId("strategy-hold-sort-row");
+    const select = byId("strategy-hold-sort");
+    const visible = activeFilter === "hold";
+    if (row) row.hidden = !visible;
+    if (select) {
+      select.disabled = !visible;
+      if (select.value !== holdSort) select.value = holdSort;
+    }
   }
 
   function renderFilterCounts() {
@@ -265,6 +327,7 @@
       button.classList.toggle("is-active", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
+    syncHoldSortVisibility();
     renderSections();
   }
 
@@ -299,6 +362,13 @@
       searchQuery = search.value;
       renderSections();
     });
+    const holdSortSelect = byId("strategy-hold-sort");
+    if (holdSortSelect) holdSortSelect.addEventListener("change", () => {
+      holdSort = ["entry-date", "return", "name"].includes(holdSortSelect.value) ? holdSortSelect.value : "entry-date";
+      syncHoldSortVisibility();
+      renderSections();
+    });
+    syncHoldSortVisibility();
   }
 
   initTheme();
