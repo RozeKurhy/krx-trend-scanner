@@ -46,39 +46,24 @@ def _display_path(path: Path) -> str:
 
 
 def _load_pit_identity_names(repo_root: Path, as_of: str) -> dict[str, str]:
-    """공식 PIT identity authority(InstrumentMetadataResolver)에서 as_of 이하 최신
-    snapshot의 ticker -> name만 읽는다.
+    """Target canonical Basic Info에서 ticker -> name만 읽는다.
 
     PHASE4C_FINAL_FIX_V01: ``stock-index.json``은 4B 발행 여부(report_available)
     확인에만 쓴다는 Phase 4 계약이 있어, 종목명 authority로 쓰지 않는다. 시장
     (market)은 기존 ``common_authority_path``가 이미 제공하므로 여기서는 이름만
-    조인한다 -- 새 identity source를 만들지 않고 기존 공식 resolver를 재사용한다.
+    조인한다 -- market은 common authority가 계속 소유하고, missing name은 fail-closed한다.
     """
-    import sys
+    from trend_scanner.universe.instrument_metadata import load_target_basic_info_universe
 
-    src_dir = str(repo_root / "src")
-    if src_dir not in sys.path:
-        sys.path.insert(0, src_dir)
-    from trend_scanner.universe.instrument_metadata import InstrumentMetadataResolver
-
-    frame = InstrumentMetadataResolver.load_master_dataframe(repo_root).copy()
-    required = {"ticker", "name", "effective_date"}
-    if frame.empty or not required.issubset(frame.columns):
-        raise ValueError("PIT identity authority is empty or incomplete")
-    frame["ticker"] = frame["ticker"].astype(str).str.strip().str.upper()
-    frame["effective_date"] = pd.to_datetime(frame["effective_date"], errors="coerce")
-    eligible = frame[frame["effective_date"].notna() & (frame["effective_date"] <= pd.Timestamp(as_of))]
-    if eligible.empty:
-        raise ValueError("PIT identity authority has no PIT-eligible rows")
-    snapshot_date = eligible["effective_date"].max()
-    current = eligible[eligible["effective_date"] == snapshot_date].copy()
-    if current["ticker"].duplicated().any():
-        raise ValueError("PIT identity authority contains duplicate PIT tickers")
-    return {
+    rows, _snapshot_date = load_target_basic_info_universe(repo_root, as_of)
+    names = {
         str(row["ticker"]): str(row["name"]).strip()
-        for row in current.to_dict("records")
+        for row in rows
         if str(row.get("name") or "").strip()
     }
+    if not names:
+        raise ValueError("target Basic Info identity authority is empty or incomplete")
+    return names
 
 
 def load_common_universe(

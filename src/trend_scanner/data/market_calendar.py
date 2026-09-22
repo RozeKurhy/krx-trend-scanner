@@ -374,3 +374,30 @@ def load_rolling_production_market_calendar(repo_root: Path) -> MarketCalendarAu
     )
     _ROLLING_PRODUCTION_CALENDAR_CACHE[key] = calendar
     return calendar
+
+
+def resolve_reference_market_date(
+    target_as_of: str,
+    calendar: object | None,
+) -> str:
+    """Return the certified trading date at or before ``target_as_of``.
+
+    This is the package-level implementation shared by production and
+    research callers.  A missing or malformed rolling calendar is an explicit
+    failure; no latest-date or system-date fallback is permitted.
+    """
+    if calendar is None:
+        raise RuntimeError("ROLLING_PRODUCTION_CALENDAR_UNAVAILABLE")
+
+    try:
+        target = pd.Timestamp(target_as_of).normalize()
+        trading_dates = pd.DatetimeIndex(calendar.trading_dates).normalize()
+    except (AttributeError, TypeError, ValueError) as exc:
+        raise RuntimeError("ROLLING_PRODUCTION_CALENDAR_INVALID") from exc
+
+    eligible = trading_dates[trading_dates <= target]
+    if len(eligible) == 0:
+        raise RuntimeError(
+            f"ROLLING_PRODUCTION_CALENDAR_NO_DATE_AT_OR_BEFORE:{target_as_of}"
+        )
+    return eligible.max().strftime("%Y-%m-%d")

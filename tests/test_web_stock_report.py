@@ -43,7 +43,7 @@ def test_payload_covers_pit_universe_and_existing_reports(payload, exporter):
     assert index["universe_snapshot_date"] == snapshot_date
 
 
-def test_compact_report_preserves_authority_values_without_raw_markdown(payload):
+def test_compact_report_preserves_authority_values_without_raw_markdown(payload, exporter):
     index, reports, _ = payload
     report = reports["005930"]
     item = next(candidate for candidate in index["items"] if candidate["ticker"] == "005930")
@@ -52,7 +52,8 @@ def test_compact_report_preserves_authority_values_without_raw_markdown(payload)
     assert report["identity"]["ticker"] == "005930"
     assert report["identity"]["name"] == item["name"]
     assert report["decision"]["action"] in {"HOLD", "WAIT", "ENTER_NEXT_OPEN", "NONE", "WATCH", "ENTRY", "EXIT"}
-    source = json.loads(next((ROOT / "artifacts/reporting/stock_reports/20260917/json").glob("005930_*.json")).read_text(encoding="utf-8"))
+    report_dir, _requested_as_of = exporter._resolve_report_directory()
+    source = json.loads(next((report_dir / "json").glob("005930_*.json")).read_text(encoding="utf-8"))
     assert report["fundamentals"]["status"] == source["fundamentals"]["data_status"]
     assert report["fundamentals"]["summary"] == source["fundamentals"]["summary"]
     assert report["fundamentals"]["quarterly"] == source["fundamentals"]["quarterly"]
@@ -69,8 +70,8 @@ def test_compact_report_preserves_authority_values_without_raw_markdown(payload)
 
 
 def test_all_published_compact_reports_have_ticker_bound_naver_chart(payload):
-    _index, reports, _stats = payload
-    source_count = len(list((ROOT / "artifacts/reporting/stock_reports/20260917/json").glob("*.json")))
+    _index, reports, stats = payload
+    source_count = len(list((ROOT / stats["source_report_directory"] / "json").glob("*.json")))
 
     assert len(reports) == source_count
     for ticker, report in reports.items():

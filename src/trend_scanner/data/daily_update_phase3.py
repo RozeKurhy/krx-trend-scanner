@@ -28,6 +28,7 @@ from trend_scanner.data.sector_membership_rolling import (
     RollingMembershipError,
     load_local_target_universe,
 )
+from trend_scanner.universe.instrument_metadata import load_target_production_universe
 
 
 PASS = "PASS"
@@ -260,7 +261,14 @@ def _fundamentals_runner(repo_root: Path, env_file: Path, run_date: str | None) 
                 and manifest.get("mode") == "full"
                 and manifest.get("final_status") == PASS
             ):
-                return {"status": NOOP_ALREADY_COMPLETE, "requested_as_of": target, "manifest": str(manifest_path)}
+                expected_universe, expected_snapshot = load_target_production_universe(repo_root, target)
+                expected_tickers = {str(row["ticker"]).strip().upper() for row in expected_universe}
+                if (
+                    manifest.get("metadata_snapshot_date") == expected_snapshot
+                    and int(manifest.get("total_universe", -1)) == len(expected_tickers)
+                    and manifest.get("universe_source") == "target_basic_info_and_existing_product_metadata"
+                ):
+                    return {"status": NOOP_ALREADY_COMPLETE, "requested_as_of": target, "manifest": str(manifest_path)}
         if run_date is None:
             raise Phase3BlockedError("FUNDAMENTALS_RUN_DATE_REQUIRED")
         module = _load_script_module(repo_root, "hydrate_fundamentals_v1_production.py")

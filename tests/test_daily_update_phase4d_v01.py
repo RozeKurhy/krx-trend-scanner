@@ -20,6 +20,122 @@ def test_staging_requires_all_mandatory_outputs(tmp_path: Path):
         phase4d.validate_staging(tmp_path, "2026-09-17", "2026-09-17")
 
 
+def _health_validation_fixture(
+    tmp_path: Path,
+    *,
+    overall_status: str = "NORMAL",
+    fundamentals_status: str = "NORMAL",
+    integrity: dict[str, int] | None = None,
+) -> tuple[Path, dict[str, dict]]:
+    target = "2026-09-17"
+    stage = tmp_path / "stage"
+    stocks_dir = stage / "stocks"
+    stocks_dir.mkdir(parents=True)
+    documents: dict[str, dict] = {
+        "stock-index.json": {
+            "requested_as_of": target,
+            "reference_market_date": target,
+            "items": [{"ticker": "000001", "report_available": True}],
+            "available_report_count": 1,
+        },
+        "market-ranking.json": {
+            "requested_as_of": target,
+            "reference_market_date": target,
+            "items": [{"ticker": "000001"}],
+            "scope": {"report_count": 1},
+        },
+        "strategy-monitor.json": {
+            "requested_as_of": target,
+            "reference_market_date": target,
+            "items": [{"ticker": "000001"}],
+            "scope": {"report_count": 1},
+            "strategy": {"id": phase4d.STRATEGY_ID},
+        },
+        "sector-rs-ranking.json": {
+            "requested_as_of": target,
+            "reference_market_date": target,
+            "as_of": target,
+            "items": [{"ticker": "000001", "report_available": True}],
+            "scope": {"population_count": 1},
+        },
+        "foreign-net-buy-ranking.json": {
+            "requested_as_of": target,
+            "reference_market_date": target,
+            "as_of": target,
+            "items": [{"ticker": "000001", "report_available": True}],
+            "coverage": {"target_common_universe_count": 1, "flow_covered_count": 1},
+        },
+        "health.json": {
+            "requested_as_of": target,
+            "reference_market_date": target,
+            "overall_status": overall_status,
+            "fundamentals": {
+                "status": fundamentals_status,
+                "output_integrity": integrity or {
+                    "outside_universe_count": 0,
+                    "invalid_output_count": 0,
+                    "duplicate_payload_count": 0,
+                },
+            },
+            "stock_reports": {
+                "ready": True,
+                "source_json_count": 1,
+                "web_compact_count": 1,
+                "web_index_available_report_count": 1,
+            },
+        },
+    }
+    documents["stocks/000001.json"] = {
+        "technical_details": {
+            "requested_as_of": target,
+            "reference_market_date": target,
+            "report_version": "0.5",
+        },
+        "strategy": {"id": phase4d.STRATEGY_ID},
+    }
+    for name in phase4d.REQUIRED_FILES:
+        (stage / name).touch()
+    (stocks_dir / "000001.json").touch()
+    return stage, documents
+
+
+def test_validate_staging_rejects_non_normal_health(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    stage, documents = _health_validation_fixture(tmp_path, overall_status="CHECK_REQUIRED")
+    monkeypatch.setattr(phase4d, "_read_json", lambda path: documents[path.relative_to(stage).as_posix()])
+
+    with pytest.raises(phase4d.Phase4DError, match="PHASE4D_HEALTH_OVERALL_NOT_NORMAL"):
+        phase4d.validate_staging(stage, "2026-09-17", "2026-09-17")
+
+
+def test_validate_staging_rejects_non_normal_fundamentals(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    stage, documents = _health_validation_fixture(tmp_path, fundamentals_status="CHECK_REQUIRED")
+    monkeypatch.setattr(phase4d, "_read_json", lambda path: documents[path.relative_to(stage).as_posix()])
+
+    with pytest.raises(phase4d.Phase4DError, match="PHASE4D_HEALTH_FUNDAMENTALS_NOT_NORMAL"):
+        phase4d.validate_staging(stage, "2026-09-17", "2026-09-17")
+
+
+def test_validate_staging_rejects_fundamentals_integrity(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    stage, documents = _health_validation_fixture(
+        tmp_path,
+        integrity={"outside_universe_count": 1, "invalid_output_count": 0, "duplicate_payload_count": 0},
+    )
+    monkeypatch.setattr(phase4d, "_read_json", lambda path: documents[path.relative_to(stage).as_posix()])
+
+    with pytest.raises(phase4d.Phase4DError, match="PHASE4D_HEALTH_FUNDAMENTALS_INTEGRITY_FAILED"):
+        phase4d.validate_staging(stage, "2026-09-17", "2026-09-17")
+
+
+def test_validate_staging_accepts_normal_health(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    stage, documents = _health_validation_fixture(tmp_path)
+    monkeypatch.setattr(phase4d, "_read_json", lambda path: documents[path.relative_to(stage).as_posix()])
+
+    result = phase4d.validate_staging(stage, "2026-09-17", "2026-09-17")
+
+    assert result["health_overall_status"] == "NORMAL"
+    assert result["stock_report_count"] == 1
+
+
 def test_foreign_ui_uses_date_contract_not_legacy_fixed_date():
     script = (Path(__file__).resolve().parents[1] / "web/js/foreign.js").read_text(encoding="utf-8")
     assert 'value.as_of === "2026-09-04"' not in script

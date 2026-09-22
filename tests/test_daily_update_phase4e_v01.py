@@ -250,7 +250,7 @@ def test_phase4b_noop_precheck_applies_fundamentals_filter(monkeypatch, tmp_path
     assert result["report_target_count"] == 2
 
 
-def test_phase4b_noop_precheck_rejects_prefilter_corpus(monkeypatch, tmp_path):
+def test_phase4b_noop_precheck_regenerates_prefilter_corpus(monkeypatch, tmp_path):
     target = "2026-09-17"
     canonical = tmp_path / "artifacts/reporting/stock_reports/20260917"
     _write_reports(canonical, target, {"A", "B", "C"})
@@ -268,9 +268,26 @@ def test_phase4b_noop_precheck_rejects_prefilter_corpus(monkeypatch, tmp_path):
 
     result = phase4e._phase4b_noop_precheck(target, root=tmp_path)
 
-    assert result is not None
-    assert result["status"] == "FAILED"
-    assert result["validation"]["extra_tickers"] == ["C"]
+    # A corpus that is not the exact target must fall through to Phase 4B
+    # regeneration; the precheck must not strand stale canonical output.
+    assert result is None
+
+
+def test_phase4b_noop_precheck_regenerates_malformed_canonical(monkeypatch, tmp_path):
+    target = "2026-09-17"
+    canonical = tmp_path / "artifacts/reporting/stock_reports/20260917"
+    _write_report(canonical, target, "A")
+    (canonical / "json" / "A_stock_report.json").write_text("{invalid", encoding="utf-8")
+    _patch_phase4b_target_inputs(monkeypatch, tmp_path, {"A"})
+    monkeypatch.setattr(
+        phase4b,
+        "load_latest_quarter_operating_profit",
+        lambda root, ticker, requested: phase4b.LatestQuarterOperatingProfit("POSITIVE", value=1),
+    )
+
+    # Malformed derived output is recoverable and must fall through to the
+    # isolated Phase 4B staging regeneration path.
+    assert phase4e._phase4b_noop_precheck(target, root=tmp_path) is None
 
 
 def test_phase4b_noop_precheck_rescues_previous_open(monkeypatch, tmp_path):

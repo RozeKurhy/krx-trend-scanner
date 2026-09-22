@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import inspect
 import json
 import logging
 import math
@@ -57,6 +58,7 @@ from trend_scanner.reporting.fundamentals_report import (
     load_fundamentals_section_from_production_artifact,
 )
 from trend_scanner.reporting.stock_report import generate_stock_report
+from trend_scanner.universe.instrument_metadata import resolve_target_instrument_metadata
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("run_daily_update_phase4b_v01")
@@ -465,20 +467,29 @@ class GenerationOutcome:
 
 def _generate_one(
     ticker: str, *, target_as_of: str, reference_market_date: str, repository: Any, root: Path, staging_dir: Path,
+    instrument_metadata_resolver: Any | None = None,
 ) -> GenerationOutcome:
     try:
         fundamentals_section = load_fundamentals_section_from_production_artifact(
             ticker, target_as_of, root,
         )
+        report_kwargs = {
+            "ticker": ticker,
+            "as_of": target_as_of,
+            "repo_root": root,
+            "repository": repository,
+            "fundamentals_section": fundamentals_section,
+            "reference_market_date": reference_market_date,
+            "output_dir": staging_dir,
+            "save_artifacts": True,
+        }
+        if (
+            instrument_metadata_resolver is not None
+            and "instrument_metadata_resolver" in inspect.signature(generate_stock_report).parameters
+        ):
+            report_kwargs["instrument_metadata_resolver"] = instrument_metadata_resolver
         generate_stock_report(
-            ticker=ticker,
-            as_of=target_as_of,
-            repo_root=root,
-            repository=repository,
-            fundamentals_section=fundamentals_section,
-            reference_market_date=reference_market_date,
-            output_dir=staging_dir,
-            save_artifacts=True,
+            **report_kwargs,
         )
         return GenerationOutcome(ticker=ticker, status="OK")
     except FundamentalsArtifactUnavailable as exc:
@@ -512,6 +523,7 @@ def _pool_worker_generate(ticker: str, target_as_of: str, reference_market_date:
         repository=_POOL_STATE["repository"],
         root=_POOL_STATE["root"],
         staging_dir=_POOL_STATE["staging_dir"],
+        instrument_metadata_resolver=resolve_target_instrument_metadata,
     )
 
 
@@ -524,6 +536,7 @@ def generate_candidate_reports(
     root: Path,
     staging_dir: Path,
     max_workers: int = 1,
+    instrument_metadata_resolver: Any | None = None,
 ) -> list[GenerationOutcome]:
     """staging_dir에 후보별 Stock Report v0.5를 생성한다. 개별 실패는 수집해 계속 진행하고
     (전체 생성 -> 전체 검증 -> promote 흐름을 위해), 최종 승격 여부는 호출자가 판단한다.
@@ -542,6 +555,7 @@ def generate_candidate_reports(
                 _generate_one(
                     ticker, target_as_of=target_as_of, reference_market_date=reference_market_date,
                     repository=repository, root=root, staging_dir=staging_dir,
+                    instrument_metadata_resolver=instrument_metadata_resolver,
                 )
             )
             if i % 25 == 0 or i == total:
@@ -700,6 +714,7 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
             root=root,
             staging_dir=staging_dir,
             max_workers=max_workers,
+            instrument_metadata_resolver=resolve_target_instrument_metadata,
         )
         errors = [o for o in outcomes if o.status == "ERROR"]
 

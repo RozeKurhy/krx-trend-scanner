@@ -264,6 +264,18 @@ def validate_staging(stage_data: Path, target_as_of: str, reference_market_date:
         raise Phase4DError("PHASE4D_FOREIGN_REPORT_COUNT_MISMATCH")
     health = documents["health.json"]
     readiness = health.get("stock_reports") or {}
+    if health.get("overall_status") != "NORMAL":
+        raise Phase4DError("PHASE4D_HEALTH_OVERALL_NOT_NORMAL")
+    fundamentals = health.get("fundamentals") or {}
+    if fundamentals.get("status") != "NORMAL":
+        raise Phase4DError("PHASE4D_HEALTH_FUNDAMENTALS_NOT_NORMAL")
+    integrity = fundamentals.get("output_integrity") or {}
+    if any(integrity.get(key) != 0 for key in (
+        "outside_universe_count",
+        "invalid_output_count",
+        "duplicate_payload_count",
+    )):
+        raise Phase4DError("PHASE4D_HEALTH_FUNDAMENTALS_INTEGRITY_FAILED")
     if readiness.get("ready") is not True or readiness.get("source_json_count") != len(report_tickers):
         raise Phase4DError("PHASE4D_HEALTH_STAGING_READINESS_FAILED")
     if readiness.get("web_compact_count") != len(report_tickers) or readiness.get("web_index_available_report_count") != len(report_tickers):

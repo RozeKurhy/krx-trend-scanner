@@ -13,9 +13,11 @@ to prevent semantic confusion and ensure fail-closed applicability handling.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
+import json
 import logging
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Mapping
 
 import pandas as pd
 
@@ -46,6 +48,53 @@ def normalize_krx_market(raw_market: str | None) -> str:
     return MarketType.UNKNOWN.value
 
 
+DEFAULT_BASIC_INFO_RAW_ROOT = Path(
+    "data/reference/source/history/krx_instrument_master/v01/basic_info"
+)
+FORMAL_CLASSIFICATION_AUTHORITY = "FORMAL_SECURITY_TYPE"
+FORMAL_CLASSIFICATION_UNKNOWN = "UNKNOWN"
+FORMAL_CLASSIFICATION_INSUFFICIENT_IDENTITY = "INSUFFICIENT_FORMAL_IDENTITY"
+FORMAL_CLASSIFICATION_UNMAPPED = "UNMAPPED_FORMAL_CATEGORY"
+LEGACY_CLASSIFICATION_AUTHORITY = "LEGACY_UNVERIFIED"
+MANAGED_ISSUE_SECTION = "관리종목(소속부없음)"
+
+
+def map_formal_basic_info_row_to_asset_type(
+    row: Mapping[str, object], *, ever_been_spac: bool = False,
+) -> tuple[str, str, str, str]:
+    """Map canonical KRX Basic Info formal fields to the existing asset semantics.
+
+    The mapping is deterministic and name-independent.  ``ever_been_spac`` is
+    only used for the formal managed-issue ambiguity rule already used by the
+    metadata builder.
+    """
+    secugrp = str(row.get("SECUGRP_NM", "") or "").strip()
+    sect = str(row.get("SECT_TP_NM", "") or "").strip()
+    kind = str(row.get("KIND_STKCERT_TP_NM", "") or "").strip()
+    isu_nm = str(row.get("ISU_NM", "") or "").strip()
+    isu_eng_nm = str(row.get("ISU_ENG_NM", "") or "").strip()
+    source_security_type = (
+        f"SECUGRP_NM={secugrp}|SECT_TP_NM={sect}|KIND_STKCERT_TP_NM={kind}"
+        f"|ISU_NM={isu_nm}|ISU_ENG_NM={isu_eng_nm}"
+    )
+    if "SPAC" in sect:
+        return "SPAC", source_security_type, FORMAL_CLASSIFICATION_AUTHORITY, FORMAL_CLASSIFICATION_AUTHORITY
+    if secugrp == "부동산투자회사":
+        return "REIT", source_security_type, FORMAL_CLASSIFICATION_AUTHORITY, FORMAL_CLASSIFICATION_AUTHORITY
+    if kind == "보통주":
+        if sect == MANAGED_ISSUE_SECTION and ever_been_spac:
+            return (
+                "UNKNOWN",
+                source_security_type + "|CANONICAL_HISTORY_HAS_SPAC=TRUE",
+                FORMAL_CLASSIFICATION_AUTHORITY,
+                FORMAL_CLASSIFICATION_INSUFFICIENT_IDENTITY,
+            )
+        return "COMMON", source_security_type, FORMAL_CLASSIFICATION_AUTHORITY, FORMAL_CLASSIFICATION_AUTHORITY
+    if kind in ("구형우선주", "신형우선주"):
+        return "PREFERRED", source_security_type, FORMAL_CLASSIFICATION_AUTHORITY, FORMAL_CLASSIFICATION_AUTHORITY
+    return "UNKNOWN", source_security_type, FORMAL_CLASSIFICATION_AUTHORITY, FORMAL_CLASSIFICATION_UNMAPPED
+
+
 @dataclass(frozen=True)
 class InstrumentMetadata:
     """Formal instrument identification and classification record."""
@@ -59,6 +108,10 @@ class InstrumentMetadata:
     is_identified: bool = True
     classification_authority: str | None = None
     asset_type_source: str | None = None
+    security_group: str | None = None
+    listing_section: str | None = None
+    security_kind: str | None = None
+    source_security_type: str | None = None
 
     @property
     def is_common_stock(self) -> bool:
@@ -111,6 +164,223 @@ class InstrumentMetadata:
             and self.asset_type_source == "LEGACY_UNVERIFIED"
             and self.asset_type != AssetType.UNKNOWN.value
         )
+
+
+def _normalise_target_ticker(value: object) -> str:
+    return str(value or "").strip().upper().zfill(6)
+
+
+def _target_date(value: str) -> str:
+    parsed = pd.Timestamp(str(value).strip()[:10])
+    return parsed.strftime("%Y-%m-%d")
+
+
+def resolve_basic_info_snapshot_dir(
+    repo_root: Path | str, target_as_of: str,
+) -> tuple[Path, str]:
+    """Resolve the exact or latest-past canonical Basic Info snapshot."""
+    root = Path(repo_root)
+    target = _target_date(target_as_of).replace("-", "")
+    basic_root = root / DEFAULT_BASIC_INFO_RAW_ROOT
+    candidates = sorted(
+        (path for path in basic_root.glob("*/*") if path.is_dir() and path.name.isdigit() and len(path.name) == 8),
+        key=lambda path: path.name,
+    )
+    past = [path for path in candidates if path.name <= target]
+    if not past:
+        raise FileNotFoundError(
+            f"no canonical Basic Info snapshot on or before target {target_as_of}: {basic_root}"
+        )
+    chosen = past[-1]
+    return chosen, f"{chosen.name[:4]}-{chosen.name[4:6]}-{chosen.name[6:]}"
+
+
+@lru_cache(maxsize=8)
+def _historical_spac_tickers(repo_root_str: str, cutoff: str) -> frozenset[str]:
+    """Return formal SPAC tickers observed on or before ``cutoff``.
+
+    The cache is per repository/cutoff and is intentionally read-only.  It keeps
+    the managed-issue rule deterministic without consulting the frozen metadata
+    artifact or using name heuristics.
+    """
+    basic_root = Path(repo_root_str) / DEFAULT_BASIC_INFO_RAW_ROOT
+    spac: set[str] = set()
+    for path in basic_root.glob("*/*/*.json"):
+        date_token = path.parent.name
+        if len(date_token) != 8 or not date_token.isdigit() or date_token > cutoff.replace("-", ""):
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            continue
+        for row in payload.get("OutBlock_1", []):
+            section = str(row.get("SECT_TP_NM", "") or "").strip()
+            ticker = _normalise_target_ticker(row.get("ISU_SRT_CD"))
+            if ticker and len(ticker) == 6 and "SPAC" in section:
+                spac.add(ticker)
+    return frozenset(spac)
+
+
+@lru_cache(maxsize=8)
+def _load_target_basic_info_records_cached(
+    repo_root_str: str, target_as_of: str,
+) -> tuple[tuple[dict[str, object], ...], str]:
+    root = Path(repo_root_str)
+    snapshot_dir, snapshot_date = resolve_basic_info_snapshot_dir(root, target_as_of)
+    historical_spac = _historical_spac_tickers(repo_root_str, snapshot_date)
+    records: list[dict[str, object]] = []
+    seen: set[str] = set()
+    for market_file in ("KOSPI.json", "KOSDAQ.json"):
+        path = snapshot_dir / market_file
+        if not path.exists():
+            raise FileNotFoundError(f"canonical Basic Info market snapshot missing: {path}")
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        for raw in payload.get("OutBlock_1", []):
+            ticker = _normalise_target_ticker(raw.get("ISU_SRT_CD"))
+            if not ticker or len(ticker) != 6:
+                continue
+            if ticker in seen:
+                raise ValueError(f"duplicate canonical Basic Info ticker: {ticker}")
+            seen.add(ticker)
+            asset_type, source_security_type, authority, asset_source = map_formal_basic_info_row_to_asset_type(
+                raw, ever_been_spac=ticker in historical_spac,
+            )
+            records.append({
+                "ticker": ticker,
+                "name": str(raw.get("ISU_ABBRV") or raw.get("ISU_NM") or ticker).strip(),
+                "market": normalize_krx_market(raw.get("MKT_TP_NM")),
+                "asset_type": asset_type,
+                "metadata_source": "KRX_BASIC_INFO_CANONICAL",
+                "effective_date": snapshot_date,
+                "classification_authority": authority,
+                "asset_type_source": asset_source,
+                "source_security_type": source_security_type,
+                "security_group": str(raw.get("SECUGRP_NM") or "").strip(),
+                "listing_section": str(raw.get("SECT_TP_NM") or "").strip(),
+                "security_kind": str(raw.get("KIND_STKCERT_TP_NM") or "").strip(),
+            })
+    records.sort(key=lambda item: str(item["ticker"]))
+    return tuple(records), snapshot_date
+
+
+def load_target_basic_info_universe(
+    repo_root: Path | str, target_as_of: str,
+) -> tuple[list[dict[str, object]], str]:
+    """Load target-scoped KOSPI/KOSDAQ Basic Info rows and formal classification."""
+    records, snapshot_date = _load_target_basic_info_records_cached(
+        str(Path(repo_root).resolve()), _target_date(target_as_of),
+    )
+    return [dict(record) for record in records], snapshot_date
+
+
+def resolve_target_instrument_metadata(
+    ticker: str, *, as_of: str, repo_root: Path | str,
+) -> InstrumentMetadata:
+    """Resolve equity identity/classification from target canonical Basic Info."""
+    clean_ticker = _normalise_target_ticker(ticker)
+    records, _snapshot_date = _load_target_basic_info_records_cached(
+        str(Path(repo_root).resolve()), _target_date(as_of),
+    )
+    for row in records:
+        if row["ticker"] != clean_ticker:
+            continue
+        return InstrumentMetadata(
+            ticker=clean_ticker,
+            name=str(row["name"]),
+            market=str(row["market"]),
+            asset_type=str(row["asset_type"]),
+            metadata_source=str(row["metadata_source"]),
+            effective_date=str(row["effective_date"]),
+            is_identified=True,
+            classification_authority=str(row["classification_authority"]),
+            asset_type_source=str(row["asset_type_source"]),
+            security_group=str(row["security_group"]),
+            listing_section=str(row["listing_section"]),
+            security_kind=str(row["security_kind"]),
+            source_security_type=str(row["source_security_type"]),
+        )
+    return InstrumentMetadata(
+        ticker=clean_ticker,
+        name=clean_ticker,
+        market=MarketType.UNKNOWN.value,
+        asset_type=AssetType.UNKNOWN.value,
+        metadata_source="TARGET_BASIC_INFO_UNAVAILABLE",
+        effective_date=None,
+        is_identified=False,
+        classification_authority=FORMAL_CLASSIFICATION_UNKNOWN,
+        asset_type_source=FORMAL_CLASSIFICATION_UNKNOWN,
+    )
+
+
+def load_target_production_universe(
+    repo_root: Path | str, target_as_of: str,
+) -> tuple[list[dict[str, object]], str]:
+    """Build the shared target production universe.
+
+    Current KOSPI/KOSDAQ equity rows come only from target Basic Info.  Existing
+    ETF/ETN rows retain their established product-master metadata contract.
+    """
+    root = Path(repo_root)
+    target_rows, snapshot_date = load_target_basic_info_universe(root, target_as_of)
+    existing = InstrumentMetadataResolver.load_master_dataframe(root).copy()
+    product_rows: list[dict[str, object]] = []
+    if not existing.empty and {"ticker", "effective_date", "asset_type"}.issubset(existing.columns):
+        frame = existing.copy()
+        frame["ticker"] = frame["ticker"].map(_normalise_target_ticker)
+        frame["effective_date"] = pd.to_datetime(frame["effective_date"], errors="coerce")
+        eligible = frame[
+            frame["effective_date"].notna()
+            & (frame["effective_date"] <= pd.Timestamp(_target_date(target_as_of)))
+        ]
+        if not eligible.empty:
+            latest = eligible["effective_date"].max()
+            current = eligible[eligible["effective_date"] == latest]
+            target_tickers = {str(row["ticker"]) for row in target_rows}
+            for row in current.to_dict(orient="records"):
+                asset_type = str(row.get("asset_type") or "UNKNOWN").strip().upper()
+                if asset_type not in {"ETF", "ETN"} or str(row["ticker"]) in target_tickers:
+                    continue
+                product_rows.append({
+                    "ticker": str(row["ticker"]),
+                    "name": str(row.get("name") or row["ticker"]).strip(),
+                    "market": str(row.get("market") or "UNKNOWN").strip().upper(),
+                    "asset_type": asset_type,
+                    "effective_date": str(row["effective_date"].date()),
+                    "classification_authority": str(row.get("classification_authority") or FORMAL_CLASSIFICATION_UNKNOWN),
+                    "asset_type_source": str(row.get("asset_type_source") or FORMAL_CLASSIFICATION_UNKNOWN),
+                    "metadata_source": str(row.get("metadata_source") or "LOCAL_PRODUCT_METADATA"),
+                })
+    combined = target_rows + product_rows
+    combined.sort(key=lambda item: str(item["ticker"]))
+    if len({str(item["ticker"]) for item in combined}) != len(combined):
+        raise ValueError("target production universe contains duplicate tickers")
+    return combined, snapshot_date
+
+
+def load_target_pit_common_tickers(
+    repo_root: Path | str, target_as_of: str,
+) -> set[str]:
+    """Return target PIT COMMON tickers that pass formal target classification."""
+    root = Path(repo_root)
+    pit_path = root / "data/market/rolling_authority/merged_pit_intervals.json"
+    if not pit_path.exists():
+        raise FileNotFoundError(f"merged PIT authority missing: {pit_path}")
+    target = _target_date(target_as_of)
+    records, _snapshot_date = _load_target_basic_info_records_cached(
+        str(root.resolve()), target,
+    )
+    metadata_by_ticker = {str(row["ticker"]): row for row in records}
+    payload = json.loads(pit_path.read_text(encoding="utf-8"))
+    return {
+        str(interval["ticker"]).strip().upper()
+        for interval in payload.get("intervals", [])
+        if interval.get("state") == "COMMON"
+        and str(interval.get("effective_from", "")) <= target <= str(interval.get("effective_to", ""))
+        and str(interval.get("market", "")).upper() in {"KOSPI", "KOSDAQ"}
+        and bool(metadata_by_ticker.get(str(interval["ticker"]).strip().upper(), {}).get("asset_type") == "COMMON")
+        and metadata_by_ticker.get(str(interval["ticker"]).strip().upper(), {}).get("classification_authority") == FORMAL_CLASSIFICATION_AUTHORITY
+        and metadata_by_ticker.get(str(interval["ticker"]).strip().upper(), {}).get("asset_type_source") == FORMAL_CLASSIFICATION_AUTHORITY
+    }
 
 
 class InstrumentMetadataResolver:

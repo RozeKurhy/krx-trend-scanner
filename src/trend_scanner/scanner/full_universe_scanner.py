@@ -85,7 +85,11 @@ from trend_scanner.relative_strength.repository_adapter import (
     resolve_market_rs_repository_input,
 )
 from trend_scanner.universe.asset_classifier import classify_asset_type
-from trend_scanner.universe.instrument_metadata import resolve_instrument_metadata
+from trend_scanner.universe.instrument_metadata import (
+    load_target_basic_info_universe,
+    resolve_instrument_metadata,
+    resolve_target_instrument_metadata,
+)
 from trend_scanner.universe.krx_universe import get_latest_market_trading_date
 from trend_scanner.universe.models import (
     AssetType,
@@ -137,6 +141,17 @@ def _default_market_rs_repository(repo_root: Path) -> MarketDataRepositoryV2:
 # 포함하고, 이름에 "스팩"이 들어갔거나 formal 신원 정보가 부족한 종목은 canonical
 # 판정에 따라 그대로 제외/UNKNOWN fail-closed 처리한다).
 _AUTHORITATIVE_PIT_METADATA_SOURCE = "ROLLING_AUTHORITY_MERGED_PIT_V01"
+_DEFAULT_RESOLVE_INSTRUMENT_METADATA = resolve_instrument_metadata
+
+
+def _resolve_scanner_instrument_metadata(ticker: str, as_of: str, repo_root: Path):
+    """Use target Basic Info for production; retain historical fixture fallback."""
+    if resolve_instrument_metadata is not _DEFAULT_RESOLVE_INSTRUMENT_METADATA:
+        return resolve_instrument_metadata(ticker, as_of=as_of, repo_root=repo_root)
+    basic_info_root = repo_root / "data/reference/source/history/krx_instrument_master/v01/basic_info"
+    if basic_info_root.exists():
+        return resolve_target_instrument_metadata(ticker, as_of=as_of, repo_root=repo_root)
+    return resolve_instrument_metadata(ticker, as_of=as_of, repo_root=repo_root)
 
 
 def _default_production_market_calendar(repo_root: Path) -> MarketCalendarAuthority | None:
@@ -174,39 +189,16 @@ def _default_offline_universe(repo_root: Path, as_of: str) -> list[UniverseSecur
     if not common_active:
         return None
 
-    basic_info_root = repo_root / "data/reference/source/history/krx_instrument_master/v01/rolling/basic_info"
-    as_of_clean = as_of.replace("-", "")
-    snapshot_dir = basic_info_root / as_of_clean[:4] / as_of_clean
-    if not snapshot_dir.exists():
-        all_dirs = sorted(
-            (p for p in basic_info_root.glob("*/*") if p.is_dir()),
-            key=lambda p: p.name,
-        )
-        if not all_dirs:
-            return None
-        # PRODUCTION_SCANNER_STALE_ARTIFACT_FIX_V01: as-of가 rolling Basic Info archive의
-        # 첫 snapshot보다 이른 경우(예: 2026-08-14, 첫 snapshot은 2026-08-24부터 존재) 과거
-        # snapshot이 하나도 없다. 여기서 None을 반환하면 호출부의 유일한 남은 fallback이
-        # 이제 live PyKRX(load_krx_equity_universe)뿐이라 production default가 네트워크를
-        # 타게 된다(PyKRX 금지 원칙 위반). 종목명은 거의 바뀌지 않으므로, 과거 snapshot이
-        # 없을 때는 best-effort로 가장 이른(미래) 가용 snapshot을 이름 소스로 사용한다 --
-        # 이는 오직 종목명 표시용이며, universe 멤버십/state는 여전히 merged PIT의
-        # as-of 기준 interval에서만 결정되므로 point-in-time 정확성에는 영향 없다.
-        past_dirs = [p for p in all_dirs if p.name <= as_of_clean]
-        snapshot_dir = past_dirs[-1] if past_dirs else all_dirs[0]
-
-    name_by_isu: dict[str, str] = {}
-    for market_file in ("KOSPI.json", "KOSDAQ.json"):
-        market_path = snapshot_dir / market_file
-        if not market_path.exists():
-            continue
-        data = json.loads(market_path.read_text(encoding="utf-8"))
-        for row in data.get("OutBlock_1", []):
-            isu_cd = row.get("ISU_CD")
-            name = row.get("ISU_ABBRV") or row.get("ISU_NM")
-            if isu_cd and name:
-                name_by_isu[isu_cd] = name
-    if not name_by_isu:
+    try:
+        target_rows, _snapshot_date = load_target_basic_info_universe(repo_root, as_of)
+    except (FileNotFoundError, ValueError, OSError, json.JSONDecodeError):
+        return None
+    name_by_ticker = {
+        str(row["ticker"]): str(row["name"])
+        for row in target_rows
+        if str(row.get("market")) in {MarketType.KOSPI.value, MarketType.KOSDAQ.value}
+    }
+    if not name_by_ticker:
         return None
 
     universe: list[UniverseSecurity] = []
@@ -218,7 +210,7 @@ def _default_offline_universe(repo_root: Path, as_of: str) -> list[UniverseSecur
         universe.append(
             UniverseSecurity(
                 ticker=iv["ticker"],
-                name=name_by_isu.get(iv["isu_cd"], iv["ticker"]),
+                name=name_by_ticker.get(iv["ticker"], iv["ticker"]),
                 market=market,
                 metadata_source=_AUTHORITATIVE_PIT_METADATA_SOURCE,
             )
@@ -1025,7 +1017,7 @@ def scan_pattern_a_universe(
                 # 무조건 COMMON으로 편입하지도 않는다 -- canonical instrument metadata
                 # authority(FORMAL_SECURITY_TYPE)가 production-trusted COMMON으로 확정한
                 # 경우에만 포함한다. UNKNOWN/untrusted는 fail-closed로 제외한다.
-                canonical = resolve_instrument_metadata(t, as_of=req_as_of_str, repo_root=repo_root)
+                canonical = _resolve_scanner_instrument_metadata(t, req_as_of_str, repo_root)
                 if canonical.is_common_stock_for_production:
                     all_common_targets.append((t, n, m))
             elif classify_asset_type(t, n) == AssetType.COMMON:

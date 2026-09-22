@@ -100,32 +100,22 @@ def _resolve_exact_report_directory(target_as_of: str) -> tuple[Path, str]:
 
 
 def _load_universe(requested_as_of: str) -> tuple[list[dict[str, str]], str]:
-    if not METADATA_PATH.exists():
-        raise FileNotFoundError(f"instrument metadata authority missing: {METADATA_PATH}")
+    from trend_scanner.universe.instrument_metadata import load_target_production_universe
 
-    rows: list[dict[str, str]] = []
-    with METADATA_PATH.open(newline="", encoding="utf-8") as handle:
-        for row in csv.DictReader(handle):
-            ticker = str(row.get("ticker") or "").strip().upper()
-            effective = str(row.get("effective_date") or "").strip()[:10]
-            if not ticker or not effective or effective > requested_as_of:
-                continue
-            rows.append({
-                "ticker": ticker,
-                "name": str(row.get("name") or ticker).strip() or ticker,
-                "market": str(row.get("market") or "").strip().upper(),
-                "asset_type": str(row.get("asset_type") or "UNKNOWN").strip().upper() or "UNKNOWN",
-                "effective_date": effective,
-            })
-
-    if not rows:
-        raise ValueError("instrument metadata has no PIT-eligible rows")
-    snapshot_date = max(row["effective_date"] for row in rows)
-    current = [row for row in rows if row["effective_date"] == snapshot_date]
-    current.sort(key=lambda row: row["ticker"])
+    rows, snapshot_date = load_target_production_universe(ROOT, requested_as_of)
+    current = [
+        {
+            "ticker": str(row["ticker"]),
+            "name": str(row.get("name") or row["ticker"]).strip(),
+            "market": str(row.get("market") or "UNKNOWN").strip().upper(),
+            "asset_type": str(row.get("asset_type") or "UNKNOWN").strip().upper(),
+            "effective_date": str(row.get("effective_date") or snapshot_date)[:10],
+        }
+        for row in rows
+    ]
     tickers = [row["ticker"] for row in current]
     if len(tickers) != len(set(tickers)):
-        raise ValueError("instrument metadata authority contains duplicate PIT tickers")
+        raise ValueError("target production universe contains duplicate tickers")
     return current, snapshot_date
 
 

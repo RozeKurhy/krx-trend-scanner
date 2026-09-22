@@ -23,7 +23,7 @@ from scripts import export_stock_report_web as stock_report_web
 from scripts import export_strategy_monitor_web as strategy_monitor_web
 
 ROOT = Path(__file__).resolve().parents[1]
-REAL_TARGET = "2026-09-17"
+REAL_TARGET = "2026-09-21"
 
 
 def _write_scanner_summary(
@@ -399,12 +399,12 @@ def test_d_sector_rs_authority_as_of_mismatch_fails_closed():
     basic_info_dir = phase4c.resolve_basic_info_dir(ROOT, REAL_TARGET)
     with tempfile.TemporaryDirectory() as tmp_name, pytest.raises(ValueError, match="unexpected ranking as_of"):
         sector_rs_web.build_sector_rs_web_payload(
-            ranking_path=ROOT / "data/analytics/sector_rs_ranking/v01/sector_rs_ranking_20260917.parquet",
-            meta_path=ROOT / "data/analytics/sector_rs_ranking/v01/sector_rs_ranking_20260917_meta.json",
+            ranking_path=ROOT / "data/analytics/sector_rs_ranking/v01" / f"sector_rs_ranking_{REAL_TARGET.replace('-', '')}.parquet",
+            meta_path=ROOT / "data/analytics/sector_rs_ranking/v01" / f"sector_rs_ranking_{REAL_TARGET.replace('-', '')}_meta.json",
             basic_info_dir=basic_info_dir,
             stocks_dir=Path(tmp_name),
             requested_as_of=REAL_TARGET,
-            reference_market_date="2026-09-16",  # 실제 ranking authority as_of(2026-09-17)와 다름
+            reference_market_date="2026-09-20",  # 실제 ranking authority as_of(2026-09-21)와 다름
         )
 
 

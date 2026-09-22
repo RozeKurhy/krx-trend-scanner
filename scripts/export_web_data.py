@@ -167,48 +167,14 @@ def _production_paths(requested_as_of: str) -> dict[str, Path]:
 
 
 def _load_universe(requested_as_of: str) -> tuple[set[str], str, Counter[str]]:
-    """Load the same Strict PIT universe authority used by F7.
+    """Load the shared target-scoped production universe authority."""
+    from trend_scanner.universe.instrument_metadata import load_target_production_universe
 
-    The metadata resolver is a local reader for the canonical parquet/CSV
-    authority.  It has no network path.  The latest row snapshot not after the
-    requested date is selected, then duplicate tickers fail closed.
-    """
-
-    if not METADATA_PATH.exists():
-        raise FileNotFoundError(f"instrument metadata authority missing: {METADATA_PATH}")
-
-    import sys
-
-    src_dir = str(ROOT / "src")
-    if src_dir not in sys.path:
-        sys.path.insert(0, src_dir)
-    from trend_scanner.universe.instrument_metadata import InstrumentMetadataResolver
-
-    frame = InstrumentMetadataResolver.load_master_dataframe(ROOT).copy()
-    required = {"ticker", "effective_date"}
-    if frame.empty or not required.issubset(frame.columns):
-        raise ValueError("instrument metadata authority is empty or incomplete")
-
-    import pandas as pd
-
-    frame["ticker"] = frame["ticker"].astype(str).str.strip().str.upper()
-    frame["effective_date"] = pd.to_datetime(frame["effective_date"], errors="coerce")
-    eligible = frame[
-        frame["effective_date"].notna()
-        & (frame["effective_date"] <= pd.Timestamp(requested_as_of))
-    ]
-    if eligible.empty:
-        raise ValueError("instrument metadata has no PIT-eligible rows")
-    snapshot_date = str(eligible["effective_date"].max().date())
-    current = eligible[eligible["effective_date"] == pd.Timestamp(snapshot_date)].copy()
-    current = current.sort_values("ticker")
-    if current["ticker"].duplicated().any():
-        raise ValueError("instrument metadata authority contains duplicate PIT tickers")
-
-    tickers = set(current["ticker"].tolist())
+    rows, snapshot_date = load_target_production_universe(ROOT, requested_as_of)
+    tickers = {str(row["ticker"]).strip().upper() for row in rows}
     asset_counts = Counter(
-        str(value or "UNKNOWN").strip().upper()
-        for value in current.get("asset_type", pd.Series(index=current.index, dtype="object"))
+        str(row.get("asset_type") or "UNKNOWN").strip().upper()
+        for row in rows
     )
     return tickers, snapshot_date, asset_counts
 

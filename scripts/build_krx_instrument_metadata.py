@@ -82,7 +82,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from trend_scanner.universe.instrument_metadata import normalize_krx_market  # noqa: E402
+from trend_scanner.universe.instrument_metadata import (  # noqa: E402
+    map_formal_basic_info_row_to_asset_type,
+    normalize_krx_market,
+)
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CSV_PATH = REPO_ROOT / "data/reference/krx_instrument_metadata.csv"
@@ -185,34 +188,7 @@ def map_row_to_asset_type(row: pd.Series, ever_been_spac: bool = False) -> tuple
          - KIND_STKCERT_TP_NM == "종류주권"을 포함하여 name-independent formal taxonomy로
            해결할 수 없는 카테고리는 추측하지 않고 fail closed -> UNKNOWN (UNMAPPED_FORMAL_CATEGORY)
     """
-    secugrp = str(row.get("SECUGRP_NM", "")).strip()
-    sect = str(row.get("SECT_TP_NM", "")).strip()
-    kind = str(row.get("KIND_STKCERT_TP_NM", "")).strip()
-    isu_nm = str(row.get("ISU_NM", "")).strip()
-    isu_eng_nm = str(row.get("ISU_ENG_NM", "")).strip()
-    source_security_type = (
-        f"SECUGRP_NM={secugrp}|SECT_TP_NM={sect}|KIND_STKCERT_TP_NM={kind}"
-        f"|ISU_NM={isu_nm}|ISU_ENG_NM={isu_eng_nm}"
-    )
-
-    is_spac_formal = "SPAC" in sect
-    if is_spac_formal:
-        return "SPAC", source_security_type, AUTH_FORMAL, AUTH_FORMAL
-    if secugrp == "부동산투자회사":
-        return "REIT", source_security_type, AUTH_FORMAL, AUTH_FORMAL
-    if kind == "보통주":
-        if sect in MANAGED_ISSUE_SECTIONS and ever_been_spac:
-            ambiguous_source = source_security_type + "|CANONICAL_HISTORY_HAS_SPAC=TRUE"
-            return "UNKNOWN", ambiguous_source, AUTH_FORMAL, AUTH_INSUFFICIENT_IDENTITY
-        return "COMMON", source_security_type, AUTH_FORMAL, AUTH_FORMAL
-    if kind in ("구형우선주", "신형우선주"):
-        return "PREFERRED", source_security_type, AUTH_FORMAL, AUTH_FORMAL
-
-    # formal source에서 row는 찾았으나(예: 외국주권/주식예탁증권/종류주권/투자회사/사회간접자본투융자회사)
-    # name-independent formal taxonomy로 deterministic mapping이 불가능한 경우.
-    # 추측해서 PREFERRED/COMMON 등으로 분류하지 않고 fail closed (Fix Round 08 Major 1).
-    return "UNKNOWN", source_security_type, AUTH_FORMAL, AUTH_UNMAPPED
-
+    return map_formal_basic_info_row_to_asset_type(row, ever_been_spac=ever_been_spac)
 
 def classify_live_row(
     universe_source: str,

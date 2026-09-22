@@ -12,11 +12,11 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
-TARGET_AS_OF = "2026-09-17"
+TARGET_AS_OF = "2026-09-21"
 EXPORTER_PATH = ROOT / "scripts/export_foreign_net_buy_ranking_web.py"
 RANKING_PATH = ROOT / "web/data/foreign-net-buy-ranking.json"
-FLOW_PATH = ROOT / "artifacts/patterns/pattern_a/production/flow/source/foreign_flow_daily_20260917.parquet"
-COMMON_AUTHORITY_PATH = ROOT / "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01/market_rs_universe_20260917.csv"
+FLOW_PATH = ROOT / "artifacts/patterns/pattern_a/production/flow/source/foreign_flow_daily_20260921.parquet"
+COMMON_AUTHORITY_PATH = ROOT / "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01/market_rs_universe_20260921.csv"
 
 
 def _load_exporter():
@@ -47,7 +47,7 @@ def test_payload_has_exact_as_of_common_scope_and_reconciliation():
     assert ranking["scope"]["asset_type"] == "COMMON"
     assert ranking["scope"]["universe_snapshot_date"] == TARGET_AS_OF
     assert ranking["scope"]["universe_authority_path"].endswith(
-        "market_rs_universe_20260917.csv"
+        "market_rs_universe_20260921.csv"
     )
     assert ranking["horizons"] == ["1d", "5d", "10d", "20d", "60d"]
     assert ranking["source"]["as_of"] == TARGET_AS_OF

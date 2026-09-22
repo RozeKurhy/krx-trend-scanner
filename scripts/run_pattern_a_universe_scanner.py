@@ -15,7 +15,10 @@ import sys
 
 import pandas as pd
 
-from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
+from trend_scanner.data.market_calendar import (
+    load_rolling_production_market_calendar,
+    resolve_reference_market_date as _resolve_reference_market_date,
+)
 from trend_scanner.data.repository_v2_loader import build_production_repository_v2
 from trend_scanner.data.sector_membership import (
     load_sector_mapping_exact_snapshot,
@@ -83,26 +86,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def resolve_reference_market_date(target_as_of: str, calendar: object | None) -> str:
-    """Return the certified market trading date at or before ``target_as_of``.
-
-    The requested analysis date is not rewritten on weekends or holidays.  A
-    missing or unusable rolling production calendar is an explicit failure,
-    never a latest-date or system-date fallback.
-    """
-
-    if calendar is None:
-        raise RuntimeError("ROLLING_PRODUCTION_CALENDAR_UNAVAILABLE")
-
-    try:
-        target = pd.Timestamp(target_as_of).normalize()
-        trading_dates = pd.DatetimeIndex(calendar.trading_dates).normalize()
-    except (AttributeError, TypeError, ValueError) as exc:
-        raise RuntimeError("ROLLING_PRODUCTION_CALENDAR_INVALID") from exc
-
-    eligible = trading_dates[trading_dates <= target]
-    if len(eligible) == 0:
-        raise RuntimeError(f"ROLLING_PRODUCTION_CALENDAR_NO_DATE_AT_OR_BEFORE:{target_as_of}")
-    return eligible.max().strftime("%Y-%m-%d")
+    """Backward-compatible script entrypoint for the package authority."""
+    return _resolve_reference_market_date(target_as_of, calendar)
 
 
 def validate_full_common_scan(summary: object, *, is_full_common_scan: bool) -> None:

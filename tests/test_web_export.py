@@ -77,7 +77,7 @@ def test_health_uses_actual_resolved_authority_values(health, exporter):
     assert fundamentals["status"] == expected_status
     assert fundamentals["status"] == "NORMAL"
     assert fundamentals["run_status"] == "COMPLETE"
-    assert fundamentals["completed"] == fundamentals["total"] == 4415
+    assert fundamentals["completed"] == fundamentals["total"] == len(resolved_tickers)
     expected_overall = exporter._overall_status(
         {key: health[key] for key in ("market_data", "universe", "fundamentals", "stock_reports")}
     )

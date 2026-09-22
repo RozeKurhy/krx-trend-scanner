@@ -21,8 +21,10 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from scripts.run_pattern_a_universe_scanner import resolve_reference_market_date
-from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
+from trend_scanner.data.market_calendar import (
+    load_rolling_production_market_calendar,
+    resolve_reference_market_date,
+)
 
 
 REGIMES = ("OVERHEATED", "NORMAL", "ANXIOUS", "PANIC", "APATHY")

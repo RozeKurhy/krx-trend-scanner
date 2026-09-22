@@ -84,7 +84,7 @@ from trend_scanner.reporting.fundamentals_report import (  # noqa: E402
     build_fundamentals_section,
 )
 from trend_scanner.universe.instrument_metadata import (  # noqa: E402
-    InstrumentMetadataResolver,
+    load_target_production_universe,
 )
 
 
@@ -92,6 +92,7 @@ CORP_CACHE_PATH = ROOT / "data/cache/opendart/corp_code_cache.json"
 COMPANY_CACHE_DIR = ROOT / "data/cache/opendart/company"
 OUTPUT_ROOT = ROOT / "artifacts/fundamentals/production"
 METADATA_PATH = ROOT / "data/reference/krx_instrument_metadata.parquet"
+TARGET_UNIVERSE_SOURCE = "target_basic_info_and_existing_product_metadata"
 VALID_TERMINAL_STATUSES = {
     "PASS",
     "FILTERED_ANNUAL_REVENUE",
@@ -623,23 +624,9 @@ def _output_dir(requested_as_of: str) -> Path:
 def _load_production_universe(requested_as_of: str) -> tuple[list[dict[str, Any]], str]:
     if not METADATA_PATH.exists():
         raise RuntimeError(f"instrument metadata authority missing: {METADATA_PATH}")
-    frame = InstrumentMetadataResolver.load_master_dataframe(ROOT).copy()
-    if frame.empty or "ticker" not in frame.columns or "effective_date" not in frame.columns:
-        raise RuntimeError("instrument metadata authority is empty or incomplete")
-    frame["ticker"] = frame["ticker"].astype(str).str.strip().str.upper()
-    frame["effective_date"] = pd.to_datetime(frame["effective_date"], errors="coerce")
-    cutoff = pd.Timestamp(requested_as_of)
-    eligible = frame[frame["effective_date"].notna() & (frame["effective_date"] <= cutoff)]
-    if eligible.empty:
-        raise RuntimeError("instrument metadata has no PIT-eligible rows")
-    snapshot_date = str(eligible["effective_date"].max().date())
-    current = eligible[eligible["effective_date"] == pd.Timestamp(snapshot_date)].copy()
-    current = current.sort_values("ticker")
-    if current["ticker"].duplicated().any():
-        duplicates = current.loc[current["ticker"].duplicated(), "ticker"].tolist()
-        raise RuntimeError(f"duplicate production universe tickers: {duplicates[:5]}")
+    current, snapshot_date = load_target_production_universe(ROOT, requested_as_of)
     rows = []
-    for item in current.to_dict(orient="records"):
+    for item in current:
         asset_type = str(item.get("asset_type") or "UNKNOWN").strip().upper()
         rows.append({
             "ticker": str(item.get("ticker") or "").strip().upper(),
@@ -1312,7 +1299,7 @@ def _summary(
         "processed_ticker_count": len(rows),
         "filtered_count": filtered,
         "mapping_source": str(CORP_CACHE_PATH.relative_to(ROOT)),
-        "universe_source": str(METADATA_PATH.relative_to(ROOT)),
+        "universe_source": TARGET_UNIVERSE_SOURCE,
     }
 
 

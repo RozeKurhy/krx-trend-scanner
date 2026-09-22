@@ -11,7 +11,7 @@ import argparse
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -826,6 +826,7 @@ def generate_stock_report(
     repository: MarketDataRepositoryV2 | None = None,
     fundamentals_section: FundamentalsSection | None | object = _FUNDAMENTALS_UNSET,
     reference_market_date: str | None = None,
+    instrument_metadata_resolver: Callable[..., Any] | None = None,
 ) -> tuple[StockReport, Path | None, Path | None]:
     """단일 종목 리포트를 생성한다.
 
@@ -865,7 +866,8 @@ def generate_stock_report(
         daily = cache.load(clean_ticker)
     has_cache = daily is not None and not daily.empty
 
-    inst_meta = resolve_instrument_metadata(ticker=clean_ticker, as_of=canonical_as_of, repo_root=root_path)
+    metadata_resolver = instrument_metadata_resolver or resolve_instrument_metadata
+    inst_meta = metadata_resolver(ticker=clean_ticker, as_of=canonical_as_of, repo_root=root_path)
     name = inst_meta.name
     market = inst_meta.market
     asset_type = inst_meta.asset_type

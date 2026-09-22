@@ -34,6 +34,7 @@ from scripts import run_daily_update_phase4b_v01 as phase4b
 from scripts import run_daily_update_phase4c_v01 as phase4c
 from scripts import run_daily_update_phase4d_v01 as phase4d
 from scripts import run_pattern_a_universe_scanner as phase4a
+from trend_scanner.universe.instrument_metadata import load_target_pit_common_tickers
 
 
 class Phase4EError(RuntimeError):
@@ -173,6 +174,21 @@ def _phase4a_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
             "PHASE4A_REFERENCE_MARKET_DATE_AUTHORITY_MISMATCH: "
             f"expected {expected_reference_market_date}, got {summary['reference_market_date']}"
         )
+    try:
+        expected_tickers = load_target_pit_common_tickers(root, target_as_of)
+    except FileNotFoundError:
+        # Synthetic focused-test/legacy callers may provide only a scanner
+        # artifact.  The real production root has this authority and therefore
+        # takes the strict expected-set branch below.
+        expected_tickers = None
+    if expected_tickers is not None:
+        actual_tickers = {str(row.get("ticker") or "").strip().upper() for row in rows}
+        if (
+            int(summary.get("official_common_total", -1)) != len(expected_tickers)
+            or len(rows) != len(expected_tickers)
+            or actual_tickers != expected_tickers
+        ):
+            return None
     return {
         "status": NOOP_ALREADY_COMPLETE,
         "target_as_of": target_as_of,
@@ -213,12 +229,19 @@ def _phase4b_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
         statuses=fundamentals_statuses,
     )
     target_ticker_set = set(target_tickers)
-    corpus = phase4b.validate_corpus(
-        canonical_dir,
-        target_ticker_set,
-        target_as_of,
-        reference_market_date,
-    )
+    try:
+        corpus = phase4b.validate_corpus(
+            canonical_dir,
+            target_ticker_set,
+            target_as_of,
+            reference_market_date,
+        )
+    except (OSError, UnicodeError, ValueError, json.JSONDecodeError):
+        # A malformed derived report is recoverable: do not treat the
+        # canonical cache as an authority failure, and let Phase 4B rebuild
+        # the complete staging corpus.  Authority/input validation above
+        # remains fail-closed.
+        return None
     valid = (
         corpus["json_count"] == len(target_ticker_set)
         and corpus["markdown_count"] == len(target_ticker_set)
@@ -233,13 +256,12 @@ def _phase4b_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
         and corpus["date_mismatch_count"] == 0
     )
     if not valid:
-        return {
-            "status": FAILED,
-            "target_as_of": target_as_of,
-            "requested_as_of": target_as_of,
-            "error": "PHASE4B_EXISTING_CORPUS_INVALID",
-            "validation": corpus,
-        }
+        # A stale or partial canonical corpus is a regeneration signal, not a
+        # phase failure.  Let Phase 4B build a complete isolated staging
+        # corpus and promote it only after its own full validation.  Returning
+        # a FAILED precheck here would leave the stale corpus in place and
+        # prevent the required target-scoped refresh.
+        return None
     return {
         "status": NOOP_ALREADY_COMPLETE,
         "target_as_of": target_as_of,
