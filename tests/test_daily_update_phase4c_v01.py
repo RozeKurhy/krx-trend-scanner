@@ -75,11 +75,46 @@ def test_a_reference_market_date_after_target_fails_closed(tmp_path):
         phase4c.load_scanner_summary(tmp_path, "2026-09-17")
 
 
-# --- basic_info dir 선택: target 이하 최신, 새 fallback 프레임워크 없이 재사용 -------
+# --- basic_info dir 선택: canonical authority에서 target 이하 최신, 미래 fallback 없음 ---
+
+
+def _basic_info_root(root: Path) -> Path:
+    return root / phase4c.DEFAULT_BASIC_INFO_RAW_ROOT
+
+
+def test_basic_info_dir_picks_exact_fresh_snapshot(tmp_path):
+    basic_info_root = _basic_info_root(tmp_path)
+    (basic_info_root / "2026/20260918").mkdir(parents=True)
+    (basic_info_root / "2026/20260921").mkdir(parents=True)
+
+    resolved = phase4c.resolve_basic_info_dir(tmp_path, "2026-09-21")
+
+    assert resolved == basic_info_root / "2026/20260921"
+
+
+def test_basic_info_dir_ignores_stale_legacy_rolling_snapshot(tmp_path):
+    basic_info_root = _basic_info_root(tmp_path)
+    (basic_info_root / "2026/20260921").mkdir(parents=True)
+    legacy_root = tmp_path / "data/reference/source/history/krx_instrument_master/v01/rolling/basic_info"
+    (legacy_root / "2026/20260911").mkdir(parents=True)
+
+    resolved = phase4c.resolve_basic_info_dir(tmp_path, "2026-09-21")
+
+    assert resolved == basic_info_root / "2026/20260921"
+
+
+def test_basic_info_dir_never_selects_future_canonical_snapshot(tmp_path):
+    basic_info_root = _basic_info_root(tmp_path)
+    (basic_info_root / "2026/20260918").mkdir(parents=True)
+    (basic_info_root / "2026/20260922").mkdir(parents=True)
+
+    resolved = phase4c.resolve_basic_info_dir(tmp_path, "2026-09-21")
+
+    assert resolved == basic_info_root / "2026/20260918"
 
 
 def test_basic_info_dir_picks_nearest_past_snapshot(tmp_path):
-    basic_info_root = tmp_path / "data/reference/source/history/krx_instrument_master/v01/rolling/basic_info"
+    basic_info_root = _basic_info_root(tmp_path)
     (basic_info_root / "2026/20260910").mkdir(parents=True)
     (basic_info_root / "2026/20260911").mkdir(parents=True)
     (basic_info_root / "2026/20260918").mkdir(parents=True)  # target 이후, 선택되면 안 됨
@@ -99,7 +134,7 @@ def test_basic_info_dir_missing_fails_closed(tmp_path):
 def test_h_basic_info_future_only_snapshots_fail_closed(tmp_path):
     """target=2026-09-17인데 가용 snapshot이 전부 미래(20260918/20260919)뿐이면
     과거 구현처럼 미래 snapshot으로 대체하지 않고 fail-closed해야 한다."""
-    basic_info_root = tmp_path / "data/reference/source/history/krx_instrument_master/v01/rolling/basic_info"
+    basic_info_root = _basic_info_root(tmp_path)
     (basic_info_root / "2026/20260918").mkdir(parents=True)
     (basic_info_root / "2026/20260919").mkdir(parents=True)
 

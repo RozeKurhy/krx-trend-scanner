@@ -34,6 +34,9 @@ from trend_scanner.data.sector_membership import (
     SectorMembershipSnapshotUnavailable,
     resolve_sector_membership_snapshot_for_target,
 )
+from trend_scanner.universe.historical_authority_reconciliation import (
+    DEFAULT_RAW_ROOT as DEFAULT_BASIC_INFO_RAW_ROOT,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("run_daily_update_phase4c_v01")
@@ -98,7 +101,7 @@ def resolve_basic_info_dir(root: Path, target_as_of: str) -> Path:
     미래 snapshot으로 대체(fallback)하지 않고 fail-closed한다 -- 표시용이라도
     미래 정보를 과거 기준일에 역적용하지 않는다는 Strict PIT 원칙은 그대로
     지킨다."""
-    basic_info_root = root / "data/reference/source/history/krx_instrument_master/v01/rolling/basic_info"
+    basic_info_root = root / DEFAULT_BASIC_INFO_RAW_ROOT
     target_clean = target_as_of.replace("-", "")
     all_dirs = sorted((p for p in basic_info_root.glob("*/*") if p.is_dir()), key=lambda p: p.name)
     if not all_dirs:
