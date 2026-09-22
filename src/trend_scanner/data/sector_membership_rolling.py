@@ -38,7 +38,6 @@ from trend_scanner.data.sector_membership import (
 )
 
 
-AS_OF = "2026-09-04"
 EXPECTED_SECTOR_COUNT = 46
 MIN_INTER_CALL_SECONDS = 10.0
 MARKETPLACE_SOURCE_TYPE = "KRX_DATA_MARKETPLACE_OFFICIAL_INDEX_CONSTITUENTS_CSV"
@@ -574,7 +573,7 @@ def _atomic_publish_meta(path: Path, payload: Mapping[str, Any]) -> None:
 
 
 def build_rolling_sector_membership(
-    effective_date: str | pd.Timestamp = AS_OF,
+    effective_date: str | pd.Timestamp,
     *,
     repo_root: Path,
     fetcher: Callable[[str, str], Any] | None = None,
@@ -691,7 +690,7 @@ def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(description="Build exact-date rolling KRX sector membership authority")
-    parser.add_argument("--as-of", default=AS_OF)
+    parser.add_argument("--as-of", required=True)
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     parser.add_argument("--min-delay-seconds", type=float, default=MIN_INTER_CALL_SECONDS)
     parser.add_argument(

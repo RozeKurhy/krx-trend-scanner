@@ -55,7 +55,7 @@ def _now() -> str:
 
 def _as_of_date(value: str | date | None) -> date:
     if value is None:
-        requested = date.today()
+        raise InvalidAsOfError("Historical as_of is required")
     elif isinstance(value, datetime):
         requested = value.date()
     elif isinstance(value, date):

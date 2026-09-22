@@ -27,7 +27,6 @@ from trend_scanner.relative_strength.sector_ranking import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
-AS_OF = "2026-09-04"
 DEFAULT_OUTPUT_DIR = ROOT / "data/analytics/sector_rs_ranking/v01"
 SECTOR_INDEX_PATH = ROOT / ".cache/krx_openapi/sector_rs_migration/v01/sector_index_daily.parquet"
 SECTOR_INDEX_SOURCE = ".cache/krx_openapi/sector_rs_migration/v01/sector_index_daily.parquet"
@@ -324,7 +323,7 @@ def _validate_output(frame: pd.DataFrame, target_common: pd.DataFrame, as_of: st
 
 def build_sector_rs_ranking(
     *,
-    as_of: str = AS_OF,
+    as_of: str,
     output_dir: Path = DEFAULT_OUTPUT_DIR,
 ) -> dict[str, Any]:
     """Build the target-date within-sector ranking parquet and metadata."""
@@ -417,7 +416,7 @@ def build_sector_rs_ranking(
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--as-of", default=AS_OF)
+    parser.add_argument("--as-of", required=True)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     args = parser.parse_args()
     print(json.dumps(build_sector_rs_ranking(as_of=args.as_of, output_dir=args.output_dir), ensure_ascii=False, sort_keys=True))

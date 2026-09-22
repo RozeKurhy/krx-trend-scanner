@@ -229,6 +229,7 @@ def test_failed_partial_run_does_not_publish(tmp_path: Path) -> None:
         raise RuntimeError("blocked")
 
     result = build_rolling_sector_membership(
+        "2026-09-04",
         repo_root=tmp_path,
         target_universe_path=target_path,
         fetcher=fail_fetch,
@@ -252,6 +253,7 @@ def test_45_of_46_successful_sectors_does_not_publish(tmp_path: Path) -> None:
         return ["000001"]
 
     result = build_rolling_sector_membership(
+        "2026-09-04",
         repo_root=tmp_path,
         target_universe_path=target_path,
         fetcher=fail_on_last,
@@ -278,6 +280,7 @@ def test_checkpoint_reuse_makes_second_run_network_free(tmp_path: Path) -> None:
         return [str(len(calls)).zfill(6)]
 
     first = build_rolling_sector_membership(
+        "2026-09-04",
         repo_root=tmp_path,
         target_universe_path=target_path,
         fetcher=fetch,
@@ -288,6 +291,7 @@ def test_checkpoint_reuse_makes_second_run_network_free(tmp_path: Path) -> None:
     assert first.report["target_reconciliation"] is True
     calls.clear()
     second = build_rolling_sector_membership(
+        "2026-09-04",
         repo_root=tmp_path,
         target_universe_path=target_path,
         fetcher=fetch,

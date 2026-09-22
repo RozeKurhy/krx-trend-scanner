@@ -240,6 +240,7 @@ def run_phase4c(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
             meta_path=sector_meta_path,
             basic_info_dir=basic_info_dir,
             stocks_dir=temp_stocks_dir,
+            expected_as_of=reference_market_date,
             requested_as_of=target_as_of,
             reference_market_date=reference_market_date,
         )

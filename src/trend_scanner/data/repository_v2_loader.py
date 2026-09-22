@@ -41,7 +41,7 @@ class RepositoryV2DailyLoader:
         repository: MarketDataRepositoryV2,
         *,
         start: str = "1900-01-01",
-        end: str | pd.Timestamp = "2026-08-14",
+        end: str | pd.Timestamp,
     ) -> None:
         self.repository = repository
         self.start = str(start)[:10]
@@ -108,7 +108,7 @@ class RepositoryV2DailyLoader:
         return result
 
 
-def build_repository_v2(repo_root: Path | str, *, end: str | pd.Timestamp = "2026-08-14") -> MarketDataRepositoryV2:
+def build_repository_v2(repo_root: Path | str, *, end: str | pd.Timestamp) -> MarketDataRepositoryV2:
     """Build one run-scoped Repository V2 instance from canonical stores.
 
     HISTORICAL_FROZEN_MODE: never applies a rolling-authority boundary. This is the correct,
@@ -125,7 +125,7 @@ def build_repository_v2(repo_root: Path | str, *, end: str | pd.Timestamp = "202
     )
 
 
-def build_production_repository_v2(repo_root: Path | str, *, end: str | pd.Timestamp = "2026-08-14") -> MarketDataRepositoryV2:
+def build_production_repository_v2(repo_root: Path | str, *, end: str | pd.Timestamp) -> MarketDataRepositoryV2:
     """Build one run-scoped Repository V2 instance for PRODUCTION_ROLLING_MODE consumers.
 
     Unlike :func:`build_repository_v2`, the rolling-authority boundary here is not a parameter a

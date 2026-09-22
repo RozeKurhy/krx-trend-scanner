@@ -13,9 +13,6 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_RANKING_PATH = ROOT / "data/analytics/sector_rs_ranking/v01/sector_rs_ranking_20260904.parquet"
-DEFAULT_META_PATH = ROOT / "data/analytics/sector_rs_ranking/v01/sector_rs_ranking_20260904_meta.json"
-DEFAULT_BASIC_INFO_DIR = ROOT / "data/reference/source/history/krx_instrument_master/v01/rolling/basic_info/2026/20260904"
 DEFAULT_STOCKS_DIR = ROOT / "web/data/stocks"
 DEFAULT_OUTPUT_PATH = ROOT / "web/data/sector-rs-ranking.json"
 HORIZONS = ("2w", "1m", "3m", "6m", "12m")
@@ -93,6 +90,32 @@ def _normalise_date(value: Any) -> str | None:
     return str(value)[:10]
 
 
+def _required_as_of(value: str | None, *, fallback: str | None = None) -> str:
+    candidate = value or fallback
+    if not candidate:
+        raise ValueError("SECTOR_RS_EXPECTED_AS_OF_REQUIRED")
+    try:
+        return pd.Timestamp(candidate).strftime("%Y-%m-%d")
+    except (TypeError, ValueError):
+        raise ValueError(f"SECTOR_RS_INVALID_AS_OF: {candidate!r}") from None
+
+
+def _resolve_source_paths(
+    expected_as_of: str,
+    *,
+    ranking_path: Path | None,
+    meta_path: Path | None,
+    basic_info_dir: Path | None,
+) -> tuple[Path, Path, Path]:
+    compact = expected_as_of.replace("-", "")
+    year = expected_as_of[:4]
+    return (
+        ranking_path or ROOT / "data/analytics/sector_rs_ranking/v01" / f"sector_rs_ranking_{compact}.parquet",
+        meta_path or ROOT / "data/analytics/sector_rs_ranking/v01" / f"sector_rs_ranking_{compact}_meta.json",
+        basic_info_dir or ROOT / "data/reference/source/history/krx_instrument_master/v01/rolling/basic_info" / year / compact,
+    )
+
+
 def _load_core(ranking_path: Path, meta_path: Path) -> tuple[pd.DataFrame, dict[str, Any]]:
     meta = _read_json(meta_path)
     if meta.get("schema_version") != "SECTOR_RS_RANKING_V01":
@@ -124,7 +147,7 @@ def _load_core(ranking_path: Path, meta_path: Path) -> tuple[pd.DataFrame, dict[
 
 
 def _validate_core(
-    ranking: pd.DataFrame, meta: dict[str, Any], *, expected_as_of: str = "2026-09-04",
+    ranking: pd.DataFrame, meta: dict[str, Any], *, expected_as_of: str,
 ) -> dict[str, int]:
     as_of = str(meta["as_of"])
     if as_of != expected_as_of:
@@ -268,13 +291,15 @@ def _project_items(
     ranking: pd.DataFrame,
     names: dict[str, dict[str, str]],
     report_tickers: set[str],
+    *,
+    expected_as_of: str,
 ) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     for row in ranking.sort_values(["market", "sector_code", "ticker"], kind="mergesort", na_position="last").to_dict(orient="records"):
         ticker = str(row["ticker"])
         name_record = names.get(ticker)
         if name_record is None:
-            raise ValueError(f"exact 2026-09-04 Basic Info name unresolved: {ticker}")
+            raise ValueError(f"exact {expected_as_of} Basic Info name unresolved: {ticker}")
         if name_record["market"] != row["market"]:
             raise ValueError(f"exact Basic Info market mismatch: {ticker}")
         sector_code = _text(row.get("sector_code"))
@@ -312,7 +337,7 @@ def _validate_payload(
     names: dict[str, dict[str, str]],
     report_tickers: set[str],
     *,
-    expected_as_of: str = "2026-09-04",
+    expected_as_of: str,
 ) -> dict[str, int]:
     items = payload["items"]
     sectors = payload["sectors"]
@@ -437,20 +462,19 @@ def _basic_info_date_from_dir(basic_info_dir: Path) -> str:
 
 def build_sector_rs_web_payload(
     *,
-    ranking_path: Path = DEFAULT_RANKING_PATH,
-    meta_path: Path = DEFAULT_META_PATH,
-    basic_info_dir: Path = DEFAULT_BASIC_INFO_DIR,
+    ranking_path: Path | None = None,
+    meta_path: Path | None = None,
+    basic_info_dir: Path | None = None,
     stocks_dir: Path = DEFAULT_STOCKS_DIR,
-    expected_as_of: str = "2026-09-04",
+    expected_as_of: str | None = None,
     requested_as_of: str | None = None,
     reference_market_date: str | None = None,
 ) -> dict[str, Any]:
     """Project the closed authority without recomputing any Sector RS value.
 
-    ``expected_as_of``(PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01): 기존 하드코딩된
-    "2026-09-04" 검증을 명시적 파라미터로 바꿔, exact-target(예: 2026-09-17) 호출도
-    ranking authority의 as_of를 정확히 검증할 수 있게 한다. 생략하면 기존과 동일한
-    기본값(2026-09-04)을 그대로 쓴다.
+    ``expected_as_of``는 반드시 호출자가 제공해야 한다. 다만 Phase 4의
+    ``reference_market_date``가 제공된 경우에는 그 값을 검증 기준일로 사용한다.
+    두 값이 모두 없으면 운영 날짜를 추정하지 않고 fail-closed한다.
 
     ``requested_as_of``/``reference_market_date``(선택, PHASE4C_FINAL_FIX_V01):
     명시하면 Phase 4 날짜 계약(requested_as_of=target_as_of, reference_market_date=
@@ -458,8 +482,13 @@ def build_sector_rs_web_payload(
     모두 노출하고, reference_market_date가 ranking authority의 실제 as_of와
     일치하는지도 함께 검증한다(``expected_as_of``를 명시적으로 덮어쓴다). 생략하면
     기존과 완전히 동일하게 ``as_of``만 노출한다(하위 호환)."""
-    if reference_market_date is not None:
-        expected_as_of = reference_market_date
+    expected_as_of = _required_as_of(expected_as_of, fallback=reference_market_date)
+    ranking_path, meta_path, basic_info_dir = _resolve_source_paths(
+        expected_as_of,
+        ranking_path=ranking_path,
+        meta_path=meta_path,
+        basic_info_dir=basic_info_dir,
+    )
 
     _install_network_guard()
     ranking, meta = _load_core(ranking_path, meta_path)
@@ -470,7 +499,7 @@ def build_sector_rs_web_payload(
         raise ValueError(f"exact {expected_as_of} Basic Info name join failed: {sorted(missing_names)}")
     report_tickers = _load_report_file_set(stocks_dir)
     sectors = _build_sectors(ranking)
-    items = _project_items(ranking, names, report_tickers)
+    items = _project_items(ranking, names, report_tickers, expected_as_of=expected_as_of)
     payload: dict[str, Any] = {
         "schema_version": 1,
         "as_of": str(meta["as_of"]),
@@ -514,17 +543,33 @@ def export_sector_rs_ranking_web(
     output_path: Path = DEFAULT_OUTPUT_PATH,
     **kwargs: Any,
 ) -> dict[str, Any]:
+    expected_as_of = _required_as_of(
+        kwargs.get("expected_as_of"), fallback=kwargs.get("reference_market_date")
+    )
+    ranking_path, meta_path, basic_info_dir = _resolve_source_paths(
+        expected_as_of,
+        ranking_path=kwargs.get("ranking_path"),
+        meta_path=kwargs.get("meta_path"),
+        basic_info_dir=kwargs.get("basic_info_dir"),
+    )
+    kwargs = {
+        **kwargs,
+        "expected_as_of": expected_as_of,
+        "ranking_path": ranking_path,
+        "meta_path": meta_path,
+        "basic_info_dir": basic_info_dir,
+    }
     payload = build_sector_rs_web_payload(**kwargs)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     serialized = json.dumps(payload, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
     output_path.write_text(serialized, encoding="utf-8")
     json.loads(serialized)
-    ranking, meta = _load_core(kwargs.get("ranking_path", DEFAULT_RANKING_PATH), kwargs.get("meta_path", DEFAULT_META_PATH))
-    names = _load_name_authority(kwargs.get("basic_info_dir", DEFAULT_BASIC_INFO_DIR))
+    ranking, meta = _load_core(ranking_path, meta_path)
+    names = _load_name_authority(basic_info_dir)
     report_tickers = _load_report_file_set(kwargs.get("stocks_dir", DEFAULT_STOCKS_DIR))
     validation = _validate_payload(
         payload, ranking, meta, names, report_tickers,
-        expected_as_of=kwargs.get("expected_as_of", "2026-09-04"),
+        expected_as_of=expected_as_of,
     )
     return {
         "output": str(output_path.relative_to(ROOT)) if output_path.is_relative_to(ROOT) else str(output_path),
@@ -545,15 +590,17 @@ def export_sector_rs_ranking_web(
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_PATH)
-    parser.add_argument("--ranking", type=Path, default=DEFAULT_RANKING_PATH)
-    parser.add_argument("--meta", type=Path, default=DEFAULT_META_PATH)
-    parser.add_argument("--basic-info-dir", type=Path, default=DEFAULT_BASIC_INFO_DIR)
+    parser.add_argument("--as-of", required=True, help="Expected ranking authority date (YYYY-MM-DD)")
+    parser.add_argument("--ranking", type=Path, default=None)
+    parser.add_argument("--meta", type=Path, default=None)
+    parser.add_argument("--basic-info-dir", type=Path, default=None)
     parser.add_argument("--stocks-dir", type=Path, default=DEFAULT_STOCKS_DIR)
     args = parser.parse_args()
     print(
         json.dumps(
             export_sector_rs_ranking_web(
                 output_path=args.output,
+                expected_as_of=args.as_of,
                 ranking_path=args.ranking,
                 meta_path=args.meta,
                 basic_info_dir=args.basic_info_dir,

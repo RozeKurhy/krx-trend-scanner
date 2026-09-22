@@ -184,6 +184,7 @@ def _stage_payloads(
         meta_path=ROOT / "data/analytics/sector_rs_ranking/v01" / f"sector_rs_ranking_{dt_clean}_meta.json",
         basic_info_dir=phase4c.resolve_basic_info_dir(ROOT, target_as_of),
         stocks_dir=stocks_dir,
+        expected_as_of=reference_market_date,
         requested_as_of=target_as_of,
         reference_market_date=reference_market_date,
     )

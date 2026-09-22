@@ -1459,7 +1459,9 @@ def main() -> None:
         report_end = args.as_of
     else:
         latest = AdjustedPriceStore(root / "data/market/adjusted/stocks").latest_date("005930")
-        report_end = latest.strftime("%Y-%m-%d") if latest is not None else "2026-08-14"
+        if latest is None:
+            raise RuntimeError("STOCK_REPORT_NO_LOCAL_AVAILABLE_DATE")
+        report_end = latest.strftime("%Y-%m-%d")
     # PRODUCTION_ROLLING_MODE (directive ROLLING_MARKET_DATA_AUTHORITY_FINALIZATION_V01 section 8):
     # report_end can be "latest local available date" -- a live, moving target -- so the rolling
     # certified boundary must be enforced unconditionally, never opt-in.

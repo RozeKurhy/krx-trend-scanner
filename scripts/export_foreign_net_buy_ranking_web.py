@@ -16,14 +16,37 @@ from trend_scanner.data.repository_v2_loader import EXPECTED_DATA_UNAVAILABLE, b
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INDEX_PATH = ROOT / "web" / "data" / "stock-index.json"
-DEFAULT_FLOW_PATH = ROOT / "artifacts" / "patterns" / "pattern_a" / "production" / "flow" / "source" / "foreign_flow_daily_20260904.parquet"
-DEFAULT_SECTOR_PATH = ROOT / "data" / "market" / "sector_membership" / "v01" / "sector_membership_20260904.parquet"
-DEFAULT_COMMON_AUTHORITY_PATH = ROOT / "artifacts" / "patterns" / "pattern_a" / "validation" / "relative_strength" / "market_completion_v01" / "market_rs_universe_20260904.csv"
 DEFAULT_OUTPUT_PATH = ROOT / "web" / "data" / "foreign-net-buy-ranking.json"
-AS_OF = "2026-09-04"
 HORIZONS = (1, 5, 10, 20, 60)
 FLOW_COLUMN = "foreign_net_buy_value"
 REQUIRED_FLOW_COLUMNS = {"date", "ticker", FLOW_COLUMN}
+
+
+def _required_as_of(value: str | None) -> str:
+    if not value:
+        raise ValueError("FOREIGN_NET_BUY_AS_OF_REQUIRED")
+    try:
+        return pd.Timestamp(value).strftime("%Y-%m-%d")
+    except (TypeError, ValueError):
+        raise ValueError(f"FOREIGN_NET_BUY_INVALID_AS_OF: {value!r}") from None
+
+
+def _resolve_source_paths(
+    repo_root: Path,
+    as_of: str,
+    *,
+    index_path: Path | None,
+    flow_path: Path | None,
+    sector_path: Path | None,
+    common_authority_path: Path | None,
+) -> tuple[Path, Path, Path, Path]:
+    compact = as_of.replace("-", "")
+    return (
+        index_path or repo_root / "web/data/stock-index.json",
+        flow_path or repo_root / "artifacts/patterns/pattern_a/production/flow/source" / f"foreign_flow_daily_{compact}.parquet",
+        sector_path or repo_root / "data/market/sector_membership/v01" / f"sector_membership_{compact}.parquet",
+        common_authority_path or repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01" / f"market_rs_universe_{compact}.csv",
+    )
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -67,11 +90,11 @@ def _load_pit_identity_names(repo_root: Path, as_of: str) -> dict[str, str]:
 
 
 def load_common_universe(
-    index_path: Path = DEFAULT_INDEX_PATH,
-    sector_path: Path = DEFAULT_SECTOR_PATH,
-    common_authority_path: Path = DEFAULT_COMMON_AUTHORITY_PATH,
-    as_of: str = AS_OF,
     *,
+    index_path: Path | None = None,
+    sector_path: Path | None = None,
+    common_authority_path: Path | None = None,
+    as_of: str,
     identity_as_of: str | None = None,
     repo_root: Path = ROOT,
 ) -> tuple[list[dict[str, Any]], str | None]:
@@ -84,6 +107,16 @@ def load_common_universe(
     기준으로 조회한다 -- 비거래일 target_as_of에서도 identity 기준일이 어긋나지
     않도록 한다.
     """
+    as_of = _required_as_of(as_of)
+    repo_root = Path(repo_root)
+    index_path, _flow_path, sector_path, common_authority_path = _resolve_source_paths(
+        repo_root,
+        as_of,
+        index_path=index_path,
+        flow_path=None,
+        sector_path=sector_path,
+        common_authority_path=common_authority_path,
+    )
     effective_identity_as_of = identity_as_of or as_of
 
     index = _read_json(index_path)
@@ -151,7 +184,7 @@ def load_common_universe(
     return projected, as_of
 
 
-def load_flow_source(path: Path = DEFAULT_FLOW_PATH) -> tuple[pd.DataFrame, dict[str, Any]]:
+def load_flow_source(path: Path) -> tuple[pd.DataFrame, dict[str, Any]]:
     frame = pd.read_parquet(path)
     if not REQUIRED_FLOW_COLUMNS.issubset(frame.columns):
         raise ValueError(f"foreign flow source schema is incomplete: {sorted(REQUIRED_FLOW_COLUMNS - set(frame.columns))}")
@@ -240,12 +273,12 @@ def _price_fields(
 
 def build_foreign_net_buy_ranking(
     *,
-    index_path: Path = DEFAULT_INDEX_PATH,
-    flow_path: Path = DEFAULT_FLOW_PATH,
-    sector_path: Path = DEFAULT_SECTOR_PATH,
-    common_authority_path: Path = DEFAULT_COMMON_AUTHORITY_PATH,
+    index_path: Path | None = None,
+    flow_path: Path | None = None,
+    sector_path: Path | None = None,
+    common_authority_path: Path | None = None,
     repository: Any | None = None,
-    as_of: str = AS_OF,
+    as_of: str,
     requested_as_of: str | None = None,
     reference_market_date: str | None = None,
     identity_as_of: str | None = None,
@@ -264,8 +297,20 @@ def build_foreign_net_buy_ranking(
     identity가 requested_as_of 기준으로 조회되도록 한다. 생략하면
     ``load_common_universe``가 ``as_of``로 폴백한다(하위 호환).
     """
+    as_of = _required_as_of(as_of)
+    index_path, flow_path, sector_path, common_authority_path = _resolve_source_paths(
+        Path(repo_root),
+        as_of,
+        index_path=index_path,
+        flow_path=flow_path,
+        sector_path=sector_path,
+        common_authority_path=common_authority_path,
+    )
     universe, universe_snapshot_date = load_common_universe(
-        index_path, sector_path, common_authority_path, as_of,
+        index_path=index_path,
+        sector_path=sector_path,
+        common_authority_path=common_authority_path,
+        as_of=as_of,
         identity_as_of=identity_as_of, repo_root=repo_root,
     )
     flow, flow_meta = load_flow_source(flow_path)
@@ -275,7 +320,7 @@ def build_foreign_net_buy_ranking(
     flow_covered_tickers = target_tickers & source_tickers
 
     if repository is None:
-        repository = build_repository_v2(ROOT, end=as_of)
+        repository = build_repository_v2(repo_root, end=as_of)
 
     items: list[dict[str, Any]] = []
     price_exact_resolved_count = 0
@@ -344,8 +389,8 @@ def build_foreign_net_buy_ranking(
     }
 
 
-def export_foreign_net_buy_ranking(output_path: Path = DEFAULT_OUTPUT_PATH) -> dict[str, Any]:
-    payload = build_foreign_net_buy_ranking()
+def export_foreign_net_buy_ranking(output_path: Path = DEFAULT_OUTPUT_PATH, **kwargs: Any) -> dict[str, Any]:
+    payload = build_foreign_net_buy_ranking(**kwargs)
     _write_json(output_path, payload)
     return {
         "output": _display_path(output_path),
@@ -361,8 +406,20 @@ def export_foreign_net_buy_ranking(output_path: Path = DEFAULT_OUTPUT_PATH) -> d
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_PATH)
+    parser.add_argument("--as-of", required=True, help="Ranking calculation date (YYYY-MM-DD)")
+    parser.add_argument("--index", type=Path, default=None)
+    parser.add_argument("--flow", type=Path, default=None)
+    parser.add_argument("--sector", type=Path, default=None)
+    parser.add_argument("--common-authority", type=Path, default=None)
     args = parser.parse_args()
-    print(json.dumps(export_foreign_net_buy_ranking(args.output), ensure_ascii=False, sort_keys=True))
+    print(json.dumps(export_foreign_net_buy_ranking(
+        args.output,
+        as_of=args.as_of,
+        index_path=args.index,
+        flow_path=args.flow,
+        sector_path=args.sector,
+        common_authority_path=args.common_authority,
+    ), ensure_ascii=False, sort_keys=True))
     return 0
 
 
