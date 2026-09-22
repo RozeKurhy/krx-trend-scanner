@@ -11,6 +11,8 @@ from typing import Any
 
 import pandas as pd
 
+from trend_scanner.universe.instrument_metadata import resolve_basic_info_snapshot_dir
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_STOCKS_DIR = ROOT / "web/data/stocks"
@@ -90,14 +92,34 @@ def _normalise_date(value: Any) -> str | None:
     return str(value)[:10]
 
 
-def _required_as_of(value: str | None, *, fallback: str | None = None) -> str:
-    candidate = value or fallback
-    if not candidate:
-        raise ValueError("SECTOR_RS_EXPECTED_AS_OF_REQUIRED")
+def _normalise_required_as_of(value: str, *, label: str) -> str:
+    if not value:
+        raise ValueError(f"{label}_REQUIRED")
     try:
-        return pd.Timestamp(candidate).strftime("%Y-%m-%d")
+        return pd.Timestamp(value).strftime("%Y-%m-%d")
     except (TypeError, ValueError):
-        raise ValueError(f"SECTOR_RS_INVALID_AS_OF: {candidate!r}") from None
+        raise ValueError(f"{label}_INVALID: {value!r}") from None
+
+
+def _resolve_expected_reference_date(
+    expected_as_of: str | None,
+    reference_market_date: str | None,
+) -> str:
+    if expected_as_of is None and reference_market_date is None:
+        raise ValueError("SECTOR_RS_EXPECTED_AS_OF_REQUIRED")
+    expected = (
+        _normalise_required_as_of(expected_as_of, label="SECTOR_RS_EXPECTED_AS_OF")
+        if expected_as_of is not None
+        else None
+    )
+    reference = (
+        _normalise_required_as_of(reference_market_date, label="SECTOR_RS_REFERENCE_MARKET_DATE")
+        if reference_market_date is not None
+        else None
+    )
+    if expected is not None and reference is not None and expected != reference:
+        raise ValueError("SECTOR_RS_EXPECTED_REFERENCE_DATE_MISMATCH")
+    return expected or reference  # type: ignore[return-value]
 
 
 def _resolve_source_paths(
@@ -108,11 +130,15 @@ def _resolve_source_paths(
     basic_info_dir: Path | None,
 ) -> tuple[Path, Path, Path]:
     compact = expected_as_of.replace("-", "")
-    year = expected_as_of[:4]
+    basic_info_path = (
+        resolve_basic_info_snapshot_dir(ROOT, expected_as_of)[0]
+        if basic_info_dir is None
+        else basic_info_dir
+    )
     return (
         ranking_path or ROOT / "data/analytics/sector_rs_ranking/v01" / f"sector_rs_ranking_{compact}.parquet",
         meta_path or ROOT / "data/analytics/sector_rs_ranking/v01" / f"sector_rs_ranking_{compact}_meta.json",
-        basic_info_dir or ROOT / "data/reference/source/history/krx_instrument_master/v01/rolling/basic_info" / year / compact,
+        basic_info_path,
     )
 
 
@@ -479,10 +505,10 @@ def build_sector_rs_web_payload(
     ``requested_as_of``/``reference_market_date``(선택, PHASE4C_FINAL_FIX_V01):
     명시하면 Phase 4 날짜 계약(requested_as_of=target_as_of, reference_market_date=
     실제 시장 거래일, as_of=reference_market_date)에 맞춰 payload 최상위에 세 필드를
-    모두 노출하고, reference_market_date가 ranking authority의 실제 as_of와
-    일치하는지도 함께 검증한다(``expected_as_of``를 명시적으로 덮어쓴다). 생략하면
-    기존과 완전히 동일하게 ``as_of``만 노출한다(하위 호환)."""
-    expected_as_of = _required_as_of(expected_as_of, fallback=reference_market_date)
+    모두 노출하고, 두 검증 기준일이 모두 주어지면 서로 일치하는지 확인한다.
+    둘 중 하나만 주어진 경우에는 그 날짜를 사용하고, 둘 다 없으면 fail-closed한다.
+    생략하면 기존과 완전히 동일하게 ``as_of``만 노출한다(하위 호환)."""
+    expected_as_of = _resolve_expected_reference_date(expected_as_of, reference_market_date)
     ranking_path, meta_path, basic_info_dir = _resolve_source_paths(
         expected_as_of,
         ranking_path=ranking_path,
@@ -543,8 +569,8 @@ def export_sector_rs_ranking_web(
     output_path: Path = DEFAULT_OUTPUT_PATH,
     **kwargs: Any,
 ) -> dict[str, Any]:
-    expected_as_of = _required_as_of(
-        kwargs.get("expected_as_of"), fallback=kwargs.get("reference_market_date")
+    expected_as_of = _resolve_expected_reference_date(
+        kwargs.get("expected_as_of"), kwargs.get("reference_market_date")
     )
     ranking_path, meta_path, basic_info_dir = _resolve_source_paths(
         expected_as_of,

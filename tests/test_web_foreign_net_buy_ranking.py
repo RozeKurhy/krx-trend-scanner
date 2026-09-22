@@ -31,6 +31,19 @@ def _load_ranking() -> dict:
     return json.loads(RANKING_PATH.read_text(encoding="utf-8"))
 
 
+def test_standalone_source_resolver_uses_latest_approved_membership_on_or_before_target():
+    exporter = _load_exporter()
+    _index, _flow, sector, _authority = exporter._resolve_source_paths(
+        ROOT,
+        "2026-09-18",
+        index_path=None,
+        flow_path=None,
+        sector_path=None,
+        common_authority_path=None,
+    )
+    assert sector.name == "sector_membership_20260917.parquet"
+
+
 def test_payload_has_exact_as_of_common_scope_and_reconciliation():
     ranking = _load_ranking()
     authority = pd.read_csv(COMMON_AUTHORITY_PATH, dtype=str)

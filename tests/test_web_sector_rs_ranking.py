@@ -73,6 +73,29 @@ def _basic_info() -> dict[str, dict[str, str]]:
     return result
 
 
+def test_standalone_source_resolver_uses_latest_basic_info_snapshot_on_or_before_target():
+    exporter = _load_exporter()
+    _ranking, _meta, basic_info_dir = exporter._resolve_source_paths(
+        "2026-09-19", ranking_path=None, meta_path=None, basic_info_dir=None
+    )
+    assert basic_info_dir.name == "20260918"
+
+
+def test_sector_rs_mixed_expected_and_reference_dates_fail_closed():
+    exporter = _load_exporter()
+    with pytest.raises(ValueError, match="SECTOR_RS_EXPECTED_REFERENCE_DATE_MISMATCH"):
+        exporter.build_sector_rs_web_payload(
+            expected_as_of="2026-09-17",
+            reference_market_date="2026-09-18",
+        )
+
+
+def test_sector_rs_missing_expected_and_reference_dates_fail_closed():
+    exporter = _load_exporter()
+    with pytest.raises(ValueError, match="SECTOR_RS_EXPECTED_AS_OF_REQUIRED"):
+        exporter.build_sector_rs_web_payload()
+
+
 def test_payload_equals_deterministic_exporter_projection():
     exporter = _load_exporter()
     assert _load_payload() == exporter.build_sector_rs_web_payload(

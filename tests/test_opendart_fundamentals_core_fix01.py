@@ -54,6 +54,7 @@ def test_registry_requires_http_and_api_success_without_writing_failure_cache(tm
         registry = FilingRegistry(client, cache_dir=tmp_path / status)
         with pytest.raises(FilingRegistryApiError):
             registry.list_regular_filings(ticker="237690", corp_code="00871833", bsns_year="2025", reprt_code="11011",
+                                          as_of="2026-06-02",
                                           force_refresh=True)
         assert not list((tmp_path / status).glob("*.json"))
 
@@ -66,7 +67,7 @@ def test_registry_fetches_all_pages_for_every_regular_report_type(tmp_path: Path
     ])
     registry = FilingRegistry(client, cache_dir=tmp_path)
     rows = registry.list_regular_filings(ticker="237690", corp_code="00871833", bsns_year="2025",
-                                         reprt_code=reprt_code, force_refresh=True)
+                                         reprt_code=reprt_code, as_of="2026-06-02", force_refresh=True)
     assert [row.rcept_no for row in rows] == ["100", "200"]
     assert registry.last_metadata["cache_complete"] is True
     assert registry.last_metadata["pages_fetched"] == 2
@@ -81,6 +82,7 @@ def test_registry_page_two_correction_is_available_to_pit_resolver(tmp_path: Pat
     ])
     registry = FilingRegistry(client, cache_dir=tmp_path)
     rows = registry.list_regular_filings(ticker="237690", corp_code="00871833", bsns_year="2025", reprt_code="11011",
+                                         as_of="2026-06-02",
                                          force_refresh=True)
     from trend_scanner.fundamentals.pit_resolver import PITResolver
     result = PITResolver().resolve(rows, as_of="2026-06-02", bsns_year="2025", reprt_code="11011")
@@ -95,6 +97,7 @@ def test_registry_page_two_failure_never_writes_partial_cache(tmp_path: Path):
     registry = FilingRegistry(client, cache_dir=tmp_path)
     with pytest.raises(FilingRegistryApiError):
         registry.list_regular_filings(ticker="237690", corp_code="00871833", bsns_year="2025", reprt_code="11011",
+                                      as_of="2026-06-02",
                                       force_refresh=True)
     assert not list(tmp_path.glob("*.json"))
 
@@ -103,15 +106,19 @@ def test_valid_cache_survives_failed_force_refresh(tmp_path: Path):
     path_client = PaginatedClient([_response([_row("11011", "100")], total_page=1, total_count=1)])
     registry = FilingRegistry(path_client, cache_dir=tmp_path)
     first = registry.list_regular_filings(ticker="237690", corp_code="00871833", bsns_year="2025", reprt_code="11011",
+                                          as_of="2026-06-02",
                                           force_refresh=True)
     cache_path = next(tmp_path.glob("*.json"))
     before = cache_path.read_bytes()
     failing = FilingRegistry(PaginatedClient([_response([], status="020")]), cache_dir=tmp_path)
     with pytest.raises(FilingRegistryApiError):
         failing.list_regular_filings(ticker="237690", corp_code="00871833", bsns_year="2025", reprt_code="11011",
+                                     as_of="2026-06-02",
                                      force_refresh=True)
     assert cache_path.read_bytes() == before
-    cached = failing.list_regular_filings(ticker="237690", corp_code="00871833", bsns_year="2025", reprt_code="11011")
+    cached = failing.list_regular_filings(
+        ticker="237690", corp_code="00871833", bsns_year="2025", reprt_code="11011", as_of="2026-06-02"
+    )
     assert [item.rcept_no for item in cached] == [item.rcept_no for item in first]
     assert failing.last_metadata["cache_hit"] is True
 
@@ -124,6 +131,7 @@ def test_registry_max_pages_guard_is_fail_closed(tmp_path: Path, monkeypatch: py
     registry = FilingRegistry(client, cache_dir=tmp_path)
     with pytest.raises(IncompleteRegistryError):
         registry.list_regular_filings(ticker="237690", corp_code="00871833", bsns_year="2025", reprt_code="11011",
+                                      as_of="2026-06-02",
                                       force_refresh=True)
     assert not list(tmp_path.glob("*.json"))
 

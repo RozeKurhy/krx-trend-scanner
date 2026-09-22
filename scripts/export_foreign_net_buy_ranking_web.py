@@ -12,6 +12,7 @@ import pandas as pd
 
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.data.repository_v2_loader import EXPECTED_DATA_UNAVAILABLE, build_repository_v2
+from trend_scanner.data.sector_membership import resolve_sector_membership_snapshot_for_target
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -44,7 +45,7 @@ def _resolve_source_paths(
     return (
         index_path or repo_root / "web/data/stock-index.json",
         flow_path or repo_root / "artifacts/patterns/pattern_a/production/flow/source" / f"foreign_flow_daily_{compact}.parquet",
-        sector_path or repo_root / "data/market/sector_membership/v01" / f"sector_membership_{compact}.parquet",
+        sector_path or resolve_sector_membership_snapshot_for_target(as_of, repo_root=repo_root)[2],
         common_authority_path or repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01" / f"market_rs_universe_{compact}.csv",
     )
 
