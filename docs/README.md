@@ -35,7 +35,8 @@
 | [validation/](validation/) | 이전 문서 경로 호환 안내와 영역 공통 현재 기준 문서 |
 | [web/](web/) | 웹 화면에 제공하는 정적 데이터·전달 계약 |
 
-`patterns/`에는 Pattern A와 Pattern A FAST가 있다. A FAST Core 전략 문서는
+`patterns/`에는 Pattern A, Pattern A FAST와 초기 연구 후보인 Pattern B가 있다.
+A FAST Core 전략 문서는
 Pattern A FAST와 강하게 결합되어 있으므로 해당 패턴 아래에서 관리한다.
 여러 패턴을 조합하거나 특정 패턴과 독립적인 전략은 `strategies/`에 둔다.
 
