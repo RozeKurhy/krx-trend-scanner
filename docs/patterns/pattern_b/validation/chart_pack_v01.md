@@ -1,7 +1,8 @@
 # Pattern B 사람 판정 차트팩 V01
 
-> 상태: 차트팩 생성 단계. 사람 판정은 아직 하지 않았다. 판정 원칙은
-> [사람 판정 기준 V01](human_ground_truth_v01.md)을 따른다.
+> 상태: V01 차트팩 생성 완료. 36개 표본의 사람 판정을 마쳤고, 결과는
+> [human_ground_truth_labels_v01.csv](human_ground_truth_labels_v01.csv)에 봉인했다.
+> 판정 원칙은 [사람 판정 기준 V01](human_ground_truth_v01.md)을 따른다.
 
 이 문서는 사람 판정 기준 V01에서 다음 작업으로 미뤘던 표본과 차트 표시 방식을
 V01 차트팩에 한해 고정한다. Feature 산식, 임계값, 자동 판정 규칙은 여전히 정하지
