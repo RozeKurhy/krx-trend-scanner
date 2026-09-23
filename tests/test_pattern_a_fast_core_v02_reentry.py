@@ -17,6 +17,7 @@ from trend_scanner.validation.historical_snapshot import build_historical_snapsh
 from trend_scanner.validation.pattern_a_fast_core_v02_reentry import (
     DATA_CUTOFF,
     V02TradeRecord,
+    _calc_trade_outcome,
     simulate_ticker_core_v02_reentry,
 )
 from scripts.inspect_v02_evidence import (
@@ -274,6 +275,36 @@ def test_rolling_calendar_keeps_september_entry_connected_to_open_position(contr
     assert replay_003350[-1].entry_signal_date == "2026-09-11"
     assert replay_003350[-1].entry_execution_date == "2026-09-14"
     assert replay_003350[-1].entry_open == float(daily_003350.loc[pd.Timestamp("2026-09-14"), "open"])
+
+
+def test_execution_support_can_fill_after_valuation_cutoff_without_looking_ahead():
+    dates = pd.to_datetime(["2025-05-29", "2025-05-30", "2025-06-02"])
+    daily = pd.DataFrame(
+        {
+            "open": [100.0, 90.0, 80.0],
+            "high": [110.0, 95.0, 200.0],
+            "low": [95.0, 85.0, 70.0],
+            "close": [105.0, 92.0, 150.0],
+        },
+        index=dates,
+    )
+
+    outcome = _calc_trade_outcome(
+        pd.Timestamp("2025-05-29"),
+        100.0,
+        pd.Timestamp("2025-05-30"),
+        daily,
+        pd.Timestamp("2025-05-30"),
+        execution_support_date=pd.Timestamp("2025-06-02"),
+    )
+
+    assert outcome["trade_status"] == "REALIZED"
+    assert outcome["exit_exec_d"] == pd.Timestamp("2025-06-02")
+    assert outcome["exit_open"] == 80.0
+    assert outcome["terminal_ret"] == -20.0
+    # The support session's high/low/close must not leak into in-window MFE/MAE.
+    assert outcome["mfe"] == 10.0
+    assert outcome["mae"] == -20.0
 
 
 def test_v02_exit3_then_reentry(contracts):
