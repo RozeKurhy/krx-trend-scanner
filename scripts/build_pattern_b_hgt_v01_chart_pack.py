@@ -194,10 +194,20 @@ def assign_sample_ids(samples: list[dict], manifest_path: Path) -> None:
         sample["sample_id"] = mapping[(sample["ticker"], sample["as_of"])]
 
 
-def _draw_candles(ax, bars: pd.DataFrame) -> None:
-    """Monochrome candles on integer x positions; bars are already display-normalized."""
+def period_positions(index: pd.DatetimeIndex, kind: str) -> list[int]:
+    """Calendar-relative slot per bar (months or W-FRI weeks since the first bar).
+
+    Halted periods have no bar but keep their slot, so they stay visible as gaps.
+    """
+    if kind == "monthly":
+        return [(d.year - index[0].year) * 12 + d.month - index[0].month for d in index]
+    return [(d - index[0]).days // 7 for d in index]
+
+
+def _draw_candles(ax, bars: pd.DataFrame, positions: list[int]) -> None:
+    """Monochrome candles at calendar slots; bars are already display-normalized."""
     width = 0.6
-    for x, row in enumerate(bars.itertuples(index=False)):
+    for x, row in zip(positions, bars.itertuples(index=False)):
         up = row.close >= row.open
         ax.vlines(x, row.low, row.high, color="#222222", linewidth=0.8, zorder=1)
         bottom = min(row.open, row.close)
@@ -209,7 +219,7 @@ def _draw_candles(ax, bars: pd.DataFrame) -> None:
         ))
     low, high = float(bars["low"].min()), float(bars["high"].max())
     pad = (high - low) * 0.04 or 1.0
-    ax.set_xlim(-1, len(bars))
+    ax.set_xlim(-1, positions[-1] + 1)
     ax.set_ylim(low - pad, high + pad)
     ax.set_xticks([])
     ax.grid(axis="y", color="#dddddd", linewidth=0.6)
@@ -230,8 +240,9 @@ def render_sample(sample: dict, path: Path, forbidden: re.Pattern) -> None:
     )
     # Fixed margins (no tight bbox) so every PNG has identical pixel size and layout.
     fig.subplots_adjust(left=0.05, right=0.99, top=0.94, bottom=0.03, hspace=0.14)
-    _draw_candles(ax_m, normalize_for_display(sample["monthly"]))
-    _draw_candles(ax_w, normalize_for_display(sample["weekly"]))
+    for ax, kind in ((ax_m, "monthly"), (ax_w, "weekly")):
+        bars = sample[kind]
+        _draw_candles(ax, normalize_for_display(bars), period_positions(bars.index, kind))
     ax_m.set_title(f"MONTHLY — {MONTHLY_BARS} completed bars", loc="left", fontsize=12)
     ax_w.set_title(f"WEEKLY — {WEEKLY_BARS} completed bars", loc="left", fontsize=12)
     fig.suptitle(sample["sample_id"], x=0.99, y=0.99, ha="right", fontsize=11, color="#555555")
@@ -350,6 +361,10 @@ def main() -> None:
             {k: s[k] for k in ("sample_id", "ticker", "as_of", "daily_max_date",
                                "missing_calendar_sessions_in_window", "repository_explicit_exclusion_count",
                                "halt_skipped_months", "halt_skipped_weeks")}
+            | {
+                "monthly_x_slots": period_positions(s["monthly"].index, "monthly")[-1] + 1,
+                "weekly_x_slots": period_positions(s["weekly"].index, "weekly")[-1] + 1,
+            }
             for s in samples
         ],
     }, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -364,6 +379,12 @@ def main() -> None:
 
     summary = verify_pack(out_dir, samples, forbidden)
     summary["replacement_count"] = len(replacements)
+    # Each skipped halt period must leave exactly one empty x slot (no compression).
+    summary["samples_with_halt_gap_slots_matching"] = sum(
+        1 for s in samples
+        if period_positions(s["monthly"].index, "monthly")[-1] + 1 - len(s["monthly"]) == s["halt_skipped_months"]
+        and period_positions(s["weekly"].index, "weekly")[-1] + 1 - len(s["weekly"]) == s["halt_skipped_weeks"]
+    )
     summary["samples_with_halt_skipped_periods"] = sum(
         1 for s in samples if s["halt_skipped_months"] or s["halt_skipped_weeks"]
     )
