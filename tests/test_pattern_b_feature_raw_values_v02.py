@@ -87,14 +87,31 @@ def test_seal_matches_outputs_and_holdout_seal():
 
 
 @pytest.mark.skipif(not PRIVATE_REPORT.exists(), reason="private run report is local only")
-def test_private_run_used_sealed_as_of_and_no_future_rows():
+def test_private_run_is_future_data_invariant():
     report = json.loads(PRIVATE_REPORT.read_text(encoding="utf-8"))
-    checks = report["checks"]
+    checks, summary = report["checks"], report["summary"]
     assert len(checks) == 36
+    assert summary["sample_count"] == 36 and summary["samples_with_future_rows_loaded"] == 36
     for c in checks:
         assert c["request_end_equals_as_of"] and c["last_bars_match_chart_pack"] and c["future_invariant"]
         assert c["effective_history_end"] <= c["request_end"]
         assert c["monthly_last_bar"] <= c["request_end"] and c["weekly_last_bar"] <= c["request_end"]
+    future_rows = [c["future_rows_loaded"] for c in checks]
+    assert all(x > 0 for x in future_rows)
+    assert min(future_rows) == 57 and max(future_rows) == 248
+    assert sum(x < 60 for x in future_rows) == 9
+    assert sorted(x for x in future_rows if 60 <= x < 240) == [234, 239]
+    assert sum(x >= 240 for x in future_rows) == 25
+
+
+def test_record_states_the_actual_future_data_check():
+    record = RECORD.read_text(encoding="utf-8")
+    assert "기준일 이후 최대 365일까지 추가 데이터를 요청" in record and "365일은 요청 범위다" in record
+    assert "36개 모두 실제로 기준일 이후 거래일이 포함된 입력을 받았고" in record
+    assert "불일치 0개" in record
+    assert "최소 57거래일, 최대\n  248거래일" in record
+    assert "60거래일 미만 9개, 234거래일과 239거래일 각 1개, 240거래일 이상\n  25개" in record
+    assert "1년 치" not in record and "27개" not in record
 
 
 def test_protected_files_are_unchanged():
