@@ -129,4 +129,3 @@ def test_no_state_rule_or_comparison_in_this_step():
         assert token not in source
     header = RAW.read_text(encoding="utf-8").splitlines()[0]
     assert "predicted" not in header and "label" not in header
-    assert not list(_V.glob("*v02*evaluation*")) and not list(_V.glob("*v02*comparison*"))

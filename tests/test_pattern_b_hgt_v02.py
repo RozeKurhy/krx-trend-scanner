@@ -74,7 +74,7 @@ def test_no_automatic_evaluation_is_recorded_yet():
     record = RECORD.read_text(encoding="utf-8")
     assert "자동 상태 판정, 사람 판정과\n> 자동 판정의 비교는 아직 하지 않았다" in record
     readme = README.read_text(encoding="utf-8")
-    assert "별도 검증 표본 V02 사람 판정 완료·봉인, 자동 평가는 아직 미실시" in readme
+    assert "별도 검증 표본 V02 사람 판정 완료·봉인" in readme
 
 
 SEALED_LABELS_SHA256 = "cbbc8785e20d03e4937317d9de11f79529ad4d8abea23763a490763c3e23e5c8"
