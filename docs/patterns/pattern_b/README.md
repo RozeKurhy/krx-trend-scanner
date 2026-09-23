@@ -40,6 +40,9 @@ Pattern B의 “싸다”는 기업가치 대비 싸다는 뜻이 아니라, 자
   뒤에만 여는 검증용 표본 36개
 - [사람 판정 V02](validation/human_ground_truth_v02.md) — 별도 검증 표본 36개의 사용자
   판정과 봉인 기록 (자동 평가 전)
+- [별도 검증 표본 V02 사후진단 V01](validation/holdout_v02_posthoc_adjudication_v01.md) — 공식
+  평가 뒤 대형 오류 7개를 다시 본 진단 기록. 공식 평가는 바꾸지 않았고, 다음 판정 기준·규칙
+  연구용이다
 - [상태 판정 규칙 V01](validation/state_rule_v01.md) — 유지 지표 3개로 만든 5단계 자동
   상태 판정 규칙과 봉인 기록
 
