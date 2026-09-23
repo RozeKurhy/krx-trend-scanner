@@ -10,11 +10,11 @@ Pattern B는 종목 자신의 장기 가격 사이클을 기준으로, 가격이
 |---|---|
 | 패턴 | Pattern B |
 | 역할 | 자기 장기 가격 사이클 내 침체·과열 상태 탐지 |
-| 현재 상태 | 초기 연구 후보 (Feature 유지·수정·제외 결정 전) |
+| 현재 상태 | 초기 연구 후보 (다음 단계: 상태 규칙 설계) |
 | 시간축 | 월봉(핵심), 주봉(보조) |
 | 사람 판정 | V01 36개 판정 완료·봉인 |
-| Feature | V01 산식·PIT 계약 확정, 36개 표본 raw 값 봉인, 적합성 진단 V01 완료 |
-| 임계값·상태 규칙·전략·백테스트 | 없음 |
+| Feature | V01 산식·PIT 계약 확정, 적합성 진단 V01 완료, [선택 V01](validation/feature_selection_v01.md) 결정 완료 (KEEP 3개) |
+| 임계값·자동 상태 판정·전략·백테스트 | 없음 |
 
 Pattern B의 “싸다”는 기업가치 대비 싸다는 뜻이 아니라, 자기 과거 가격 상태 대비
 극단적으로 침체되었다는 뜻이다. 상태 판단은 매수·보유·매도 신호가 아니다.
@@ -31,7 +31,9 @@ Pattern B의 “싸다”는 기업가치 대비 싸다는 뜻이 아니라, 자
 - [표본 Feature raw 값 V01](validation/feature_raw_values_v01.md) — 36개 표본의 7개
   Feature raw 값
 - [Feature 적합성 진단 V01](validation/feature_fitness_v01.md) — 사람 판정과 raw Feature의
-  관계 진단 (유지·수정·제외 결정 전)
+  관계 진단
+- [Feature 선택 V01](validation/feature_selection_v01.md) — 7개 Feature의 KEEP / MODIFY /
+  DROP 결정과 상태 규칙 설계에 넘길 KEEP 목록
 
 ## 관련 문서
 
