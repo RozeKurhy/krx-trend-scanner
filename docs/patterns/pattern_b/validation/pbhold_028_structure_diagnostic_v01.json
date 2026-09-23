@@ -1,0 +1,207 @@
+{
+  "sample_id": "PBHOLD_028",
+  "keep_values": {
+    "36M_RANGE_POSITION": 0.21426988699313096,
+    "MONTHLY_MA24_DISTANCE": 0.4338830584707647,
+    "52W_RANGE_POSITION": 0.13838862559241707
+  },
+  "family_c": {
+    "bands": {
+      "36M_RANGE_POSITION": 1,
+      "MONTHLY_MA24_DISTANCE": 3,
+      "52W_RANGE_POSITION": 0
+    },
+    "band_states": {
+      "36M_RANGE_POSITION": "DEPRESSED",
+      "MONTHLY_MA24_DISTANCE": "OVERHEATED",
+      "52W_RANGE_POSITION": "DEEP_DEPRESSED"
+    },
+    "primary_state": "DEPRESSED",
+    "primary_is_extreme": false,
+    "final_state": "DEPRESSED",
+    "classifier_state": "DEPRESSED",
+    "probe_52w_neutral": "NORMAL",
+    "probe_ma24_sweep_given_52w": [
+      "DEPRESSED",
+      "DEPRESSED",
+      "DEPRESSED",
+      "DEPRESSED",
+      "DEPRESSED"
+    ],
+    "reachable_states_given_primary": [
+      "DEPRESSED",
+      "NORMAL"
+    ]
+  },
+  "seven_features": {
+    "36M_RANGE_POSITION": {
+      "value": 0.21426988699313096,
+      "status": "OK",
+      "nearest_v01_label_median": "DEPRESSED"
+    },
+    "MONTHLY_MA24_DISTANCE": {
+      "value": 0.4338830584707647,
+      "status": "OK",
+      "nearest_v01_label_median": "OVERHEATED"
+    },
+    "12M_RETURN_HISTORICAL_PERCENTILE": {
+      "value": 89.30817610062893,
+      "status": "OK",
+      "nearest_v01_label_median": "OVERHEATED"
+    },
+    "36M_HIGH_DRAWDOWN": {
+      "value": -0.6898832684824903,
+      "status": "OK",
+      "nearest_v01_label_median": "DEEP_DEPRESSED"
+    },
+    "52W_RANGE_POSITION": {
+      "value": 0.13838862559241707,
+      "status": "OK",
+      "nearest_v01_label_median": "DEEP_DEPRESSED"
+    },
+    "WEEKLY_MA40_DISTANCE": {
+      "value": -0.038839449761147726,
+      "status": "OK",
+      "nearest_v01_label_median": "DEPRESSED"
+    },
+    "26W_RETURN_HISTORICAL_PERCENTILE": {
+      "value": 95.67039106145252,
+      "status": "OK",
+      "nearest_v01_label_median": "EXTREME_OVERHEATED"
+    }
+  },
+  "seven_features_history_start": "PIT COMMON identity segment start (same as feature V02)",
+  "spike": {
+    "monthly_36": {
+      "low_to_close": 0.3934,
+      "high_to_close": 3.2246,
+      "median_close_to_close": 0.6104,
+      "months_since_high": 2
+    },
+    "monthly_84_median_close_to_close": 0.6097,
+    "weekly_52": {
+      "low_to_close": 0.5772,
+      "high_to_close": 3.2246,
+      "weeks_since_high": 10
+    },
+    "ma24_to_close": 0.6974
+  },
+  "posthoc_comparison": [
+    {
+      "sample_id": "PBHOLD_012",
+      "values": {
+        "36M_RANGE_POSITION": 0.4065,
+        "MONTHLY_MA24_DISTANCE": -0.0881,
+        "52W_RANGE_POSITION": 0.0826
+      },
+      "bands": {
+        "36M_RANGE_POSITION": 2,
+        "MONTHLY_MA24_DISTANCE": 2,
+        "52W_RANGE_POSITION": 0
+      },
+      "automatic_label": "NORMAL",
+      "posthoc_label": "NORMAL",
+      "range_low_ma24_high_posthoc_high": false
+    },
+    {
+      "sample_id": "PBHOLD_017",
+      "values": {
+        "36M_RANGE_POSITION": 0.047,
+        "MONTHLY_MA24_DISTANCE": -0.3775,
+        "52W_RANGE_POSITION": 0.0892
+      },
+      "bands": {
+        "36M_RANGE_POSITION": 0,
+        "MONTHLY_MA24_DISTANCE": 0,
+        "52W_RANGE_POSITION": 0
+      },
+      "automatic_label": "DEEP_DEPRESSED",
+      "posthoc_label": "DEEP_DEPRESSED",
+      "range_low_ma24_high_posthoc_high": false
+    },
+    {
+      "sample_id": "PBHOLD_018",
+      "values": {
+        "36M_RANGE_POSITION": 0.2278,
+        "MONTHLY_MA24_DISTANCE": 0.1204,
+        "52W_RANGE_POSITION": 0.101
+      },
+      "bands": {
+        "36M_RANGE_POSITION": 1,
+        "MONTHLY_MA24_DISTANCE": 2,
+        "52W_RANGE_POSITION": 0
+      },
+      "automatic_label": "DEPRESSED",
+      "posthoc_label": "DEEP_DEPRESSED",
+      "range_low_ma24_high_posthoc_high": false
+    },
+    {
+      "sample_id": "PBHOLD_019",
+      "values": {
+        "36M_RANGE_POSITION": 0.088,
+        "MONTHLY_MA24_DISTANCE": -0.3387,
+        "52W_RANGE_POSITION": 0.0067
+      },
+      "bands": {
+        "36M_RANGE_POSITION": 1,
+        "MONTHLY_MA24_DISTANCE": 1,
+        "52W_RANGE_POSITION": 0
+      },
+      "automatic_label": "DEPRESSED",
+      "posthoc_label": "DEPRESSED",
+      "range_low_ma24_high_posthoc_high": false
+    },
+    {
+      "sample_id": "PBHOLD_024",
+      "values": {
+        "36M_RANGE_POSITION": 0.149,
+        "MONTHLY_MA24_DISTANCE": -0.1315,
+        "52W_RANGE_POSITION": 0.0645
+      },
+      "bands": {
+        "36M_RANGE_POSITION": 1,
+        "MONTHLY_MA24_DISTANCE": 1,
+        "52W_RANGE_POSITION": 0
+      },
+      "automatic_label": "DEPRESSED",
+      "posthoc_label": "DEPRESSED",
+      "range_low_ma24_high_posthoc_high": false
+    },
+    {
+      "sample_id": "PBHOLD_026",
+      "values": {
+        "36M_RANGE_POSITION": 0.1517,
+        "MONTHLY_MA24_DISTANCE": -0.0046,
+        "52W_RANGE_POSITION": 0.501
+      },
+      "bands": {
+        "36M_RANGE_POSITION": 1,
+        "MONTHLY_MA24_DISTANCE": 2,
+        "52W_RANGE_POSITION": 2
+      },
+      "automatic_label": "NORMAL",
+      "posthoc_label": "NORMAL",
+      "range_low_ma24_high_posthoc_high": false
+    },
+    {
+      "sample_id": "PBHOLD_028",
+      "values": {
+        "36M_RANGE_POSITION": 0.2143,
+        "MONTHLY_MA24_DISTANCE": 0.4339,
+        "52W_RANGE_POSITION": 0.1384
+      },
+      "bands": {
+        "36M_RANGE_POSITION": 1,
+        "MONTHLY_MA24_DISTANCE": 3,
+        "52W_RANGE_POSITION": 0
+      },
+      "automatic_label": "DEPRESSED",
+      "posthoc_label": "OVERHEATED",
+      "range_low_ma24_high_posthoc_high": true
+    }
+  ],
+  "v02_label_free_conflict_counts": {
+    "ranges_depressed_ma24_overheated": 1,
+    "ranges_overheated_ma24_depressed": 0
+  }
+}
