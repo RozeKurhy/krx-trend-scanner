@@ -75,3 +75,28 @@ def test_no_automatic_evaluation_is_recorded_yet():
     assert "자동 상태 판정, 사람 판정과\n> 자동 판정의 비교는 아직 하지 않았다" in record
     readme = README.read_text(encoding="utf-8")
     assert "별도 검증 표본 V02 사람 판정 완료·봉인, 자동 평가는 아직 미실시" in readme
+
+
+SEALED_LABELS_SHA256 = "cbbc8785e20d03e4937317d9de11f79529ad4d8abea23763a490763c3e23e5c8"
+
+
+def test_sealed_labels_are_unchanged():
+    assert hashlib.sha256(LABELS.read_bytes()).hexdigest() == SEALED_LABELS_SHA256
+    assert _seal()["labels_file_sha256"] == SEALED_LABELS_SHA256
+    by_id = {r["sample_id"]: r for r in _rows()}
+    assert (by_id["PBHOLD_009"]["label"], by_id["PBHOLD_009"]["confidence"]) == ("NORMAL", "MEDIUM")
+    seal = _seal()
+    assert seal["label_counts"] == {
+        "DEEP_DEPRESSED": 8, "DEPRESSED": 6, "NORMAL": 8, "OVERHEATED": 7, "EXTREME_OVERHEATED": 7,
+    }
+    assert seal["confidence_counts"] == {"HIGH": 22, "MEDIUM": 13, "LOW": 1}
+
+
+def test_record_states_the_single_ai_prior_opinion_and_its_rejection():
+    record = RECORD.read_text(encoding="utf-8")
+    assert "36개 표본의 최종 상태와 신뢰도는 모두 사용자가 결정했다" in record
+    assert "`PBHOLD_009`에서는" in record and "`OVERHEATED` / `MEDIUM` 의견을 1회 제시했다" in record
+    assert "채택하지 않고 `NORMAL` / `MEDIUM`으로 직접 최종 판정했다" in record
+    assert "그 외 표본에서는\n  AI가 사용자보다 먼저 상태 판정을 제시하지 않았다" in record
+    assert "`PBHOLD_009`에서 AI의 선행 상태 의견이 1건 있었다" in record
+    assert "상태 의견을 보태거나 판정값을 고치지 않았다" not in record
