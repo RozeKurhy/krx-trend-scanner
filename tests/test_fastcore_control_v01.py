@@ -8,6 +8,7 @@ import pandas as pd
 
 from scripts import run_fastcore_control as control
 from trend_scanner.backtest import fastcore_fundamentals_simple_v01 as engine
+from trend_scanner.data.market_calendar import MarketCalendarAuthority
 
 
 def test_frozen_candidate_id_is_identity_scoped_and_date_normalized():
@@ -43,9 +44,12 @@ def test_control_starts_flat_but_keeps_pre_start_lookback(monkeypatch):
         effective_from=pd.Timestamp("2020-12-01"), effective_to=pd.Timestamp("2021-03-31"),
     )
     observed_daily_mins: list[pd.Timestamp] = []
+    observed_calendars: list[MarketCalendarAuthority | None] = []
+    calendar = MarketCalendarAuthority.from_dates(dates, last_completed_month="2021-03")
 
     def fake_fast(*_args, **kwargs):
         observed_daily_mins.append(kwargs["context"].daily.index.min())
+        observed_calendars.append(kwargs.get("market_calendar"))
         return {
             "fast_machine_stage": "TRIGGER",
             "fast_machine_stage_status": "READY",
@@ -76,6 +80,7 @@ def test_control_starts_flat_but_keeps_pre_start_lookback(monkeypatch):
         backtest_end=pd.Timestamp("2021-03-31"),
         entry_eligible_from=pd.Timestamp("2021-02-01"),
         identity_lifecycle=lifecycle,
+        market_calendar=calendar,
         entry_gate=lambda _as_of, context: {
             "gate_pass": pd.Timestamp(context["signal_date"]) >= pd.Timestamp("2021-02-01")
         },
@@ -85,6 +90,7 @@ def test_control_starts_flat_but_keeps_pre_start_lookback(monkeypatch):
     assert all(pd.Timestamp(record.entry_signal_information_date) >= pd.Timestamp("2021-02-01") for record in records)
     assert observed_daily_mins
     assert min(observed_daily_mins) == pd.Timestamp("2020-12-01")
+    assert observed_calendars and all(item is calendar for item in observed_calendars)
 
 
 def test_summary_keeps_strategy_return_unit_without_rescaling():

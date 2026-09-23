@@ -23,6 +23,7 @@ from trend_scanner.backtest.snapshot_context import (
 )
 from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
 from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
+from trend_scanner.data.market_calendar import MarketCalendarAuthority
 
 MARKET_CAP_THRESHOLD = 300_000_000_000.0
 AVG_TRADING_VALUE_20D_THRESHOLD = 300_000_000.0
@@ -197,6 +198,7 @@ def simulate_ticker_strategy_fundamentals_v01(
     market_cap_threshold: float = MARKET_CAP_THRESHOLD,
     avg_trading_value_threshold: float = AVG_TRADING_VALUE_20D_THRESHOLD,
     close_threshold: float | None = CLOSE_THRESHOLD,
+    market_calendar: MarketCalendarAuthority | None = None,
 ) -> list[StrategyTradeRecord]:
     """Run one corrected FastCore variant for one ticker through
     ``backtest_end``. ``loss_guard_enabled`` is retained as an explicit
@@ -273,9 +275,10 @@ def simulate_ticker_strategy_fundamentals_v01(
         ]
         for w in candidate_weeks:
             try:
-                if fast_snapshot_cache is None:
+                if fast_snapshot_cache is None or market_calendar is not None:
                     res = evaluate_pattern_a_fast(
-                        ticker, name, daily, w, score_contract, stage_contract, context=snapshot_context,
+                        ticker, name, daily, w, score_contract, stage_contract,
+                        context=snapshot_context, market_calendar=market_calendar,
                     )
                 else:
                     res = fast_snapshot_cache.get(
@@ -380,11 +383,16 @@ def simulate_ticker_strategy_fundamentals_v01(
         m_dates = [m for m in monthly_bars.index if found_signal_w <= m <= backtest_end]
         monthly_snapshots: list[dict[str, Any]] = []
         for m in m_dates:
-            if monthly_snapshot_cache is None:
+            if monthly_snapshot_cache is None or market_calendar is not None:
                 cached_snapshot = local_monthly_snapshot_cache.get(pd.Timestamp(m))
                 if cached_snapshot is None:
                     try:
-                        snap = build_historical_snapshot_from_context(snapshot_context, m, include_incomplete_periods=False)
+                        snap = build_historical_snapshot_from_context(
+                            snapshot_context,
+                            m,
+                            include_incomplete_periods=False,
+                            market_calendar=market_calendar,
+                        )
                         eval_res = evaluate_pattern_a(snap)
                         st = eval_res.stage.value.upper() if eval_res.stage else "UNAVAILABLE"
                         sc = float(round(eval_res.score, 2)) if eval_res.score is not None else None

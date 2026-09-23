@@ -345,20 +345,33 @@ def load_rolling_production_market_calendar(repo_root: Path) -> MarketCalendarAu
     Returns ``None`` when the rolling merged calendar artifact does not exist (e.g. isolated
     historical test fixtures predating the rolling authority), so callers can fall back to their
     own prior default (``calendar=None`` -> :func:`get_canonical_market_calendar`)."""
-    from trend_scanner.data.rolling_market_data_refresh import DEFAULT_MERGED_CALENDAR_PATH
+    from trend_scanner.data.rolling_market_data_refresh import (
+        DEFAULT_MERGED_CALENDAR_PATH,
+        load_rolling_authority,
+        validate_merged_authority_coherence,
+    )
 
     calendar_path = repo_root / DEFAULT_MERGED_CALENDAR_PATH
     if not calendar_path.exists():
         return None
-    key = str(calendar_path.resolve())
+    manifest = load_rolling_authority(calendar_path.parent)
+    _pit_payload, payload = validate_merged_authority_coherence(manifest, calendar_path.parent)
+    key = f"{calendar_path.resolve()}:{manifest.manifest_sha256}"
     cached = _ROLLING_PRODUCTION_CALENDAR_CACHE.get(key)
     if cached is not None:
         return cached
 
-    payload = json.loads(calendar_path.read_text(encoding="utf-8"))
-    trading_dates = pd.DatetimeIndex(pd.to_datetime(payload["trading_dates"])).normalize().sort_values()
+    trading_dates = pd.DatetimeIndex(pd.to_datetime(payload["trading_dates"])).normalize()
     if len(trading_dates) == 0:
         return None
+    if trading_dates.has_duplicates or not trading_dates.is_monotonic_increasing:
+        from trend_scanner.data.rolling_market_data_refresh import RollingAuthorityError
+
+        raise RollingAuthorityError("MERGED_CALENDAR_TRADING_DATES_NOT_STRICTLY_INCREASING")
+    if trading_dates[-1].strftime("%Y-%m-%d") != manifest.merged_calendar_frontier:
+        from trend_scanner.data.rolling_market_data_refresh import RollingAuthorityError
+
+        raise RollingAuthorityError("MERGED_CALENDAR_FRONTIER_DATE_MISMATCH")
     current_year_month = (trading_dates[-1].year, trading_dates[-1].month)
     frame = pd.DataFrame({"dt": trading_dates}, index=trading_dates)
     monthly_groups = frame.groupby([frame.index.year, frame.index.month])
@@ -371,6 +384,13 @@ def load_rolling_production_market_calendar(repo_root: Path) -> MarketCalendarAu
         trading_dates=trading_dates,
         completed_month_ends=completed_month_ends,
         source_name="ROLLING_AUTHORITY_MERGED_CALENDAR_V01",
+        metadata={
+            "authority_version": manifest.authority_version,
+            "certified_through": manifest.certified_through,
+            "calendar_frontier": manifest.merged_calendar_frontier,
+            "calendar_digest": manifest.merged_calendar_digest,
+            "calendar_built_against_certified_through": payload.get("built_against_certified_through"),
+        },
     )
     _ROLLING_PRODUCTION_CALENDAR_CACHE[key] = calendar
     return calendar

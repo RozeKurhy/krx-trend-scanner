@@ -8,14 +8,15 @@ OpenDART, KRX, PyKRX, Naver, or any other network-backed source.
 
 from __future__ import annotations
 
+import argparse
 from contextlib import contextmanager
-from dataclasses import fields
+from dataclasses import dataclass, fields
 import hashlib
 import json
 from pathlib import Path
 import socket
 import time
-from typing import Any, Iterator, Mapping
+from typing import Any, Iterator, Mapping, Sequence
 import warnings
 
 import pandas as pd
@@ -30,7 +31,13 @@ from trend_scanner.backtest.fastcore_fundamentals_simple_v01 import (
     simulate_ticker_strategy_fundamentals_v01,
 )
 from trend_scanner.data.adjusted_price_authority_cutover import load_effective_authority
+from trend_scanner.data.market_calendar import MarketCalendarAuthority, load_rolling_production_market_calendar
 from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2
+from trend_scanner.backtest.standard_windows import (
+    STANDARD_BACKTEST_WINDOWS,
+    ResolvedBacktestWindow,
+    resolve_standard_backtest_window,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,6 +57,62 @@ SIGNAL_END_DATE = pd.Timestamp("2026-08-14")
 EXECUTION_SUPPORT_END_DATE = pd.Timestamp("2026-08-21")
 EXPECTED_RAW_ROWS = 9_754
 EXPECTED_RAW_SHA256 = "6f79fdaf7a341ec81c1fff4f2034b29f690651c7a08f1569c8cda82367114591"
+
+
+@dataclass(frozen=True)
+class RunnerWindow:
+    window_id: str
+    resolution: ResolvedBacktestWindow
+    market_calendar: MarketCalendarAuthority
+    output_dir: Path
+
+    @property
+    def common_start_date(self) -> pd.Timestamp:
+        return self.resolution.effective_start
+
+    @property
+    def signal_end_date(self) -> pd.Timestamp:
+        return self.resolution.effective_end
+
+    @property
+    def execution_support_end_date(self) -> pd.Timestamp:
+        return self.resolution.execution_support
+
+
+def resolve_runner_window(window_id: str) -> RunnerWindow:
+    calendar = load_rolling_production_market_calendar(ROOT)
+    resolved = resolve_standard_backtest_window(window_id, calendar)
+    if calendar is None:
+        # resolve_standard_backtest_window already fails closed; this narrows
+        # the type for the immutable RunnerWindow below.
+        raise RuntimeError("ROLLING_MARKET_CALENDAR_UNAVAILABLE")
+    return RunnerWindow(
+        window_id=window_id,
+        resolution=resolved,
+        market_calendar=calendar,
+        output_dir=CONTROL_DIR / "windows" / window_id,
+    )
+
+
+def candidate_artifact_window_readiness(
+    candidates: pd.DataFrame,
+    run_window: RunnerWindow,
+) -> dict[str, Any]:
+    dates = pd.to_datetime(candidates["candidate_signal_date"], errors="raise").dt.normalize()
+    artifact_start, artifact_end = dates.min(), dates.max()
+    missing: list[str] = []
+    if artifact_start > run_window.common_start_date:
+        missing.append("candidate artifact starts after effective window start")
+    if artifact_end < run_window.signal_end_date:
+        missing.append("candidate artifact ends before effective window end")
+    return {
+        "status": "READY" if not missing else "BLOCKED_CANDIDATE_ARTIFACT_RANGE",
+        "artifact_first_signal_date": artifact_start.strftime("%Y-%m-%d"),
+        "artifact_last_signal_date": artifact_end.strftime("%Y-%m-%d"),
+        "required_first_signal_date": run_window.common_start_date.strftime("%Y-%m-%d"),
+        "required_last_signal_date": run_window.signal_end_date.strftime("%Y-%m-%d"),
+        "reasons": missing,
+    }
 
 
 class NetworkRequestBlocked(RuntimeError):
@@ -126,14 +189,17 @@ def validate_frozen_inputs() -> pd.DataFrame:
     return candidates
 
 
-def _authority_intervals(authority: Any) -> dict[tuple[str, str, str], list[tuple[str, str]]]:
+def _authority_intervals(
+    authority: Any,
+    execution_support_end_date: pd.Timestamp = EXECUTION_SUPPORT_END_DATE,
+) -> dict[tuple[str, str, str], list[tuple[str, str]]]:
     intervals: dict[tuple[str, str, str], list[tuple[str, str]]] = {}
     for item in authority.pit_intervals:
         if item.get("state") != "COMMON":
             continue
         start = str(item["effective_from"])
         stop = str(item["effective_to"])
-        if start > EXECUTION_SUPPORT_END_DATE.strftime("%Y-%m-%d"):
+        if start > execution_support_end_date.strftime("%Y-%m-%d"):
             continue
         key = (str(item["ticker"]), str(item["isu_cd"]), str(item["market"]))
         intervals.setdefault(key, []).append((start, stop))
@@ -142,7 +208,11 @@ def _authority_intervals(authority: Any) -> dict[tuple[str, str, str], list[tupl
     return intervals
 
 
-def _tasks_by_ticker(candidates: pd.DataFrame) -> dict[str, list[dict[str, Any]]]:
+def _tasks_by_ticker(
+    candidates: pd.DataFrame,
+    common_start_date: pd.Timestamp = COMMON_START_DATE,
+    signal_end_date: pd.Timestamp = SIGNAL_END_DATE,
+) -> dict[str, list[dict[str, Any]]]:
     group_columns = ["ticker", "isu_cd", "market", "identity_effective_from", "identity_effective_to"]
     result: dict[str, list[dict[str, Any]]] = {}
     for key, group in candidates.groupby(group_columns, sort=True, dropna=False):
@@ -150,7 +220,7 @@ def _tasks_by_ticker(candidates: pd.DataFrame) -> dict[str, list[dict[str, Any]]
         allowed = frozenset(
             frozen_candidate_id(ticker, isu_cd, market, value)
             for value in group["candidate_signal_date"].tolist()
-            if COMMON_START_DATE <= pd.Timestamp(value) <= SIGNAL_END_DATE
+            if common_start_date <= pd.Timestamp(value) <= signal_end_date
         )
         raw_dates = pd.to_datetime(group["entry_filter_raw_date"], errors="coerce")
         if raw_dates.isna().any():
@@ -179,7 +249,7 @@ def _tasks_by_ticker(candidates: pd.DataFrame) -> dict[str, list[dict[str, Any]]
             "allowed_signal_dates": frozenset(
                 pd.Timestamp(value).normalize()
                 for value in group["candidate_signal_date"].tolist()
-                if COMMON_START_DATE <= pd.Timestamp(value) <= SIGNAL_END_DATE
+                if common_start_date <= pd.Timestamp(value) <= signal_end_date
             ),
             "raw_panel": raw_panel,
         })
@@ -192,13 +262,15 @@ def _candidate_gate(
     isu_cd: str,
     market: str,
     allowed_candidate_ids: frozenset[str],
+    common_start_date: pd.Timestamp = COMMON_START_DATE,
+    signal_end_date: pd.Timestamp = SIGNAL_END_DATE,
 ):
     def gate(_as_of: pd.Timestamp, context: dict[str, Any]) -> dict[str, Any]:
         signal_date = pd.Timestamp(context["signal_date"]).normalize()
         candidate_id = frozen_candidate_id(ticker, isu_cd, market, signal_date)
         return {
             "gate_pass": candidate_id in allowed_candidate_ids
-            and COMMON_START_DATE <= signal_date <= SIGNAL_END_DATE,
+            and common_start_date <= signal_date <= signal_end_date,
             "gate_id": "FROZEN_RAW_CANDIDATE_MEMBERSHIP",
         }
 
@@ -228,6 +300,9 @@ def _validate_records(
     daily: pd.DataFrame,
     lifecycle: IdentityLifecycle,
     intervals: dict[tuple[str, str, str], list[tuple[str, str]]],
+    common_start_date: pd.Timestamp = COMMON_START_DATE,
+    signal_end_date: pd.Timestamp = SIGNAL_END_DATE,
+    execution_support_end_date: pd.Timestamp = EXECUTION_SUPPORT_END_DATE,
 ) -> dict[str, int]:
     violations = {
         "pre_start_entry_violations": 0,
@@ -239,14 +314,14 @@ def _validate_records(
     identity_daily = daily.loc[
         (daily.index >= lifecycle.effective_from)
         & (daily.index <= lifecycle.effective_to)
-        & (daily.index <= EXECUTION_SUPPORT_END_DATE)
+        & (daily.index <= execution_support_end_date)
     ]
     for record in records:
         info_date = pd.Timestamp(record.entry_signal_information_date)
         signal_date = pd.Timestamp(record.entry_signal_date)
-        if info_date < COMMON_START_DATE:
+        if info_date < common_start_date:
             violations["pre_start_entry_violations"] += 1
-        if info_date > SIGNAL_END_DATE:
+        if info_date > signal_end_date:
             violations["post_end_signal_violations"] += 1
         if any(not lifecycle.contains(value) for value in _record_event_dates(record)):
             violations["identity_violations"] += 1
@@ -306,6 +381,11 @@ def _summary(
     loader_count: int,
     authority_sha256: str,
     authority_interval_count: int,
+    common_start_date: pd.Timestamp = COMMON_START_DATE,
+    signal_end_date: pd.Timestamp = SIGNAL_END_DATE,
+    execution_support_end_date: pd.Timestamp = EXECUTION_SUPPORT_END_DATE,
+    output_dir: Path = CONTROL_DIR,
+    window_id: str | None = None,
 ) -> dict[str, Any]:
     total = len(frame)
     terminal = pd.to_numeric(frame["terminal_return"], errors="coerce") if total else pd.Series(dtype=float)
@@ -334,12 +414,12 @@ def _summary(
         "fundamentals_references": 0,
         "network_calls": network_requests,
     })
-    return {
+    summary = {
         "work_id": WORK_ID,
         "status": "COMPLETE" if network_requests == 0 and all(value == 0 for value in validation.values()) else "BLOCKED",
-        "common_start_date": COMMON_START_DATE.strftime("%Y-%m-%d"),
-        "signal_end_date": SIGNAL_END_DATE.strftime("%Y-%m-%d"),
-        "execution_support_end_date": EXECUTION_SUPPORT_END_DATE.strftime("%Y-%m-%d"),
+        "common_start_date": common_start_date.strftime("%Y-%m-%d"),
+        "signal_end_date": signal_end_date.strftime("%Y-%m-%d"),
+        "execution_support_end_date": execution_support_end_date.strftime("%Y-%m-%d"),
         "raw_candidate_count": EXPECTED_RAW_ROWS,
         "raw_candidate_sha256": raw_sha256,
         "strategy_id": STRATEGY_ID,
@@ -391,21 +471,38 @@ def _summary(
         "validation": validation_payload,
         "determinism": {"status": "PENDING"},
         "artifacts": {
-            "control_trades_csv": str(CONTROL_TRADES_PATH.relative_to(ROOT)),
-            "control_summary_json": str(CONTROL_SUMMARY_PATH.relative_to(ROOT)),
+            "control_trades_csv": str((output_dir / "control_trades.csv").relative_to(ROOT)),
+            "control_summary_json": str((output_dir / "control_summary.json").relative_to(ROOT)),
         },
     }
+    if window_id is not None:
+        summary["window_id"] = window_id
+        summary["window_calendar_start"] = STANDARD_BACKTEST_WINDOWS[window_id].calendar_start.strftime("%Y-%m-%d")
+        summary["window_calendar_end"] = STANDARD_BACKTEST_WINDOWS[window_id].calendar_end.strftime("%Y-%m-%d")
+    return summary
 
 
-def run_pipeline() -> tuple[pd.DataFrame, dict[str, Any]]:
+def run_pipeline(run_window: RunnerWindow | None = None) -> tuple[pd.DataFrame, dict[str, Any]]:
+    common_start_date = run_window.common_start_date if run_window else COMMON_START_DATE
+    signal_end_date = run_window.signal_end_date if run_window else SIGNAL_END_DATE
+    execution_support_end_date = run_window.execution_support_end_date if run_window else EXECUTION_SUPPORT_END_DATE
+    market_calendar = run_window.market_calendar if run_window else None
+    output_dir = run_window.output_dir if run_window else CONTROL_DIR
     candidates = validate_frozen_inputs()
+    if run_window is not None:
+        readiness = candidate_artifact_window_readiness(candidates, run_window)
+        if readiness["status"] != "READY":
+            raise RuntimeError(
+                f"{readiness['status']}: {run_window.window_id}: "
+                f"{'; '.join(readiness['reasons'])}"
+            )
     authority = load_effective_authority(EFFECTIVE_AUTHORITY_DIR)
-    intervals = _authority_intervals(authority)
-    tasks_by_ticker = _tasks_by_ticker(candidates)
+    intervals = _authority_intervals(authority, execution_support_end_date)
+    tasks_by_ticker = _tasks_by_ticker(candidates, common_start_date, signal_end_date)
     score_contract = _json_read(SCORE_CONTRACT_PATH)
     stage_contract = _json_read(STAGE_CONTRACT_PATH)
-    repository = build_repository_v2(ROOT, end=EXECUTION_SUPPORT_END_DATE)
-    loader = RepositoryV2DailyLoader(repository, end=EXECUTION_SUPPORT_END_DATE)
+    repository = build_repository_v2(ROOT, end=execution_support_end_date)
+    loader = RepositoryV2DailyLoader(repository, end=execution_support_end_date)
     records: list[StrategyTradeRecord] = []
     validation = {
         "pre_start_entry_violations": 0,
@@ -438,6 +535,8 @@ def run_pipeline() -> tuple[pd.DataFrame, dict[str, Any]]:
                 isu_cd=lifecycle.isu_cd,
                 market=lifecycle.market,
                 allowed_candidate_ids=task["allowed_candidate_ids"],
+                common_start_date=common_start_date,
+                signal_end_date=signal_end_date,
             )
             task_records = simulate_ticker_strategy_fundamentals_v01(
                 strategy_id=STRATEGY_ID,
@@ -450,16 +549,25 @@ def run_pipeline() -> tuple[pd.DataFrame, dict[str, Any]]:
                 score_contract=score_contract,
                 stage_contract=stage_contract,
                 loss_guard_enabled=True,
-                backtest_end=EXECUTION_SUPPORT_END_DATE,
-                entry_eligible_from=COMMON_START_DATE,
+                backtest_end=execution_support_end_date,
+                entry_eligible_from=common_start_date,
                 allowed_signal_dates=task["allowed_signal_dates"],
                 identity_lifecycle=lifecycle,
                 pit_membership=lambda ticker_value, isu_value, market_value, value: pit_common_for_identity(
                     intervals, ticker_value, isu_value, market_value, value,
                 ),
                 entry_gate=gate,
+                market_calendar=market_calendar,
             )
-            task_validation = _validate_records(task_records, daily=daily, lifecycle=lifecycle, intervals=intervals)
+            task_validation = _validate_records(
+                task_records,
+                daily=daily,
+                lifecycle=lifecycle,
+                intervals=intervals,
+                common_start_date=common_start_date,
+                signal_end_date=signal_end_date,
+                execution_support_end_date=execution_support_end_date,
+            )
             for key in ("pre_start_entry_violations", "post_end_signal_violations", "identity_violations", "execution_next_day_violations", "pit_membership_violations"):
                 target = "pit_future_membership_fallback" if key == "pit_membership_violations" else key
                 validation[target] += task_validation[key]
@@ -480,21 +588,31 @@ def run_pipeline() -> tuple[pd.DataFrame, dict[str, Any]]:
         loader_count=loader.load_count,
         authority_sha256=authority.pit_sha256,
         authority_interval_count=authority.pit_count,
+        common_start_date=common_start_date,
+        signal_end_date=signal_end_date,
+        execution_support_end_date=execution_support_end_date,
+        output_dir=output_dir,
+        window_id=run_window.window_id if run_window else None,
     )
     print(f"CONTROL complete: tickers={processed}, trades={len(frame)}, elapsed={time.monotonic() - started:.1f}s", flush=True)
     return frame, summary
 
 
 def write_outputs(frame: pd.DataFrame, summary: Mapping[str, Any]) -> None:
-    CONTROL_DIR.mkdir(parents=True, exist_ok=True)
-    frame.to_csv(CONTROL_TRADES_PATH, index=False, lineterminator="\n")
-    _json_write(CONTROL_SUMMARY_PATH, summary)
+    trades_path = ROOT / str(summary["artifacts"]["control_trades_csv"])
+    summary_path = ROOT / str(summary["artifacts"]["control_summary_json"])
+    trades_path.parent.mkdir(parents=True, exist_ok=True)
+    frame.to_csv(trades_path, index=False, lineterminator="\n")
+    _json_write(summary_path, summary)
 
 
-def verify_determinism() -> int:
-    expected_trades = CONTROL_TRADES_PATH.read_bytes()
-    expected_summary = _json_read(CONTROL_SUMMARY_PATH)
-    frame, replay_summary = run_pipeline()
+def verify_determinism(run_window: RunnerWindow | None = None) -> int:
+    output_dir = run_window.output_dir if run_window else CONTROL_DIR
+    trades_path = output_dir / "control_trades.csv"
+    summary_path = output_dir / "control_summary.json"
+    expected_trades = trades_path.read_bytes()
+    expected_summary = _json_read(summary_path)
+    frame, replay_summary = run_pipeline(run_window)
     replay_csv = frame.to_csv(index=False, lineterminator="\n").encode("utf-8")
     trade_content_same = replay_csv == expected_trades
     summary_keys = [key for key in replay_summary if key != "determinism"]
@@ -502,7 +620,7 @@ def verify_determinism() -> int:
     if not trade_content_same or not summary_core_same or replay_summary.get("status") != "COMPLETE":
         result = {
             "status": "FAIL",
-            "trade_row_count_same": len(frame) == len(pd.read_csv(CONTROL_TRADES_PATH)),
+            "trade_row_count_same": len(frame) == len(pd.read_csv(trades_path)),
             "trade_content_same": trade_content_same,
             "summary_core_same": summary_core_same,
         }
@@ -518,18 +636,44 @@ def verify_determinism() -> int:
     return 0
 
 
-def main() -> int:
-    import argparse
-
+def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--verify-determinism", action="store_true")
-    args = parser.parse_args()
+    parser.add_argument("--window", choices=tuple(STANDARD_BACKTEST_WINDOWS))
+    parser.add_argument(
+        "--resolve-only",
+        action="store_true",
+        help="Resolve one standard window and inspect frozen candidate date coverage without running the backtest.",
+    )
+    args = parser.parse_args(argv)
+    if args.resolve_only and not args.window:
+        parser.error("--resolve-only requires --window")
     audit = NetworkAudit()
     try:
         with network_guard(audit):
+            run_window = resolve_runner_window(args.window) if args.window else None
+            if args.resolve_only:
+                candidates = validate_frozen_inputs()
+                readiness = candidate_artifact_window_readiness(candidates, run_window)
+                resolution = run_window.resolution
+                print(json.dumps({
+                    "window_id": run_window.window_id,
+                    "calendar_start": resolution.window.calendar_start.strftime("%Y-%m-%d"),
+                    "effective_start": resolution.effective_start.strftime("%Y-%m-%d"),
+                    "calendar_end": resolution.window.calendar_end.strftime("%Y-%m-%d"),
+                    "effective_end": resolution.effective_end.strftime("%Y-%m-%d"),
+                    "execution_support": resolution.execution_support.strftime("%Y-%m-%d"),
+                    "calendar_authority": run_window.market_calendar.source_name,
+                    "calendar_certified_through": run_window.market_calendar.metadata.get("certified_through"),
+                    "warmup_policy": "Repository V2 ticker history before effective_start is retained; identity lifecycle remains authoritative.",
+                    "runner_accepts_window": True,
+                    "runner_readiness": readiness,
+                    "backtest_executed": False,
+                }, ensure_ascii=False, sort_keys=True))
+                return 0
             if args.verify_determinism:
-                return verify_determinism()
-            frame, summary = run_pipeline()
+                return verify_determinism(run_window)
+            frame, summary = run_pipeline(run_window)
             summary["network_call_counts"]["socket_attempts"] = audit.request_count
             summary["validation"]["network_calls"] = audit.request_count
             if audit.request_count:
