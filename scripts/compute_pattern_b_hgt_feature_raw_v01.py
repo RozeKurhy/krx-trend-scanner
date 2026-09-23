@@ -4,7 +4,9 @@
 Record: docs/patterns/pattern_b/validation/feature_raw_values_v01.md
 
 - Joins sample_id -> ticker/as_of through the private manifest only; the public
-  CSV is keyed by sample_id and never carries ticker, name, or as_of columns.
+  CSV holds sample_id plus the 7 feature values/statuses and nothing else.
+  Per-sample provenance (history range, last bars, bar counts) stays in the
+  private report, since those dates reveal each sample's as_of.
 - Loads Repository V2 adjusted history from a fixed 1900-01-01 through as_of and
   calls Feature Contract V01 unchanged. No HGT label, threshold, or score is used.
 - Re-computes every sample with an extended (post as_of) load to confirm the
@@ -15,8 +17,10 @@ from __future__ import annotations
 
 import argparse
 import csv
+import io
 import json
 from pathlib import Path
+import subprocess
 import sys
 import warnings
 
@@ -37,6 +41,9 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = ROOT / "artifacts/pattern_b_hgt_v01/private/private_manifest.csv"
 DEFAULT_OUT = ROOT / "docs/patterns/pattern_b/validation/feature_raw_values_v01.csv"
 DEFAULT_PRIVATE_REPORT = ROOT / "artifacts/pattern_b_hgt_v01/private/feature_raw_run_v01.json"
+# First sealed run (published with provenance columns); its 15 public columns must match exactly.
+BASELINE_REF = "2aa45d027f9e615ead710a7edc9c0f4dc3713268"
+BASELINE_PATH = "docs/patterns/pattern_b/validation/feature_raw_values_v01.csv"
 REQUESTED_HISTORY_START = "1900-01-01"
 FUTURE_CHECK_DAYS = 365
 SAMPLE_IDS: tuple[str, ...] = tuple(f"PBHGT_{i:03d}" for i in range(1, 37))
@@ -50,12 +57,12 @@ PROVENANCE_COLUMNS = (
     "monthly_bar_count",
     "weekly_bar_count",
 )
-OUTPUT_COLUMNS: tuple[str, ...] = (
-    ("sample_id",)
-    + tuple(col for name in FEATURE_NAMES for col in (name, f"{name}_status"))
-    + PROVENANCE_COLUMNS
+OUTPUT_COLUMNS: tuple[str, ...] = ("sample_id",) + tuple(
+    col for name in FEATURE_NAMES for col in (name, f"{name}_status")
 )
-FORBIDDEN_COLUMNS = frozenset({"ticker", "stock_name", "as_of", "label", "confidence", "note"})
+FORBIDDEN_COLUMNS = frozenset(
+    {"ticker", "stock_name", "as_of", "label", "confidence", "note"} | set(PROVENANCE_COLUMNS)
+)
 
 
 def validate_sample_ids(sample_ids: list[str]) -> None:
@@ -80,8 +87,8 @@ def _date(value) -> str:
     return "" if value is None else pd.Timestamp(value).date().isoformat()
 
 
-def feature_row(sample_id: str, daily: pd.DataFrame, as_of: str) -> dict:
-    """One public row keyed by sample_id; asserts the PIT provenance invariants."""
+def feature_row(sample_id: str, daily: pd.DataFrame, as_of: str) -> tuple[dict, dict]:
+    """Public row and private provenance for one sample; asserts the PIT invariants."""
     as_of_ts = pd.Timestamp(as_of)
     result = compute_pattern_b_features_v01(daily, as_of_ts)
     history_end = daily.index.max()
@@ -97,7 +104,8 @@ def feature_row(sample_id: str, daily: pd.DataFrame, as_of: str) -> dict:
         fv = result.features[name]
         row[name] = "" if fv.value is None else repr(fv.value)
         row[f"{name}_status"] = fv.status
-    row.update({
+    provenance = {
+        "sample_id": sample_id,
         "requested_history_start": REQUESTED_HISTORY_START,
         "effective_history_start": _date(daily.index.min()),
         "effective_history_end": _date(history_end),
@@ -105,22 +113,42 @@ def feature_row(sample_id: str, daily: pd.DataFrame, as_of: str) -> dict:
         "weekly_last_bar": _date(result.weekly_last_bar),
         "monthly_bar_count": result.monthly_bar_count,
         "weekly_bar_count": result.weekly_bar_count,
-    })
-    return row
+    }
+    return row, provenance
 
 
 def validate_public_rows(rows: list[dict], manifest: list[dict]) -> None:
-    """Public output: exact columns, 36 sample_ids, and no ticker/name values anywhere."""
+    """Public output: exact 15 columns, 36 sample_ids, and no ticker/name values anywhere."""
     for row in rows:
+        if FORBIDDEN_COLUMNS & set(row):
+            raise ValueError(f"forbidden public columns: {sorted(FORBIDDEN_COLUMNS & set(row))}")
         if tuple(row) != OUTPUT_COLUMNS:
             raise ValueError(f"unexpected public columns: {sorted(set(row) ^ set(OUTPUT_COLUMNS))}")
-    if FORBIDDEN_COLUMNS & set(OUTPUT_COLUMNS):
-        raise ValueError("forbidden column in public output")
     validate_sample_ids([r["sample_id"] for r in rows])
     identifiers = {m["ticker"] for m in manifest} | {m["stock_name"] for m in manifest}
     leaked = [(r["sample_id"], k) for r in rows for k, v in r.items() if str(v) in identifiers]
     if leaked:
         raise ValueError(f"ticker/name value leaked into public output: {leaked[:3]}")
+
+
+def compare_with_baseline(rows: list[dict], baseline_csv: str) -> list[str]:
+    """Differences between ``rows`` and the baseline CSV projected to the public columns."""
+    baseline = {
+        r["sample_id"]: {c: r[c] for c in OUTPUT_COLUMNS}
+        for r in csv.DictReader(io.StringIO(baseline_csv))
+    }
+    diffs = ["sample set differs"] if set(baseline) != {r["sample_id"] for r in rows} else []
+    for row in rows:
+        expected = baseline.get(row["sample_id"], {})
+        diffs += [f"{row['sample_id']}.{c}" for c in OUTPUT_COLUMNS if str(row[c]) != expected.get(c)]
+    return diffs
+
+
+def _baseline_csv() -> str:
+    return subprocess.run(
+        ["git", "-C", str(ROOT), "show", f"{BASELINE_REF}:{BASELINE_PATH}"],
+        check=True, capture_output=True, text=True,
+    ).stdout
 
 
 def main() -> None:
@@ -142,21 +170,23 @@ def main() -> None:
         daily = loader.load(sample["ticker"])
         if daily is None or daily.empty:
             raise SystemExit(f"CHECK_REQUIRED: {sample['sample_id']} has no Repository V2 data")
-        row = feature_row(sample["sample_id"], daily, as_of)
+        row, provenance = feature_row(sample["sample_id"], daily, as_of)
 
         future_end = (pd.Timestamp(as_of) + pd.Timedelta(days=FUTURE_CHECK_DAYS)).date().isoformat()
         future_daily = RepositoryV2DailyLoader(repository, start=REQUESTED_HISTORY_START, end=future_end).load(
             sample["ticker"]
         )
-        future_row = feature_row(sample["sample_id"], future_daily[future_daily.index <= as_of], as_of)
+        future_row, future_provenance = feature_row(
+            sample["sample_id"], future_daily[future_daily.index <= as_of], as_of
+        )
         future_full = compute_pattern_b_features_v01(future_daily, as_of)
-        invariant = row == future_row and all(
+        invariant = row == future_row and provenance == future_provenance and all(
             (repr(future_full.features[n].value) if future_full.features[n].value is not None else "") == row[n]
             and future_full.features[n].status == row[f"{n}_status"]
             for n in FEATURE_NAMES
         )
         checks.append({
-            "sample_id": sample["sample_id"],
+            **provenance,
             "request_start": loader.start,
             "request_end": loader.end,
             "request_end_equals_as_of": loader.end == as_of,
@@ -168,6 +198,9 @@ def main() -> None:
     validate_public_rows(rows, manifest)
     if not all(c["request_end_equals_as_of"] and c["future_invariant"] for c in checks):
         raise SystemExit("CHECK_REQUIRED: PIT provenance or future-invariance check failed")
+    baseline_diffs = compare_with_baseline(rows, _baseline_csv())
+    if baseline_diffs:
+        raise SystemExit(f"CHECK_REQUIRED: public values differ from {BASELINE_REF[:8]}: {baseline_diffs[:5]}")
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with args.out.open("w", encoding="utf-8", newline="") as fh:
@@ -184,16 +217,12 @@ def main() -> None:
         "requested_history_start": REQUESTED_HISTORY_START,
         "status_counts": {k: {s: int(c) for s, c in v.items()} for k, v in status_counts.items()},
         "all_ok": all(r[f"{n}_status"] == STATUS_OK for r in rows for n in FEATURE_NAMES),
-        "effective_history_start_values": dict(
-            pd.Series([r["effective_history_start"] for r in rows]).value_counts().sort_index()
-        ),
-        "monthly_bar_count_range": [min(r["monthly_bar_count"] for r in rows), max(r["monthly_bar_count"] for r in rows)],
-        "weekly_bar_count_range": [min(r["weekly_bar_count"] for r in rows), max(r["weekly_bar_count"] for r in rows)],
+        "public_column_count": len(OUTPUT_COLUMNS),
+        "baseline_exact_match": f"{BASELINE_REF[:8]}: 0 differences",
         "request_end_equals_as_of": sum(c["request_end_equals_as_of"] for c in checks),
         "future_invariant": sum(c["future_invariant"] for c in checks),
         "samples_with_future_rows_loaded": sum(1 for c in checks if c["future_rows_loaded"] > 0),
     }
-    summary["effective_history_start_values"] = {k: int(v) for k, v in summary["effective_history_start_values"].items()}
     args.private_report.parent.mkdir(parents=True, exist_ok=True)
     args.private_report.write_text(json.dumps({"summary": summary, "checks": checks}, indent=2), encoding="utf-8")
     print(json.dumps(summary, indent=2))

@@ -13,19 +13,23 @@
 - Feature 산식과 PIT 계약은 이 계산을 위해 바꾸지 않았다.
 - 비공개 대응표는 `sample_id`를 ticker·기준일에 연결하는 데만 썼다. 대응표와
   ticker·종목명·기준일은 Git에 올리지 않았다.
+- 표본별 이력 범위, 마지막 봉 날짜, 봉 개수는 기준일을 드러내므로 공개 파일에 넣지
+  않고 비공개 실행 기록(`artifacts/pattern_b_hgt_v01/private/feature_raw_run_v01.json`,
+  Git 미포함)에만 보관한다.
 
 ## 계산 조건
 
 - 가격: Repository V2 조정 가격 일봉, 기준일까지만 요청
-- 이력 시작일: `requested_history_start = 1900-01-01` (확보된 전체 이력)
+- 이력 시작일: 모든 표본 공통 `requested_history_start = 1900-01-01` (확보된 전체 이력)
 - 계산: `compute_pattern_b_features_v01(daily, as_of)`
 - 실행 스크립트: `scripts/compute_pattern_b_hgt_feature_raw_v01.py`
-- 36개 모두 기준일 이후 1년 치 데이터를 함께 읽어 다시 계산했을 때 값이 같았다.
+- PIT 검증: 36개 모두 요청 끝 날짜가 기준일과 같았고, 마지막 일봉·월봉·주봉이
+  기준일 이하였으며, 기준일 이후 1년 치 데이터를 함께 읽어 다시 계산해도 값이 같았다.
 
 ## 결과
 
 결과 파일: [feature_raw_values_v01.csv](feature_raw_values_v01.csv)
-(36행, Feature별 값과 상태, 이력 범위와 봉 개수)
+(36행, `sample_id`와 7개 Feature의 값·상태만 담은 15개 컬럼)
 
 | Feature | `OK` | 계산 불가 |
 |---|---|---|
@@ -36,6 +40,3 @@
 | `52W_RANGE_POSITION` | 36 | 0 |
 | `WEEKLY_MA40_DISTANCE` | 36 | 0 |
 | `26W_RETURN_HISTORICAL_PERCENTILE` | 36 | 0 |
-
-실제 이력 시작일은 모든 표본이 2010-01-04 또는 2010-01-06이며, 완료 봉은 월봉
-138~186개, 주봉 595~807개다.
