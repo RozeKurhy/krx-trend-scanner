@@ -178,6 +178,7 @@ Feature 결과를 본 뒤 사람 판정 결과를 Feature에 맞게 고치지 �
 
 ## 미확정 항목
 
-- Feature 산식, 임계값, 자동 상태 판정 규칙
+- Feature 임계값, 자동 상태 판정 규칙 (V01 산식은
+  [Feature 계약 V01](../spec/feature_contract_v01.md)에서 확정)
 - 이후 버전의 표본 확장과 검증용 별도 표본(holdout) 구성
 - 이후 버전의 판정자 수와 판정자 간 불일치 처리 방식
