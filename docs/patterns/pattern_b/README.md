@@ -40,6 +40,8 @@ Pattern B의 “싸다”는 기업가치 대비 싸다는 뜻이 아니라, 자
   뒤에만 여는 검증용 표본 36개
 - [사람 판정 V02](validation/human_ground_truth_v02.md) — 별도 검증 표본 36개의 사용자
   판정과 봉인 기록 (자동 평가 전)
+- [개발 표본 V02](validation/development_v02_protocol.md) — 사람 판정 기준 V02용 개발 표본 36개.
+  식별정보를 가린 차트 묶음 생성 완료, 사람 판정 대기
 - [사람 판정 기준 V02](validation/human_ground_truth_criteria_v02.md) — 현재 상태 우선 원칙.
   별도 검증 표본 V03 이후 새 판정부터 적용
 - [별도 검증 표본 V02 사후진단 V01](validation/holdout_v02_posthoc_adjudication_v01.md) — 공식
