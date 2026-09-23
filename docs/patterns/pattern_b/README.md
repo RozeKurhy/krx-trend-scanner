@@ -23,7 +23,9 @@ Pattern B의 “싸다”는 기업가치 대비 싸다는 뜻이 아니라, 자
 - [Pattern B 개념 기준](spec/README.md) — 목적, 다른 영역과의 경계, 시간축 역할,
   Feature 후보, 상태 후보, 구조 붕괴 위험과의 경계
 - [사람 판정 기준 V01](validation/human_ground_truth_v01.md) — 차트를 보고 상태를
-  판정하는 원칙 (설계 단계, 실제 표본 없음)
+  판정하는 원칙 (설계 단계)
+- [사람 판정 차트팩 V01](validation/chart_pack_v01.md) — 고정 표본 36개와 가린 차트
+  생성 방식 (사람 판정 전)
 
 ## 관련 문서
 
