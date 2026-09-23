@@ -1,33 +1,33 @@
-# Pattern B Feature 적합성 진단 V01
+# Pattern B 지표 적합성 진단 V01
 
-> 상태: 진단 완료. 봉인된 사람 판정 V01과 raw Feature V01의 관계를 진단만 했다.
-> Feature 유지·수정·제외 여부, 임계값, 가중치, 점수, 자동 상태 판정은 정하지 않았다.
+> 상태: 진단 완료. 봉인된 사람 판정 V01과 원시 지표값 V01의 관계를 진단만 했다.
+> 지표 유지·수정·제외 여부, 임계값, 가중치, 점수, 자동 상태 판정은 정하지 않았다.
 
 이 문서는 `scripts/analyze_pattern_b_feature_fitness_v01.py`가 생성한다.
 
 ## 1. 목적과 입력
 
-[사람 판정 V01](human_ground_truth_labels_v01.csv)과 [raw Feature V01](feature_raw_values_v01.csv)을 `sample_id`로 처음 결합해, [Feature 계약 V01](../spec/feature_contract_v01.md)의 7개 Feature가 사람의 장기 가격 사이클 판정과 어떤 관계를 보이는지 진단한다.
+[사람 판정 V01](human_ground_truth_labels_v01.csv)과 [원시 지표값 V01](feature_raw_values_v01.csv)을 표본 식별자(`sample_id`)로 처음 결합해, [지표 계약 V01](../spec/feature_contract_v01.md)의 7개 지표가 사람의 장기 가격 사이클 판정과 어떤 관계를 보이는지 진단한다.
 
 - 두 입력은 각각 봉인된 공개 파일이며 이번 진단에서 수정하지 않았다.
-- 비공개 대응표, ticker, 기준일, 미래 수익률은 사용하지 않았다.
-- 판정 순서 값(`DEEP_DEPRESSED`=0 ~ `EXTREME_OVERHEATED`=4)은 순위 진단용 내부 표현이며 점수나 상태 규칙이 아니다. 7개 Feature 모두 값이 클수록 과열 방향을 기대한다.
+- 비공개 대응표, 종목코드, 기준일, 미래 수익률은 사용하지 않았다.
+- 판정 순서 값(`DEEP_DEPRESSED`=0 ~ `EXTREME_OVERHEATED`=4)은 순위 진단용 내부 표현이며 점수나 상태 규칙이 아니다. 7개 지표 모두 값이 클수록 과열 방향을 기대한다.
 
 ## 2. 결합 검증
 
 - 결합: 36/36, `PBHGT_001`~`PBHGT_036` 각 1회
-- label: `DEEP_DEPRESSED` 2, `DEPRESSED` 4, `NORMAL` 12, `OVERHEATED` 8, `EXTREME_OVERHEATED` 10
-- confidence: `HIGH` 22, `MEDIUM` 14, `LOW` 0
-- raw Feature: 7개 × 36 = 252개 값 모두 `OK`
-- HIGH-only label 수: `DEEP_DEPRESSED` 2, `DEPRESSED` 1, `NORMAL` 6, `OVERHEATED` 4, `EXTREME_OVERHEATED` 9
+- 사람 판정: `DEEP_DEPRESSED` 2, `DEPRESSED` 4, `NORMAL` 12, `OVERHEATED` 8, `EXTREME_OVERHEATED` 10
+- 신뢰도: `HIGH` 22, `MEDIUM` 14, `LOW` 0
+- 원시 지표값: 7개 × 36 = 252개 값 모두 `OK`
+- 높은 신뢰도(`HIGH`)만 본 판정별 표본 수: `DEEP_DEPRESSED` 2, `DEPRESSED` 1, `NORMAL` 6, `OVERHEATED` 4, `EXTREME_OVERHEATED` 9
 
-## 3. Feature별 label 분포
+## 3. 지표별 사람 판정 분포
 
-분위수는 선형 보간이다. `DEEP_DEPRESSED`는 n=2라 Q1·Q3가 두 값 사이의 보간값이다.
+분위수는 선형 보간이다. `DEEP_DEPRESSED`는 표본이 2개라 Q1·Q3가 두 값 사이의 보간값이다.
 
 ### `36M_RANGE_POSITION`
 
-| label | n | median | Q1 | Q3 | min | max |
+| 사람 판정 | 표본 수 | 중앙값 | Q1 | Q3 | 최솟값 | 최댓값 |
 |---|---|---|---|---|---|---|
 | `DEEP_DEPRESSED` | 2 | 0.048 | 0.046 | 0.049 | 0.044 | 0.051 |
 | `DEPRESSED` | 4 | 0.090 | 0.087 | 0.178 | 0.079 | 0.439 |
@@ -37,7 +37,7 @@
 
 ### `MONTHLY_MA24_DISTANCE`
 
-| label | n | median | Q1 | Q3 | min | max |
+| 사람 판정 | 표본 수 | 중앙값 | Q1 | Q3 | 최솟값 | 최댓값 |
 |---|---|---|---|---|---|---|
 | `DEEP_DEPRESSED` | 2 | -0.382 | -0.402 | -0.363 | -0.421 | -0.343 |
 | `DEPRESSED` | 4 | -0.228 | -0.318 | -0.101 | -0.338 | 0.031 |
@@ -47,7 +47,7 @@
 
 ### `12M_RETURN_HISTORICAL_PERCENTILE`
 
-| label | n | median | Q1 | Q3 | min | max |
+| 사람 판정 | 표본 수 | 중앙값 | Q1 | Q3 | 최솟값 | 최댓값 |
 |---|---|---|---|---|---|---|
 | `DEEP_DEPRESSED` | 2 | 15.269 | 12.837 | 17.702 | 10.405 | 20.134 |
 | `DEPRESSED` | 4 | 18.588 | 14.627 | 23.547 | 13.423 | 27.746 |
@@ -57,7 +57,7 @@
 
 ### `36M_HIGH_DRAWDOWN`
 
-| label | n | median | Q1 | Q3 | min | max |
+| 사람 판정 | 표본 수 | 중앙값 | Q1 | Q3 | 최솟값 | 최댓값 |
 |---|---|---|---|---|---|---|
 | `DEEP_DEPRESSED` | 2 | -0.714 | -0.734 | -0.694 | -0.753 | -0.675 |
 | `DEPRESSED` | 4 | -0.599 | -0.620 | -0.523 | -0.658 | -0.318 |
@@ -67,7 +67,7 @@
 
 ### `52W_RANGE_POSITION`
 
-| label | n | median | Q1 | Q3 | min | max |
+| 사람 판정 | 표본 수 | 중앙값 | Q1 | Q3 | 최솟값 | 최댓값 |
 |---|---|---|---|---|---|---|
 | `DEEP_DEPRESSED` | 2 | 0.151 | 0.148 | 0.154 | 0.145 | 0.157 |
 | `DEPRESSED` | 4 | 0.206 | 0.184 | 0.255 | 0.161 | 0.360 |
@@ -77,7 +77,7 @@
 
 ### `WEEKLY_MA40_DISTANCE`
 
-| label | n | median | Q1 | Q3 | min | max |
+| 사람 판정 | 표본 수 | 중앙값 | Q1 | Q3 | 최솟값 | 최댓값 |
 |---|---|---|---|---|---|---|
 | `DEEP_DEPRESSED` | 2 | -0.193 | -0.204 | -0.183 | -0.215 | -0.172 |
 | `DEPRESSED` | 4 | -0.066 | -0.076 | -0.020 | -0.078 | 0.091 |
@@ -87,7 +87,7 @@
 
 ### `26W_RETURN_HISTORICAL_PERCENTILE`
 
-| label | n | median | Q1 | Q3 | min | max |
+| 사람 판정 | 표본 수 | 중앙값 | Q1 | Q3 | 최솟값 | 최댓값 |
 |---|---|---|---|---|---|---|
 | `DEEP_DEPRESSED` | 2 | 19.124 | 14.006 | 24.241 | 8.889 | 29.359 |
 | `DEPRESSED` | 4 | 54.423 | 40.106 | 70.186 | 34.273 | 80.359 |
@@ -95,11 +95,11 @@
 | `OVERHEATED` | 8 | 91.172 | 79.049 | 95.155 | 4.745 | 96.147 |
 | `EXTREME_OVERHEATED` | 10 | 91.844 | 57.641 | 97.557 | 45.359 | 100.000 |
 
-## 4. median 순서
+## 4. 중앙값 순서
 
-인접 label의 median 차이(오른쪽 − 왼쪽)다. 양수면 기대 방향이다. 약어: DEEP=`DEEP_DEPRESSED`, DEP=`DEPRESSED`, NORM=`NORMAL`, OVH=`OVERHEATED`, EXT=`EXTREME_OVERHEATED`.
+인접 판정 상태의 중앙값 차이(오른쪽 − 왼쪽)다. 양수면 기대 방향이다. 약어: DEEP=`DEEP_DEPRESSED`, DEP=`DEPRESSED`, NORM=`NORMAL`, OVH=`OVERHEATED`, EXT=`EXTREME_OVERHEATED`.
 
-| Feature | DEEP→DEP | DEP→NORM | NORM→OVH | OVH→EXT |
+| 지표 | DEEP→DEP | DEP→NORM | NORM→OVH | OVH→EXT |
 |---|---|---|---|---|
 | `36M_RANGE_POSITION` | 0.043 ✓ | 0.291 ✓ | 0.366 ✓ | 0.139 ✓ |
 | `MONTHLY_MA24_DISTANCE` | 0.154 ✓ | 0.207 ✓ | 0.380 ✓ | 0.354 ✓ |
@@ -109,11 +109,11 @@
 | `WEEKLY_MA40_DISTANCE` | 0.127 ✓ | 0.147 ✓ | 0.099 ✓ | 0.147 ✓ |
 | `26W_RETURN_HISTORICAL_PERCENTILE` | 35.299 ✓ | 10.770 ✓ | 25.980 ✓ | 0.672 ✓ |
 
-## 5. Spearman 순위 상관 (전체 / HIGH-only)
+## 5. 스피어만 순위상관 (전체 / 높은 신뢰도만)
 
-고정 연구 표본이므로 유의성 판단 없이 진단 지표로만 본다. HIGH-only의 median 순서는 표본이 적은 label이 있어 참고용이다.
+고정 연구 표본이므로 유의성 판단 없이 진단 지표로만 본다. 높은 신뢰도만 본 중앙값 순서는 표본이 적은 판정 상태가 있어 참고용이다.
 
-| Feature | 전체 (n=36) | HIGH-only (n=22) | 차이 | HIGH-only median 역전·동률 |
+| 지표 | 전체 (36개) | 높은 신뢰도만 (22개) | 차이 | 높은 신뢰도만 본 중앙값 역전·동률 |
 |---|---|---|---|---|
 | `36M_RANGE_POSITION` | 0.845 | 0.875 | 0.029 | 없음 |
 | `MONTHLY_MA24_DISTANCE` | 0.847 | 0.863 | 0.016 | 없음 |
@@ -123,11 +123,11 @@
 | `WEEKLY_MA40_DISTANCE` | 0.649 | 0.758 | 0.109 | 없음 |
 | `26W_RETURN_HISTORICAL_PERCENTILE` | 0.546 | 0.668 | 0.122 | DEP→NORM |
 
-## 6. 인접 label IQR 겹침
+## 6. 인접 판정 상태의 사분위 범위 겹침
 
-`DEEP_DEPRESSED`(n=2)와 `DEPRESSED`(n=4)가 걸린 구간은 표본이 적어 과도하게 해석하지 않는다.
+`DEEP_DEPRESSED`(2개)와 `DEPRESSED`(4개)가 걸린 구간은 표본이 적어 과도하게 해석하지 않는다.
 
-| Feature | 구간 | 왼쪽 IQR | 오른쪽 IQR | 겹침 |
+| 지표 | 구간 | 왼쪽 사분위 범위 | 오른쪽 사분위 범위 | 겹침 |
 |---|---|---|---|---|
 | `36M_RANGE_POSITION` | DEEP→DEP | 0.046 ~ 0.049 | 0.087 ~ 0.178 | 아니오 |
 | `36M_RANGE_POSITION` | DEP→NORM | 0.087 ~ 0.178 | 0.305 ~ 0.589 | 아니오 |
@@ -158,9 +158,9 @@
 | `26W_RETURN_HISTORICAL_PERCENTILE` | NORM→OVH | 44.178 ~ 84.310 | 79.049 ~ 95.155 | 예 |
 | `26W_RETURN_HISTORICAL_PERCENTILE` | OVH→EXT | 79.049 ~ 95.155 | 57.641 ~ 97.557 | 예 |
 
-## 7. Feature 간 상관
+## 7. 지표 간 상관
 
-36개 전체의 Spearman 상관이다. 약어: M36_RP=`36M_RANGE_POSITION`, M_MA24=`MONTHLY_MA24_DISTANCE`, M_R12P=`12M_RETURN_HISTORICAL_PERCENTILE`, M36_DD=`36M_HIGH_DRAWDOWN`, W52_RP=`52W_RANGE_POSITION`, W_MA40=`WEEKLY_MA40_DISTANCE`, W_R26P=`26W_RETURN_HISTORICAL_PERCENTILE`.
+36개 전체의 스피어만 순위상관이다. 약어: M36_RP=`36M_RANGE_POSITION`, M_MA24=`MONTHLY_MA24_DISTANCE`, M_R12P=`12M_RETURN_HISTORICAL_PERCENTILE`, M36_DD=`36M_HIGH_DRAWDOWN`, W52_RP=`52W_RANGE_POSITION`, W_MA40=`WEEKLY_MA40_DISTANCE`, W_R26P=`26W_RETURN_HISTORICAL_PERCENTILE`.
 
 | | M36_RP | M_MA24 | M_R12P | M36_DD | W52_RP | W_MA40 | W_R26P |
 |---|---|---|---|---|---|---|---|
@@ -180,11 +180,11 @@
 4. `52W_RANGE_POSITION` – `WEEKLY_MA40_DISTANCE`: 0.879
 5. `MONTHLY_MA24_DISTANCE` – `36M_HIGH_DRAWDOWN`: 0.876
 
-## 8. MEDIUM confidence 표본 14개
+## 8. 중간 신뢰도(`MEDIUM`) 표본 14개
 
 다음 단계에서 경계 사례를 사람이 직접 검토하기 위한 표다. 자동 분류는 붙이지 않았다.
 
-| sample_id | label | M36_RP | M_MA24 | M_R12P | M36_DD | W52_RP | W_MA40 | W_R26P |
+| `sample_id` | 사람 판정 | M36_RP | M_MA24 | M_R12P | M36_DD | W52_RP | W_MA40 | W_R26P |
 |---|---|---|---|---|---|---|---|---|
 | `PBHGT_002` | `OVERHEATED` | 0.766 | 0.475 | 100.000 | -0.158 | 0.743 | 0.225 | 92.995 |
 | `PBHGT_005` | `EXTREME_OVERHEATED` | 0.755 | 0.316 | 79.200 | -0.153 | 0.722 | 0.085 | 48.862 |
@@ -207,61 +207,61 @@
 
 **`36M_RANGE_POSITION`**
 
-- 인접 4구간 중 4구간에서 median이 기대 방향으로 증가했다.
-- 인접 IQR이 겹치는 구간: NORM→OVH, OVH→EXT.
-- Spearman은 전체 0.845, HIGH-only 0.875로 HIGH-only가 0.029 높다.
+- 인접 4구간 중 4구간에서 중앙값이 기대 방향으로 증가했다.
+- 인접 사분위 범위가 겹치는 구간: NORM→OVH, OVH→EXT.
+- 스피어만 순위상관은 전체 0.845, 높은 신뢰도만 0.875로 높은 신뢰도만 본 값이 0.029 높다.
 
 **`MONTHLY_MA24_DISTANCE`**
 
-- 인접 4구간 중 4구간에서 median이 기대 방향으로 증가했다.
-- 인접 IQR이 겹치는 구간: NORM→OVH.
-- Spearman은 전체 0.847, HIGH-only 0.863로 HIGH-only가 0.016 높다.
+- 인접 4구간 중 4구간에서 중앙값이 기대 방향으로 증가했다.
+- 인접 사분위 범위가 겹치는 구간: NORM→OVH.
+- 스피어만 순위상관은 전체 0.847, 높은 신뢰도만 0.863로 높은 신뢰도만 본 값이 0.016 높다.
 
 **`12M_RETURN_HISTORICAL_PERCENTILE`**
 
-- 인접 4구간 중 3구간에서 median이 기대 방향으로 증가했다 (역전·동률: OVH→EXT).
-- 인접 IQR이 겹치는 구간: DEEP→DEP, NORM→OVH, OVH→EXT.
-- Spearman은 전체 0.676, HIGH-only 0.679로 HIGH-only가 0.002 높다.
-- HIGH-only median 역전·동률 구간: DEEP→DEP, OVH→EXT (HIGH에서 표본 1개 이하인 label이 걸린 구간 포함).
+- 인접 4구간 중 3구간에서 중앙값이 기대 방향으로 증가했다 (역전·동률: OVH→EXT).
+- 인접 사분위 범위가 겹치는 구간: DEEP→DEP, NORM→OVH, OVH→EXT.
+- 스피어만 순위상관은 전체 0.676, 높은 신뢰도만 0.679로 높은 신뢰도만 본 값이 0.002 높다.
+- 높은 신뢰도만 본 중앙값 역전·동률 구간: DEEP→DEP, OVH→EXT (높은 신뢰도에서 표본 1개 이하인 판정 상태가 걸린 구간 포함).
 
 **`36M_HIGH_DRAWDOWN`**
 
-- 인접 4구간 중 4구간에서 median이 기대 방향으로 증가했다.
-- 인접 IQR이 겹치는 구간: OVH→EXT.
-- Spearman은 전체 0.788, HIGH-only 0.855로 HIGH-only가 0.067 높다.
+- 인접 4구간 중 4구간에서 중앙값이 기대 방향으로 증가했다.
+- 인접 사분위 범위가 겹치는 구간: OVH→EXT.
+- 스피어만 순위상관은 전체 0.788, 높은 신뢰도만 0.855로 높은 신뢰도만 본 값이 0.067 높다.
 
 **`52W_RANGE_POSITION`**
 
-- 인접 4구간 중 4구간에서 median이 기대 방향으로 증가했다.
-- 인접 IQR이 겹치는 구간: OVH→EXT.
-- Spearman은 전체 0.684, HIGH-only 0.778로 HIGH-only가 0.094 높다.
+- 인접 4구간 중 4구간에서 중앙값이 기대 방향으로 증가했다.
+- 인접 사분위 범위가 겹치는 구간: OVH→EXT.
+- 스피어만 순위상관은 전체 0.684, 높은 신뢰도만 0.778로 높은 신뢰도만 본 값이 0.094 높다.
 
 **`WEEKLY_MA40_DISTANCE`**
 
-- 인접 4구간 중 4구간에서 median이 기대 방향으로 증가했다.
-- 인접 IQR이 겹치는 구간: DEP→NORM, NORM→OVH, OVH→EXT.
-- Spearman은 전체 0.649, HIGH-only 0.758로 HIGH-only가 0.109 높다.
+- 인접 4구간 중 4구간에서 중앙값이 기대 방향으로 증가했다.
+- 인접 사분위 범위가 겹치는 구간: DEP→NORM, NORM→OVH, OVH→EXT.
+- 스피어만 순위상관은 전체 0.649, 높은 신뢰도만 0.758로 높은 신뢰도만 본 값이 0.109 높다.
 
 **`26W_RETURN_HISTORICAL_PERCENTILE`**
 
-- 인접 4구간 중 4구간에서 median이 기대 방향으로 증가했다.
-- 인접 IQR이 겹치는 구간: DEP→NORM, NORM→OVH, OVH→EXT.
-- Spearman은 전체 0.546, HIGH-only 0.668로 HIGH-only가 0.122 높다.
-- HIGH-only median 역전·동률 구간: DEP→NORM (HIGH에서 표본 1개 이하인 label이 걸린 구간 포함).
+- 인접 4구간 중 4구간에서 중앙값이 기대 방향으로 증가했다.
+- 인접 사분위 범위가 겹치는 구간: DEP→NORM, NORM→OVH, OVH→EXT.
+- 스피어만 순위상관은 전체 0.546, 높은 신뢰도만 0.668로 높은 신뢰도만 본 값이 0.122 높다.
+- 높은 신뢰도만 본 중앙값 역전·동률 구간: DEP→NORM (높은 신뢰도에서 표본 1개 이하인 판정 상태가 걸린 구간 포함).
 
-**Feature 간 상관**
+**지표 간 상관**
 
-- `36M_RANGE_POSITION`와 `36M_HIGH_DRAWDOWN`의 Spearman 상관은 0.957다.
-- `WEEKLY_MA40_DISTANCE`와 `26W_RETURN_HISTORICAL_PERCENTILE`의 Spearman 상관은 0.929다.
-- `36M_RANGE_POSITION`와 `MONTHLY_MA24_DISTANCE`의 Spearman 상관은 0.928다.
-- `52W_RANGE_POSITION`와 `WEEKLY_MA40_DISTANCE`의 Spearman 상관은 0.879다.
-- `MONTHLY_MA24_DISTANCE`와 `36M_HIGH_DRAWDOWN`의 Spearman 상관은 0.876다.
+- `36M_RANGE_POSITION`와 `36M_HIGH_DRAWDOWN`의 스피어만 순위상관은 0.957다.
+- `WEEKLY_MA40_DISTANCE`와 `26W_RETURN_HISTORICAL_PERCENTILE`의 스피어만 순위상관은 0.929다.
+- `36M_RANGE_POSITION`와 `MONTHLY_MA24_DISTANCE`의 스피어만 순위상관은 0.928다.
+- `52W_RANGE_POSITION`와 `WEEKLY_MA40_DISTANCE`의 스피어만 순위상관은 0.879다.
+- `MONTHLY_MA24_DISTANCE`와 `36M_HIGH_DRAWDOWN`의 스피어만 순위상관은 0.876다.
 
 **한계**
 
 - 36개는 12종목 × 기준일 3개라 같은 종목의 표본끼리 독립이 아니다. 상관은 독립 표본 36개보다 과장될 수 있다.
-- `DEEP_DEPRESSED`는 2개, `DEPRESSED`는 4개(HIGH-only 1개)라 하단 구간의 순서·겹침은 불안정하다.
+- `DEEP_DEPRESSED`는 2개, `DEPRESSED`는 4개(높은 신뢰도 1개)라 하단 구간의 순서·겹침은 불안정하다.
 
 ## 10. 다음 단계
 
-이 진단을 근거로 Feature별 검토를 거쳐 유지·수정·제외 여부를 정한다. 그 전에는 임계값, 가중치, 상태 규칙을 만들지 않는다.
+이 진단을 근거로 지표별 검토를 거쳐 유지·수정·제외 여부를 정한다. 그 전에는 임계값, 가중치, 상태 규칙을 만들지 않는다.

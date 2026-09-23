@@ -199,18 +199,18 @@ def _observations(feature: str, r: dict, high_counts: dict) -> list[str]:
     ordered = [o for o in r["ordering"] if o["expected"]]
     reversed_ = [_pair(o["pair"]) for o in r["ordering"] if o["expected"] is False]
     overlaps = [_pair(o["pair"]) for o in r["overlap"] if o["overlap"]]
-    lines = [f"인접 4구간 중 {len(ordered)}구간에서 median이 기대 방향으로 증가했다"
+    lines = [f"인접 4구간 중 {len(ordered)}구간에서 중앙값이 기대 방향으로 증가했다"
              + (f" (역전·동률: {', '.join(reversed_)})." if reversed_ else ".")]
-    lines.append("인접 IQR이 겹치는 구간: " + (", ".join(overlaps) if overlaps else "없음") + ".")
+    lines.append("인접 사분위 범위가 겹치는 구간: " + (", ".join(overlaps) if overlaps else "없음") + ".")
     diff = r["spearman_high"] - r["spearman_all"]
     direction = "높다" if diff > 0 else "낮다" if diff < 0 else "같다"
-    lines.append(f"Spearman은 전체 {_f(r['spearman_all'])}, HIGH-only {_f(r['spearman_high'])}로 "
-                 f"HIGH-only가 {abs(diff):.3f} {direction}.")
+    lines.append(f"스피어만 순위상관은 전체 {_f(r['spearman_all'])}, 높은 신뢰도만 "
+                 f"{_f(r['spearman_high'])}로 높은 신뢰도만 본 값이 {abs(diff):.3f} {direction}.")
     rev_high = [_pair(o["pair"]) for o in r["ordering_high"] if o["expected"] is False]
     if rev_high:
         thin = [p for p in r["ordering_high"] if _thin(p, high_counts)]
-        note = " (HIGH에서 표본 1개 이하인 label이 걸린 구간 포함)" if thin else ""
-        lines.append(f"HIGH-only median 역전·동률 구간: {', '.join(rev_high)}{note}.")
+        note = " (높은 신뢰도에서 표본 1개 이하인 판정 상태가 걸린 구간 포함)" if thin else ""
+        lines.append(f"높은 신뢰도만 본 중앙값 역전·동률 구간: {', '.join(rev_high)}{note}.")
     return lines
 
 
@@ -222,36 +222,36 @@ def render_report(df: pd.DataFrame, result: dict) -> str:
     L: list[str] = []
     add = L.append
     counts = df["label"].value_counts()
-    add("# Pattern B Feature 적합성 진단 V01\n")
-    add("> 상태: 진단 완료. 봉인된 사람 판정 V01과 raw Feature V01의 관계를 진단만 했다.")
-    add("> Feature 유지·수정·제외 여부, 임계값, 가중치, 점수, 자동 상태 판정은 정하지 않았다.\n")
+    add("# Pattern B 지표 적합성 진단 V01\n")
+    add("> 상태: 진단 완료. 봉인된 사람 판정 V01과 원시 지표값 V01의 관계를 진단만 했다.")
+    add("> 지표 유지·수정·제외 여부, 임계값, 가중치, 점수, 자동 상태 판정은 정하지 않았다.\n")
     add("이 문서는 `scripts/analyze_pattern_b_feature_fitness_v01.py`가 생성한다.\n")
 
     add("## 1. 목적과 입력\n")
     add("[사람 판정 V01](human_ground_truth_labels_v01.csv)과 "
-        "[raw Feature V01](feature_raw_values_v01.csv)을 `sample_id`로 처음 결합해, "
-        "[Feature 계약 V01](../spec/feature_contract_v01.md)의 7개 Feature가 사람의 장기 가격 "
+        "[원시 지표값 V01](feature_raw_values_v01.csv)을 표본 식별자(`sample_id`)로 처음 결합해, "
+        "[지표 계약 V01](../spec/feature_contract_v01.md)의 7개 지표가 사람의 장기 가격 "
         "사이클 판정과 어떤 관계를 보이는지 진단한다.\n")
     add("- 두 입력은 각각 봉인된 공개 파일이며 이번 진단에서 수정하지 않았다.")
-    add("- 비공개 대응표, ticker, 기준일, 미래 수익률은 사용하지 않았다.")
+    add("- 비공개 대응표, 종목코드, 기준일, 미래 수익률은 사용하지 않았다.")
     add("- 판정 순서 값(`DEEP_DEPRESSED`=0 ~ `EXTREME_OVERHEATED`=4)은 순위 진단용 내부 표현이며 "
-        "점수나 상태 규칙이 아니다. 7개 Feature 모두 값이 클수록 과열 방향을 기대한다.\n")
+        "점수나 상태 규칙이 아니다. 7개 지표 모두 값이 클수록 과열 방향을 기대한다.\n")
 
     add("## 2. 결합 검증\n")
     add(f"- 결합: {len(df)}/36, `PBHGT_001`~`PBHGT_036` 각 1회")
-    add("- label: " + ", ".join(f"`{l}` {int(counts.get(l, 0))}" for l in LABEL_ORDER))
-    add("- confidence: " + ", ".join(
+    add("- 사람 판정: " + ", ".join(f"`{l}` {int(counts.get(l, 0))}" for l in LABEL_ORDER))
+    add("- 신뢰도: " + ", ".join(
         f"`{c}` {int((df['confidence'] == c).sum())}" for c in EXPECTED_CONFIDENCE_COUNTS))
-    add(f"- raw Feature: 7개 × 36 = {7 * len(df)}개 값 모두 `OK`")
-    add("- HIGH-only label 수: " + ", ".join(
+    add(f"- 원시 지표값: 7개 × 36 = {7 * len(df)}개 값 모두 `OK`")
+    add("- 높은 신뢰도(`HIGH`)만 본 판정별 표본 수: " + ", ".join(
         f"`{l}` {result['high_label_counts'][l]}" for l in LABEL_ORDER) + "\n")
 
-    add("## 3. Feature별 label 분포\n")
-    add("분위수는 선형 보간이다. `DEEP_DEPRESSED`는 n=2라 Q1·Q3가 두 값 사이의 보간값이다.\n")
+    add("## 3. 지표별 사람 판정 분포\n")
+    add("분위수는 선형 보간이다. `DEEP_DEPRESSED`는 표본이 2개라 Q1·Q3가 두 값 사이의 보간값이다.\n")
     for feature in FEATURES:
         s = result["per_feature"][feature]["summary"]
         add(f"### `{feature}`\n")
-        add("| label | n | median | Q1 | Q3 | min | max |")
+        add("| 사람 판정 | 표본 수 | 중앙값 | Q1 | Q3 | 최솟값 | 최댓값 |")
         add("|---|---|---|---|---|---|---|")
         for label in LABEL_ORDER:
             row = s.loc[label]
@@ -259,11 +259,11 @@ def render_report(df: pd.DataFrame, result: dict) -> str:
                 f"{_f(row['q3'])} | {_f(row['min'])} | {_f(row['max'])} |")
         add("")
 
-    add("## 4. median 순서\n")
-    add("인접 label의 median 차이(오른쪽 − 왼쪽)다. 양수면 기대 방향이다. "
+    add("## 4. 중앙값 순서\n")
+    add("인접 판정 상태의 중앙값 차이(오른쪽 − 왼쪽)다. 양수면 기대 방향이다. "
         "약어: DEEP=`DEEP_DEPRESSED`, DEP=`DEPRESSED`, NORM=`NORMAL`, OVH=`OVERHEATED`, "
         "EXT=`EXTREME_OVERHEATED`.\n")
-    add("| Feature | " + " | ".join(_pair(p) for p in ADJACENT_PAIRS) + " |")
+    add("| 지표 | " + " | ".join(_pair(p) for p in ADJACENT_PAIRS) + " |")
     add("|---|" + "---|" * len(ADJACENT_PAIRS))
     for feature in FEATURES:
         cells = [f"{_f(o['diff'])} {'✓' if o['expected'] else '✗'}"
@@ -271,10 +271,10 @@ def render_report(df: pd.DataFrame, result: dict) -> str:
         add(f"| `{feature}` | " + " | ".join(cells) + " |")
     add("")
 
-    add("## 5. Spearman 순위 상관 (전체 / HIGH-only)\n")
+    add("## 5. 스피어만 순위상관 (전체 / 높은 신뢰도만)\n")
     add("고정 연구 표본이므로 유의성 판단 없이 진단 지표로만 본다. "
-        "HIGH-only의 median 순서는 표본이 적은 label이 있어 참고용이다.\n")
-    add("| Feature | 전체 (n=36) | HIGH-only (n=22) | 차이 | HIGH-only median 역전·동률 |")
+        "높은 신뢰도만 본 중앙값 순서는 표본이 적은 판정 상태가 있어 참고용이다.\n")
+    add("| 지표 | 전체 (36개) | 높은 신뢰도만 (22개) | 차이 | 높은 신뢰도만 본 중앙값 역전·동률 |")
     add("|---|---|---|---|---|")
     for feature in FEATURES:
         r = result["per_feature"][feature]
@@ -283,9 +283,9 @@ def render_report(df: pd.DataFrame, result: dict) -> str:
             f"{_f(r['spearman_high'] - r['spearman_all'])} | {', '.join(rev) if rev else '없음'} |")
     add("")
 
-    add("## 6. 인접 label IQR 겹침\n")
-    add("`DEEP_DEPRESSED`(n=2)와 `DEPRESSED`(n=4)가 걸린 구간은 표본이 적어 과도하게 해석하지 않는다.\n")
-    add("| Feature | 구간 | 왼쪽 IQR | 오른쪽 IQR | 겹침 |")
+    add("## 6. 인접 판정 상태의 사분위 범위 겹침\n")
+    add("`DEEP_DEPRESSED`(2개)와 `DEPRESSED`(4개)가 걸린 구간은 표본이 적어 과도하게 해석하지 않는다.\n")
+    add("| 지표 | 구간 | 왼쪽 사분위 범위 | 오른쪽 사분위 범위 | 겹침 |")
     add("|---|---|---|---|---|")
     for feature in FEATURES:
         for o in result["per_feature"][feature]["overlap"]:
@@ -293,8 +293,8 @@ def render_report(df: pd.DataFrame, result: dict) -> str:
                 f"{_f(o['right'][0])} ~ {_f(o['right'][1])} | {_yn(o['overlap'])} |")
     add("")
 
-    add("## 7. Feature 간 상관\n")
-    add("36개 전체의 Spearman 상관이다. 약어: " + ", ".join(
+    add("## 7. 지표 간 상관\n")
+    add("36개 전체의 스피어만 순위상관이다. 약어: " + ", ".join(
         f"{v}=`{k}`" for k, v in FEATURE_SHORT.items()) + ".\n")
     add("| | " + " | ".join(FEATURE_SHORT[f] for f in FEATURES) + " |")
     add("|---|" + "---|" * len(FEATURES))
@@ -305,9 +305,9 @@ def render_report(df: pd.DataFrame, result: dict) -> str:
         add(f"{i}. `{a}` – `{b}`: {_f(v)}")
     add("")
 
-    add("## 8. MEDIUM confidence 표본 14개\n")
+    add("## 8. 중간 신뢰도(`MEDIUM`) 표본 14개\n")
     add("다음 단계에서 경계 사례를 사람이 직접 검토하기 위한 표다. 자동 분류는 붙이지 않았다.\n")
-    add("| sample_id | label | " + " | ".join(FEATURE_SHORT[f] for f in FEATURES) + " |")
+    add("| `sample_id` | 사람 판정 | " + " | ".join(FEATURE_SHORT[f] for f in FEATURES) + " |")
     add("|---|---|" + "---|" * len(FEATURES))
     for _, row in result["medium"].iterrows():
         add(f"| `{row['sample_id']}` | `{row['label']}` | "
@@ -321,18 +321,18 @@ def render_report(df: pd.DataFrame, result: dict) -> str:
         for line in _observations(feature, result["per_feature"][feature], result["high_label_counts"]):
             add(f"- {line}")
         add("")
-    add("**Feature 간 상관**\n")
+    add("**지표 간 상관**\n")
     for a, b, v in result["top_pairs"]:
-        add(f"- `{a}`와 `{b}`의 Spearman 상관은 {_f(v)}다.")
+        add(f"- `{a}`와 `{b}`의 스피어만 순위상관은 {_f(v)}다.")
     add("")
     add("**한계**\n")
     add("- 36개는 12종목 × 기준일 3개라 같은 종목의 표본끼리 독립이 아니다. 상관은 독립 "
         "표본 36개보다 과장될 수 있다.")
-    add("- `DEEP_DEPRESSED`는 2개, `DEPRESSED`는 4개(HIGH-only 1개)라 하단 구간의 순서·겹침은 "
+    add("- `DEEP_DEPRESSED`는 2개, `DEPRESSED`는 4개(높은 신뢰도 1개)라 하단 구간의 순서·겹침은 "
         "불안정하다.\n")
 
     add("## 10. 다음 단계\n")
-    add("이 진단을 근거로 Feature별 검토를 거쳐 유지·수정·제외 여부를 정한다. 그 전에는 "
+    add("이 진단을 근거로 지표별 검토를 거쳐 유지·수정·제외 여부를 정한다. 그 전에는 "
         "임계값, 가중치, 상태 규칙을 만들지 않는다.")
     return "\n".join(L) + "\n"
 

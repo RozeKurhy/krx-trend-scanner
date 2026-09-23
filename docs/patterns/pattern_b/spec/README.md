@@ -1,7 +1,7 @@
 # Pattern B 개념 기준
 
 > 상태: 초기 연구 후보. 이 문서는 Pattern B의 개념과 연구 경계만 정한다.
-> Feature 산식, 가중치, 점수, 임계값, 상태 판정 기준, 전략 규칙은 정하지 않는다.
+> 지표 산식, 가중치, 점수, 임계값, 상태 판정 기준, 전략 규칙은 정하지 않는다.
 
 ## 목적
 
@@ -27,11 +27,11 @@ Pattern B는 바닥이나 천장을 예측하는 패턴이 아니다. 현재 가
 | Pattern A / A FAST | 상승 구조와 상승 전환 탐지 | 별도 패턴. 전환 구조를 Pattern B 정의에 섞지 않는다 |
 | Pattern B | 자기 장기 가격 사이클 내 침체·과열 상태 탐지 | 이 문서 |
 | 향후 Pattern C (구상 단계) | 수급 상태 | 외국인·기관 수급을 Pattern B에 섞지 않는다 |
-| 향후 Pattern D (구상 단계) | 펀더멘털·기업가치 | Valuation과 OpenDART 재무를 Pattern B에 섞지 않는다 |
+| 향후 Pattern D (구상 단계) | 펀더멘털·기업가치 | 기업가치 평가와 OpenDART 재무를 Pattern B에 섞지 않는다 |
 
 다음 내용은 Pattern B 정의에 포함하지 않는다.
 
-- 기업가치 판단(Valuation)과 OpenDART Fundamentals
+- 기업가치 판단(Valuation)과 OpenDART 재무(Fundamentals)
 - 외국인·기관 수급
 - 시장·업종 상대강도(Relative Strength)
 - Pattern A / A FAST의 상승 전환 구조
@@ -51,26 +51,26 @@ Pattern B의 “싸다”는 **자기 과거 가격 상태 대비 극단적으�
 - **주봉**: 월봉 상태의 극단성과 현재 가격 위치를 보조로 확인
 - **일봉**: 초기 정의에서 제외한다. 진입 타이밍 역할도 두지 않는다.
 
-## Feature 후보
+## 지표 후보
 
 아래 항목은 **연구 후보**다. V01 산식과 PIT 계약은
-[Feature 계약 V01](feature_contract_v01.md)에서 정했다. 가중치, 컷오프, 임계값은
+[지표 계약 V01](feature_contract_v01.md)에서 정했다. 가중치, 컷오프, 임계값은
 정하지 않았고 적합성도 아직 검토하지 않았다.
 
 | 시간축 | 후보 | 관찰하려는 개념 |
 |---|---|---|
-| 월봉 | 36M Range Position | 최근 36개월 가격 범위 안에서 현재 위치 |
-| 월봉 | Monthly MA24 Distance | 월봉 24개월 이동평균과의 이격 |
-| 월봉 | 12M Return Historical Percentile | 12개월 수익률이 자기 역사에서 차지하는 백분위 |
-| 월봉 | 36M High Drawdown | 36개월 고점 대비 하락 폭 |
-| 주봉 | 52W Range Position | 최근 52주 가격 범위 안에서 현재 위치 |
-| 주봉 | Weekly MA40 Distance | 주봉 40주 이동평균과의 이격 |
-| 주봉 | 26W Return Historical Percentile | 26주 수익률이 자기 역사에서 차지하는 백분위 |
+| 월봉 | 36개월 범위 위치 (`36M_RANGE_POSITION`) | 최근 36개월 가격 범위 안에서 현재 위치 |
+| 월봉 | 월봉 24개월 이동평균 이격 (`MONTHLY_MA24_DISTANCE`) | 월봉 24개월 이동평균과의 이격 |
+| 월봉 | 12개월 수익률 과거 백분위 (`12M_RETURN_HISTORICAL_PERCENTILE`) | 12개월 수익률이 자기 역사에서 차지하는 백분위 |
+| 월봉 | 36개월 고점 대비 하락 폭 (`36M_HIGH_DRAWDOWN`) | 36개월 고점 대비 하락 폭 |
+| 주봉 | 52주 범위 위치 (`52W_RANGE_POSITION`) | 최근 52주 가격 범위 안에서 현재 위치 |
+| 주봉 | 주봉 40주 이동평균 이격 (`WEEKLY_MA40_DISTANCE`) | 주봉 40주 이동평균과의 이격 |
+| 주봉 | 26주 수익률 과거 백분위 (`26W_RETURN_HISTORICAL_PERCENTILE`) | 26주 수익률이 자기 역사에서 차지하는 백분위 |
 
-Historical Percentile 후보를 향후 산식화할 경우, 분포는 평가 시점까지 이용
+과거 백분위 후보를 향후 산식화할 경우, 분포는 평가 시점까지 이용
 가능한 과거 관측치만으로 계산한다. 평가 시점 이후의 미래 관측치는 분포 계산에
 포함하지 않는다(PIT 원칙). V01의 분포 기간, 최소 표본 수, 계산 방식은
-[Feature 계약 V01](feature_contract_v01.md)을 따른다.
+[지표 계약 V01](feature_contract_v01.md)을 따른다.
 
 RSI 등 다른 지표는 초기 범위에 넣지 않는다.
 
@@ -93,8 +93,8 @@ RSI 등 다른 지표는 초기 범위에 넣지 않는다.
 Pattern B는 망하는 회사를 가려내는 패턴이 아니다. 가격이 침체되었는지
 과열되었는지만 판단한다.
 
-Value Trap이나 구조 붕괴 위험은 필요할 경우 향후 별도의 적격성·위험 판단 층
-(Eligibility / Risk Layer)에서 검토할 수 있다. 검토 후보는 다음과 같다.
+가치 함정(Value Trap)이나 구조 붕괴 위험은 필요할 경우 향후 별도의 적격성·위험
+판단 층(Eligibility / Risk Layer)에서 검토할 수 있다. 검토 후보는 다음과 같다.
 
 - 극단적 저시가총액
 - 극단적 유동성 부족
@@ -107,10 +107,10 @@ Value Trap이나 구조 붕괴 위험은 필요할 경우 향후 별도의 적�
 
 ## 미확정 항목
 
-- Feature 산식, 가중치, 컷오프, 임계값
+- 지표 산식, 가중치, 컷오프, 임계값
 - 상태 판정 기준과 월봉·주봉 결합 방식
 - 적격성·위험 판단 층의 존재 여부와 기준
 - Pattern B를 이용하는 전략 규칙과 백테스트
 
 다음 단계는 실제 월봉·주봉 차트 표본으로 침체·과열 상태의 사람 판정 기준
-(Human Ground Truth)을 설계하고, Feature 후보의 적합성을 검토하는 것이다.
+(Human Ground Truth)을 설계하고, 지표 후보의 적합성을 검토하는 것이다.
