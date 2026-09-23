@@ -140,3 +140,69 @@ def test_selection_path_does_not_reference_feature_modules():
     for token in ("pattern_b_features", "trend_scanner.patterns", "human_ground_truth_labels",
                   "feature_raw_values"):
         assert token not in source
+
+
+def _good_summary() -> dict:
+    return json.loads(json.dumps(hold.EXPECTED_SUMMARY))
+
+
+def test_verification_summary_passes_when_all_expected():
+    hold.assert_verification_summary(_good_summary())
+
+
+@pytest.mark.parametrize(
+    "key, bad",
+    [
+        ("sample_count", 35), ("unique_tickers", 35),
+        ("per_anchor", {"2020": 8, "2022": 9, "2024": 9, "2026": 10}),
+        ("v01_ticker_overlap", 1), ("sample_ids_exact", False),
+        ("monthly_bar_counts", [83, 84]), ("weekly_bar_counts", [155]),
+        ("daily_after_as_of", 1), ("bars_after_as_of", 1), ("samples_with_trailing_halt", 1),
+        ("png_count", 35), ("png_sizes", [[1600, 1200], [1599, 1200]]), ("png_metadata_leaks", 1),
+        ("zip_entries", 37), ("zip_name_leaks", 1), ("zip_non_png_entries", 1), ("seal_leaks", 1),
+    ],
+)
+def test_verification_summary_fails_closed(key, bad):
+    summary = _good_summary()
+    summary[key] = bad
+    with pytest.raises(SystemExit, match="CHECK_REQUIRED"):
+        hold.assert_verification_summary(summary)
+
+
+def test_seal_is_written_only_after_verification_passes(tmp_path):
+    seal_path = tmp_path / "seal.json"
+    seal = {"chart_pack_sha256": "a" * 64, "private_manifest_sha256": "b" * 64}
+    bad = _good_summary()
+    bad["png_count"] = 0
+    with pytest.raises(SystemExit):
+        hold.finalize_seal(seal_path, seal, bad)
+    assert not seal_path.exists()
+    hold.finalize_seal(seal_path, seal, _good_summary())
+    assert json.loads(seal_path.read_text(encoding="utf-8")) == seal
+    changed = {**seal, "chart_pack_sha256": "c" * 64}
+    with pytest.raises(SystemExit, match="sealed hashes changed"):
+        hold.finalize_seal(seal_path, changed, _good_summary())
+    assert json.loads(seal_path.read_text(encoding="utf-8")) == seal
+
+
+def test_existing_manifest_must_match_exactly(tmp_path):
+    manifest = tmp_path / "private_manifest.csv"
+    row = {field: "x" for field in hold.MANIFEST_FIELDS}
+    assert hold.ensure_manifest(manifest, [row]) is False
+    before = manifest.read_bytes()
+    assert hold.ensure_manifest(manifest, [row]) is True
+    with pytest.raises(SystemExit, match="CHECK_REQUIRED"):
+        hold.ensure_manifest(manifest, [{**row, "stock_name": "y"}])
+    assert manifest.read_bytes() == before
+
+
+def test_stock_name_is_point_in_time():
+    metadata = pd.DataFrame({
+        "ticker": ["900001", "900001", "900002"],
+        "name": ["OLD", "FUTURE", "LATER_ONLY"],
+        "effective_date": ["2019-01-02", "2023-01-02", "2025-01-02"],
+    })
+    samples = [{"ticker": "900001", "as_of": "2020-06-30"}, {"ticker": "900002", "as_of": "2020-06-30"}]
+    hold.stock_names(metadata, samples)
+    assert samples[0]["stock_name"] == "OLD"
+    assert samples[1]["stock_name"] == ""

@@ -195,9 +195,9 @@ def stock_names(metadata: pd.DataFrame, samples: list[dict]) -> None:
     for sample in samples:
         rows = metadata[metadata["ticker"] == sample["ticker"]].copy()
         rows["effective_date"] = pd.to_datetime(rows["effective_date"], errors="coerce")
-        valid = rows[rows["effective_date"] <= pd.Timestamp(sample["as_of"])]
-        chosen = (valid if not valid.empty else rows).sort_values("effective_date")
-        sample["stock_name"] = str(chosen["name"].iloc[-1]) if not chosen.empty else ""
+        # PIT only: never borrow a name whose metadata starts after as_of.
+        valid = rows[rows["effective_date"] <= pd.Timestamp(sample["as_of"])].sort_values("effective_date")
+        sample["stock_name"] = str(valid["name"].iloc[-1]) if not valid.empty else ""
 
 
 def assign_sample_ids(samples: list[dict], manifest_path: Path) -> None:
@@ -272,6 +272,63 @@ def verify_pack(out_dir: Path, samples: list[dict], anchors, calendar: pd.Dateti
     }
 
 
+EXPECTED_SUMMARY = {
+    "sample_count": 36,
+    "unique_tickers": 36,
+    "per_anchor": {str(y): SAMPLES_PER_ANCHOR for y in ANCHOR_YEARS},
+    "v01_ticker_overlap": 0,
+    "sample_ids_exact": True,
+    "monthly_bar_counts": [84],
+    "weekly_bar_counts": [156],
+    "daily_after_as_of": 0,
+    "bars_after_as_of": 0,
+    "samples_with_trailing_halt": 0,
+    "png_count": 36,
+    "png_sizes": [[1600, 1200]],
+    "png_metadata_leaks": 0,
+    "zip_entries": 36,
+    "zip_name_leaks": 0,
+    "zip_non_png_entries": 0,
+    "seal_leaks": 0,
+}
+SEAL_FROZEN_KEYS = ("chart_pack_sha256", "private_manifest_sha256")
+
+
+def assert_verification_summary(summary: dict) -> None:
+    """Fail closed: every expected aggregate must match exactly."""
+    mismatched = sorted(k for k, v in EXPECTED_SUMMARY.items() if summary.get(k) != v)
+    if mismatched:
+        raise SystemExit(f"CHECK_REQUIRED: verification failed: {mismatched}")
+
+
+def finalize_seal(seal_path: Path, seal: dict, summary: dict) -> None:
+    """Write the public seal only after verification passes and frozen hashes still match."""
+    assert_verification_summary(summary)
+    if seal_path.exists():
+        existing = json.loads(seal_path.read_text(encoding="utf-8"))
+        changed = [k for k in SEAL_FROZEN_KEYS if existing.get(k) != seal.get(k)]
+        if changed:
+            raise SystemExit(f"CHECK_REQUIRED: sealed hashes changed: {changed}")
+    seal_path.write_text(json.dumps(seal, indent=2) + "\n", encoding="utf-8")
+
+
+def ensure_manifest(manifest_path: Path, rows: list[dict]) -> bool:
+    """Write a new manifest, or require the existing one to match exactly. Returns reused."""
+    expected = [{k: str(v) for k, v in row.items()} for row in rows]
+    if manifest_path.exists():
+        with manifest_path.open(encoding="utf-8-sig") as fh:
+            stored = list(csv.DictReader(fh))
+        if stored != expected:
+            raise SystemExit("CHECK_REQUIRED: private manifest content differs; not overwritten")
+        return True
+    with manifest_path.open("w", encoding="utf-8-sig", newline="") as fh:
+        writer = csv.DictWriter(fh, fieldnames=MANIFEST_FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+    os.chmod(manifest_path, 0o600)
+    return False
+
+
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -313,11 +370,6 @@ def main() -> None:
     samples.sort(key=lambda s: s["sample_id"])
     forbidden = forbidden_pattern(samples)
 
-    for sample in samples:
-        v01.render_sample(sample, blind_dir / f"{sample['sample_id']}.png", forbidden)
-    for path in blind_dir.iterdir():
-        os.utime(path, (0, 0))
-
     rows = [{
         "sample_id": s["sample_id"], "ticker": s["ticker"], "stock_name": s["stock_name"],
         "anchor_year": s["anchor_year"], "as_of": s["as_of"],
@@ -327,19 +379,12 @@ def main() -> None:
         "weekly_last_date": s["weekly"].index[-1].date().isoformat(),
         "selection_rank": s["selection_rank"], "skip_count_before_accept": s["skip_count_before_accept"],
     } for s in samples]
-    manifest_exists = manifest_path.exists()
-    with manifest_path.open("w", encoding="utf-8-sig", newline="") as fh:
-        writer = csv.DictWriter(fh, fieldnames=MANIFEST_FIELDS)
-        writer.writeheader()
-        writer.writerows(rows)
-    os.chmod(manifest_path, 0o600)
-    _private_write(private_dir / "selection_audit.json", json.dumps({
-        "anchors": {str(y): a.date().isoformat() for y, a in anchors},
-        "per_anchor": audit,
-        "halt_slots": {s["sample_id"]: s["halt_slots"] for s in samples},
-        "manifest_reused": manifest_exists,
-    }, ensure_ascii=False, indent=2))
+    manifest_reused = ensure_manifest(manifest_path, rows)
 
+    for sample in samples:
+        v01.render_sample(sample, blind_dir / f"{sample['sample_id']}.png", forbidden)
+    for path in blind_dir.iterdir():
+        os.utime(path, (0, 0))
     zip_path = args.out_dir / ZIP_NAME
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         for sample in samples:
@@ -363,11 +408,15 @@ def main() -> None:
         "private_manifest_sha256": _sha256(manifest_path),
     }
     seal_text = json.dumps(seal, indent=2) + "\n"
-    if forbidden.search(seal_text):
-        raise SystemExit("CHECK_REQUIRED: identifying text in public seal")
-    args.seal.write_text(seal_text, encoding="utf-8")
     summary = verify_pack(args.out_dir, samples, anchors, calendar, forbidden, seal_text)
     _private_write(private_dir / "verification_summary.json", json.dumps(summary, indent=2))
+    finalize_seal(args.seal, seal, summary)
+    _private_write(private_dir / "selection_audit.json", json.dumps({
+        "anchors": {str(y): a.date().isoformat() for y, a in anchors},
+        "per_anchor": audit,
+        "halt_slots": {s["sample_id"]: s["halt_slots"] for s in samples},
+        "manifest_reused": manifest_reused,
+    }, ensure_ascii=False, indent=2))
     print(json.dumps({"seal": seal, "verification": summary,
                       "anchors": [a.date().isoformat() for _, a in anchors]}, indent=2))
 
