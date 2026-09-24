@@ -24,16 +24,14 @@ Pattern B 자체의 버전 번호는 없다. 현재 기준은 "Pattern B, 현재
 |---|---|
 | 개념·경계·상태 의미 | [Pattern B 개념 기준](README.md) |
 | 지표 산식·PIT·계산 불가 처리 | [지표 계약 V01](feature_contract_v01.md) |
-| 유지 지표 선택 | [지표 선택 V01](../validation/feature_selection_v01.md) |
 | 상태 판정 규칙·임계값 | [상태 판정 규칙 V02](../validation/state_rule_v02.md), [봉인 파일](../validation/state_rule_v02_seal.json) |
-| 종목 구간 규칙 | [별도 검증 표본 V02 절차](../validation/holdout_v02_protocol.md) 선정 방법, [원시 지표값 V02](../validation/feature_raw_values_v02.md) 계산 조건 |
-| 검증 전략 | [규칙 V02 검증 전략 V01](../validation/state_rule_v02_validation_strategy_v01.md) |
-| 운영 호출 계약 | [운영 계약 V02](production_contract_v02.md) (시장 이전 이력 연속성, 가격 신선도). [V01](production_contract_v01.md)은 이전 기록 |
+| 운영 계약 | [운영 계약 V02](production_contract_v02.md) |
+| 운영 검증 | [전체 종목 운영 감사 V02](../validation/full_universe_operational_audit_v02.md) |
+| 채택 근거 | [공식 패턴 채택 판단 V01](../validation/adoption_decision_v01.md) |
 
 종목 구간 규칙: 기준일을 포함하는 PIT COMMON 종목 구간 안에서만 조정 가격을 읽고, 다른 종목
-구간과 이어 붙이지 않는다. 규칙 V02의 근거 자료는 모두 이 규칙으로 계산했다. 운영에서는
-[운영 계약 V02](production_contract_v02.md)에 따라 같은 `isu_cd`의 연속된 KOSPI ↔ KOSDAQ 시장
-이전 구간만 예외로 연결한다.
+구간과 이어 붙이지 않는다. 같은 `isu_cd`의 연속된 KOSPI ↔ KOSDAQ 시장 이전 구간만 예외로
+연결한다. 상세는 [운영 계약 V02](production_contract_v02.md)를 따른다.
 
 ## 3. 구현 위치
 
@@ -72,12 +70,11 @@ Pattern B 자체의 버전 번호는 없다. 현재 기준은 "Pattern B, 현재
 - [전체 종목 운영 감사 V02](../validation/full_universe_operational_audit_v02.md)(2026-09-21, `PASS`)에서
   2,544종목의 가격 로딩, 종목 구간, 시장 이전 연결(19종목), 신선도(`STALE` 97종목), 평가를 한 번
   점검했다. 계산 불가는 267종목이었다. 한 기준일의 결과이며, 일일 갱신 운영을 검증한 것은 아니다.
-  [감사 V01](../validation/full_universe_operational_audit_v01.md)은 이전 기록이다.
 - 수년 공백 뒤 재상장 등 연속되지 않은 이전 구간은 연결하지 않으므로, 이런 종목은 현재 구간 이력만
   쓴다.
 
 ## 6. 연구 기록과의 구분
 
-[Pattern B 안내](../README.md)에 연결된 사람 판정, 표본, 지표 진단·선택, 규칙 V01, 별도 검증
-표본 V02 평가·사후진단, 규칙 V02 연구 문서는 연구 기록이다. 당시 상태 표현("다음 단계",
-"별도 검증 표본 V03" 등)은 현재 상태가 아니다. 현재 기준은 이 문서와 2절의 문서다.
+과거 사람 판정·표본·지표 선택·규칙 V01·별도 검증 표본(Holdout)·규칙 V02 연구 과정과 이전 운영
+계약·감사는 `validation/`과 `spec/`에 역사 기록으로 보존한다. 현재 권위는 이 문서 2절의 "현재
+기준 문서" 표를 따른다.
