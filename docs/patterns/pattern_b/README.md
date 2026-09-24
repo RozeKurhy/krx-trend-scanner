@@ -29,9 +29,11 @@ Pattern B의 “싸다”는 기업가치 대비 싸다는 뜻이 아니라, 자
 
 - [Pattern B 공식 규격](spec/production_authority.md) — 현재 기준 문서, 구현 위치, 알려진 한계를
   모은 권위 문서
-- [운영 계약 V01](spec/production_contract_v01.md) — 운영 코드 호출 입력, 평가 상태, 결과 필드
-- [전체 종목 운영 감사 V01](validation/full_universe_operational_audit_v01.md) — 2026-09-21 기준 전체
-  PIT COMMON 종목 1회 적용 점검 (`PASS`)
+- [운영 계약 V02](spec/production_contract_v02.md) — 현재 운영 계약. V01에 시장 이전 이력 연속성과
+  가격 신선도(`CURRENT`·`STALE`)를 더함. [V01](spec/production_contract_v01.md)은 이전 기록
+- [전체 종목 운영 감사 V02](validation/full_universe_operational_audit_v02.md) — 운영 계약 V02로
+  2026-09-21 기준 전체 PIT COMMON 종목 1회 적용 점검 (`PASS`).
+  [V01](validation/full_universe_operational_audit_v01.md)은 이전 기록
 - [Pattern B 개념 기준](spec/README.md) — 목적, 다른 영역과의 경계, 시간축 역할,
   지표 후보, 상태 후보, 구조 붕괴 위험과의 경계
 - [지표 계약 V01](spec/feature_contract_v01.md) — 7개 지표의 산식과 PIT 계약
