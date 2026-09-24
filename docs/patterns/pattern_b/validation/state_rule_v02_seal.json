@@ -1,0 +1,75 @@
+{
+  "version": "PATTERN_B_STATE_RULE_V02",
+  "source_base": "0bbdb8dfcab2e260f65c7c51b3f1f24a52c2d04e",
+  "research_candidate": "A1/B0",
+  "feature_names": [
+    "36M_RANGE_POSITION",
+    "MONTHLY_MA24_DISTANCE",
+    "52W_RANGE_POSITION"
+  ],
+  "thresholds": {
+    "36M_RANGE_POSITION": [
+      0.05,
+      0.25,
+      0.55,
+      0.8
+    ],
+    "MONTHLY_MA24_DISTANCE": [
+      -0.35,
+      -0.1,
+      0.15,
+      0.5
+    ],
+    "52W_RANGE_POSITION": [
+      0.15,
+      0.25,
+      0.7,
+      0.8
+    ]
+  },
+  "threshold_semantics": "band = count of thresholds with value >= threshold (lower bound inclusive)",
+  "rule_description": "State Rule V01 (family C) with one change: if the 36M band is DEEP_DEPRESSED and the MA24 band is DEEP_DEPRESSED or DEPRESSED, the state is DEEP_DEPRESSED. All other logic and thresholds equal V01.",
+  "performance_scope": "DEVELOPMENT_SET_ONLY_NOT_HOLDOUT",
+  "development_metrics": {
+    "sample_count": 36,
+    "exact": 22,
+    "within_1": 35,
+    "ordinal_mae": 0.4167,
+    "errors_ge_2": 1,
+    "errors_ge_3": 0,
+    "deep_depressed_exact": 9,
+    "deep_depressed_count": 11,
+    "changed_predictions_vs_v01": [
+      "PBDEV2_005",
+      "PBDEV2_011",
+      "PBDEV2_024",
+      "PBDEV2_025",
+      "PBDEV2_026",
+      "PBDEV2_030",
+      "PBDEV2_033"
+    ]
+  },
+  "research_source_sha256": {
+    "docs/patterns/pattern_b/validation/state_rule_v02_research_v01.json": "29bf52a7660999adc01d607af146a463775f6730fc52861120432c13213770b9",
+    "docs/patterns/pattern_b/validation/state_rule_v02_research_v01.md": "f0e5a14e0a25025e4610990577ffcbb5c586a84033f09393cca227e51f6e9cac",
+    "scripts/research_pattern_b_state_rule_v02_v01.py": "f550811ccd5eff113782ec72c82a9c6e522077bbe3dc969dec6672b84d638de0"
+  },
+  "implementation_sha256": "72adacfacde1529bde7ffc1cd748cee3b6e934565873a9f8d9c998e9aa03b37e",
+  "record_sha256": "a0a5a290f99a288cf722ae285431c923faff3fef38db2ffb05243ef739148bc2",
+  "protected_input_sha256": {
+    "docs/patterns/pattern_b/validation/development_v02_human_labels.csv": "c5dd216ffa793c0b00b28a09d13b598b80fb87a15454cea1a8b704eb4c9d9e2d",
+    "docs/patterns/pattern_b/validation/development_v02_human_labels_seal.json": "a8820b08d29685e1f3a72f66f052d514d27f3e01df955a8339f2a0f0eb2bf57f",
+    "docs/patterns/pattern_b/validation/development_v02_feature_raw_values_v01.csv": "d2d9eebc378fc559b7ca7ec2583c00217cac11154307f650d843117aaa82225e",
+    "docs/patterns/pattern_b/validation/human_ground_truth_criteria_v02.md": "3944a1316d4ecf92f855dfac83ec6fb5b9513750caa9875b61fc8801795d5233",
+    "docs/patterns/pattern_b/validation/human_ground_truth_criteria_v02_seal.json": "e4ffac7a0345a821cc4658b837f76f68d184e7966d0863fe8b32d4c84b9ea9f6",
+    "src/trend_scanner/patterns/pattern_b_state_v01.py": "a69280eb02b7c0aa434a14d126aaf9063f58ab5a603d887b1f73cdc9122e3d46",
+    "docs/patterns/pattern_b/validation/state_rule_v01_seal.json": "a91eaaceea94ad610a6c2be86f1581e35bb61c32765b7e627b680c3eb4a35af9",
+    "docs/patterns/pattern_b/validation/state_rule_v01_predictions.csv": "7188b00b820b4cf2464693a74c17336ec10c651645956bfee445534653468ae8",
+    "docs/patterns/pattern_b/validation/holdout_v02_seal.json": "f1bf7135042c8de8af14ed18739ef104c7b68a9e388931cc8edcb1bdd0eaf9d5",
+    "docs/patterns/pattern_b/validation/human_ground_truth_labels_v02.csv": "cbbc8785e20d03e4937317d9de11f79529ad4d8abea23763a490763c3e23e5c8",
+    "docs/patterns/pattern_b/validation/human_ground_truth_v02_seal.json": "c8cca92dbd5392e4bd9605b68bfc0caa50ca31bf99c30ad6a02602b0eeda10c9",
+    "docs/patterns/pattern_b/validation/state_rule_v01_holdout_v02_evaluation_seal.json": "f39d5360ab886bd7e9712736e4a5c424b1d59b79862cbc0328e453df3c20b76d",
+    "docs/patterns/pattern_b/validation/state_rule_v01_holdout_v02_predictions.csv": "86163eaad28916e0c53ddb111d570b97147f4ff9e6c4689975236e76c6ad81a4",
+    "docs/patterns/pattern_b/validation/holdout_v02_posthoc_adjudication_v01_seal.json": "044b8f8cea4deffb75d6bf119e0303ec898e040c8e1d5fadb8ad8404cc6311f2"
+  }
+}
