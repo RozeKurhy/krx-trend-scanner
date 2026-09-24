@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import hashlib
 import json
 from pathlib import Path
@@ -29,30 +29,89 @@ import pandas as pd
 
 from trend_scanner.backtest.standard_windows import resolve_standard_backtest_window
 from trend_scanner.data.adjusted_price_authority_cutover import load_effective_authority
+from trend_scanner.data.krx_historical_instrument_acquisition import load_historical_trading_calendar
 from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
 from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2
 from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
+from trend_scanner.universe.survivorship_safe_denominator_freeze import pit_denominator_manifest_sha256
 from trend_scanner.validation import pattern_a_fast_core_v02_reentry as v2
 
 
 ROOT = Path(__file__).resolve().parents[1]
 AUTHORITY_DIR = ROOT / "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01_spac_corrected_effective_authority"
+P2_2_AUTHORITY_EXTENSION_DIR = ROOT / "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/p2_2_identity_authority_extension_v01"
+HISTORICAL_IDENTITY_CALENDAR_PATH = ROOT / "data/reference/source/history/krx_instrument_master/v01/historical_trading_calendar.json"
 SCORE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json"
 STAGE_CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json"
 RAW_CANDIDATE_PATH = ROOT / "artifacts/backtests/fastcore_fundamentals_simple_v01/raw_candidates/fastcore_raw_candidates.csv"
-RUN_ID = "run_20260923"
-RUN_DIR = ROOT / "artifacts/backtests/p2_1_neg40_weak_protect_v01" / RUN_ID
+P2_1_RUN_ID = "run_20260923"
+P2_1_RUN_DIR = ROOT / "artifacts/backtests/p2_1_neg40_weak_protect_v01" / P2_1_RUN_ID
+P2_1_CORRECTED_RUN_DIR = P2_1_RUN_DIR / "candidate_replay_20260923_fix02"
+P2_1_LEDGER_SUMMARY_PATH = P2_1_CORRECTED_RUN_DIR / "p2_1_summary.json"
+LIFECYCLE_SETTLEMENT_EVIDENCE_PATH = (
+    ROOT / "docs/strategies/p2_2_lifecycle_settlement_evidence_v01.json"
+)
+WINDOW_ID = "P2-1"
+RUN_ID = P2_1_RUN_ID
+RUN_DIR = P2_1_RUN_DIR
 SAMPLE_PATH = RUN_DIR / "sample_benchmark.json"
 CONTROL_FULL_PATH = RUN_DIR / "control_trades.csv"
 INITIAL_FULL_SUMMARY_PATH = RUN_DIR / "summary.json"
-CORRECTED_RUN_DIR = RUN_DIR / "candidate_replay_20260923_fix02"
+CORRECTED_RUN_DIR = P2_1_CORRECTED_RUN_DIR
 MATCHED_LEDGER_PATH = CORRECTED_RUN_DIR / "p2_1_matched_trades.csv"
 SOFT_EVENTS_PATH = CORRECTED_RUN_DIR / "p2_1_soft_events.csv"
-LEDGER_SUMMARY_PATH = CORRECTED_RUN_DIR / "p2_1_summary.json"
+LEDGER_SUMMARY_PATH = P2_1_LEDGER_SUMMARY_PATH
 MAX_FULL_ESTIMATE_SECONDS = 90 * 60
 DEFAULT_WORKERS = 8
 V2_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
 CANDIDATE_STRATEGY_ID = "PATTERN_A_FAST_CORE_V2_NEG40_WEAK_PROTECT_SOFT_EXIT_V01"
+
+
+def _configure_run(window_id: str, run_id_override: str | None = None) -> None:
+    """Select a standard-window output namespace before starting a run."""
+    global WINDOW_ID, RUN_ID, RUN_DIR, SAMPLE_PATH, CONTROL_FULL_PATH
+    global INITIAL_FULL_SUMMARY_PATH, CORRECTED_RUN_DIR, MATCHED_LEDGER_PATH
+    global SOFT_EVENTS_PATH, LEDGER_SUMMARY_PATH
+
+    if window_id == "P2-1":
+        run_id = P2_1_RUN_ID
+        run_dir = P2_1_RUN_DIR
+        corrected_dir = P2_1_CORRECTED_RUN_DIR
+        ledger_name = "p2_1_matched_trades.csv"
+        events_name = "p2_1_soft_events.csv"
+        ledger_summary_name = "p2_1_summary.json"
+    elif window_id == "P2-2":
+        run_id = "run_20260923" if run_id_override is None else run_id_override
+        if (
+            not run_id.startswith("run_")
+            or not all(char.isascii() and (char.isalnum() or char in "_-") for char in run_id)
+        ):
+            raise ValueError("P2-2 run id must start with 'run_' and contain only ASCII letters, digits, '_' or '-'")
+        run_dir = ROOT / "artifacts/backtests/p2_2_neg40_weak_protect_v01" / run_id
+        corrected_dir = run_dir
+        ledger_name = "p2_2_matched_trades.csv"
+        events_name = "p2_2_soft_events.csv"
+        ledger_summary_name = "p2_2_summary.json"
+    else:
+        raise ValueError(f"unsupported matched A/B window: {window_id}")
+
+    if run_id_override is not None and window_id != "P2-2":
+        raise ValueError("--run-id override is supported only for P2-2")
+
+    WINDOW_ID = window_id
+    RUN_ID = run_id
+    RUN_DIR = run_dir
+    SAMPLE_PATH = run_dir / (
+        "sample_benchmark_p2_2_pit_extension_v01.json"
+        if window_id == "P2-2"
+        else "sample_benchmark.json"
+    )
+    CONTROL_FULL_PATH = run_dir / "control_trades.csv"
+    INITIAL_FULL_SUMMARY_PATH = run_dir / "summary.json"
+    CORRECTED_RUN_DIR = corrected_dir
+    MATCHED_LEDGER_PATH = corrected_dir / ledger_name
+    SOFT_EVENTS_PATH = corrected_dir / events_name
+    LEDGER_SUMMARY_PATH = corrected_dir / ledger_summary_name
 
 
 @dataclass(frozen=True)
@@ -85,6 +144,9 @@ class RunContext:
     score_contract: dict[str, Any]
     stage_contract: dict[str, Any]
     loader: RepositoryV2DailyLoader
+    lifecycle_settlements: tuple[dict[str, Any], ...]
+    authority_coverage_start: str
+    authority_coverage_end: str
     setup_seconds: float
 
 
@@ -92,23 +154,221 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _load_context() -> RunContext:
+def _load_lifecycle_settlement_evidence(path: Path) -> tuple[dict[str, Any], ...]:
+    """Load only confirmed, provenance-backed cash settlement evidence."""
+    if not path.is_file():
+        raise RuntimeError(f"lifecycle settlement evidence missing: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("schema") != "lifecycle_settlement_evidence_v01":
+        raise RuntimeError("lifecycle settlement evidence schema mismatch")
+    records = payload.get("records")
+    if not isinstance(records, list):
+        raise RuntimeError("lifecycle settlement evidence records must be a list")
+
+    required = {
+        "evidence_id",
+        "evidence_status",
+        "ticker",
+        "isu_cd",
+        "market",
+        "identity_effective_from",
+        "identity_effective_to",
+        "settlement_date",
+        "settlement_price",
+        "settlement_type",
+        "terminal_reason",
+        "settlement_source",
+        "source_authority",
+        "source_document_id",
+        "source_published_date",
+    }
+    identity_keys: set[tuple[str, ...]] = set()
+    evidence_ids: set[str] = set()
+    accepted: list[dict[str, Any]] = []
+    for record in records:
+        if not isinstance(record, dict) or not required.issubset(record):
+            raise RuntimeError("lifecycle settlement evidence record is missing required fields")
+        if record["evidence_status"] != "CONFIRMED" or record["source_authority"] != "KRX_KIND":
+            raise RuntimeError("lifecycle settlement evidence is not confirmed KRX KIND evidence")
+        if record["settlement_type"] != "CASH_PER_SHARE" or not record["terminal_reason"]:
+            raise RuntimeError("unsupported lifecycle settlement contract in evidence")
+        source = str(record["settlement_source"])
+        if not source.startswith("https://kind.krx.co.kr/"):
+            raise RuntimeError("lifecycle settlement provenance must point to official KRX KIND")
+        price = float(record["settlement_price"])
+        if not np.isfinite(price) or price <= 0:
+            raise RuntimeError("lifecycle settlement price must be finite and positive")
+        try:
+            effective_from = pd.Timestamp(record["identity_effective_from"]).normalize()
+            effective_to = pd.Timestamp(record["identity_effective_to"]).normalize()
+            settlement_date = pd.Timestamp(record["settlement_date"]).normalize()
+            pd.Timestamp(record["source_published_date"]).normalize()
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError("lifecycle settlement evidence contains an invalid date") from exc
+        if not effective_from <= settlement_date <= effective_to:
+            raise RuntimeError("lifecycle settlement date is outside its evidenced identity interval")
+        identity_key = (
+            str(record["ticker"]).zfill(6),
+            str(record["isu_cd"]),
+            str(record["market"]),
+            effective_from.strftime("%Y-%m-%d"),
+            effective_to.strftime("%Y-%m-%d"),
+        )
+        evidence_id = str(record["evidence_id"])
+        if identity_key in identity_keys or evidence_id in evidence_ids:
+            raise RuntimeError("duplicate lifecycle settlement identity/evidence id")
+        identity_keys.add(identity_key)
+        evidence_ids.add(evidence_id)
+        accepted.append({**record, "ticker": identity_key[0], "settlement_price": price})
+    return tuple(accepted)
+
+
+def _extension_content_digest(items: Sequence[Any]) -> str:
+    blob = json.dumps(list(items), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def _pit_overlap_projection(
+    intervals: Sequence[Mapping[str, Any]],
+    *,
+    boundary: str,
+) -> list[tuple[str, str, str, str, str, str]]:
+    projected = []
+    for interval in intervals:
+        start = str(interval["effective_from"])
+        if start > boundary:
+            continue
+        end = min(str(interval["effective_to"]), boundary)
+        projected.append(
+            (
+                str(interval["ticker"]),
+                str(interval["isu_cd"]),
+                str(interval["market"]),
+                str(interval.get("state", "COMMON")),
+                start,
+                end,
+            )
+        )
+    return sorted(projected)
+
+
+def _load_p2_2_extended_identity_authority(authority: Any) -> tuple[Any, str, str]:
+    """Load the generated PIT extension without deriving coverage from interval ends."""
+    manifest_path = P2_2_AUTHORITY_EXTENSION_DIR / "p2_2_identity_authority_extension_manifest.json"
+    pit_path = P2_2_AUTHORITY_EXTENSION_DIR / "merged_pit_intervals.json"
+    calendar_path = P2_2_AUTHORITY_EXTENSION_DIR / "merged_trading_calendar.json"
+    if not all(path.is_file() for path in (manifest_path, pit_path, calendar_path)):
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_EXTENSION_ARTIFACT_MISSING")
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    pit_payload = json.loads(pit_path.read_text(encoding="utf-8"))
+    calendar_payload = json.loads(calendar_path.read_text(encoding="utf-8"))
+    if manifest.get("schema") != "p2_2_identity_authority_extension_v01" or manifest.get("status") != "PASS":
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_EXTENSION_MANIFEST_INVALID")
+    if manifest.get("base_effective_pit_file_sha256") != _sha256(authority.pit_path):
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_BASELINE_HASH_MISMATCH")
+    if manifest.get("merged_pit_file_sha256") != _sha256(pit_path):
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_PIT_FILE_HASH_MISMATCH")
+    if manifest.get("merged_calendar_file_sha256") != _sha256(calendar_path):
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_CALENDAR_FILE_HASH_MISMATCH")
+    if pit_payload.get("schema_version") != "MERGED_PIT_V01":
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_PIT_SCHEMA_MISMATCH")
+    if calendar_payload.get("schema_version") != "MERGED_CALENDAR_V01":
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_CALENDAR_SCHEMA_MISMATCH")
+
+    intervals = tuple(pit_payload.get("intervals", ()))
+    dates = tuple(str(day) for day in calendar_payload.get("trading_dates", ()))
+    if pit_payload.get("content_digest") != _extension_content_digest(intervals):
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_PIT_CONTENT_DIGEST_MISMATCH")
+    if calendar_payload.get("content_digest") != _extension_content_digest(dates):
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_CALENDAR_CONTENT_DIGEST_MISMATCH")
+
+    coverage_start = str(manifest.get("coverage_start", ""))
+    coverage_end = str(calendar_payload.get("calendar_frontier", ""))
+    if not coverage_start or not coverage_end or coverage_start > coverage_end:
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_GLOBAL_COVERAGE_INVALID")
+    if pit_payload.get("pit_frontier") != manifest.get("pit_frontier"):
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_PIT_FRONTIER_MISMATCH")
+    if coverage_end != manifest.get("coverage_end"):
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_CALENDAR_FRONTIER_MISMATCH")
+    if manifest.get("requested_effective_end") != "2026-08-31":
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_WINDOW_CUTOFF_MISMATCH")
+    if manifest.get("execution_support") != "2026-09-01" or coverage_end < "2026-09-01":
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_EXECUTION_SUPPORT_MISMATCH")
+
+    historical = load_historical_trading_calendar(HISTORICAL_IDENTITY_CALENDAR_PATH)
+    old_boundary = historical["last_trading_date"]
+    expected_dates = tuple(day for day in dates if day > old_boundary)
+    if expected_dates != tuple(manifest.get("extension_dates", ())):
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_EXTENSION_DATE_SET_MISMATCH")
+    if not dates or dates[0] != historical["first_trading_date"]:
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_COVERAGE_START_MISMATCH")
+    if coverage_start != dates[0]:
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_GLOBAL_COVERAGE_START_MISMATCH")
+    if coverage_end != dates[-1] or coverage_end != "2026-09-01":
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_GLOBAL_FRONTIER_INVALID")
+
+    if _pit_overlap_projection(authority.pit_intervals, boundary=old_boundary) != _pit_overlap_projection(
+        intervals, boundary=old_boundary
+    ):
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_HISTORICAL_OVERLAP_CHANGED")
+    identity_keys = [
+        (
+            str(item.get("ticker", "")),
+            str(item.get("isu_cd", "")),
+            str(item.get("market", "")),
+            str(item.get("effective_from", "")),
+            str(item.get("effective_to", "")),
+        )
+        for item in intervals
+    ]
+    if len(identity_keys) != len(set(identity_keys)):
+        raise RuntimeError("P2_2_IDENTITY_AUTHORITY_DUPLICATE_INTERVAL")
+
+    extended_authority = replace(
+        authority,
+        pit_intervals=intervals,
+        pit_path=pit_path,
+        pit_sha256=pit_denominator_manifest_sha256(intervals),
+    )
+    return extended_authority, str(dates[0]), coverage_end
+
+
+def _load_context(window_id: str | None = None) -> RunContext:
     started = time.perf_counter()
     calendar = load_rolling_production_market_calendar(ROOT)
-    window = resolve_standard_backtest_window("P2-1", calendar)
-    expected = (
-        "2021-01-04",
-        "2025-05-30",
-        "2025-06-02",
-    )
+    selected_window = window_id or WINDOW_ID
+    window = resolve_standard_backtest_window(selected_window, calendar)
+    expected_by_window = {
+        "P2-1": ("2021-01-04", "2025-05-30", "2025-06-02"),
+        "P2-2": ("2021-01-04", "2026-08-31", "2026-09-01"),
+    }
+    try:
+        expected = expected_by_window[selected_window]
+    except KeyError as exc:
+        raise ValueError(f"unsupported matched A/B window: {selected_window}") from exc
     actual = tuple(
         value.strftime("%Y-%m-%d")
         for value in (window.effective_start, window.effective_end, window.execution_support)
     )
     if actual != expected:
-        raise RuntimeError(f"P2-1 window contract mismatch: expected={expected}, actual={actual}")
+        raise RuntimeError(
+            f"{selected_window} window contract mismatch: expected={expected}, actual={actual}"
+        )
 
     authority = load_effective_authority(AUTHORITY_DIR)
+    base_calendar = load_historical_trading_calendar(HISTORICAL_IDENTITY_CALENDAR_PATH)
+    authority_coverage_start = str(base_calendar["first_trading_date"])
+    authority_coverage_end = str(base_calendar["last_trading_date"])
+    if selected_window == "P2-2":
+        authority, authority_coverage_start, authority_coverage_end = _load_p2_2_extended_identity_authority(
+            authority
+        )
+        lifecycle_settlements = _load_lifecycle_settlement_evidence(
+            LIFECYCLE_SETTLEMENT_EVIDENCE_PATH
+        )
+    else:
+        lifecycle_settlements = ()
     segments: list[IdentitySegment] = []
     for item in authority.pit_intervals:
         if item.get("state") != "COMMON":
@@ -155,8 +415,45 @@ def _load_context() -> RunContext:
         score_contract=score_contract,
         stage_contract=stage_contract,
         loader=loader,
+        lifecycle_settlements=lifecycle_settlements,
+        authority_coverage_start=authority_coverage_start,
+        authority_coverage_end=authority_coverage_end,
         setup_seconds=time.perf_counter() - started,
     )
+
+
+def _p2_2_identity_authority_preflight(run: RunContext) -> dict[str, Any]:
+    """Require global PIT authority coverage through P2-2's effective cutoff."""
+    if run.window.window.window_id != "P2-2":
+        raise ValueError("P2-2 identity preflight requires a P2-2 RunContext")
+    coverage_start = getattr(run, "authority_coverage_start", None)
+    coverage_end = getattr(run, "authority_coverage_end", None)
+    effective_start = run.window.effective_start.strftime("%Y-%m-%d")
+    effective_end = run.window.effective_end.strftime("%Y-%m-%d")
+    passed = bool(
+        coverage_start
+        and coverage_end
+        and str(coverage_start) <= effective_start
+        and str(coverage_end) >= effective_end
+    )
+    relevant = [
+        segment
+        for rows in run.segments_by_ticker.values()
+        for segment in rows
+        if segment.effective_from <= run.window.effective_end
+        and segment.effective_to >= run.window.effective_start
+    ]
+    return {
+        "status": "PASS" if passed else "CHECK_REQUIRED",
+        "window_id": "P2-2",
+        "effective_start": effective_start,
+        "effective_end": effective_end,
+        "execution_support": run.window.execution_support.strftime("%Y-%m-%d"),
+        "pit_common_authority_global_coverage_start": coverage_start,
+        "pit_common_authority_global_coverage_end": coverage_end,
+        "common_identity_segment_count": len(relevant),
+        "reason": None if passed else "PIT_COMMON_AUTHORITY_GLOBAL_COVERAGE_SHORT_OF_P2_2_CUTOFF",
+    }
 
 
 def _sample_tickers(tickers: Sequence[str], count: int) -> list[str]:
@@ -223,6 +520,11 @@ def _next_local_session(
     return pd.Timestamp(later[0]).normalize() if len(later) else None
 
 
+def _identity_signal_cutoff(segment: IdentitySegment, cutoff: pd.Timestamp) -> pd.Timestamp:
+    """Do not evaluate calendar-period labels beyond this identity's lifetime."""
+    return min(pd.Timestamp(cutoff).normalize(), segment.effective_to)
+
+
 def _pct(price: float, entry_open: float) -> float:
     # Match V2's arithmetic exactly; algebraically equivalent forms can land
     # on opposite sides of a two-decimal binary-float rounding tie.
@@ -267,6 +569,137 @@ def _refresh_outcome_metrics(
     )
 
 
+def _refresh_lifecycle_settlement_metrics(
+    row: dict[str, Any],
+    daily: pd.DataFrame,
+    entry_date: pd.Timestamp,
+    entry_open: float,
+    settlement_date: pd.Timestamp,
+    settlement_price: float,
+) -> None:
+    """Value a position at its cash settlement without inventing an exchange OPEN."""
+    held = daily[(daily.index >= entry_date) & (daily.index <= settlement_date)]
+    highs = held["high"].tolist() if not held.empty else [entry_open]
+    lows = held["low"].tolist() if not held.empty else [entry_open]
+    highs.append(settlement_price)
+    lows.append(settlement_price)
+    terminal = _pct(settlement_price, entry_open)
+    mfe = round((max(highs) / entry_open - 1.0) * 100.0, 2)
+    mae = round((min(lows) / entry_open - 1.0) * 100.0, 2)
+    held_days = int(len(held))
+    row.update(
+        {
+            "terminal_return": terminal,
+            "mfe": mfe,
+            "mae": mae,
+            "peak_giveback": round(mfe - terminal, 2),
+            "profit_capture": round(terminal / mfe, 4) if mfe > 0 else None,
+            "holding_days": held_days,
+            "holding_weeks": round(held_days / 5.0, 1),
+        }
+    )
+
+
+def _apply_lifecycle_settlement(
+    row: Mapping[str, Any],
+    *,
+    segment: IdentitySegment,
+    evidence: Sequence[Mapping[str, Any]],
+    cutoff_date: pd.Timestamp,
+    daily: pd.DataFrame,
+) -> tuple[dict[str, Any], bool]:
+    """Apply one exact-identity confirmed settlement when it precedes cutoff."""
+    settled_row = dict(row)
+    identity = (
+        segment.ticker.zfill(6),
+        segment.isu_cd,
+        segment.market,
+        segment.effective_from.strftime("%Y-%m-%d"),
+        segment.effective_to.strftime("%Y-%m-%d"),
+    )
+    matches = [
+        record
+        for record in evidence
+        if (
+            str(record.get("ticker", "")).zfill(6),
+            str(record.get("isu_cd", "")),
+            str(record.get("market", "")),
+            str(record.get("identity_effective_from", "")),
+            str(record.get("identity_effective_to", "")),
+        ) == identity
+    ]
+    if not matches:
+        return settled_row, False
+    if len(matches) != 1:
+        raise RuntimeError(f"multiple settlement records match one identity: {segment.key}")
+
+    settlement = matches[0]
+    settlement_date = pd.Timestamp(settlement["settlement_date"]).normalize()
+    if settlement_date > pd.Timestamp(cutoff_date).normalize():
+        return settled_row, False
+    entry_date = pd.Timestamp(settled_row["entry_execution_date"]).normalize()
+    if settlement_date < entry_date:
+        raise RuntimeError(
+            f"lifecycle settlement predates trade entry: pair_id={settled_row.get('pair_id')}"
+        )
+    signal_date = settled_row.get("exit_signal_date")
+    if signal_date is not None and not pd.isna(signal_date):
+        if pd.Timestamp(signal_date).normalize() > settlement_date:
+            raise RuntimeError(
+                "signal occurs after evidenced lifecycle settlement: "
+                f"pair_id={settled_row.get('pair_id')} signal={signal_date} "
+                f"settlement={settlement_date:%Y-%m-%d}"
+            )
+
+    status = str(settled_row.get("trade_status") or "")
+    execution_date = settled_row.get("exit_execution_date")
+    if status == "REALIZED":
+        if execution_date is None or pd.isna(execution_date) or not str(execution_date):
+            raise RuntimeError("REALIZED trade has no market execution date before lifecycle settlement")
+        if pd.Timestamp(execution_date).normalize() <= settlement_date:
+            return settled_row, False
+        raise RuntimeError(
+            "market exit execution occurs after lifecycle settlement: "
+            f"pair_id={settled_row.get('pair_id')} execution={execution_date} "
+            f"settlement={settlement_date:%Y-%m-%d}"
+        )
+    if status not in {"OPEN_AT_CUTOFF", "UNEXECUTED_SIGNAL"}:
+        raise RuntimeError(
+            f"unsupported trade state for lifecycle settlement: pair_id={settled_row.get('pair_id')} "
+            f"status={status}"
+        )
+
+    price = float(settlement["settlement_price"])
+    _refresh_lifecycle_settlement_metrics(
+        settled_row,
+        daily,
+        entry_date,
+        float(settled_row["entry_open"]),
+        settlement_date,
+        price,
+    )
+    settled_row.update(
+        {
+            "trade_status": "LIFECYCLE_SETTLED",
+            "terminal_reason": str(settlement["terminal_reason"]),
+            "settlement_date": settlement_date.strftime("%Y-%m-%d"),
+            "settlement_price": price,
+            "settlement_type": str(settlement["settlement_type"]),
+            "settlement_source": str(settlement["settlement_source"]),
+            "terminal_valuation_date": settlement_date.strftime("%Y-%m-%d"),
+            "terminal_valuation_price": price,
+            "terminal_valuation_source": str(settlement["settlement_source"]),
+            "terminal_valuation_at_cutoff": False,
+            "exit_execution_date": None,
+            "exit_price": None,
+            "execution_support_missing": False,
+        }
+    )
+    if "incremental_soft_exit" in settled_row:
+        settled_row["incremental_soft_exit"] = False
+    return settled_row, True
+
+
 def _candidate_trade(
     base: Mapping[str, Any],
     *,
@@ -301,6 +734,7 @@ def _candidate_trade(
             "incremental_soft_exit": False,
             "execution_support_missing": False,
             "stage_asof_date_at_signal": None,
+            "repository_v2_last_actual_date": pd.Timestamp(daily.index.max()).strftime("%Y-%m-%d"),
         }
     )
 
@@ -340,6 +774,7 @@ def _candidate_trade(
                 soft_events.append(
                     {
                         "trade_id": str(base["trade_id"]),
+                        "pair_id": pair_id,
                         "ticker": str(base["ticker"]).zfill(6),
                         "date": date.strftime("%Y-%m-%d"),
                         "close_return": close_return,
@@ -359,6 +794,13 @@ def _candidate_trade(
                     f"Pattern A stage unavailable at eligible NEG40 date {date.date()} for {pair_id}"
                 )
             soft_execution_date = _next_local_session(daily, date, window.execution_support)
+            if soft_execution_date is not None and soft_execution_date > segment.effective_to:
+                raise RuntimeError(
+                    "SOFT_EXIT next-session execution lies beyond its Candidate identity segment: "
+                    f"pair_id={pair_id} trade_id={base['trade_id']} ticker={base['ticker']} "
+                    f"signal_date={date:%Y-%m-%d} execution_date={soft_execution_date:%Y-%m-%d} "
+                    f"identity_range={segment.effective_from:%Y-%m-%d}..{segment.effective_to:%Y-%m-%d}"
+                )
             soft_execution_open = (
                 float(daily.loc[soft_execution_date, "open"])
                 if soft_execution_date is not None
@@ -367,6 +809,7 @@ def _candidate_trade(
             soft_events.append(
                 {
                     "trade_id": str(base["trade_id"]),
+                    "pair_id": pair_id,
                     "ticker": str(base["ticker"]).zfill(6),
                     "date": date.strftime("%Y-%m-%d"),
                     "close_return": close_return,
@@ -423,6 +866,13 @@ def _candidate_trade(
         return row, diagnostics
 
     execution_date = _next_local_session(daily, signal_date, window.execution_support)
+    if execution_date is not None and execution_date > segment.effective_to:
+        raise RuntimeError(
+            "Candidate next-session execution lies beyond its identity segment: "
+            f"pair_id={pair_id} trade_id={base['trade_id']} ticker={base['ticker']} "
+            f"signal_date={signal_date:%Y-%m-%d} execution_date={execution_date:%Y-%m-%d} "
+            f"identity_range={segment.effective_from:%Y-%m-%d}..{segment.effective_to:%Y-%m-%d}"
+        )
     row["exit_signal_date"] = signal_date.strftime("%Y-%m-%d")
     row["exit_type"] = signal_type
     row["candidate_action"] = signal_action
@@ -435,6 +885,17 @@ def _candidate_trade(
         row["exit_price"] = None
         row["trade_status"] = "UNEXECUTED_SIGNAL"
         row["execution_support_missing"] = True
+        terminal_rows = daily[(daily.index >= entry_date) & (daily.index <= window.effective_end)]
+        if terminal_rows.empty:
+            raise RuntimeError(
+                "UNEXECUTED_SIGNAL cannot be valued from Repository V2 inside its identity segment: "
+                f"pair_id={pair_id} ticker={base['ticker']} signal_date={signal_date:%Y-%m-%d}"
+            )
+        terminal_date = pd.Timestamp(terminal_rows.index[-1]).normalize()
+        row["terminal_valuation_date"] = terminal_date.strftime("%Y-%m-%d")
+        row["terminal_valuation_price"] = float(terminal_rows.iloc[-1]["close"])
+        row["terminal_valuation_source"] = "RepositoryV2DailyLoader.close"
+        row["terminal_valuation_at_cutoff"] = terminal_date == window.effective_end
         _refresh_outcome_metrics(row, daily, entry_date, entry_open, window.effective_end)
         diagnostics["incremental_soft_exit"] = signal_action == "SOFT_EXIT"
         diagnostics["execution_support_missing"] = True
@@ -492,6 +953,7 @@ def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
         daily = daily.sort_index()
 
         ticker_context = v2.build_precomputed_ticker_context(ticker, ticker, daily)
+        identity_signal_cutoff = _identity_signal_cutoff(segment, run.window.effective_end)
         base_records = v2.simulate_ticker_core_v02_reentry(
             ticker=ticker,
             name=ticker,
@@ -503,7 +965,7 @@ def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
             snapshot_context=ticker_context,
             market_calendar=run.calendar,
             entry_search_start=run.window.effective_start,
-            signal_cutoff_date=run.window.effective_end,
+            signal_cutoff_date=identity_signal_cutoff,
             execution_support_date=run.window.execution_support,
             strict_errors=True,
         )
@@ -568,6 +1030,33 @@ def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
                 stage_timeline=stage_timeline,
                 window=run.window,
             )
+            if getattr(getattr(run.window, "window", None), "window_id", None) == "P2-2":
+                settlement_cutoff = pd.Timestamp(run.window.effective_end).normalize()
+                control_settled, control_was_settled = _apply_lifecycle_settlement(
+                    base_row,
+                    segment=segment,
+                    evidence=getattr(run, "lifecycle_settlements", ()),
+                    cutoff_date=settlement_cutoff,
+                    daily=daily,
+                )
+                candidate_row, candidate_was_settled = _apply_lifecycle_settlement(
+                    candidate_row,
+                    segment=segment,
+                    evidence=getattr(run, "lifecycle_settlements", ()),
+                    cutoff_date=settlement_cutoff,
+                    daily=daily,
+                )
+                if control_was_settled != candidate_was_settled:
+                    raise RuntimeError(
+                        "matched CONTROL/Candidate lifecycle settlement parity failed: "
+                        f"pair_id={pair_id}"
+                    )
+                if candidate_was_settled:
+                    diag["lifecycle_settled"] = True
+                    diag["execution_support_missing"] = False
+                    diag["incremental_soft_exit"] = False
+                    candidate_row["incremental_soft_exit"] = False
+                base_row = control_settled
             control_rows.append(base_row)
             candidate_rows.append(candidate_row)
             diagnostics.append(diag)
@@ -722,6 +1211,11 @@ def _paired_summary(control: pd.DataFrame, candidate: pd.DataFrame) -> dict[str,
 
 def _outcome_date(row: Mapping[str, Any], cutoff_date: str) -> str:
     status = str(row.get("trade_status") or "")
+    if status == "LIFECYCLE_SETTLED":
+        settlement = row.get("settlement_date")
+        if settlement is None or pd.isna(settlement) or not str(settlement):
+            raise RuntimeError("LIFECYCLE_SETTLED outcome has no settlement_date")
+        return str(settlement)
     if status.startswith("OPEN"):
         return cutoff_date
     execution = row.get("exit_execution_date")
@@ -735,6 +1229,11 @@ def _outcome_date(row: Mapping[str, Any], cutoff_date: str) -> str:
 
 def _outcome_reason(row: Mapping[str, Any]) -> str:
     status = str(row.get("trade_status") or "")
+    if status == "LIFECYCLE_SETTLED":
+        reason = row.get("terminal_reason")
+        if reason is None or pd.isna(reason) or not str(reason):
+            raise RuntimeError("LIFECYCLE_SETTLED outcome has no terminal_reason")
+        return str(reason)
     if status.startswith("OPEN"):
         return "OPEN_AT_CUTOFF"
     return str(row.get("exit_type") or status or "UNKNOWN")
@@ -749,10 +1248,8 @@ def _build_matched_trade_ledger(
     for name, frame in (("CONTROL", control), ("Candidate", candidate)):
         if frame["pair_id"].duplicated().any():
             raise RuntimeError(f"duplicate {name} pair_id in source trades")
-        if frame["trade_id"].duplicated().any():
-            raise RuntimeError(f"duplicate {name} trade_id in source trades")
-    if len(control) != len(candidate) or set(control["trade_id"]) != set(candidate["trade_id"]):
-        raise RuntimeError("CONTROL/Candidate trade count or trade_id set mismatch")
+    if len(control) != len(candidate):
+        raise RuntimeError("CONTROL/Candidate trade count mismatch")
     if set(control["pair_id"]) != set(candidate["pair_id"]):
         raise RuntimeError("CONTROL/Candidate pair_id set mismatch")
 
@@ -784,6 +1281,7 @@ def _build_matched_trade_ledger(
         records.append(
             {
                 "trade_id": str(row["trade_id_control"]),
+                "pair_id": str(row["pair_id"]),
                 "ticker": str(row["ticker_control"]).zfill(6),
                 "identity": "|".join(
                     (
@@ -816,15 +1314,28 @@ def _build_matched_trade_ledger(
                 "candidate_terminal_return": candidate_return,
                 "candidate_holding_days": int(row["holding_days_candidate"]),
                 "candidate_open_at_cutoff": str(row["trade_status_candidate"]).startswith("OPEN"),
-                "candidate_soft_exit": str(row["candidate_action"]) == "SOFT_EXIT",
+                "candidate_soft_exit": (
+                    str(row["candidate_action"]) == "SOFT_EXIT"
+                    and str(row["trade_status_candidate"]) == "REALIZED"
+                ),
                 "paired_delta": round(candidate_return - control_return, 8),
                 "control_trade_status": str(row["trade_status_control"]),
                 "candidate_trade_status": str(row["trade_status_candidate"]),
                 "candidate_action": str(row["candidate_action"]),
+                "control_terminal_reason": row.get("terminal_reason_control"),
+                "control_settlement_date": row.get("settlement_date_control"),
+                "control_settlement_price": row.get("settlement_price_control"),
+                "control_settlement_type": row.get("settlement_type_control"),
+                "control_settlement_source": row.get("settlement_source_control"),
+                "candidate_terminal_reason": row.get("terminal_reason_candidate"),
+                "candidate_settlement_date": row.get("settlement_date_candidate"),
+                "candidate_settlement_price": row.get("settlement_price_candidate"),
+                "candidate_settlement_type": row.get("settlement_type_candidate"),
+                "candidate_settlement_source": row.get("settlement_source_candidate"),
             }
         )
-    ledger = pd.DataFrame(records).sort_values(["ticker", "entry_date", "trade_id"], kind="mergesort").reset_index(drop=True)
-    if ledger["trade_id"].duplicated().any() or len(ledger) != len(control):
+    ledger = pd.DataFrame(records).sort_values(["ticker", "entry_date", "pair_id"], kind="mergesort").reset_index(drop=True)
+    if ledger["pair_id"].duplicated().any() or len(ledger) != len(control):
         raise RuntimeError("matched trade ledger is not one-row-per-trade")
     return ledger
 
@@ -832,7 +1343,7 @@ def _build_matched_trade_ledger(
 def _ledger_aggregates(ledger: pd.DataFrame) -> dict[str, Any]:
     control = pd.DataFrame(
         {
-            "pair_id": ledger["trade_id"],
+            "pair_id": ledger["pair_id"],
             "terminal_return": pd.to_numeric(ledger["control_terminal_return"]),
             "holding_days": pd.to_numeric(ledger["control_holding_days"]),
             "trade_status": ledger["control_open_at_cutoff"].map(
@@ -842,7 +1353,7 @@ def _ledger_aggregates(ledger: pd.DataFrame) -> dict[str, Any]:
     )
     candidate = pd.DataFrame(
         {
-            "pair_id": ledger["trade_id"],
+            "pair_id": ledger["pair_id"],
             "terminal_return": pd.to_numeric(ledger["candidate_terminal_return"]),
             "holding_days": pd.to_numeric(ledger["candidate_holding_days"]),
             "trade_status": ledger["candidate_open_at_cutoff"].map(
@@ -854,6 +1365,233 @@ def _ledger_aggregates(ledger: pd.DataFrame) -> dict[str, Any]:
         "control": _metrics(control),
         "candidate": _metrics(candidate),
         "paired": _paired_summary(control, candidate),
+    }
+
+
+def _soft_event_failure_context(
+    event: Mapping[str, Any],
+    candidate_row: Mapping[str, Any] | None,
+) -> str:
+    candidate_row = candidate_row or {}
+    identity = "|".join(
+        str(candidate_row.get(field) or "")
+        for field in ("isu_cd", "market", "identity_effective_from", "identity_effective_to")
+    )
+    return (
+        f"pair_id={event.get('pair_id')} trade_id={event.get('trade_id')} "
+        f"ticker={event.get('ticker')} signal_date={event.get('date')} "
+        f"close_return={event.get('close_return')} stage={event.get('pattern_a_stage')} "
+        f"identity={identity or 'UNKNOWN'} "
+        f"segment_end={candidate_row.get('identity_effective_to')} "
+        f"repository_v2_last_actual_date={candidate_row.get('repository_v2_last_actual_date')} "
+        f"candidate_status={candidate_row.get('trade_status')} "
+        f"execution_support_missing={candidate_row.get('execution_support_missing')} "
+        f"terminal_valuation_date={candidate_row.get('terminal_valuation_date')} "
+        f"terminal_valuation_at_cutoff={candidate_row.get('terminal_valuation_at_cutoff')}"
+    )
+
+
+def _build_soft_event_ledger(
+    trade_diagnostics: Sequence[Mapping[str, Any]],
+    candidate: pd.DataFrame,
+) -> pd.DataFrame:
+    columns = [
+        "trade_id",
+        "pair_id",
+        "ticker",
+        "date",
+        "close_return",
+        "pattern_a_stage",
+        "event_type",
+        "execution_date",
+        "execution_open",
+    ]
+    rows = [
+        event
+        for diagnostic in trade_diagnostics
+        for event in diagnostic.get("soft_events", [])
+    ]
+    events = pd.DataFrame(rows, columns=columns)
+    if events.empty:
+        return events
+    if candidate["pair_id"].duplicated().any():
+        raise RuntimeError("duplicate Candidate pair_id before soft-event ledger build")
+
+    events = events.sort_values(
+        ["ticker", "date", "pair_id", "event_type"], kind="mergesort"
+    ).reset_index(drop=True)
+    if events.duplicated(["pair_id", "date", "event_type"]).any():
+        raise RuntimeError("duplicate soft event for one trade/date/type")
+    if not set(events["pair_id"]).issubset(set(candidate["pair_id"])):
+        raise RuntimeError("soft event trade is absent from matched Candidate trades")
+    candidate_by_pair = {
+        str(row["pair_id"]): row
+        for row in candidate.to_dict(orient="records")
+    }
+    outside_identity = [
+        event
+        for event in events.to_dict(orient="records")
+        if candidate_by_pair[str(event["pair_id"])].get("identity_effective_to")
+        and pd.Timestamp(event["date"])
+        > pd.Timestamp(candidate_by_pair[str(event["pair_id"])]["identity_effective_to"])
+    ]
+    if outside_identity:
+        event = outside_identity[0]
+        raise RuntimeError(
+            "soft event lies beyond its Candidate identity segment: "
+            + _soft_event_failure_context(event, candidate_by_pair.get(str(event["pair_id"])))
+        )
+    if not (pd.to_numeric(events["close_return"]) <= -40.0).all():
+        raise RuntimeError("soft event does not satisfy the frozen NEG40 threshold")
+
+    weak = events[events["event_type"].eq("WEAK_PROTECT")]
+    soft = events[events["event_type"].eq("SOFT_EXIT_SIGNAL")]
+    if len(weak) + len(soft) != len(events):
+        raise RuntimeError("unknown soft event type")
+    if not weak["pattern_a_stage"].eq("WEAK").all():
+        raise RuntimeError("WEAK_PROTECT event has a non-WEAK stage")
+    if soft["pattern_a_stage"].eq("WEAK").any():
+        raise RuntimeError("SOFT_EXIT_SIGNAL occurred during WEAK protection")
+    missing_execution = soft[["execution_date", "execution_open"]].isna().any(axis=1)
+    unsupported_missing_execution = []
+    settlement_fields = (
+        "terminal_reason",
+        "settlement_date",
+        "settlement_price",
+        "settlement_type",
+        "settlement_source",
+    )
+    for event in soft.loc[missing_execution].to_dict(orient="records"):
+        candidate_row = candidate_by_pair.get(str(event["pair_id"]), {})
+        has_confirmed_terminal = (
+            candidate_row.get("trade_status") == "LIFECYCLE_SETTLED"
+            and not bool(candidate_row.get("execution_support_missing"))
+            and all(
+                candidate_row.get(field) is not None
+                and not pd.isna(candidate_row.get(field))
+                and str(candidate_row.get(field))
+                for field in settlement_fields
+            )
+            and pd.Timestamp(candidate_row["settlement_date"])
+            >= pd.Timestamp(event["date"])
+            and not bool(candidate_row.get("terminal_valuation_at_cutoff"))
+        )
+        if not has_confirmed_terminal:
+            unsupported_missing_execution.append(event)
+    if unsupported_missing_execution:
+        details = [
+            _soft_event_failure_context(
+                event,
+                candidate_by_pair.get(str(event.get("pair_id"))),
+            )
+            for event in unsupported_missing_execution
+        ]
+        raise RuntimeError(
+            "SOFT_EXIT_SIGNAL lacks complete next-session execution support; "
+            "UNEXECUTED_SIGNAL is not accepted until its no-session cause and terminal valuation are verified; "
+            "a lifecycle-settled trade must have complete settlement provenance: "
+            + "; ".join(details)
+        )
+
+    candidate_soft = candidate[candidate["candidate_action"].eq("SOFT_EXIT")]
+    if len(soft) != len(candidate_soft):
+        raise RuntimeError("soft event count differs from final Candidate SOFT_EXIT count")
+    if len(soft):
+        paired = soft.merge(
+            candidate_soft[
+                ["pair_id", "trade_id", "exit_signal_date", "exit_execution_date", "exit_price"]
+            ],
+            on="pair_id",
+            validate="one_to_one",
+        )
+        if not (
+            paired["trade_id_x"].astype(str).equals(paired["trade_id_y"].astype(str))
+            and paired["date"].astype(str).equals(paired["exit_signal_date"].astype(str))
+            and paired["execution_date"].astype(str).equals(
+                paired["exit_execution_date"].astype(str)
+            )
+        ):
+            raise RuntimeError("soft event signal/execution dates differ from Candidate trade")
+        executed = paired["execution_open"].notna() & paired["exit_price"].notna()
+        if not np.isclose(
+            pd.to_numeric(paired.loc[executed, "execution_open"]),
+            pd.to_numeric(paired.loc[executed, "exit_price"]),
+            atol=0.005,
+            rtol=0,
+        ).all():
+            raise RuntimeError("soft event execution OPEN differs from Candidate exit price")
+    return events
+
+
+def _comparison_effects(
+    control: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+    paired: Mapping[str, Any],
+) -> dict[str, float]:
+    return {
+        "mean_paired_delta_pct_points": float(paired["mean_delta_pct_points"]),
+        "median_paired_delta_pct_points": float(paired["median_delta_pct_points"]),
+        "positive_count_delta": float(candidate["positive_count"] - control["positive_count"]),
+        "le_neg_40_count_delta": float(
+            candidate["tail_counts"]["le_neg_40_pct"] - control["tail_counts"]["le_neg_40_pct"]
+        ),
+        "le_neg_50_count_delta": float(
+            candidate["tail_counts"]["le_neg_50_pct"] - control["tail_counts"]["le_neg_50_pct"]
+        ),
+        "le_neg_60_count_delta": float(
+            candidate["tail_counts"]["le_neg_60_pct"] - control["tail_counts"]["le_neg_60_pct"]
+        ),
+        "ge_pos_50_count_delta": float(
+            candidate["winner_counts"]["ge_pos_50_pct"] - control["winner_counts"]["ge_pos_50_pct"]
+        ),
+        "ge_pos_100_count_delta": float(
+            candidate["winner_counts"]["ge_pos_100_pct"] - control["winner_counts"]["ge_pos_100_pct"]
+        ),
+        "paired_improved_minus_worsened": float(paired["improved"] - paired["worsened"]),
+    }
+
+
+def _compare_p2_1_directions(
+    control: Mapping[str, Any],
+    candidate: Mapping[str, Any],
+    paired: Mapping[str, Any],
+) -> dict[str, Any]:
+    if not P2_1_LEDGER_SUMMARY_PATH.exists():
+        raise RuntimeError(f"missing final P2-1 comparison summary: {P2_1_LEDGER_SUMMARY_PATH}")
+    baseline = json.loads(P2_1_LEDGER_SUMMARY_PATH.read_text(encoding="utf-8"))
+    if baseline.get("status") != "COMPLETE" or baseline.get("window_id") != "P2-1":
+        raise RuntimeError("P2-1 comparison input is not the completed fix02 summary")
+    p2_1 = baseline["ledger"]["aggregates_recomputed_from_full_ledger"]
+    p2_1_effects = _comparison_effects(p2_1["control"], p2_1["candidate"], p2_1["paired"])
+    p2_2_effects = _comparison_effects(control, candidate, paired)
+    directions: dict[str, str] = {}
+    agreements = 0
+    disagreements = 0
+    indeterminate = 0
+    for key, prior_value in p2_1_effects.items():
+        current_value = p2_2_effects[key]
+        if prior_value == 0.0 or current_value == 0.0:
+            directions[key] = "ZERO_OR_CHANGED_FROM_ZERO"
+            indeterminate += 1
+        elif (prior_value > 0) == (current_value > 0):
+            directions[key] = "AGREES"
+            agreements += 1
+        else:
+            directions[key] = "DISAGREES"
+            disagreements += 1
+
+    if indeterminate == 0 and disagreements == 0 and agreements:
+        overall = "일치"
+    elif indeterminate == 0 and agreements == 0 and disagreements:
+        overall = "불일치"
+    else:
+        overall = "부분 일치"
+    return {
+        "basis": "summary metrics only; P2-1 and P2-2 populations are not treated as a shared cohort",
+        "p2_1_effects": p2_1_effects,
+        "p2_2_effects": p2_2_effects,
+        "metric_directions": directions,
+        "overall_direction": overall,
     }
 
 
@@ -896,10 +1634,27 @@ def _validate_results(
     if ((pd.to_datetime(control["entry_execution_date"]) < pd.to_datetime(control["identity_effective_from"])) | (pd.to_datetime(control["entry_execution_date"]) > pd.to_datetime(control["identity_effective_to"]))).any():
         raise RuntimeError("entry execution outside COMMON identity interval")
 
+    for name, frame in (("CONTROL", control), ("Candidate", candidate)):
+        settled = frame[frame["trade_status"] == "LIFECYCLE_SETTLED"]
+        if settled.empty:
+            continue
+        required_fields = ("terminal_reason", "settlement_date", "settlement_price", "settlement_type", "settlement_source")
+        if settled[list(required_fields)].isna().any().any():
+            raise RuntimeError(f"{name} lifecycle settlement provenance is incomplete")
+        if pd.to_numeric(settled["settlement_price"], errors="coerce").le(0).any():
+            raise RuntimeError(f"{name} lifecycle settlement price must be positive")
+        if settled["execution_support_missing"].fillna(False).astype(bool).any():
+            raise RuntimeError(f"{name} lifecycle settlement incorrectly reports missing market execution")
+        if settled["terminal_valuation_at_cutoff"].fillna(False).astype(bool).any():
+            raise RuntimeError(f"{name} lifecycle settlement is mislabeled as cutoff valuation")
+
     control_overlap = _overlap_count(control)
     candidate_overlap = _overlap_count(candidate)
     missing_support = int(candidate["execution_support_missing"].fillna(False).astype(bool).sum())
-    preserved = candidate[candidate["candidate_action"].isin(["CONTROL_PRESERVED", "CONTROL_EXIT"])]
+    preserved = candidate[
+        candidate["candidate_action"].isin(["CONTROL_PRESERVED", "CONTROL_EXIT"])
+        & candidate["trade_status"].ne("LIFECYCLE_SETTLED")
+    ]
     preserved_without_exit = int(candidate["candidate_action"].eq("CONTROL_PRESERVED").sum())
     preserved_control_exits = int(candidate["candidate_action"].eq("CONTROL_EXIT").sum())
     unchanged_preserved = int(
@@ -950,6 +1705,10 @@ def _overlap_count(frame: pd.DataFrame) -> int:
         group = group.copy()
         group["entry_sort"] = pd.to_datetime(group["entry_execution_date"])
         group["exit_sort"] = pd.to_datetime(group["exit_execution_date"], errors="coerce")
+        if "settlement_date" in group:
+            settlement_dates = pd.to_datetime(group["settlement_date"], errors="coerce")
+            lifecycle_settled = group["trade_status"].eq("LIFECYCLE_SETTLED")
+            group.loc[lifecycle_settled, "exit_sort"] = settlement_dates.loc[lifecycle_settled]
         group = group.sort_values(["entry_sort", "trade_sequence"], kind="mergesort")
         prior_exit: pd.Timestamp | None = None
         for row in group.itertuples():
@@ -1026,6 +1785,7 @@ def _candidate_diagnostics(
         new_deep = detail[(detail["control_return"] > -40.0) & (detail["candidate_return"] <= -40.0)].copy()
         out["new_candidate_le_neg40_trades"] = new_deep[
             [
+                "pair_id",
                 "trade_id",
                 "ticker",
                 "control_return",
@@ -1490,31 +2250,61 @@ def _run_ledger_export(workers: int) -> dict[str, Any]:
     return summary
 
 
-def _run(mode: str, workers: int, sample_count: int) -> dict[str, Any]:
+def _run(
+    mode: str,
+    workers: int,
+    sample_count: int,
+    window_id: str | None = None,
+) -> dict[str, Any]:
     if mode not in {"sample", "full"}:
         raise ValueError("mode must be sample or full")
     if workers < 1:
         raise ValueError("workers must be positive")
+    selected_window = window_id or WINDOW_ID
+    if selected_window != WINDOW_ID:
+        raise RuntimeError("configure the selected window before starting the run")
+    if mode == "sample" and SAMPLE_PATH.exists():
+        raise RuntimeError(f"refusing to overwrite existing sample benchmark: {SAMPLE_PATH}")
     if mode == "full":
         if not SAMPLE_PATH.exists():
-            raise RuntimeError("full P2-1 refused: run the same-path sample benchmark first")
+            raise RuntimeError(f"full {selected_window} refused: run the same-path sample first")
         sample = json.loads(SAMPLE_PATH.read_text(encoding="utf-8"))
+        if sample.get("window_id") != selected_window:
+            raise RuntimeError("full run window must match the measured sample window")
         if sample.get("worker_count") != workers:
-            raise RuntimeError("full P2-1 worker count must match the measured sample")
+            raise RuntimeError(f"full {selected_window} worker count must match the measured sample")
         if float(sample.get("estimated_full_seconds", float("inf"))) > MAX_FULL_ESTIMATE_SECONDS:
             raise RuntimeError(
-                "full P2-1 refused because measured runtime estimate exceeds 90 minutes; "
+                f"full {selected_window} refused because measured runtime estimate exceeds 90 minutes; "
                 "inspect/optimize only accuracy-preserving bottlenecks first"
             )
-        for filename in ("control_trades.csv", "candidate_trades.csv", "paired_trades.csv", "summary.json", "run_manifest.json"):
+        expected_outputs = [
+            "control_trades.csv",
+            "candidate_trades.csv",
+            "paired_trades.csv",
+            "summary.json",
+            "run_manifest.json",
+        ]
+        if selected_window == "P2-2":
+            expected_outputs.extend(
+                ("p2_2_matched_trades.csv", "p2_2_soft_events.csv", "p2_2_summary.json")
+            )
+        for filename in expected_outputs:
             if (RUN_DIR / filename).exists():
                 raise RuntimeError(f"refusing to overwrite existing run output: {RUN_DIR / filename}")
 
+    run = _load_context(selected_window)
+    if mode == "full" and selected_window == "P2-2":
+        preflight = _p2_2_identity_authority_preflight(run)
+        if preflight["status"] != "PASS":
+            raise RuntimeError(
+                "P2-2 full run blocked by identity-authority preflight: "
+                + json.dumps(preflight, ensure_ascii=False, sort_keys=True)
+            )
     RUN_DIR.mkdir(parents=True, exist_ok=True)
-    run = _load_context()
     all_tickers = sorted(run.segments_by_ticker)
     if not all_tickers:
-        raise RuntimeError("P2-1 COMMON identity population is empty")
+        raise RuntimeError(f"{selected_window} COMMON identity population is empty")
     tickers = _sample_tickers(all_tickers, sample_count) if mode == "sample" else all_tickers
     started = time.perf_counter()
     outcomes: list[dict[str, Any]] = []
@@ -1562,7 +2352,7 @@ def _run(mode: str, workers: int, sample_count: int) -> dict[str, Any]:
         benchmark = {
             "status": "COMPLETE",
             "mode": "same_path_sample_only",
-            "window_id": "P2-1",
+            "window_id": selected_window,
             "window": {
                 "calendar_start": run.window.window.calendar_start.strftime("%Y-%m-%d"),
                 "calendar_end": run.window.window.calendar_end.strftime("%Y-%m-%d"),
@@ -1596,7 +2386,6 @@ def _run(mode: str, workers: int, sample_count: int) -> dict[str, Any]:
             "candidate_trade_rows_in_sample_not_used_for_performance_tuning": len(candidate_rows),
             "sample_invariants": sample_validation,
             "raw_candidate_artifact_reused": False,
-            "raw_candidate_path_sha256_for_provenance_only": _sha256(RAW_CANDIDATE_PATH),
             "authority_sha256": run.authority.pit_sha256,
             "authority_interval_count": run.authority.pit_count,
             "contract_sha256": {
@@ -1605,21 +2394,131 @@ def _run(mode: str, workers: int, sample_count: int) -> dict[str, Any]:
             },
             "errors": [],
         }
+        if selected_window == "P2-1":
+            benchmark["raw_candidate_path_sha256_for_provenance_only"] = _sha256(
+                RAW_CANDIDATE_PATH
+            )
         _json_write(SAMPLE_PATH, benchmark)
-        print(f"P2-1 sample benchmark: estimated_full_minutes={benchmark['estimated_full_minutes']:.2f}", flush=True)
+        print(
+            f"{selected_window} sample benchmark: "
+            f"estimated_full_minutes={benchmark['estimated_full_minutes']:.2f}",
+            flush=True,
+        )
         return benchmark
 
     control = pd.DataFrame(control_rows).sort_values(["ticker", "identity_effective_from", "trade_sequence"], kind="mergesort").reset_index(drop=True)
     candidate = pd.DataFrame(candidate_rows).sort_values(["ticker", "identity_effective_from", "trade_sequence"], kind="mergesort").reset_index(drop=True)
     if control.empty:
-        raise RuntimeError("P2-1 full run produced zero CONTROL entries")
+        raise RuntimeError(f"{selected_window} full run produced zero CONTROL entries")
     validation = _validate_results(control, candidate, run)
     paired = control.merge(candidate, on="pair_id", suffixes=("_control", "_candidate"), validate="one_to_one")
+    control_metrics = _metrics(control)
+    candidate_metrics = _metrics(candidate)
+    paired_metrics = _paired_summary(control, candidate)
+    candidate_diagnostics = _candidate_diagnostics(control, candidate)
+    p2_2_ledger: pd.DataFrame | None = None
+    p2_2_events: pd.DataFrame | None = None
+    ledger_aggregates: dict[str, Any] | None = None
+    ledger_reconciliation: dict[str, bool] | None = None
+    p2_1_comparison: dict[str, Any] | None = None
+    if selected_window == "P2-2":
+        cutoff_date = run.window.effective_end.strftime("%Y-%m-%d")
+        p2_2_ledger = _build_matched_trade_ledger(
+            control,
+            candidate,
+            cutoff_date=cutoff_date,
+        )
+        ledger_aggregates = _ledger_aggregates(p2_2_ledger)
+        ledger_reconciliation = {
+            "control_metrics_match_summary": _nested_values_equal(
+                ledger_aggregates["control"], control_metrics
+            ),
+            "candidate_metrics_match_summary": _nested_values_equal(
+                ledger_aggregates["candidate"], candidate_metrics
+            ),
+            "paired_metrics_match_summary": _nested_values_equal(
+                ledger_aggregates["paired"], paired_metrics
+            ),
+        }
+        if not all(ledger_reconciliation.values()):
+            raise RuntimeError(f"P2-2 ledger aggregates do not reconcile: {ledger_reconciliation}")
+        p2_2_events = _build_soft_event_ledger(trade_diagnostics, candidate)
+        event_counts = {
+            str(event_type): int(count)
+            for event_type, count in p2_2_events["event_type"].value_counts().sort_index().items()
+        }
+        if event_counts.get("WEAK_PROTECT", 0) != candidate_diagnostics["weak_protect_eod_event_count"]:
+            raise RuntimeError("P2-2 WEAK_PROTECT event ledger count differs from candidate diagnostics")
+        if event_counts.get("SOFT_EXIT_SIGNAL", 0) != candidate_diagnostics["soft_signal_count"]:
+            raise RuntimeError("P2-2 SOFT_EXIT_SIGNAL ledger count differs from candidate trades")
+        p2_1_comparison = _compare_p2_1_directions(
+            control_metrics,
+            candidate_metrics,
+            paired_metrics,
+        )
+        validation.update(
+            {
+                "ledger_pair_id_unique": bool(
+                    p2_2_ledger["pair_id"].nunique() == len(p2_2_ledger)
+                ),
+                "control_candidate_pair_id_sets_equal": set(control["pair_id"])
+                == set(candidate["pair_id"]),
+                "control_candidate_source_trade_id_equal_by_pair": bool(
+                    paired["trade_id_control"].astype(str).equals(
+                        paired["trade_id_candidate"].astype(str)
+                    )
+                ),
+                "all_ledger_aggregates_match_summary": all(ledger_reconciliation.values()),
+                "soft_event_duplicates": int(
+                    p2_2_events.duplicated(["pair_id", "date", "event_type"]).sum()
+                ),
+                "soft_event_replay_consistency": True,
+            }
+        )
+        lifecycle_settled_control = control[control["trade_status"] == "LIFECYCLE_SETTLED"]
+        lifecycle_settled_candidate = candidate[candidate["trade_status"] == "LIFECYCLE_SETTLED"]
+        validation["control_candidate_lifecycle_settlement_counts_equal"] = (
+            len(lifecycle_settled_control) == len(lifecycle_settled_candidate)
+        )
+        settlement_fields = {
+            "terminal_reason",
+            "settlement_date",
+            "settlement_price",
+            "settlement_type",
+            "settlement_source",
+        }
+        validation["lifecycle_settlement_provenance_complete"] = bool(
+            all(
+                frame.loc[frame["trade_status"] == "LIFECYCLE_SETTLED"].empty
+                or (
+                    settlement_fields.issubset(frame.columns)
+                    and frame.loc[
+                        frame["trade_status"] == "LIFECYCLE_SETTLED", sorted(settlement_fields)
+                    ].notna().all().all()
+                )
+                for frame in (control, candidate)
+            )
+        )
+
+    population = {
+        "filter_contract": "no separate market-cap, minimum trading-value/volume, or fundamentals filter",
+        "identity_policy": "COMMON PIT identity intervals; no ticker-list broadcast; no identity stitching; no future fallback",
+        "common_identity_segments": total_segments,
+        "unique_tickers_processed": len(outcomes),
+        "tickers_with_entries": int(control["ticker"].nunique()),
+        "control_entry_count": len(control),
+        "candidate_entry_count": len(candidate),
+        "raw_candidate_artifact_reused": False,
+    }
+    if selected_window == "P2-1":
+        population["raw_candidate_artifact"] = str(RAW_CANDIDATE_PATH.relative_to(ROOT))
+
     summary: dict[str, Any] = {
         "status": "COMPLETE",
-        "work_id": "P2_1_NEG40_WEAK_PROTECT_MATCHED_AB_V01",
-        "window_id": "P2-1",
+        "work_id": f"{selected_window.replace('-', '_')}_NEG40_WEAK_PROTECT_MATCHED_AB_V01",
+        "window_id": selected_window,
         "head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+        "runner_sha256": _sha256(Path(__file__).resolve()),
         "strategy_ids": {"control": V2_STRATEGY_ID, "candidate": CANDIDATE_STRATEGY_ID},
         "window": {
             "calendar_start": run.window.window.calendar_start.strftime("%Y-%m-%d"),
@@ -1628,17 +2527,7 @@ def _run(mode: str, workers: int, sample_count: int) -> dict[str, Any]:
             "effective_end": run.window.effective_end.strftime("%Y-%m-%d"),
             "execution_support": run.window.execution_support.strftime("%Y-%m-%d"),
         },
-        "population": {
-            "filter_contract": "no separate market-cap, minimum trading-value/volume, or fundamentals filter",
-            "identity_policy": "COMMON PIT identity intervals; no ticker-list broadcast; no identity stitching; no future fallback",
-            "common_identity_segments": total_segments,
-            "unique_tickers_processed": len(outcomes),
-            "tickers_with_entries": int(control["ticker"].nunique()),
-            "control_entry_count": len(control),
-            "candidate_entry_count": len(candidate),
-            "raw_candidate_artifact_reused": False,
-            "raw_candidate_artifact": str(RAW_CANDIDATE_PATH.relative_to(ROOT)),
-        },
+        "population": population,
         "execution": {
             "sample_wall_seconds": json.loads(SAMPLE_PATH.read_text(encoding="utf-8"))["sample_wall_seconds"],
             "estimated_full_seconds": json.loads(SAMPLE_PATH.read_text(encoding="utf-8"))["estimated_full_seconds"],
@@ -1655,30 +2544,102 @@ def _run(mode: str, workers: int, sample_count: int) -> dict[str, Any]:
             "market_calendar_sha256": run.calendar.metadata.get("manifest_sha256"),
             "network_calls": 0,
         },
-        "control": _metrics(control),
-        "candidate": _metrics(candidate),
-        "paired": _paired_summary(control, candidate),
-        "candidate_diagnostics": _candidate_diagnostics(control, candidate),
+        "control": control_metrics,
+        "candidate": candidate_metrics,
+        "paired": paired_metrics,
+        "candidate_diagnostics": candidate_diagnostics,
         "validation": validation,
         "verdict": None,
     }
     summary["verdict"] = _verdict(summary, validation)
+
+    if selected_window == "P2-2":
+        assert p2_2_ledger is not None and p2_2_events is not None
+        assert ledger_aggregates is not None and ledger_reconciliation is not None
+        summary["ledger"] = {
+            "path": str(MATCHED_LEDGER_PATH.relative_to(ROOT)),
+            "row_count": int(len(p2_2_ledger)),
+            "pair_id_unique_count": int(p2_2_ledger["pair_id"].nunique()),
+            "distinct_source_trade_id_count": int(p2_2_ledger["trade_id"].nunique()),
+            "source_trade_id_preserved": True,
+            "control_candidate_trade_count_equal": len(control) == len(candidate),
+            "control_candidate_pair_id_sets_equal": set(control["pair_id"])
+            == set(candidate["pair_id"]),
+            "control_candidate_source_trade_id_equal_by_pair": bool(
+                paired["trade_id_control"].astype(str).equals(
+                    paired["trade_id_candidate"].astype(str)
+                )
+            ),
+            "aggregates_recomputed_from_full_ledger": ledger_aggregates,
+            "aggregate_reconciliation": ledger_reconciliation,
+        }
+        summary["soft_events"] = {
+            "path": str(SOFT_EVENTS_PATH.relative_to(ROOT)),
+            "row_count": int(len(p2_2_events)),
+            "event_type_counts": {
+                str(event_type): int(count)
+                for event_type, count in p2_2_events["event_type"].value_counts().sort_index().items()
+            },
+            "distinct_trade_counts_by_event_type": {
+                str(event_type): int(
+                    p2_2_events.loc[p2_2_events["event_type"] == event_type, "pair_id"].nunique()
+                )
+                for event_type in sorted(p2_2_events["event_type"].unique())
+            },
+            "replay_matches_final_candidate_trades": True,
+        }
+        summary["candidate_terminal_tail_trade_ids"] = {
+            "le_neg_50": candidate.loc[
+                pd.to_numeric(candidate["terminal_return"]) <= -50.0, "trade_id"
+            ].astype(str).tolist(),
+            "le_neg_60": candidate.loc[
+                pd.to_numeric(candidate["terminal_return"]) <= -60.0, "trade_id"
+            ].astype(str).tolist(),
+        }
+        summary["new_candidate_le_neg40_from_control_gt_neg40_trades"] = candidate_diagnostics.get(
+            "new_candidate_le_neg40_trades", []
+        )
+        summary["p2_1_directional_comparison"] = p2_1_comparison
+        summary["lifecycle_settlement"] = {
+            "evidence_path": str(LIFECYCLE_SETTLEMENT_EVIDENCE_PATH.relative_to(ROOT)),
+            "evidence_record_count": len(run.lifecycle_settlements),
+            "evidence_ids": [str(item["evidence_id"]) for item in run.lifecycle_settlements],
+            "control_settled_trade_count": int(
+                control["trade_status"].eq("LIFECYCLE_SETTLED").sum()
+            ),
+            "candidate_settled_trade_count": int(
+                candidate["trade_status"].eq("LIFECYCLE_SETTLED").sum()
+            ),
+            "terminal_status": "LIFECYCLE_SETTLED",
+            "terminal_reason": "SHARE_EXCHANGE_CASH_SETTLEMENT",
+            "market_execution_synthesized": False,
+        }
 
     output = RUN_DIR
     control.to_csv(output / "control_trades.csv", index=False)
     candidate.to_csv(output / "candidate_trades.csv", index=False)
     paired.to_csv(output / "paired_trades.csv", index=False)
     _json_write(output / "summary.json", summary)
+    output_names = ["control_trades.csv", "candidate_trades.csv", "paired_trades.csv", "summary.json"]
+    if selected_window == "P2-2":
+        p2_2_ledger.to_csv(MATCHED_LEDGER_PATH, index=False, float_format="%.8f")
+        p2_2_events.to_csv(SOFT_EVENTS_PATH, index=False, float_format="%.8f")
+        _json_write(LEDGER_SUMMARY_PATH, summary)
+        output_names.extend(
+            [MATCHED_LEDGER_PATH.name, SOFT_EVENTS_PATH.name, LEDGER_SUMMARY_PATH.name]
+        )
     manifest = {
         "run_id": RUN_ID,
+        "window_id": selected_window,
         "start_head": summary["head"],
-        "p2_1_only": True,
+        "p2_1_only": selected_window == "P2-1",
+        "p2_2_only": selected_window == "P2-2",
         "raw_candidate_artifact_reused": False,
         "effective_pit_sha256": run.authority.pit_sha256,
         "score_contract_sha256": _sha256(SCORE_CONTRACT_PATH),
         "stage_contract_sha256": _sha256(STAGE_CONTRACT_PATH),
         "sample_benchmark": str(SAMPLE_PATH.relative_to(ROOT)),
-        "outputs": ["control_trades.csv", "candidate_trades.csv", "paired_trades.csv", "summary.json"],
+        "outputs": output_names,
     }
     _json_write(output / "run_manifest.json", manifest)
     return summary
@@ -1687,15 +2648,20 @@ def _run(mode: str, workers: int, sample_count: int) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--mode", choices=("sample", "full", "replay", "ledger"), required=True)
+    parser.add_argument("--window", choices=("P2-1", "P2-2"), default="P2-1")
     parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS)
     parser.add_argument("--sample-tickers", type=int, default=40)
+    parser.add_argument("--run-id", help="optional isolated P2-2 output run id (must start with run_)")
     args = parser.parse_args()
+    _configure_run(args.window, args.run_id)
+    if args.window == "P2-2" and args.mode in {"replay", "ledger"}:
+        parser.error("P2-2 emits the matched ledger in its single full pass; replay/ledger modes are P2-1 only")
     if args.mode == "replay":
         result = _run_candidate_replay(args.workers)
     elif args.mode == "ledger":
         result = _run_ledger_export(args.workers)
     else:
-        result = _run(args.mode, args.workers, args.sample_tickers)
+        result = _run(args.mode, args.workers, args.sample_tickers, args.window)
     print(json.dumps(result, ensure_ascii=False, indent=2, default=str))
 
 

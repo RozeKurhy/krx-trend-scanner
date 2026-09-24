@@ -48,6 +48,7 @@ Pattern A FAST는 Pattern A보다 상승 전환을 빠르게 탐지하기 위한
 - [A FAST Core V2 — 현재 기본 전략](strategy/version_02/README.md)
 - [A FAST Core V3 — 종료된 후보 기록](archive/strategy/version_03/README.md)
 - [A FAST Core V4 — 종료된 후보 기록](archive/strategy/version_04/README.md)
+- [NEG40 / WEAK Protect P2-2 최종 연구 마감](archive/research/neg40_weak_protect_p2_2_closeout_v01.md)
 
 ## 공통 전략 절차
 
