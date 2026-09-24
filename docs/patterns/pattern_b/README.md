@@ -29,6 +29,7 @@ Pattern B의 “싸다”는 기업가치 대비 싸다는 뜻이 아니라, 자
 
 - [Pattern B 공식 규격](spec/production_authority.md) — 현재 기준 문서, 구현 위치, 알려진 한계를
   모은 권위 문서
+- [운영 계약 V01](spec/production_contract_v01.md) — 운영 코드 호출 입력, 평가 상태, 결과 필드
 - [Pattern B 개념 기준](spec/README.md) — 목적, 다른 영역과의 경계, 시간축 역할,
   지표 후보, 상태 후보, 구조 붕괴 위험과의 경계
 - [지표 계약 V01](spec/feature_contract_v01.md) — 7개 지표의 산식과 PIT 계약

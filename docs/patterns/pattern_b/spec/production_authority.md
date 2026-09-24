@@ -28,6 +28,7 @@ Pattern B 자체의 버전 번호는 없다. 현재 기준은 "Pattern B, 현재
 | 상태 판정 규칙·임계값 | [상태 판정 규칙 V02](../validation/state_rule_v02.md), [봉인 파일](../validation/state_rule_v02_seal.json) |
 | 종목 구간 규칙 | [별도 검증 표본 V02 절차](../validation/holdout_v02_protocol.md) 선정 방법, [원시 지표값 V02](../validation/feature_raw_values_v02.md) 계산 조건 |
 | 검증 전략 | [규칙 V02 검증 전략 V01](../validation/state_rule_v02_validation_strategy_v01.md) |
+| 운영 호출 계약 | [운영 계약 V01](production_contract_v01.md) |
 
 종목 구간 규칙: 기준일을 포함하는 PIT COMMON 종목 구간 안에서만 조정 가격을 읽고, 다른 종목
 구간과 이어 붙이지 않는다. 규칙 V02의 근거 자료는 모두 이 규칙으로 계산했다.
@@ -36,12 +37,14 @@ Pattern B 자체의 버전 번호는 없다. 현재 기준은 "Pattern B, 현재
 
 | 역할 | 위치 |
 |---|---|
+| 운영 평가 | `src/trend_scanner/patterns/pattern_b_evaluator.py`의 `evaluate_pattern_b(ticker, daily, as_of, name="")` |
 | 지표 계산 | `src/trend_scanner/patterns/pattern_b_features_v01.py`의 `compute_pattern_b_features_v01(daily, as_of)` |
 | 상태 판정 | `src/trend_scanner/patterns/pattern_b_state_v02.py`의 `classify_pattern_b_state_v02(range_36m, monthly_ma24_distance, range_52w)` |
-| 계약 테스트 | `tests/test_pattern_b_state_v02.py` |
+| 계약 테스트 | `tests/test_pattern_b_state_v02.py`, `tests/test_pattern_b_evaluator.py` |
 
-일봉에서 상태까지 한 번에 계산하는 단일 함수는 없다. 지표 계산 결과 중 유지 지표 3개를 상태
-판정에 넘긴다. 지표를 계산할 수 없으면 상태 판정은 오류를 내고 상태를 만들지 않는다.
+운영 코드는 `evaluate_pattern_b`로 일봉에서 상태까지 한 번에 계산한다. 이 함수는 지표 계산과
+상태 판정을 조합만 한다. 유지 지표 3개 중 하나라도 계산할 수 없으면 평가 상태 `UNAVAILABLE`과
+빈 상태를 돌려준다. 가격 로딩과 종목 구간 적용은 호출자가 맡는다.
 
 ## 4. 경계
 
@@ -60,7 +63,7 @@ Pattern B 자체의 버전 번호는 없다. 현재 기준은 "Pattern B, 현재
   쪽으로 볼 수 있다(`PBHOLD_028` 유형).
 - 규칙 V02의 `DEPRESSED`는 사용자 판정 개념보다 좁다.
 - 과열 쪽은 사용자 개념과의 일치를 말할 근거가 적다.
-- 계산 불가일 때 "상태 없음"을 나타내는 출력 값이 정의되어 있지 않다.
+- 전체 종목 가격 로딩과 종목 구간 적용은 아직 구현·검증하지 않았다.
 - 기준일에 거래정지 중인 종목은 마지막 거래 봉으로 상태가 계산된다.
 - 전체 종목에 적용한 적이 없어 상태 분포와 계산 불가 비율을 모른다.
 
