@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 import pytest
@@ -14,6 +15,7 @@ from trend_scanner.data.market_calendar import (
 from trend_scanner.data.resampler import to_monthly
 from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
+from trend_scanner.validation import pattern_a_fast_core_v02_reentry as v2
 from trend_scanner.validation.pattern_a_fast_core_v02_reentry import (
     DATA_CUTOFF,
     V02TradeRecord,
@@ -305,6 +307,215 @@ def test_execution_support_can_fill_after_valuation_cutoff_without_looking_ahead
     # The support session's high/low/close must not leak into in-window MFE/MAE.
     assert outcome["mfe"] == 10.0
     assert outcome["mae"] == -20.0
+
+
+def test_entry_execution_cutoff_blocks_support_entry_before_trade_state_creation(monkeypatch):
+    effective_end = pd.Timestamp("2025-05-30")
+    support = pd.Timestamp("2025-06-02")
+    daily = pd.DataFrame(
+        {
+            "open": 100.0,
+            "high": 101.0,
+            "low": 99.0,
+            "close": 100.0,
+        },
+        index=pd.bdate_range("2025-03-03", support),
+    )
+
+    class FakeContext:
+        def __init__(self, signal_date):
+            self.signal_date = pd.Timestamp(signal_date)
+
+        def weekly_up_to(self, _cutoff):
+            return pd.DataFrame(index=pd.DatetimeIndex([self.signal_date]))
+
+        def monthly_up_to(self, _cutoff):
+            return pd.DataFrame(index=pd.DatetimeIndex([]))
+
+    monkeypatch.setattr(
+        v2,
+        "evaluate_pattern_a_fast",
+        lambda *args, **kwargs: {
+            "fast_machine_stage": "TRIGGER",
+            "fast_machine_stage_status": "READY",
+            "fast_monthly_permission_state": "PERMITTED_REGIME",
+            "fast_daily_risk_state": "NORMAL",
+            "fast_score_status": "READY",
+            "pattern_a_stage": "TRANSITION",
+            "fast_score": 50.0,
+        },
+    )
+
+    common = {
+        "ticker": "000001",
+        "name": "000001",
+        "market": "KOSPI",
+        "daily": daily,
+        "score_contract": {},
+        "stage_contract": {},
+        "cutoff_date": effective_end,
+        "signal_cutoff_date": effective_end,
+        "execution_support_date": support,
+        "entry_execution_cutoff_date": effective_end,
+        "strict_errors": True,
+    }
+    at_cutoff = simulate_ticker_core_v02_reentry(
+        **common,
+        entry_search_start=pd.Timestamp("2025-05-29"),
+        snapshot_context=FakeContext("2025-05-29"),
+    )
+    after_cutoff = simulate_ticker_core_v02_reentry(
+        **common,
+        entry_search_start=effective_end,
+        snapshot_context=FakeContext(effective_end),
+    )
+
+    assert len(at_cutoff) == 1
+    assert at_cutoff[0].trade_id == "000001_01"
+    assert at_cutoff[0].entry_execution_date == "2025-05-30"
+    assert after_cutoff == []
+
+
+def test_entry_execution_cutoff_cannot_exceed_window_effective_end():
+    with pytest.raises(ValueError, match="must not exceed the valuation cutoff"):
+        simulate_ticker_core_v02_reentry(
+            ticker="000001",
+            name="000001",
+            market="KOSPI",
+            daily=pd.DataFrame(),
+            score_contract={},
+            stage_contract={},
+            cutoff_date=pd.Timestamp("2025-05-30"),
+            signal_cutoff_date=pd.Timestamp("2025-05-30"),
+            execution_support_date=pd.Timestamp("2025-06-02"),
+            entry_execution_cutoff_date=pd.Timestamp("2025-06-02"),
+        )
+
+
+def test_existing_position_signals_and_exit_continue_after_common_interval_end(monkeypatch):
+    common_end = pd.Timestamp("2025-03-31")
+    effective_end = pd.Timestamp("2025-05-30")
+    support = pd.Timestamp("2025-06-02")
+    daily = pd.DataFrame(
+        {
+            "open": 100.0,
+            "high": 101.0,
+            "low": 99.0,
+            "close": 100.0,
+        },
+        index=pd.bdate_range("2025-01-06", support),
+    )
+
+    class FakeContext:
+        def weekly_up_to(self, cutoff):
+            dates = pd.to_datetime(["2025-03-28", "2025-04-04", "2025-05-30"])
+            return pd.DataFrame(index=dates[dates <= cutoff])
+
+        def monthly_up_to(self, cutoff):
+            dates = pd.to_datetime(["2025-03-31", "2025-04-30", "2025-05-30"])
+            return pd.DataFrame(index=dates[dates <= cutoff])
+
+    monkeypatch.setattr(
+        v2,
+        "evaluate_pattern_a_fast",
+        lambda *args, **kwargs: {
+            "fast_machine_stage": "TRIGGER",
+            "fast_machine_stage_status": "READY",
+            "fast_monthly_permission_state": "PERMITTED_REGIME",
+            "fast_daily_risk_state": "NORMAL",
+            "fast_score_status": "READY",
+            "pattern_a_stage": "EARLY_TREND",
+            "fast_score": 50.0,
+        },
+    )
+    monthly_stages = {
+        pd.Timestamp("2025-03-31"): "EARLY_TREND",
+        pd.Timestamp("2025-04-30"): "PROGRESSED",
+        pd.Timestamp("2025-05-30"): "BASE",
+    }
+    monkeypatch.setattr(
+        v2,
+        "build_historical_snapshot_from_context",
+        lambda _context, date, **kwargs: pd.Timestamp(date),
+    )
+    monkeypatch.setattr(
+        v2,
+        "evaluate_pattern_a",
+        lambda date: SimpleNamespace(
+            stage=SimpleNamespace(value=monthly_stages[pd.Timestamp(date)]),
+            score=50.0,
+        ),
+    )
+
+    trades = simulate_ticker_core_v02_reentry(
+        ticker="000001",
+        name="000001",
+        market="KOSPI",
+        daily=daily,
+        score_contract={},
+        stage_contract={},
+        cutoff_date=effective_end,
+        snapshot_context=FakeContext(),
+        entry_search_start=pd.Timestamp("2025-03-01"),
+        signal_cutoff_date=effective_end,
+        entry_signal_cutoff_date=common_end,
+        entry_execution_cutoff_date=common_end,
+        execution_support_date=support,
+        strict_errors=True,
+    )
+
+    assert len(trades) == 1
+    assert trades[0].entry_execution_date == "2025-03-31"
+    assert trades[0].exit_signal_date == "2025-05-30"
+    assert trades[0].exit_signal_date > common_end.strftime("%Y-%m-%d")
+    assert trades[0].exit_execution_date == "2025-06-02"
+    assert trades[0].trade_status == "REALIZED"
+
+
+def test_new_entry_signal_after_common_interval_end_is_excluded(monkeypatch):
+    common_end = pd.Timestamp("2025-03-31")
+    effective_end = pd.Timestamp("2025-05-30")
+    daily = pd.DataFrame(
+        {
+            "open": 100.0,
+            "high": 101.0,
+            "low": 99.0,
+            "close": 100.0,
+        },
+        index=pd.bdate_range("2025-01-06", "2025-05-30"),
+    )
+
+    class FakeContext:
+        def weekly_up_to(self, cutoff):
+            dates = pd.to_datetime(["2025-03-28", "2025-04-04", "2025-05-30"])
+            return pd.DataFrame(index=dates[dates <= cutoff])
+
+        def monthly_up_to(self, cutoff):
+            return pd.DataFrame(index=pd.DatetimeIndex([]))
+
+    monkeypatch.setattr(
+        v2,
+        "evaluate_pattern_a_fast",
+        lambda *args, **kwargs: pytest.fail("ineligible post-interval entry signal was evaluated"),
+    )
+
+    trades = simulate_ticker_core_v02_reentry(
+        ticker="000001",
+        name="000001",
+        market="KOSPI",
+        daily=daily,
+        score_contract={},
+        stage_contract={},
+        cutoff_date=effective_end,
+        snapshot_context=FakeContext(),
+        entry_search_start=pd.Timestamp("2025-04-04"),
+        signal_cutoff_date=effective_end,
+        entry_signal_cutoff_date=common_end,
+        entry_execution_cutoff_date=common_end,
+        execution_support_date=pd.Timestamp("2025-06-02"),
+    )
+
+    assert trades == []
 
 
 def test_v02_exit3_then_reentry(contracts):

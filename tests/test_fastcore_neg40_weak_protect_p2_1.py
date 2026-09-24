@@ -1,3 +1,6 @@
+import ast
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pandas as pd
@@ -8,11 +11,108 @@ from scripts.run_fastcore_neg40_weak_protect_p2_1 import (
     IdentitySegment,
     _apply_lifecycle_settlement,
     _candidate_trade,
-    _identity_signal_cutoff,
+    _common_entry_eligibility_cutoff,
     _outcome_date,
     _outcome_reason,
     _pct,
 )
+
+
+def test_official_backtest_callers_pass_the_complete_window_contract_explicitly():
+    project_root = Path(__file__).resolve().parents[1]
+    required = {
+        "cutoff_date",
+        "signal_cutoff_date",
+        "execution_support_date",
+        "entry_signal_cutoff_date",
+        "entry_execution_cutoff_date",
+    }
+    expected_calls = {
+        "scripts/run_fastcore_neg40_weak_protect_p2_1.py": {
+            "cutoff_date": "window_effective_end",
+            "signal_cutoff_date": "window_effective_end",
+            "execution_support_date": "window_execution_support",
+            "entry_signal_cutoff_date": "entry_eligibility_cutoff",
+            "entry_execution_cutoff_date": "entry_eligibility_cutoff",
+        },
+        "scripts/evaluate_pattern_a_fast_core_v02_reentry.py": {
+            name: "DATA_CUTOFF" for name in required
+        },
+        "scripts/run_fastcore_parity_v01.py": {
+            name: "DATA_CUTOFF" for name in required
+        },
+    }
+
+    for relative_path, expected in expected_calls.items():
+        source = (project_root / relative_path).read_text(encoding="utf-8")
+        tree = ast.parse(source, filename=relative_path)
+        calls = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and getattr(node.func, "attr", getattr(node.func, "id", None))
+            == "simulate_ticker_core_v02_reentry"
+        ]
+        assert calls, f"no simulator call found in {relative_path}"
+        for call in calls:
+            keywords = {item.arg: ast.unparse(item.value) for item in call.keywords if item.arg}
+            assert required.issubset(keywords), f"missing contract keyword in {relative_path}"
+            for name, value in expected.items():
+                assert keywords[name] == value, f"{relative_path} has wrong {name} contract value"
+
+
+def test_stable_security_identity_survives_authority_revision_and_market_transfer():
+    prior = IdentitySegment(
+        ticker="003670",
+        isu_cd="KR7003670007",
+        market="KOSDAQ",
+        effective_from=pd.Timestamp("2010-01-04"),
+        effective_to=pd.Timestamp("2019-05-28"),
+    )
+    transferred = IdentitySegment(
+        ticker="003670",
+        isu_cd="KR7003670007",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2019-05-29"),
+        effective_to=pd.Timestamp("2026-09-04"),
+    )
+    revised_coverage = IdentitySegment(
+        ticker="003670",
+        isu_cd="KR7003670007",
+        market="KOSDAQ",
+        effective_from=pd.Timestamp("2010-01-04"),
+        effective_to=pd.Timestamp("2026-09-04"),
+    )
+    recycled_code = IdentitySegment(
+        ticker="003670",
+        isu_cd="KR7999990001",
+        market="KOSDAQ",
+        effective_from=pd.Timestamp("2026-09-05"),
+        effective_to=pd.Timestamp("2026-09-24"),
+    )
+
+    assert prior.stable_security_id == transferred.stable_security_id == "KR7003670007"
+    assert prior.key != transferred.key
+    assert prior.stable_security_id == revised_coverage.stable_security_id
+    assert prior.key != revised_coverage.key
+    assert recycled_code.stable_security_id != prior.stable_security_id
+
+
+def test_standard_runner_fails_closed_without_window_execution_support():
+    segment = IdentitySegment(
+        ticker="000001",
+        isu_cd="KR7000000001",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2025-01-01"),
+        effective_to=pd.Timestamp("2025-01-10"),
+    )
+    run = SimpleNamespace(
+        window=SimpleNamespace(effective_end=pd.Timestamp("2025-01-09"), execution_support=None),
+        segments_by_ticker={"000001": (segment,)},
+    )
+
+    with pytest.raises(RuntimeError, match="requires explicit window effective_end and execution support"):
+        runner._process_ticker("000001", run)
 
 
 def test_p2_2_run_id_override_uses_separate_versioned_output_namespace():
@@ -26,10 +126,201 @@ def test_p2_2_run_id_override_uses_separate_versioned_output_namespace():
         runner._configure_run("P2-1")
 
 
+def test_p2_1_run_id_override_uses_isolated_recertification_namespace():
+    try:
+        runner._configure_run("P2-1", "run_20260924_cutoff_contract_recert_v01")
+        assert runner.RUN_ID == "run_20260924_cutoff_contract_recert_v01"
+        assert runner.RUN_DIR.name == runner.RUN_ID
+        assert runner.RUN_DIR.parent.name == "p2_1_neg40_weak_protect_v01"
+        assert runner.SAMPLE_PATH.name == "sample_benchmark.json"
+        assert runner.CORRECTED_RUN_DIR == runner.RUN_DIR
+        assert runner.MATCHED_LEDGER_PATH.parent == runner.RUN_DIR
+    finally:
+        runner._configure_run("P2-1")
+
+
 @pytest.mark.parametrize("run_id", ["../outside", "run_bad/path", "invalid"])
 def test_p2_2_run_id_override_rejects_unsafe_or_unversioned_names(run_id):
     with pytest.raises(ValueError, match="P2-2 run id"):
         runner._configure_run("P2-2", run_id)
+
+
+@pytest.mark.parametrize("run_id", ["../outside", "run_bad/path", "invalid"])
+def test_p2_1_run_id_override_rejects_unsafe_or_unversioned_names(run_id):
+    with pytest.raises(ValueError, match="P2-1 run id"):
+        runner._configure_run("P2-1", run_id)
+
+
+def test_p3_1_uses_isolated_window_specific_artifact_namespace():
+    try:
+        runner._configure_run("P3-1")
+        assert runner.RUN_ID == "run_20260924_single_window_v01"
+        assert runner.RUN_DIR.name == runner.RUN_ID
+        assert runner.RUN_DIR.parent.name == "p3_1_neg40_weak_protect_v01"
+        assert runner.SAMPLE_PATH.name == "sample_benchmark_p3_1_common_pit_v01.json"
+        assert runner.MATCHED_LEDGER_PATH.name == "p3_1_matched_trades.csv"
+        assert runner.SOFT_EVENTS_PATH.name == "p3_1_soft_events.csv"
+        assert runner.LEDGER_SUMMARY_PATH.name == "p3_1_summary.json"
+    finally:
+        runner._configure_run("P2-1")
+
+
+def test_p3_1_population_preflight_requires_support_coverage_and_fresh_common_pit():
+    segment = IdentitySegment(
+        ticker="000001",
+        isu_cd="KR7000000001",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2020-01-01"),
+        effective_to=pd.Timestamp("2026-12-31"),
+    )
+    run = SimpleNamespace(
+        window=SimpleNamespace(
+            window=SimpleNamespace(window_id="P3-1"),
+            effective_start=pd.Timestamp("2022-01-03"),
+            effective_end=pd.Timestamp("2025-05-30"),
+            execution_support=pd.Timestamp("2025-06-02"),
+        ),
+        authority=SimpleNamespace(
+            pit_path=runner.ROOT / "authority.json",
+            pit_sha256="authority-hash",
+        ),
+        authority_coverage_start="2010-01-04",
+        authority_coverage_end="2025-06-02",
+        segments_by_ticker={"000001": (segment,)},
+    )
+
+    passed = runner._p3_1_population_preflight(run)
+    assert passed["status"] == "PASS"
+    assert passed["p2_population_reused"] is False
+    assert passed["checks"]["p2_population_not_reused"] is True
+    assert passed["common_identity_segment_count"] == 1
+
+    run.authority_coverage_end = "2025-05-30"
+    blocked = runner._p3_1_population_preflight(run)
+    assert blocked["status"] == "CHECK_REQUIRED"
+    assert blocked["checks"]["authority_coverage_execution_support"] is False
+
+
+def test_result_validation_fails_closed_on_post_cutoff_entry_source():
+    cutoff = pd.Timestamp("2025-05-30")
+    late = pd.DataFrame(
+        [{"trade_id": "000001_01", "ticker": "000001", "entry_execution_date": "2025-06-02"}]
+    )
+    allowed = pd.DataFrame(
+        [{"trade_id": "000001_01", "ticker": "000001", "entry_execution_date": "2025-05-30"}]
+    )
+
+    with pytest.raises(RuntimeError, match="1 entry execution.*after effective_end"):
+        runner._assert_entry_executions_within_effective_end(
+            late,
+            cutoff,
+            source="test CONTROL population",
+        )
+    runner._assert_entry_executions_within_effective_end(
+        allowed,
+        cutoff,
+        source="test CONTROL population",
+    )
+
+
+def _process_ticker_with_records(monkeypatch, records):
+    segment = IdentitySegment(
+        ticker="000001",
+        isu_cd="KR7000000001",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2020-01-01"),
+        effective_to=pd.Timestamp("2025-05-29"),
+    )
+    daily = pd.DataFrame(
+        {
+            "open": [100.0, 101.0, 102.0],
+            "high": [101.0, 102.0, 103.0],
+            "low": [99.0, 100.0, 101.0],
+            "close": [100.0, 101.0, 102.0],
+        },
+        index=pd.to_datetime(["2025-05-29", "2025-05-30", "2025-06-02"]),
+    )
+
+    class FakeLoader:
+        def __init__(self, repository, *, start, end):
+            self.load_count = 0
+
+        def load(self, ticker):
+            self.load_count += 1
+            return daily
+
+    class FakeRecord(dict):
+        __getattr__ = dict.__getitem__
+
+        def to_dict(self):
+            return dict(self)
+
+    monkeypatch.setattr(runner, "RepositoryV2DailyLoader", FakeLoader)
+    monkeypatch.setattr(runner.v2, "build_precomputed_ticker_context", lambda *args: object())
+    monkeypatch.setattr(
+        runner.v2,
+        "simulate_ticker_core_v02_reentry",
+        lambda **kwargs: [FakeRecord(row) for row in records],
+    )
+    monkeypatch.setattr(
+        runner,
+        "_candidate_trade",
+        lambda base, *, pair_id, **kwargs: (
+            {**base, "pair_id": pair_id},
+            {"incremental_soft_exit": False, "execution_support_missing": False},
+        ),
+    )
+    run = SimpleNamespace(
+        window=SimpleNamespace(
+            window=SimpleNamespace(window_id="P2-1"),
+            effective_start=pd.Timestamp("2021-01-04"),
+            effective_end=pd.Timestamp("2025-05-30"),
+            execution_support=pd.Timestamp("2025-06-02"),
+        ),
+        segments_by_ticker={"000001": (segment,)},
+        loader=SimpleNamespace(repository=object()),
+        score_contract={},
+        stage_contract={},
+        calendar=object(),
+    )
+    return runner._process_ticker("000001", run)
+
+
+def test_process_ticker_allows_cutoff_exit_to_execute_on_support(monkeypatch):
+    result = _process_ticker_with_records(
+        monkeypatch,
+        [
+            {
+                "ticker": "000001",
+                "name": "000001",
+                "market": "KOSPI",
+                "trade_id": "000001_01",
+                "trade_sequence": 1,
+                "entry_signal_date": "2025-05-28",
+                "entry_execution_date": "2025-05-29",
+                "entry_open": 101.0,
+                "entry_pattern_a_stage": "EARLY_TREND",
+                "first_progressed_effective_trading_date": None,
+                "exit_type": "EXIT3_PROGRESSED_TO_WEAK",
+                "exit_signal_date": "2025-05-30",
+                "exit_execution_date": "2025-06-02",
+                "exit_price": 102.0,
+                "terminal_return": 0.99,
+                "mfe": 1.98,
+                "mae": 0.0,
+                "peak_giveback": 0.99,
+                "profit_capture": 0.5,
+                "holding_weeks": 0.2,
+                "trade_status": "REALIZED",
+            }
+        ],
+    )
+
+    assert len(result["control_rows"]) == 1
+    assert len(result["candidate_rows"]) == 1
+    assert result["control_rows"][0]["entry_execution_date"] == "2025-05-29"
+    assert result["control_rows"][0]["exit_execution_date"] == "2025-06-02"
+    assert result["candidate_rows"][0]["exit_execution_date"] == "2025-06-02"
 
 
 def _base_trade() -> dict:
@@ -235,6 +526,11 @@ def test_matched_ledger_is_one_row_per_identical_trade_and_recomputable():
     assert second["control_open_at_cutoff"]
     assert second["candidate_open_at_cutoff"]
     assert runner._ledger_aggregates(ledger)["paired"]["count"] == 2
+    p3_ledger = runner._add_p3_1_ledger_contract_fields(ledger)
+    assert {"trade_status", "terminal_reason"}.issubset(p3_ledger.columns)
+    assert p3_ledger.loc[0, "trade_status"] == "CONTROL=REALIZED;CANDIDATE=REALIZED"
+    assert "CONTROL=V2_EXIT" in p3_ledger.loc[0, "terminal_reason"]
+    assert "CANDIDATE=SOFT_EXIT_NEG40_NON_WEAK" in p3_ledger.loc[0, "terminal_reason"]
 
 
 def test_matched_ledger_rejects_duplicate_pair_id_as_the_uniqueness_key():
@@ -487,7 +783,7 @@ def test_unexecuted_soft_signal_is_not_accepted_without_verified_terminal_contra
         runner._build_soft_event_ledger(diagnostics, candidate)
 
 
-def test_soft_signal_after_identity_segment_is_rejected_even_with_execution_price():
+def test_soft_signal_after_common_interval_end_is_allowed_within_window():
     diagnostics = [
         {
             "soft_events": [
@@ -516,12 +812,17 @@ def test_soft_signal_after_identity_segment_is_rejected_even_with_execution_pric
                 "identity_effective_from": "2020-01-01",
                 "identity_effective_to": "2026-08-21",
                 "candidate_action": "SOFT_EXIT",
+                "exit_signal_date": "2026-08-24",
+                "exit_execution_date": "2026-08-25",
+                "exit_price": 58.0,
             }
         ]
     )
 
-    with pytest.raises(RuntimeError, match="lies beyond its Candidate identity segment"):
-        runner._build_soft_event_ledger(diagnostics, candidate)
+    events = runner._build_soft_event_ledger(diagnostics, candidate)
+    assert len(events) == 1
+    assert events.iloc[0]["date"] == "2026-08-24"
+    assert events.iloc[0]["execution_date"] == "2026-08-25"
 
 
 def test_p2_2_identity_preflight_blocks_frozen_authority_short_of_cutoff():
@@ -584,7 +885,7 @@ def test_p2_2_identity_preflight_uses_global_coverage_and_allows_expired_segment
     assert preflight["common_identity_segment_count"] == 1
 
 
-def test_candidate_rejects_next_open_beyond_identity_segment():
+def test_candidate_allows_exit_next_open_after_common_interval_end():
     base = _base_trade()
     segment = IdentitySegment(
         ticker="000001",
@@ -593,21 +894,23 @@ def test_candidate_rejects_next_open_beyond_identity_segment():
         effective_from=pd.Timestamp("2025-01-01"),
         effective_to=pd.Timestamp("2025-01-07"),
     )
-    with pytest.raises(RuntimeError, match="next-session execution lies beyond its Candidate identity segment"):
-        _candidate_trade(
-            base,
-            pair_id="pair-boundary-execution",
-            segment=segment,
-            daily=_daily([100.0, 60.0, 55.0, 60.0]),
-            stage_timeline={pd.Timestamp("2025-01-07"): "BASE"},
-            window=SimpleNamespace(
-                effective_end=pd.Timestamp("2025-01-09"),
-                execution_support=pd.Timestamp("2025-01-10"),
-            ),
-        )
+    candidate, _ = _candidate_trade(
+        base,
+        pair_id="pair-boundary-execution",
+        segment=segment,
+        daily=_daily([100.0, 60.0, 55.0, 60.0]),
+        stage_timeline={pd.Timestamp("2025-01-07"): "BASE"},
+        window=SimpleNamespace(
+            effective_end=pd.Timestamp("2025-01-09"),
+            execution_support=pd.Timestamp("2025-01-10"),
+        ),
+    )
+    assert candidate["exit_signal_date"] == "2025-01-07"
+    assert candidate["exit_execution_date"] == "2025-01-08"
+    assert candidate["trade_status"] == "REALIZED"
 
 
-def test_month_end_signal_label_cannot_cross_identity_end():
+def test_common_interval_end_limits_new_entry_eligibility_only():
     segment = IdentitySegment(
         ticker="010420",
         isu_cd="KR7010420008",
@@ -616,25 +919,27 @@ def test_month_end_signal_label_cannot_cross_identity_end():
         effective_to=pd.Timestamp("2025-09-24"),
     )
 
-    signal_cutoff = _identity_signal_cutoff(segment, pd.Timestamp("2026-08-31"))
+    entry_cutoff = _common_entry_eligibility_cutoff(segment, pd.Timestamp("2026-08-31"))
 
-    assert signal_cutoff == pd.Timestamp("2025-09-24")
-    assert pd.Timestamp("2025-09-30") > signal_cutoff
+    assert entry_cutoff == pd.Timestamp("2025-09-24")
+    assert pd.Timestamp("2025-09-30") > entry_cutoff
 
 
-def test_process_ticker_passes_identity_bounded_cutoff_to_v2_core(monkeypatch):
+def test_process_ticker_separates_position_horizon_from_entry_eligibility(monkeypatch):
     segment = IdentitySegment(
         ticker="010420",
         isu_cd="KR7010420008",
         market="KOSPI",
         effective_from=pd.Timestamp("2010-01-04"),
-        effective_to=pd.Timestamp("2025-09-24"),
+        effective_to=pd.Timestamp("2025-05-29"),
     )
     captured = {}
+    loader_bounds = {}
 
     class FakeLoader:
         def __init__(self, repository, *, start, end):
             self.load_count = 0
+            loader_bounds.update(start=start, end=end)
 
         def load(self, ticker):
             self.load_count += 1
@@ -705,7 +1010,7 @@ def test_process_ticker_passes_identity_bounded_cutoff_to_v2_core(monkeypatch):
                 "isu_cd": "KR7010420008",
                 "market": "KOSPI",
                 "identity_effective_from": "2010-01-04",
-                "identity_effective_to": "2025-09-24",
+                "identity_effective_to": "2025-05-29",
                 "settlement_date": "2025-09-08",
                 "settlement_price": 1900.0,
                 "settlement_type": "CASH_PER_SHARE",
@@ -719,21 +1024,23 @@ def test_process_ticker_passes_identity_bounded_cutoff_to_v2_core(monkeypatch):
 
     assert captured["cutoff_date"] == pd.Timestamp("2026-08-31")
     assert captured["execution_support_date"] == pd.Timestamp("2026-09-01")
-    assert captured["signal_cutoff_date"] == pd.Timestamp("2025-09-24")
-    assert pd.Timestamp("2025-09-30") > captured["signal_cutoff_date"]
+    assert loader_bounds["end"] == pd.Timestamp("2026-09-01")
+    assert captured["signal_cutoff_date"] == pd.Timestamp("2026-08-31")
+    assert captured["entry_signal_cutoff_date"] == pd.Timestamp("2025-05-29")
+    assert captured["entry_execution_cutoff_date"] == pd.Timestamp("2025-05-29")
     assert result["control_rows"][0]["trade_status"] == "LIFECYCLE_SETTLED"
     assert result["candidate_rows"][0]["trade_status"] == "LIFECYCLE_SETTLED"
     assert result["control_rows"][0]["terminal_return"] == 0.69
     assert result["candidate_rows"][0]["execution_support_missing"] is False
 
 
-def test_confirmed_share_exchange_settlement_is_terminal_without_market_execution():
+def test_confirmed_settlement_matches_stable_isu_after_common_endpoint_changes():
     segment = IdentitySegment(
         ticker="010420",
         isu_cd="KR7010420008",
         market="KOSPI",
         effective_from=pd.Timestamp("2010-01-04"),
-        effective_to=pd.Timestamp("2025-09-24"),
+        effective_to=pd.Timestamp("2025-05-29"),
     )
     row = {
         **_base_trade(),
@@ -741,7 +1048,7 @@ def test_confirmed_share_exchange_settlement_is_terminal_without_market_executio
         "isu_cd": segment.isu_cd,
         "market": segment.market,
         "identity_effective_from": "2010-01-04",
-        "identity_effective_to": "2025-09-24",
+        "identity_effective_to": "2025-05-29",
         "entry_execution_date": "2025-04-14",
         "entry_open": 1887.0,
         "pair_id": "settlement-pair",
@@ -851,6 +1158,150 @@ def test_lifecycle_settlement_evidence_loads_with_official_provenance():
     assert records[0]["settlement_source"].startswith("https://kind.krx.co.kr/")
 
 
+def test_confirmed_settlement_after_common_interval_end_is_accepted(tmp_path: Path):
+    record = {
+        "evidence_id": "fixture-settlement-after-common-end",
+        "evidence_status": "CONFIRMED",
+        "ticker": "010420",
+        "isu_cd": "KR7010420008",
+        "market": "KOSPI",
+        "identity_effective_from": "2010-01-04",
+        "identity_effective_to": "2025-05-29",
+        "settlement_date": "2025-09-08",
+        "settlement_price": 1900.0,
+        "settlement_type": "CASH_PER_SHARE",
+        "terminal_reason": "SHARE_EXCHANGE_CASH_SETTLEMENT",
+        "settlement_source": "https://kind.krx.co.kr/external/fixture.htm",
+        "source_authority": "KRX_KIND",
+        "source_document_id": "fixture-document",
+        "source_published_date": "2025-09-01",
+    }
+    evidence_path = tmp_path / "settlement.json"
+    evidence_path.write_text(
+        json.dumps({"schema": "lifecycle_settlement_evidence_v01", "records": [record]}),
+        encoding="utf-8",
+    )
+
+    loaded = runner._load_lifecycle_settlement_evidence(evidence_path)
+
+    assert len(loaded) == 1
+    assert loaded[0]["settlement_date"] == "2025-09-08"
+    assert loaded[0]["identity_effective_to"] == "2025-05-29"
+
+
+def test_settlement_event_deduplication_ignores_common_interval_endpoint(tmp_path: Path):
+    record = {
+        "evidence_id": "fixture-event-original",
+        "evidence_status": "CONFIRMED",
+        "ticker": "010420",
+        "isu_cd": "KR7010420008",
+        "market": "KOSPI",
+        "identity_effective_from": "2010-01-04",
+        "identity_effective_to": "2025-05-29",
+        "settlement_date": "2025-09-08",
+        "settlement_price": 1900.0,
+        "settlement_type": "CASH_PER_SHARE",
+        "terminal_reason": "SHARE_EXCHANGE_CASH_SETTLEMENT",
+        "settlement_source": "https://kind.krx.co.kr/external/fixture.htm",
+        "source_authority": "KRX_KIND",
+        "source_document_id": "fixture-document",
+        "source_published_date": "2025-09-01",
+    }
+    revised_interval = {
+        **record,
+        "evidence_id": "fixture-event-revised-interval",
+        "identity_effective_to": "2026-08-31",
+    }
+    evidence_path = tmp_path / "duplicate-settlement-event.json"
+    evidence_path.write_text(
+        json.dumps(
+            {
+                "schema": "lifecycle_settlement_evidence_v01",
+                "records": [record, revised_interval],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(RuntimeError, match="duplicate lifecycle settlement event"):
+        runner._load_lifecycle_settlement_evidence(evidence_path)
+
+
+def test_common_interval_end_without_lifecycle_evidence_does_not_settle_open_trade():
+    segment = IdentitySegment(
+        ticker="000001",
+        isu_cd="KR7000000001",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2025-01-01"),
+        effective_to=pd.Timestamp("2025-01-07"),
+    )
+    row = {
+        **_base_trade(),
+        "ticker": segment.ticker,
+        "isu_cd": segment.isu_cd,
+        "market": segment.market,
+        "identity_effective_from": "2025-01-01",
+        "identity_effective_to": "2025-01-07",
+        "trade_status": "OPEN_AT_CUTOFF",
+    }
+
+    unchanged, applied = _apply_lifecycle_settlement(
+        row,
+        segment=segment,
+        evidence=(),
+        cutoff_date=pd.Timestamp("2025-01-10"),
+        daily=_daily([100.0, 101.0, 102.0]),
+    )
+
+    assert not applied
+    assert unchanged["trade_status"] == "OPEN_AT_CUTOFF"
+    assert unchanged.get("settlement_date") is None
+
+
+def test_settlement_after_window_cutoff_is_not_applied_even_after_common_end():
+    segment = IdentitySegment(
+        ticker="010420",
+        isu_cd="KR7010420008",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2010-01-04"),
+        effective_to=pd.Timestamp("2025-05-29"),
+    )
+    settlement = {
+        "ticker": "010420",
+        "isu_cd": "KR7010420008",
+        "market": "KOSPI",
+        "identity_effective_from": "2010-01-04",
+        "identity_effective_to": "2025-05-29",
+        "settlement_date": "2025-09-08",
+        "settlement_price": 1900.0,
+        "settlement_type": "CASH_PER_SHARE",
+        "terminal_reason": "SHARE_EXCHANGE_CASH_SETTLEMENT",
+        "settlement_source": "https://kind.krx.co.kr/external/fixture.htm",
+    }
+    row = {
+        **_base_trade(),
+        "ticker": segment.ticker,
+        "isu_cd": segment.isu_cd,
+        "market": segment.market,
+        "identity_effective_from": "2010-01-04",
+        "identity_effective_to": "2025-05-29",
+        "entry_execution_date": "2025-04-14",
+        "entry_open": 1887.0,
+        "trade_status": "OPEN_AT_CUTOFF",
+    }
+
+    unchanged, applied = _apply_lifecycle_settlement(
+        row,
+        segment=segment,
+        evidence=(settlement,),
+        cutoff_date=pd.Timestamp("2025-08-31"),
+        daily=_daily([100.0, 101.0, 102.0]),
+    )
+
+    assert not applied
+    assert unchanged["trade_status"] == "OPEN_AT_CUTOFF"
+
+
 def test_soft_signal_without_open_is_accepted_only_with_lifecycle_settlement_terminal():
     diagnostics = [
         {
@@ -878,7 +1329,7 @@ def test_soft_signal_without_open_is_accepted_only_with_lifecycle_settlement_ter
                 "isu_cd": "KR7010420008",
                 "market": "KOSPI",
                 "identity_effective_from": "2010-01-04",
-                "identity_effective_to": "2025-09-24",
+                "identity_effective_to": "2025-05-29",
                 "candidate_action": "SOFT_EXIT",
                 "trade_status": "LIFECYCLE_SETTLED",
                 "exit_signal_date": "2025-09-03",

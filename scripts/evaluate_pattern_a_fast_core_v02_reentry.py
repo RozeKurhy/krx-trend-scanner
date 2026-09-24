@@ -64,6 +64,10 @@ def _worker_task(args: tuple[str, str, str, dict, dict], loader: RepositoryV2Dai
         score_contract=score_contract,
         stage_contract=stage_contract,
         cutoff_date=DATA_CUTOFF,
+        signal_cutoff_date=DATA_CUTOFF,
+        execution_support_date=DATA_CUTOFF,
+        entry_signal_cutoff_date=DATA_CUTOFF,
+        entry_execution_cutoff_date=DATA_CUTOFF,
     )
     return [r.to_dict() for r in records]
 
