@@ -35,7 +35,7 @@
 | [validation/](validation/) | 이전 문서 경로 호환 안내와 영역 공통 현재 기준 문서 |
 | [web/](web/) | 웹 화면에 제공하는 정적 데이터·전달 계약 |
 
-`patterns/`에는 Pattern A, Pattern A FAST와 초기 연구 후보인 Pattern B가 있다.
+`patterns/`에는 Pattern A, Pattern A FAST, Pattern B가 있다.
 A FAST Core 전략 문서는
 Pattern A FAST와 강하게 결합되어 있으므로 해당 패턴 아래에서 관리한다.
 여러 패턴을 조합하거나 특정 패턴과 독립적인 전략은 `strategies/`에 둔다.
@@ -44,6 +44,7 @@ Pattern A FAST와 강하게 결합되어 있으므로 해당 패턴 아래에서
 
 - **Pattern A** — 공식 패턴 규격은 [공식 규격 문서](patterns/pattern_a/spec/production_authority.md)를 따른다.
 - **Pattern A FAST** — 의미와 생애주기는 [FAST 명세](patterns/pattern_a_fast/spec/README.md)를 따른다.
+- **Pattern B** — 공식 패턴 규격은 [Pattern B 공식 규격](patterns/pattern_b/spec/production_authority.md)을 따른다.
 - **A FAST Core V2** — 일반 종목 전략 규칙은 [V2 계약](patterns/pattern_a_fast/strategy/version_02/README.md)의 `PATTERN_A_FAST_FINAL_STRATEGY_V02`다.
 - **Fundamentals V1** — 기준은 [Fundamentals 안내](fundamentals/README.md)와 해당 영역의 기준 문서에서 확인한다.
 - **Stock Report v0.5** — 보고서 계약은 [Stock Report 안내](reporting/stock_report/README.md)와 [v0.5 계약](reporting/stock_report/contract_v05.md)을 따른다.
