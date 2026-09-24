@@ -885,6 +885,101 @@ def test_p2_2_identity_preflight_uses_global_coverage_and_allows_expired_segment
     assert preflight["common_identity_segment_count"] == 1
 
 
+def _copy_p2_2_identity_extension(destination: Path) -> Path:
+    destination.mkdir(parents=True, exist_ok=True)
+    for source in runner.P2_2_AUTHORITY_EXTENSION_DIR.glob("*.json"):
+        (destination / source.name).write_bytes(source.read_bytes())
+    return destination
+
+
+def test_p2_2_extended_identity_authority_resolves_sealed_snapshot_and_preflight():
+    authority = runner.load_effective_authority(runner.AUTHORITY_DIR)
+
+    extended, coverage_start, coverage_end = runner._load_p2_2_extended_identity_authority(authority)
+
+    assert coverage_start == "2010-01-04"
+    assert coverage_end == "2026-09-01"
+    assert len(extended.pit_intervals) == 3181
+    assert extended.pit_sha256 == "9997c55526575bc2341b7ce2e056def1d0a8c3fb77d89c8fadb3716ae2f46dd4"
+
+    effective_start = pd.Timestamp("2021-01-04")
+    effective_end = pd.Timestamp("2026-08-31")
+    first_relevant = next(
+        interval
+        for interval in extended.pit_intervals
+        if interval.get("state") == "COMMON"
+        and pd.Timestamp(interval["effective_from"]) <= effective_end
+        and pd.Timestamp(interval["effective_to"]) >= effective_start
+    )
+    run = SimpleNamespace(
+        window=SimpleNamespace(
+            window=SimpleNamespace(window_id="P2-2"),
+            effective_start=effective_start,
+            effective_end=effective_end,
+            execution_support=pd.Timestamp("2026-09-01"),
+        ),
+        authority_coverage_start=coverage_start,
+        authority_coverage_end=coverage_end,
+        segments_by_ticker={
+            str(first_relevant["ticker"]): (
+                IdentitySegment(
+                    ticker=str(first_relevant["ticker"]),
+                    isu_cd=str(first_relevant["isu_cd"]),
+                    market=str(first_relevant["market"]),
+                    effective_from=pd.Timestamp(first_relevant["effective_from"]),
+                    effective_to=pd.Timestamp(first_relevant["effective_to"]),
+                ),
+            )
+        },
+    )
+    preflight = runner._p2_2_identity_authority_preflight(run)
+
+    assert preflight["status"] == "PASS"
+    assert preflight["pit_common_authority_global_coverage_end"] == "2026-09-01"
+    assert preflight["common_identity_segment_count"] == 1
+
+
+def test_p2_2_extended_identity_authority_missing_artifact_fails_closed(monkeypatch, tmp_path):
+    authority = runner.load_effective_authority(runner.AUTHORITY_DIR)
+    monkeypatch.setattr(runner, "P2_2_AUTHORITY_EXTENSION_DIR", tmp_path / "missing")
+
+    with pytest.raises(RuntimeError, match="P2_2_IDENTITY_AUTHORITY_EXTENSION_ARTIFACT_MISSING"):
+        runner._load_p2_2_extended_identity_authority(authority)
+
+
+def test_p2_2_extended_identity_authority_hash_mismatch_fails_closed(monkeypatch, tmp_path):
+    authority = runner.load_effective_authority(runner.AUTHORITY_DIR)
+    extension_dir = _copy_p2_2_identity_extension(tmp_path / "tampered")
+    calendar_path = extension_dir / "merged_trading_calendar.json"
+    calendar_path.write_text("{}\n", encoding="utf-8")
+    monkeypatch.setattr(runner, "P2_2_AUTHORITY_EXTENSION_DIR", extension_dir)
+
+    with pytest.raises(RuntimeError, match="P2_2_IDENTITY_AUTHORITY_CALENDAR_FILE_HASH_MISMATCH"):
+        runner._load_p2_2_extended_identity_authority(authority)
+
+
+def test_p2_2_extended_identity_authority_wrong_coverage_fails_closed(monkeypatch, tmp_path):
+    authority = runner.load_effective_authority(runner.AUTHORITY_DIR)
+    extension_dir = _copy_p2_2_identity_extension(tmp_path / "short-coverage")
+    calendar_path = extension_dir / "merged_trading_calendar.json"
+    calendar = json.loads(calendar_path.read_text(encoding="utf-8"))
+    calendar["calendar_frontier"] = "2026-08-21"
+    calendar_path.write_text(
+        json.dumps(calendar, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    manifest_path = extension_dir / "p2_2_identity_authority_extension_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["coverage_end"] = "2026-08-21"
+    manifest["merged_calendar_file_sha256"] = runner._sha256(calendar_path)
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    monkeypatch.setattr(runner, "P2_2_AUTHORITY_EXTENSION_DIR", extension_dir)
+
+    with pytest.raises(RuntimeError, match="P2_2_IDENTITY_AUTHORITY_EXECUTION_SUPPORT_MISMATCH"):
+        runner._load_p2_2_extended_identity_authority(authority)
+
+
 def test_candidate_allows_exit_next_open_after_common_interval_end():
     base = _base_trade()
     segment = IdentitySegment(
