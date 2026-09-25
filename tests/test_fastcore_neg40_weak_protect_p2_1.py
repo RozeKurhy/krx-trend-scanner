@@ -151,6 +151,12 @@ def test_p2_1_run_id_override_rejects_unsafe_or_unversioned_names(run_id):
         runner._configure_run("P2-1", run_id)
 
 
+@pytest.mark.parametrize("run_id", ["../outside", "run_bad/path", "invalid"])
+def test_p3_1_run_id_override_rejects_unsafe_or_unversioned_names(run_id):
+    with pytest.raises(ValueError, match="P3-1 run id"):
+        runner._configure_run("P3-1", run_id)
+
+
 def test_p3_1_uses_isolated_window_specific_artifact_namespace():
     try:
         runner._configure_run("P3-1")
@@ -161,6 +167,278 @@ def test_p3_1_uses_isolated_window_specific_artifact_namespace():
         assert runner.MATCHED_LEDGER_PATH.name == "p3_1_matched_trades.csv"
         assert runner.SOFT_EVENTS_PATH.name == "p3_1_soft_events.csv"
         assert runner.LEDGER_SUMMARY_PATH.name == "p3_1_summary.json"
+    finally:
+        runner._configure_run("P2-1")
+
+
+def test_p3_1_run_id_override_uses_isolated_corrective_replay_namespace():
+    try:
+        runner._configure_run("P3-1", "run_20260925_corrective_replay_v01")
+        assert runner.RUN_ID == "run_20260925_corrective_replay_v01"
+        assert runner.RUN_DIR.name == runner.RUN_ID
+        assert runner.RUN_DIR.parent.name == "p3_1_neg40_weak_protect_v01"
+        assert runner.MATCHED_LEDGER_PATH.parent == runner.RUN_DIR
+    finally:
+        runner._configure_run("P2-1")
+
+
+def test_settlement_date_aggregate_skips_generic_lifecycle_events_without_dates():
+    records = (
+        {"evidence_id": "settlement-in-window", "settlement_date": "2025-02-03"},
+        {"evidence_id": "generic-event", "event_type": "MANDATORY_SHARE_EXCHANGE"},
+        {"evidence_id": "settlement-outside", "settlement_date": "2026-01-02"},
+    )
+
+    assert runner._in_window_settlement_date_count(
+        records,
+        pd.Timestamp("2025-01-01"),
+        pd.Timestamp("2025-12-31"),
+    ) == 1
+
+
+def test_simulation_raw_artifacts_survive_intentional_postprocess_failure(tmp_path, monkeypatch):
+    monkeypatch.setattr(runner, "ROOT", tmp_path)
+    runner._configure_run("P3-1", "run_test_artifact_first")
+    try:
+        run_dir = runner.RUN_DIR
+        runner._json_write(
+            runner.SAMPLE_PATH,
+            {
+                "window_id": "P3-1",
+                "worker_count": 1,
+                "estimated_full_seconds": 1.0,
+                "population_preflight": {
+                    "status": "PASS",
+                    "effective_pit_sha256": "pit-hash",
+                    "common_identity_segment_count": 1,
+                },
+            },
+        )
+        control, candidate = _contract_frames(
+            [{"pair_id": "pair-1", "control_return": -5.0, "candidate_return": -4.0}]
+        )
+        segment = IdentitySegment(
+            ticker="000001",
+            isu_cd="KR7000000001",
+            market="KOSPI",
+            effective_from=pd.Timestamp("2020-01-01"),
+            effective_to=pd.Timestamp("2025-12-31"),
+        )
+        run = SimpleNamespace(
+            window=SimpleNamespace(
+                window=SimpleNamespace(window_id="P3-1"),
+                effective_start=pd.Timestamp("2025-01-01"),
+                effective_end=pd.Timestamp("2025-05-30"),
+                execution_support=pd.Timestamp("2025-06-02"),
+            ),
+            authority=SimpleNamespace(pit_sha256="pit-hash"),
+            segments_by_ticker={"000001": (segment,)},
+            setup_seconds=1.0,
+        )
+        monkeypatch.setattr(runner, "_load_context", lambda window_id: run)
+        monkeypatch.setattr(
+            runner,
+            "_p3_1_population_preflight",
+            lambda value: {
+                "status": "PASS",
+                "effective_pit_sha256": "pit-hash",
+                "common_identity_segment_count": 1,
+            },
+        )
+        monkeypatch.setattr(
+            runner.subprocess,
+            "check_output",
+            lambda *args, **kwargs: "test-head",
+        )
+        monkeypatch.setattr(
+            runner,
+            "_process_ticker",
+            lambda ticker, value: {
+                "ticker": ticker,
+                "segments_seen": 1,
+                "repository_load_count": 1,
+                "control_rows": control.to_dict(orient="records"),
+                "candidate_rows": candidate.to_dict(orient="records"),
+                "diagnostics": [{"soft_events": []}],
+                "elapsed_seconds": 0.1,
+            },
+        )
+        monkeypatch.setattr(
+            runner,
+            "_validate_results",
+            lambda *args, **kwargs: {"entry_population_parity": True},
+        )
+        monkeypatch.setattr(
+            runner,
+            "_candidate_diagnostics",
+            lambda *args, **kwargs: (_ for _ in ()).throw(
+                RuntimeError("intentional summary failure")
+            ),
+        )
+
+        with pytest.raises(RuntimeError, match="intentional summary failure"):
+            runner._run("full", 1, 40, "P3-1")
+
+        for filename in (
+            "control_trades.csv",
+            "candidate_trades.csv",
+            "paired_trades.csv",
+            "p3_1_matched_trades.csv",
+            "p3_1_soft_events.csv",
+        ):
+            assert (run_dir / filename).is_file()
+        manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
+        assert manifest["simulation_status"] == "SIMULATION_COMPLETE"
+        assert manifest["raw_artifacts_status"] == "COMPLETE"
+        assert manifest["postprocess_status"] == "SUMMARY_FAILED"
+        assert manifest["postprocess_error"]["message"] == "intentional summary failure"
+    finally:
+        runner._configure_run("P2-1")
+
+
+def test_p3_1_summary_only_regenerates_from_raw_without_simulation(tmp_path, monkeypatch):
+    monkeypatch.setattr(runner, "ROOT", tmp_path)
+    monkeypatch.setattr(runner, "LIFECYCLE_SETTLEMENT_EVIDENCE_PATH", tmp_path / "lifecycle.json")
+    runner._configure_run("P3-1", "run_test_summary_only")
+    try:
+        control, candidate = _contract_frames(
+            [{"pair_id": "pair-summary", "control_return": -5.0, "candidate_return": -4.0}]
+        )
+        paired = control.merge(
+            candidate, on="pair_id", suffixes=("_control", "_candidate"), validate="one_to_one"
+        )
+        ledger = runner._add_p3_1_ledger_contract_fields(
+            runner._build_matched_trade_ledger(control, candidate, cutoff_date="2025-05-30")
+        )
+        events = runner._raw_soft_event_ledger([])
+        for path, frame in (
+            (runner.RUN_DIR / "control_trades.csv", control),
+            (runner.RUN_DIR / "candidate_trades.csv", candidate),
+            (runner.RUN_DIR / "paired_trades.csv", paired),
+            (runner.MATCHED_LEDGER_PATH, ledger),
+            (runner.SOFT_EVENTS_PATH, events),
+        ):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            frame.to_csv(path, index=False)
+        runner._json_write(
+            runner.SAMPLE_PATH,
+            {"sample_wall_seconds": 5.0, "estimated_full_seconds": 20.0},
+        )
+        runner._json_write(
+            runner.RUN_DIR / "run_manifest.json",
+            {
+                "run_id": runner.RUN_ID,
+                "window_id": "P3-1",
+                "start_head": "test-full-run-head",
+                "simulation_status": "SIMULATION_COMPLETE",
+                "raw_artifacts_status": "COMPLETE",
+                "postprocess_status": "SUMMARY_FAILED",
+                "effective_pit_sha256": "pit-hash",
+                "execution": {
+                    "workers": 8,
+                    "processed_tickers": 1,
+                    "target_tickers": 1,
+                    "total_segments": 1,
+                    "elapsed_seconds": 2.5,
+                    "setup_seconds": 1.0,
+                    "repository_load_count": 1,
+                },
+                "raw_artifacts": {"source": "saved"},
+                "outputs": [],
+            },
+        )
+        segment = IdentitySegment(
+            ticker="000001",
+            isu_cd="KR7000000001",
+            market="KOSPI",
+            effective_from=pd.Timestamp("2020-01-01"),
+            effective_to=pd.Timestamp("2025-12-31"),
+        )
+        run = SimpleNamespace(
+            window=SimpleNamespace(
+                window=SimpleNamespace(
+                    window_id="P3-1",
+                    calendar_start=pd.Timestamp("2025-01-01"),
+                    calendar_end=pd.Timestamp("2025-05-30"),
+                ),
+                effective_start=pd.Timestamp("2025-01-01"),
+                effective_end=pd.Timestamp("2025-05-30"),
+                execution_support=pd.Timestamp("2025-06-02"),
+            ),
+            authority=SimpleNamespace(
+                pit_path=tmp_path / "authority.json",
+                pit_sha256="pit-hash",
+                pit_count=1,
+            ),
+            authority_coverage_start="2020-01-01",
+            authority_coverage_end="2025-06-02",
+            segments_by_ticker={"000001": (segment,)},
+            calendar=SimpleNamespace(
+                trading_dates=pd.DatetimeIndex([]),
+                metadata={"certified_through": "2025-06-02", "manifest_sha256": "calendar-hash"},
+            ),
+            lifecycle_settlements=({"evidence_id": "generic-lifecycle-event"},),
+            setup_seconds=1.0,
+        )
+        monkeypatch.setattr(runner, "_load_context", lambda window_id: run)
+        monkeypatch.setattr(
+            runner,
+            "_p3_1_population_preflight",
+            lambda value: {
+                "status": "PASS",
+                "effective_pit_sha256": "pit-hash",
+                "common_identity_segment_count": 1,
+            },
+        )
+        monkeypatch.setattr(
+            runner,
+            "_validate_results",
+            lambda *args, **kwargs: {
+                "duplicate_pair_ids": 0,
+                "entry_population_parity": True,
+                "entry_field_parity": True,
+                "exit_window_violations": 0,
+                "candidate_unexecuted_signal_count": 0,
+                "candidate_execution_support_missing_count": 0,
+                "common_interval_end_before_cutoff_open_count": 0,
+                "open_terminal_valuation_unresolved_count": 0,
+                "candidate_overlap_count": 0,
+                "candidate_stage_asof_future_violations": 0,
+            },
+        )
+        monkeypatch.setattr(
+            runner,
+            "_candidate_diagnostics",
+            lambda *args, **kwargs: {
+                "weak_protect_eod_event_count": 0,
+                "soft_signal_count": 0,
+                "control_ge_50_winner_damaged_count": 0,
+            },
+        )
+        monkeypatch.setattr(runner, "_compare_p3_1_directions", lambda *args: {"test": "directions"})
+        monkeypatch.setattr(runner, "_verdict", lambda *args: "MIXED")
+        monkeypatch.setattr(
+            runner,
+            "_process_ticker",
+            lambda *args, **kwargs: pytest.fail("summary-only mode reran simulation"),
+        )
+        monkeypatch.setattr(
+            runner,
+            "ThreadPoolExecutor",
+            lambda *args, **kwargs: pytest.fail("summary-only mode started ticker workers"),
+        )
+
+        summary = runner._run("summarize", 8, 40, "P3-1")
+
+        assert summary["status"] == "COMPLETE"
+        assert summary["head"] == "test-full-run-head"
+        assert summary["execution"]["actual_full_seconds"] == 2.5
+        assert summary["lifecycle_settlement"]["in_window_evidence_record_count"] == 0
+        assert (runner.RUN_DIR / "summary.json").is_file()
+        assert runner.LEDGER_SUMMARY_PATH.is_file()
+        manifest = json.loads((runner.RUN_DIR / "run_manifest.json").read_text(encoding="utf-8"))
+        assert manifest["postprocess_status"] == "COMPLETE"
+        assert manifest["summarized_from_raw_artifacts"] is True
     finally:
         runner._configure_run("P2-1")
 

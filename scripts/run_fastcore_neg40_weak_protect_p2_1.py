@@ -128,8 +128,17 @@ def _configure_run(window_id: str, run_id_override: str | None = None) -> None:
         events_name = "p2_2_soft_events.csv"
         ledger_summary_name = "p2_2_summary.json"
     elif window_id == "P3-1":
-        run_id = P3_1_RUN_ID
-        run_dir = P3_1_RUN_DIR
+        run_id = P3_1_RUN_ID if run_id_override is None else run_id_override
+        if run_id_override is not None and (
+            not run_id.startswith("run_")
+            or not all(char.isascii() and (char.isalnum() or char in "_-") for char in run_id)
+        ):
+            raise ValueError("P3-1 run id must start with 'run_' and contain only ASCII letters, digits, '_' or '-'")
+        run_dir = (
+            P3_1_RUN_DIR
+            if run_id_override is None
+            else ROOT / "artifacts/backtests/p3_1_neg40_weak_protect_v01" / run_id
+        )
         corrected_dir = run_dir
         ledger_name = "p3_1_matched_trades.csv"
         events_name = "p3_1_soft_events.csv"
@@ -137,8 +146,8 @@ def _configure_run(window_id: str, run_id_override: str | None = None) -> None:
     else:
         raise ValueError(f"unsupported matched A/B window: {window_id}")
 
-    if run_id_override is not None and window_id not in {"P2-1", "P2-2"}:
-        raise ValueError("--run-id override is supported only for P2-1 and P2-2")
+    if run_id_override is not None and window_id not in {"P2-1", "P2-2", "P3-1"}:
+        raise ValueError("--run-id override is not supported for the selected window")
 
     WINDOW_ID = window_id
     RUN_ID = run_id
@@ -3356,6 +3365,192 @@ def _json_write(path: Path, payload: Mapping[str, Any]) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, default=str) + "\n", encoding="utf-8")
 
 
+def _in_window_settlement_date_count(
+    records: Sequence[Mapping[str, Any]],
+    effective_start: pd.Timestamp,
+    effective_end: pd.Timestamp,
+) -> int:
+    """Count only lifecycle records that actually carry a settlement date."""
+    start = pd.Timestamp(effective_start).normalize()
+    end = pd.Timestamp(effective_end).normalize()
+    count = 0
+    for item in records:
+        value = item.get("settlement_date")
+        if value is None or pd.isna(value) or not str(value).strip():
+            continue
+        settlement_date = pd.Timestamp(value).normalize()
+        count += int(start <= settlement_date <= end)
+    return count
+
+
+def _raw_soft_event_ledger(trade_diagnostics: Sequence[Mapping[str, Any]]) -> pd.DataFrame:
+    """Flatten simulation evidence without running post-processing validation."""
+    columns = [
+        "trade_id",
+        "pair_id",
+        "ticker",
+        "date",
+        "close_return",
+        "pattern_a_stage",
+        "event_type",
+        "execution_date",
+        "execution_open",
+    ]
+    rows = [
+        event
+        for diagnostic in trade_diagnostics
+        for event in diagnostic.get("soft_events", [])
+    ]
+    return pd.DataFrame(rows, columns=columns)
+
+
+def _raw_artifact_paths(selected_window: str) -> dict[str, Path]:
+    paths = {
+        "control": RUN_DIR / "control_trades.csv",
+        "candidate": RUN_DIR / "candidate_trades.csv",
+        "paired": RUN_DIR / "paired_trades.csv",
+    }
+    if selected_window in {"P2-2", "P3-1"}:
+        paths["matched_ledger"] = MATCHED_LEDGER_PATH
+        paths["soft_events"] = SOFT_EVENTS_PATH
+    return paths
+
+
+def _persist_raw_artifacts(
+    *,
+    selected_window: str,
+    control: pd.DataFrame,
+    candidate: pd.DataFrame,
+    paired: pd.DataFrame | None,
+    matched_ledger: pd.DataFrame | None,
+    soft_events: pd.DataFrame | None,
+    execution: Mapping[str, Any],
+    run: RunContext,
+) -> dict[str, Any]:
+    """Persist simulation outputs and execution provenance before aggregation."""
+    paths = _raw_artifact_paths(selected_window)
+    manifest_path = RUN_DIR / "run_manifest.json"
+    manifest = {
+        "run_id": RUN_ID,
+        "window_id": selected_window,
+        "start_head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+        "p2_1_only": selected_window == "P2-1",
+        "p2_2_only": selected_window == "P2-2",
+        "p3_1_only": selected_window == "P3-1",
+        "raw_candidate_artifact_reused": False,
+        "effective_pit_sha256": run.authority.pit_sha256,
+        "score_contract_sha256": _sha256(SCORE_CONTRACT_PATH),
+        "stage_contract_sha256": _sha256(STAGE_CONTRACT_PATH),
+        "sample_benchmark": str(SAMPLE_PATH.relative_to(ROOT)),
+        "simulation_status": "SIMULATION_COMPLETE",
+        "raw_artifacts_status": "WRITING",
+        "postprocess_status": "PENDING",
+        "execution": dict(execution),
+        "raw_artifacts": {key: str(path.relative_to(ROOT)) for key, path in paths.items()},
+        "outputs": [str(path.relative_to(ROOT)) for path in paths.values()],
+    }
+    _json_write(manifest_path, manifest)
+    for key, frame in (("control", control), ("candidate", candidate)):
+        paths[key].parent.mkdir(parents=True, exist_ok=True)
+        frame.to_csv(paths[key], index=False)
+    persisted_paths = [paths["control"], paths["candidate"]]
+    if paired is not None:
+        paired.to_csv(paths["paired"], index=False)
+        persisted_paths.append(paths["paired"])
+    if "matched_ledger" in paths:
+        if soft_events is not None:
+            soft_events.to_csv(paths["soft_events"], index=False, float_format="%.8f")
+            persisted_paths.append(paths["soft_events"])
+        if matched_ledger is not None:
+            matched_ledger.to_csv(paths["matched_ledger"], index=False, float_format="%.8f")
+            persisted_paths.append(paths["matched_ledger"])
+    missing = [str(path) for path in persisted_paths if not path.is_file() or path.stat().st_size == 0]
+    if missing:
+        manifest["raw_artifacts_status"] = "INCOMPLETE"
+        manifest["raw_artifact_missing_or_empty"] = missing
+        _json_write(manifest_path, manifest)
+        raise RuntimeError(f"raw artifact persistence incomplete: {missing}")
+    lifecycle_artifacts_complete = "matched_ledger" not in paths or (
+        matched_ledger is not None and soft_events is not None
+    )
+    complete = paired is not None and lifecycle_artifacts_complete
+    manifest["raw_artifacts_status"] = "COMPLETE" if complete else "PARTIAL"
+    if not complete:
+        manifest["raw_artifacts_pending"] = [
+            key
+            for key, available in (
+                ("paired", paired is not None),
+                ("matched_ledger", matched_ledger is not None),
+                ("soft_events", soft_events is not None),
+            )
+            if key in paths and not available
+        ]
+    else:
+        manifest.pop("raw_artifacts_pending", None)
+    manifest["outputs"] = [str(path.relative_to(ROOT)) for path in persisted_paths]
+    _json_write(manifest_path, manifest)
+    return manifest
+
+
+def _record_postprocess_failure(manifest_path: Path, exc: BaseException) -> None:
+    if not manifest_path.is_file():
+        return
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("simulation_status") != "SIMULATION_COMPLETE":
+        return
+    complete = manifest.get("raw_artifacts_status") == "COMPLETE"
+    core_validation_failed = manifest.get("postprocess_stage") == "CORE_VALIDATION"
+    manifest["postprocess_status"] = (
+        "CHECK_REQUIRED" if not complete or core_validation_failed else "SUMMARY_FAILED"
+    )
+    manifest["postprocess_error"] = {"type": type(exc).__name__, "message": str(exc)}
+    _json_write(manifest_path, manifest)
+
+
+def _set_postprocess_stage(manifest_path: Path, stage: str) -> None:
+    if not manifest_path.is_file():
+        return
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("simulation_status") != "SIMULATION_COMPLETE":
+        return
+    manifest["postprocess_stage"] = stage
+    _json_write(manifest_path, manifest)
+
+
+def _load_raw_artifacts_for_summary(
+    selected_window: str,
+) -> tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.DataFrame | None,
+    pd.DataFrame | None,
+    dict[str, Any],
+]:
+    manifest_path = RUN_DIR / "run_manifest.json"
+    if not manifest_path.is_file():
+        raise RuntimeError(f"summary-only mode requires run metadata: {manifest_path}")
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("window_id") != selected_window:
+        raise RuntimeError("summary-only window does not match saved raw artifacts")
+    if manifest.get("simulation_status") != "SIMULATION_COMPLETE":
+        raise RuntimeError("summary-only mode requires a completed simulation")
+    if manifest.get("raw_artifacts_status") != "COMPLETE":
+        raise RuntimeError("summary-only mode requires complete raw artifacts")
+    paths = _raw_artifact_paths(selected_window)
+    for path in paths.values():
+        if not path.is_file() or path.stat().st_size == 0:
+            raise RuntimeError(f"summary-only raw artifact is missing or empty: {path}")
+
+    def read(path: Path) -> pd.DataFrame:
+        return pd.read_csv(path, dtype={"ticker": str, "trade_id": str, "pair_id": str})
+
+    control, candidate, paired = (read(paths[key]) for key in ("control", "candidate", "paired"))
+    matched = read(paths["matched_ledger"]) if "matched_ledger" in paths else None
+    events = read(paths["soft_events"]) if "soft_events" in paths else None
+    return control, candidate, paired, matched, events, manifest
+
+
 def _run_candidate_replay(workers: int) -> dict[str, Any]:
     if workers < 1:
         raise ValueError("workers must be positive")
@@ -3774,14 +3969,14 @@ def _run_ledger_export(workers: int) -> dict[str, Any]:
     return summary
 
 
-def _run(
+def _run_impl(
     mode: str,
     workers: int,
     sample_count: int,
     window_id: str | None = None,
 ) -> dict[str, Any]:
-    if mode not in {"sample", "full"}:
-        raise ValueError("mode must be sample or full")
+    if mode not in {"sample", "full", "summarize"}:
+        raise ValueError("mode must be sample, full, or summarize")
     if workers < 1:
         raise ValueError("workers must be positive")
     selected_window = window_id or WINDOW_ID
@@ -3825,6 +4020,17 @@ def _run(
             if (RUN_DIR / filename).exists():
                 raise RuntimeError(f"refusing to overwrite existing run output: {RUN_DIR / filename}")
 
+    saved_raw: tuple[
+        pd.DataFrame,
+        pd.DataFrame,
+        pd.DataFrame,
+        pd.DataFrame | None,
+        pd.DataFrame | None,
+        dict[str, Any],
+    ] | None = None
+    if mode == "summarize":
+        saved_raw = _load_raw_artifacts_for_summary(selected_window)
+
     run = _load_context(selected_window)
     if mode == "full" and selected_window == "P2-2":
         preflight = _p2_2_identity_authority_preflight(run)
@@ -3852,49 +4058,74 @@ def _run(
                 != p3_1_preflight["common_identity_segment_count"]
             ):
                 raise RuntimeError("P3-1 full replay authority differs from its sample benchmark")
+        if mode == "summarize" and saved_raw is not None:
+            saved_manifest = saved_raw[5]
+            if saved_manifest.get("effective_pit_sha256") != p3_1_preflight["effective_pit_sha256"]:
+                raise RuntimeError("P3-1 summary authority differs from the saved raw artifacts")
     RUN_DIR.mkdir(parents=True, exist_ok=True)
     all_tickers = sorted(run.segments_by_ticker)
     if not all_tickers:
         raise RuntimeError(f"{selected_window} COMMON identity population is empty")
-    tickers = _sample_tickers(all_tickers, sample_count) if mode == "sample" else all_tickers
-    started = time.perf_counter()
-    outcomes: list[dict[str, Any]] = []
-    errors: list[str] = []
-    times: list[float] = []
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        futures = {pool.submit(_process_ticker, ticker, run): ticker for ticker in tickers}
-        for completed, future in enumerate(as_completed(futures), start=1):
-            ticker = futures[future]
-            try:
-                result = future.result()
-                outcomes.append(result)
-                times.append(float(result["elapsed_seconds"]))
-            except Exception as exc:
-                errors.append(f"{ticker}: {type(exc).__name__}: {exc}")
-            if completed % 10 == 0 or completed == len(tickers):
-                print(
-                    f"{mode.upper()} progress: {completed}/{len(tickers)} tickers; "
-                    f"trades={sum(len(item['control_rows']) for item in outcomes)}; "
-                    f"elapsed={time.perf_counter() - started:.1f}s; errors={len(errors)}",
-                    flush=True,
-                )
-    elapsed = time.perf_counter() - started
-    if errors:
-        failure = {
-            "status": "FAILED",
-            "mode": mode,
-            "errors": errors,
-            "completed_tickers": len(outcomes),
-            "target_tickers": len(tickers),
-            "elapsed_seconds": round(elapsed, 3),
-        }
-        _json_write(RUN_DIR / f"{mode}_failure.json", failure)
-        raise RuntimeError(f"{mode} run encountered {len(errors)} ticker errors; see {mode}_failure.json")
+    if mode == "summarize":
+        assert saved_raw is not None
+        control, candidate, saved_paired, saved_ledger, saved_events, saved_manifest = saved_raw
+        execution = saved_manifest.get("execution", {})
+        outcomes: list[dict[str, Any]] = []
+        errors: list[str] = []
+        times: list[float] = []
+        elapsed = float(execution.get("elapsed_seconds", 0.0))
+        total_segments = int(execution.get("total_segments", len(run.segments_by_ticker)))
+        processed_ticker_count = int(execution.get("processed_tickers", len(run.segments_by_ticker)))
+        repository_load_count = int(execution.get("repository_load_count", 0))
+        control_rows = control.to_dict(orient="records")
+        candidate_rows = candidate.to_dict(orient="records")
+        trade_diagnostics = (
+            [{"soft_events": saved_events.to_dict(orient="records")}]
+            if saved_events is not None
+            else []
+        )
+    else:
+        tickers = _sample_tickers(all_tickers, sample_count) if mode == "sample" else all_tickers
+        started = time.perf_counter()
+        outcomes = []
+        errors = []
+        times = []
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = {pool.submit(_process_ticker, ticker, run): ticker for ticker in tickers}
+            for completed, future in enumerate(as_completed(futures), start=1):
+                ticker = futures[future]
+                try:
+                    result = future.result()
+                    outcomes.append(result)
+                    times.append(float(result["elapsed_seconds"]))
+                except Exception as exc:
+                    errors.append(f"{ticker}: {type(exc).__name__}: {exc}")
+                if completed % 10 == 0 or completed == len(tickers):
+                    print(
+                        f"{mode.upper()} progress: {completed}/{len(tickers)} tickers; "
+                        f"trades={sum(len(item['control_rows']) for item in outcomes)}; "
+                        f"elapsed={time.perf_counter() - started:.1f}s; errors={len(errors)}",
+                        flush=True,
+                    )
+        elapsed = time.perf_counter() - started
+        if errors:
+            failure = {
+                "status": "FAILED",
+                "mode": mode,
+                "errors": errors,
+                "completed_tickers": len(outcomes),
+                "target_tickers": len(tickers),
+                "elapsed_seconds": round(elapsed, 3),
+            }
+            _json_write(RUN_DIR / f"{mode}_failure.json", failure)
+            raise RuntimeError(f"{mode} run encountered {len(errors)} ticker errors; see {mode}_failure.json")
 
-    total_segments = sum(int(result["segments_seen"]) for result in outcomes)
-    control_rows = [row for result in outcomes for row in result["control_rows"]]
-    candidate_rows = [row for result in outcomes for row in result["candidate_rows"]]
-    trade_diagnostics = [row for result in outcomes for row in result["diagnostics"]]
+        total_segments = sum(int(result["segments_seen"]) for result in outcomes)
+        processed_ticker_count = len(outcomes)
+        repository_load_count = sum(int(item["repository_load_count"]) for item in outcomes)
+        control_rows = [row for result in outcomes for row in result["control_rows"]]
+        candidate_rows = [row for result in outcomes for row in result["candidate_rows"]]
+        trade_diagnostics = [row for result in outcomes for row in result["diagnostics"]]
     if mode == "sample":
         estimated = run.setup_seconds + elapsed * len(all_tickers) / max(len(tickers), 1)
         sample_control = pd.DataFrame(control_rows)
@@ -4149,18 +4380,93 @@ def _run(
         )
         return benchmark
 
-    control = pd.DataFrame(control_rows).sort_values(["ticker", "identity_effective_from", "trade_sequence"], kind="mergesort").reset_index(drop=True)
-    candidate = pd.DataFrame(candidate_rows).sort_values(["ticker", "identity_effective_from", "trade_sequence"], kind="mergesort").reset_index(drop=True)
+    if mode == "summarize":
+        assert saved_raw is not None
+        control, candidate, saved_paired, saved_ledger, saved_events, saved_manifest = saved_raw
+        control = control.sort_values(
+            ["ticker", "identity_effective_from", "trade_sequence"], kind="mergesort"
+        ).reset_index(drop=True)
+        candidate = candidate.sort_values(
+            ["ticker", "identity_effective_from", "trade_sequence"], kind="mergesort"
+        ).reset_index(drop=True)
+        paired = saved_paired
+        raw_matched_ledger = saved_ledger
+        raw_soft_events = saved_events
+    else:
+        control = pd.DataFrame(control_rows).sort_values(
+            ["ticker", "identity_effective_from", "trade_sequence"], kind="mergesort"
+        ).reset_index(drop=True)
+        candidate = pd.DataFrame(candidate_rows).sort_values(
+            ["ticker", "identity_effective_from", "trade_sequence"], kind="mergesort"
+        ).reset_index(drop=True)
+        paired = None
+        raw_matched_ledger = None
+        raw_soft_events = None
     if control.empty:
         raise RuntimeError(f"{selected_window} full run produced zero CONTROL entries")
+    if mode == "full":
+        if selected_window in {"P2-2", "P3-1"}:
+            raw_soft_events = _raw_soft_event_ledger(trade_diagnostics)
+        execution_metadata = {
+            "workers": workers,
+            "processed_tickers": processed_ticker_count,
+            "target_tickers": len(all_tickers),
+            "total_segments": total_segments,
+            "elapsed_seconds": round(elapsed, 3),
+            "setup_seconds": round(run.setup_seconds, 3),
+            "repository_load_count": repository_load_count,
+        }
+        _persist_raw_artifacts(
+            selected_window=selected_window,
+            control=control,
+            candidate=candidate,
+            paired=paired,
+            matched_ledger=None,
+            soft_events=raw_soft_events,
+            execution=execution_metadata,
+            run=run,
+        )
+        paired = control.merge(
+            candidate, on="pair_id", suffixes=("_control", "_candidate"), validate="one_to_one"
+        )
+        _persist_raw_artifacts(
+            selected_window=selected_window,
+            control=control,
+            candidate=candidate,
+            paired=paired,
+            matched_ledger=None,
+            soft_events=raw_soft_events,
+            execution=execution_metadata,
+            run=run,
+        )
+        if selected_window in {"P2-2", "P3-1"}:
+            raw_matched_ledger = _build_matched_trade_ledger(
+                control,
+                candidate,
+                cutoff_date=run.window.effective_end.strftime("%Y-%m-%d"),
+            )
+            if selected_window == "P3-1":
+                raw_matched_ledger = _add_p3_1_ledger_contract_fields(raw_matched_ledger)
+            _persist_raw_artifacts(
+                selected_window=selected_window,
+                control=control,
+                candidate=candidate,
+                paired=paired,
+                matched_ledger=raw_matched_ledger,
+                soft_events=raw_soft_events,
+                execution=execution_metadata,
+                run=run,
+            )
+    manifest_path = RUN_DIR / "run_manifest.json"
+    _set_postprocess_stage(manifest_path, "CORE_VALIDATION")
     validation = _validate_results(control, candidate, run)
+    _set_postprocess_stage(manifest_path, "SUMMARY")
     numeric_pair_ids = _numeric_comparable_pair_ids(control, candidate)
-    paired = control.merge(candidate, on="pair_id", suffixes=("_control", "_candidate"), validate="one_to_one")
     control_metrics = _metrics(control, performance_pair_ids=numeric_pair_ids)
     candidate_metrics = _metrics(candidate, performance_pair_ids=numeric_pair_ids)
     paired_metrics = _paired_summary(control, candidate)
     candidate_diagnostics = _candidate_diagnostics(control, candidate)
-    p2_2_ledger: pd.DataFrame | None = None
+    p2_2_ledger: pd.DataFrame | None = raw_matched_ledger
     p2_2_events: pd.DataFrame | None = None
     ledger_aggregates: dict[str, Any] | None = None
     ledger_reconciliation: dict[str, bool] | None = None
@@ -4168,13 +4474,14 @@ def _run(
     p3_1_comparison: dict[str, Any] | None = None
     if selected_window in {"P2-2", "P3-1"}:
         cutoff_date = run.window.effective_end.strftime("%Y-%m-%d")
-        p2_2_ledger = _build_matched_trade_ledger(
-            control,
-            candidate,
-            cutoff_date=cutoff_date,
-        )
-        if selected_window == "P3-1":
-            p2_2_ledger = _add_p3_1_ledger_contract_fields(p2_2_ledger)
+        if p2_2_ledger is None:
+            p2_2_ledger = _build_matched_trade_ledger(
+                control,
+                candidate,
+                cutoff_date=cutoff_date,
+            )
+            if selected_window == "P3-1":
+                p2_2_ledger = _add_p3_1_ledger_contract_fields(p2_2_ledger)
         ledger_aggregates = _ledger_aggregates(p2_2_ledger)
         ledger_reconciliation = {
             "control_metrics_match_summary": _nested_values_equal(
@@ -4210,10 +4517,21 @@ def _run(
                 candidate_metrics,
                 paired_metrics,
             )
+        ledger_trade_ids = p2_2_ledger.set_index("pair_id")["trade_id"].astype(str).sort_index()
+        control_trade_ids = control.set_index("pair_id")["trade_id"].astype(str).sort_index()
+        candidate_trade_ids = candidate.set_index("pair_id")["trade_id"].astype(str).sort_index()
         validation.update(
             {
                 "ledger_pair_id_unique": bool(
                     p2_2_ledger["pair_id"].nunique() == len(p2_2_ledger)
+                ),
+                "ledger_pair_id_set_matches_sources": (
+                    set(p2_2_ledger["pair_id"]) == set(control["pair_id"])
+                    == set(candidate["pair_id"])
+                ),
+                "ledger_source_trade_id_equal_by_pair": bool(
+                    ledger_trade_ids.equals(control_trade_ids)
+                    and ledger_trade_ids.equals(candidate_trade_ids)
                 ),
                 "control_candidate_pair_id_sets_equal": set(control["pair_id"])
                 == set(candidate["pair_id"]),
@@ -4258,7 +4576,7 @@ def _run(
         "filter_contract": "no separate market-cap, minimum trading-value/volume, or fundamentals filter",
         "identity_policy": "COMMON PIT identity intervals; no ticker-list broadcast; no identity stitching; no future fallback",
         "common_identity_segments": total_segments,
-        "unique_tickers_processed": len(outcomes),
+        "unique_tickers_processed": processed_ticker_count,
         "tickers_with_entries": int(control["ticker"].nunique()),
         "control_entry_count": len(control),
         "candidate_entry_count": len(candidate),
@@ -4279,7 +4597,11 @@ def _run(
         "status": "COMPLETE",
         "work_id": f"{selected_window.replace('-', '_')}_NEG40_WEAK_PROTECT_MATCHED_AB_V01",
         "window_id": selected_window,
-        "head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+        "head": (
+            saved_manifest.get("start_head")
+            if mode == "summarize" and saved_raw is not None
+            else subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+        ),
         "runner_sha256": _sha256(Path(__file__).resolve()),
         "strategy_ids": {"control": V2_STRATEGY_ID, "candidate": CANDIDATE_STRATEGY_ID},
         "window": {
@@ -4295,8 +4617,12 @@ def _run(
             "estimated_full_seconds": json.loads(SAMPLE_PATH.read_text(encoding="utf-8"))["estimated_full_seconds"],
             "actual_full_seconds": round(elapsed, 3),
             "setup_seconds": round(run.setup_seconds, 3),
-            "workers": workers,
-            "repository_v2_load_count": sum(int(item["repository_load_count"]) for item in outcomes),
+            "workers": (
+                int(saved_manifest.get("execution", {}).get("workers", workers))
+                if mode == "summarize" and saved_raw is not None
+                else workers
+            ),
+            "repository_v2_load_count": repository_load_count,
         },
         "data_authority": {
             "repository": "Repository V2 local adjusted/raw composition",
@@ -4423,11 +4749,10 @@ def _run(
         summary["lifecycle_settlement"] = {
             "evidence_path": str(LIFECYCLE_SETTLEMENT_EVIDENCE_PATH.relative_to(ROOT)),
             "evidence_record_count": len(run.lifecycle_settlements),
-            "in_window_evidence_record_count": sum(
-                run.window.effective_start
-                <= pd.Timestamp(item["settlement_date"]).normalize()
-                <= run.window.effective_end
-                for item in run.lifecycle_settlements
+            "in_window_evidence_record_count": _in_window_settlement_date_count(
+                run.lifecycle_settlements,
+                run.window.effective_start,
+                run.window.effective_end,
             ),
             "control_settled_trade_count": int(control["trade_status"].eq("LIFECYCLE_SETTLED").sum()),
             "candidate_settled_trade_count": int(candidate["trade_status"].eq("LIFECYCLE_SETTLED").sum()),
@@ -4466,6 +4791,8 @@ def _run(
             validation.get("control_candidate_lifecycle_settlement_counts_equal") is True,
             validation.get("lifecycle_settlement_provenance_complete") is True,
             validation.get("ledger_pair_id_unique") is True,
+            validation.get("ledger_pair_id_set_matches_sources") is True,
+            validation.get("ledger_source_trade_id_equal_by_pair") is True,
             validation.get("control_candidate_pair_id_sets_equal") is True,
             validation.get("control_candidate_source_trade_id_equal_by_pair") is True,
             validation.get("all_ledger_aggregates_match_summary") is True,
@@ -4480,45 +4807,52 @@ def _run(
         summary["status"] = "COMPLETE" if all(required_checks) else "CHECK_REQUIRED"
 
     output = RUN_DIR
-    control.to_csv(output / "control_trades.csv", index=False)
-    candidate.to_csv(output / "candidate_trades.csv", index=False)
-    paired.to_csv(output / "paired_trades.csv", index=False)
     _json_write(output / "summary.json", summary)
-    output_names = ["control_trades.csv", "candidate_trades.csv", "paired_trades.csv", "summary.json"]
+    output_names = [str((output / "summary.json").relative_to(ROOT))]
     if selected_window in {"P2-2", "P3-1"}:
-        p2_2_ledger.to_csv(MATCHED_LEDGER_PATH, index=False, float_format="%.8f")
-        p2_2_events.to_csv(SOFT_EVENTS_PATH, index=False, float_format="%.8f")
         _json_write(LEDGER_SUMMARY_PATH, summary)
         output_names.extend(
-            [MATCHED_LEDGER_PATH.name, SOFT_EVENTS_PATH.name, LEDGER_SUMMARY_PATH.name]
+            [str(LEDGER_SUMMARY_PATH.relative_to(ROOT))]
         )
-    manifest = {
-        "run_id": RUN_ID,
-        "window_id": selected_window,
-        "start_head": summary["head"],
-        "p2_1_only": selected_window == "P2-1",
-        "p2_2_only": selected_window == "P2-2",
-        "p3_1_only": selected_window == "P3-1",
-        "raw_candidate_artifact_reused": False,
-        "effective_pit_sha256": run.authority.pit_sha256,
-        "score_contract_sha256": _sha256(SCORE_CONTRACT_PATH),
-        "stage_contract_sha256": _sha256(STAGE_CONTRACT_PATH),
-        "sample_benchmark": str(SAMPLE_PATH.relative_to(ROOT)),
-        "outputs": output_names,
-    }
+    manifest_path = output / "run_manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["postprocess_status"] = "COMPLETE"
+    manifest["postprocess_stage"] = "COMPLETE"
+    manifest["summary_status"] = summary["status"]
+    manifest["summarized_from_raw_artifacts"] = mode == "summarize"
+    manifest.pop("postprocess_error", None)
+    manifest["outputs"] = list(dict.fromkeys([*manifest.get("outputs", []), *output_names]))
     _json_write(output / "run_manifest.json", manifest)
     return summary
 
 
+def _run(
+    mode: str,
+    workers: int,
+    sample_count: int,
+    window_id: str | None = None,
+) -> dict[str, Any]:
+    try:
+        return _run_impl(mode, workers, sample_count, window_id)
+    except Exception as exc:
+        try:
+            _record_postprocess_failure(RUN_DIR / "run_manifest.json", exc)
+        except Exception:
+            pass
+        raise
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mode", choices=("sample", "full", "replay", "ledger"), required=True)
+    parser.add_argument(
+        "--mode", choices=("sample", "full", "summarize", "replay", "ledger"), required=True
+    )
     parser.add_argument("--window", choices=("P2-1", "P2-2", "P3-1"), default="P2-1")
     parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS)
     parser.add_argument("--sample-tickers", type=int, default=40)
     parser.add_argument(
         "--run-id",
-        help="optional isolated P2-1/P2-2 output run id (must start with run_)",
+        help="optional isolated P2-1/P2-2/P3-1 output run id (must start with run_)",
     )
     args = parser.parse_args()
     _configure_run(args.window, args.run_id)
