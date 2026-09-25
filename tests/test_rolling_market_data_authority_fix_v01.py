@@ -641,6 +641,25 @@ def test_rolling_pit_extension_is_survivorship_safe() -> None:
     assert merged[0]["effective_to"] == "2026-08-25"  # extended forward
 
 
+def test_rolling_pit_extension_does_not_bridge_non_common_session_gap() -> None:
+    frozen = [_interval("005930", "2010-01-04", "2026-08-21")]
+    new = [
+        _interval("005930", "2026-08-24", "2026-08-24"),
+        _interval("005930", "2026-08-26", "2026-08-26"),
+    ]
+
+    merged = merge_pit_extension_intervals(
+        frozen,
+        new,
+        trading_dates=["2026-08-21", "2026-08-24", "2026-08-25", "2026-08-26"],
+    )
+
+    assert [(row["effective_from"], row["effective_to"]) for row in merged] == [
+        ("2010-01-04", "2026-08-24"),
+        ("2026-08-26", "2026-08-26"),
+    ]
+
+
 def test_new_listing_not_backfilled_into_past_population() -> None:
     frozen = [_interval("005930", "2010-01-04", "2026-08-21")]
     backdated_new_listing = [_interval("900001", "2026-08-20", "2026-08-25")]  # starts before boundary

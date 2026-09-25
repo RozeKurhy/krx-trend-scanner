@@ -3495,6 +3495,8 @@ def validate_pit_extension_survivorship_safety(
 def merge_pit_extension_intervals(
     frozen_intervals: Sequence[Mapping[str, Any]],
     new_intervals: Sequence[Mapping[str, Any]],
+    *,
+    trading_dates: Sequence[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Merge new-window COMMON intervals into the frozen set.
 
@@ -3513,10 +3515,17 @@ def merge_pit_extension_intervals(
         if key not in open_by_key or iv["effective_to"] > open_by_key[key]["effective_to"]:
             open_by_key[key] = iv
 
+    date_index = {str(day): index for index, day in enumerate(trading_dates or ())}
     for niv in sorted(new_intervals, key=lambda x: (str(x.get("ticker")), str(x.get("effective_from")))):
         key = (niv.get("ticker"), niv.get("isu_cd"), niv.get("market"))
         continuation = open_by_key.get(key)
-        if continuation is not None:
+        adjacent = (
+            continuation is not None
+            and date_index
+            and date_index.get(str(continuation["effective_to"]), -2) + 1
+            == date_index.get(str(niv["effective_from"]), -1)
+        )
+        if continuation is not None and (not date_index or adjacent):
             if niv["effective_to"] > continuation["effective_to"]:
                 continuation["effective_to"] = niv["effective_to"]
         else:
@@ -3534,6 +3543,7 @@ def build_rolling_pit_extension(
     basic_info_raw_root: Path = DEFAULT_BASIC_INFO_RAW_ROOT,
     acquisition_checkpoint_path: Path = DEFAULT_ACQUISITION_CHECKPOINT_PATH,
     acquisition_final_summary_path: Path = DEFAULT_ACQUISITION_FINAL_SUMMARY_PATH,
+    supplemental_authority: Mapping[tuple[str, str], Mapping[str, Any]] | None = None,
 ) -> PitExtensionResult:
     """Attempt a genuine, survivorship-safe rolling extension of the frozen PIT COMMON denominator
     (BLOCKER A). Reuses ``load_basic_info_snapshots``/``classify_full_universe`` UNCHANGED -- the same
@@ -3572,7 +3582,10 @@ def build_rolling_pit_extension(
             f"status={basic_info.status} extension_dates={new_dates[0]}..{new_dates[-1]}"
         )
 
-    extended_timeline = classify_full_universe(basic_info.snapshots, expected_dates=new_dates)
+    classify_kwargs: dict[str, Any] = {"expected_dates": new_dates}
+    if supplemental_authority is not None:
+        classify_kwargs["supplemental_authority"] = supplemental_authority
+    extended_timeline = classify_full_universe(basic_info.snapshots, **classify_kwargs)
     new_common_intervals: list[dict[str, Any]] = []
     for ticker, intervals in extended_timeline.items():
         for iv in intervals:
@@ -3593,7 +3606,11 @@ def build_rolling_pit_extension(
     if violations:
         raise RollingAuthorityError(f"PIT_EXTENSION_SURVIVORSHIP_VIOLATION: {violations}")
 
-    merged_intervals = merge_pit_extension_intervals(frozen_intervals, new_common_intervals)
+    merged_intervals = merge_pit_extension_intervals(
+        frozen_intervals,
+        new_common_intervals,
+        trading_dates=sorted(set(base_dates) | set(new_dates)),
+    )
     frozen_tickers = {iv.get("ticker") for iv in frozen_intervals}
     new_ticker_count = len({iv["ticker"] for iv in new_common_intervals} - frozen_tickers)
 
