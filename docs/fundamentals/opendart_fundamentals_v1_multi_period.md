@@ -13,14 +13,17 @@ OpenDART endpoint를 직접 호출하지 않으며 기간화, 누적 차분, TTM
 from trend_scanner.fundamentals import MultiPeriodFundamentalsProvider
 
 result = MultiPeriodFundamentalsProvider(periodization_provider).build(
-    "005930", "YYYY-MM-DD", fiscal_years=("2021", "2022", "2023", "2024", "2025", "2026")
+    "005930", "YYYY-MM-DD", fiscal_years=fiscal_years
 )
 ```
+
+`fiscal_years`는 `"YYYY"` 형식 회계연도의 튜플이다. 생략하면 아래 기본 연도
+범위를 사용한다.
 
 기존 `DerivedMetricsProvider`와 같은 위치 인자 방식도 허용한다.
 
 ```python
-result = provider.build("005930", ("2021", "2022", "2023"), "YYYY-MM-DD")
+result = provider.build("005930", fiscal_years, "YYYY-MM-DD")
 ```
 
 ## 기간 구성 규칙
