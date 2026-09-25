@@ -157,6 +157,12 @@ def test_p3_1_run_id_override_rejects_unsafe_or_unversioned_names(run_id):
         runner._configure_run("P3-1", run_id)
 
 
+@pytest.mark.parametrize("run_id", ["../outside", "run_bad/path", "invalid"])
+def test_p3_2_run_id_override_rejects_unsafe_or_unversioned_names(run_id):
+    with pytest.raises(ValueError, match="P3-2 run id"):
+        runner._configure_run("P3-2", run_id)
+
+
 def test_p3_1_uses_isolated_window_specific_artifact_namespace():
     try:
         runner._configure_run("P3-1")
@@ -182,6 +188,36 @@ def test_p3_1_run_id_override_uses_isolated_corrective_replay_namespace():
         runner._configure_run("P2-1")
 
 
+def test_p3_2_uses_isolated_window_specific_artifact_namespace():
+    try:
+        runner._configure_run("P3-2")
+        assert runner.RUN_ID == "run_20260925_p3_2_worker10_artifact_first_v01"
+        assert runner.RUN_DIR.name == runner.RUN_ID
+        assert runner.RUN_DIR.parent.name == "p3_2_neg40_weak_protect_v01"
+        assert runner.SAMPLE_PATH.name == "sample_benchmark_p3_2_common_pit_v01.json"
+        assert runner.MATCHED_LEDGER_PATH.name == "p3_2_matched_trades.csv"
+        assert runner.SOFT_EVENTS_PATH.name == "p3_2_soft_events.csv"
+        assert runner.LEDGER_SUMMARY_PATH.name == "p3_2_summary.json"
+    finally:
+        runner._configure_run("P2-1")
+
+
+def test_p3_2_gate_fields_have_a_window_specific_namespace():
+    values = {
+        "p3_1_effective_remediable_unresolved_count": 2,
+        "p3_1_lifecycle_gate_control_candidate_symmetry": False,
+        "common_interval_end_before_cutoff_open_count": 3,
+    }
+
+    renamed = runner._namespace_p3_gate_fields(values, "P3-2")
+
+    assert renamed == {
+        "p3_2_effective_remediable_unresolved_count": 2,
+        "p3_2_lifecycle_gate_control_candidate_symmetry": False,
+        "common_interval_end_before_cutoff_open_count": 3,
+    }
+
+
 def test_settlement_date_aggregate_skips_generic_lifecycle_events_without_dates():
     records = (
         {"evidence_id": "settlement-in-window", "settlement_date": "2025-02-03"},
@@ -196,21 +232,44 @@ def test_settlement_date_aggregate_skips_generic_lifecycle_events_without_dates(
     ) == 1
 
 
-def test_simulation_raw_artifacts_survive_intentional_postprocess_failure(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    "selected_window,effective_start,effective_end,execution_support",
+    [
+        ("P3-1", "2022-01-03", "2025-05-30", "2025-06-02"),
+        ("P3-2", "2022-01-03", "2026-08-31", "2026-09-01"),
+    ],
+)
+def test_simulation_raw_artifacts_survive_intentional_postprocess_failure(
+    tmp_path, monkeypatch, selected_window, effective_start, effective_end, execution_support
+):
     monkeypatch.setattr(runner, "ROOT", tmp_path)
-    runner._configure_run("P3-1", "run_test_artifact_first")
+    runner._configure_run(selected_window, "run_test_artifact_first")
     try:
         run_dir = runner.RUN_DIR
         runner._json_write(
             runner.SAMPLE_PATH,
             {
-                "window_id": "P3-1",
+                "status": "COMPLETE",
+                "window_id": selected_window,
                 "worker_count": 1,
                 "estimated_full_seconds": 1.0,
+                "errors": [],
                 "population_preflight": {
                     "status": "PASS",
                     "effective_pit_sha256": "pit-hash",
                     "common_identity_segment_count": 1,
+                },
+                "sample_ledger_aggregate_reconciliation": {
+                    "control": True,
+                    "candidate": True,
+                    "paired": True,
+                },
+                "sample_invariants": {
+                    "ledger_pair_id_unique": True,
+                    "control_candidate_pair_id_sets_equal": True,
+                    "control_candidate_source_trade_id_equal_by_pair": True,
+                    "soft_event_duplicates": 0,
+                    "unexecuted_signal_count": 0,
                 },
             },
         )
@@ -226,10 +285,10 @@ def test_simulation_raw_artifacts_survive_intentional_postprocess_failure(tmp_pa
         )
         run = SimpleNamespace(
             window=SimpleNamespace(
-                window=SimpleNamespace(window_id="P3-1"),
-                effective_start=pd.Timestamp("2025-01-01"),
-                effective_end=pd.Timestamp("2025-05-30"),
-                execution_support=pd.Timestamp("2025-06-02"),
+                window=SimpleNamespace(window_id=selected_window),
+                effective_start=pd.Timestamp(effective_start),
+                effective_end=pd.Timestamp(effective_end),
+                execution_support=pd.Timestamp(execution_support),
             ),
             authority=SimpleNamespace(pit_sha256="pit-hash"),
             segments_by_ticker={"000001": (segment,)},
@@ -277,14 +336,15 @@ def test_simulation_raw_artifacts_survive_intentional_postprocess_failure(tmp_pa
         )
 
         with pytest.raises(RuntimeError, match="intentional summary failure"):
-            runner._run("full", 1, 40, "P3-1")
+            runner._run("full", 1, 40, selected_window)
 
+        ledger_prefix = selected_window.lower().replace("-", "_")
         for filename in (
             "control_trades.csv",
             "candidate_trades.csv",
             "paired_trades.csv",
-            "p3_1_matched_trades.csv",
-            "p3_1_soft_events.csv",
+            f"{ledger_prefix}_matched_trades.csv",
+            f"{ledger_prefix}_soft_events.csv",
         ):
             assert (run_dir / filename).is_file()
         manifest = json.loads((run_dir / "run_manifest.json").read_text(encoding="utf-8"))
@@ -483,6 +543,40 @@ def test_p3_1_population_preflight_requires_support_coverage_and_fresh_common_pi
     assert passed["common_identity_segment_count"] == 1
 
     run.authority_coverage_end = "2025-05-30"
+    blocked = runner._p3_1_population_preflight(run)
+    assert blocked["status"] == "CHECK_REQUIRED"
+    assert blocked["checks"]["authority_coverage_execution_support"] is False
+
+
+def test_p3_2_population_preflight_requires_the_full_common_pit_authority_frontier():
+    segment = IdentitySegment(
+        ticker="000001",
+        isu_cd="KR7000000001",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2020-01-01"),
+        effective_to=pd.Timestamp("2026-08-31"),
+    )
+    run = SimpleNamespace(
+        window=SimpleNamespace(
+            window=SimpleNamespace(window_id="P3-2"),
+            effective_start=pd.Timestamp("2022-01-03"),
+            effective_end=pd.Timestamp("2026-08-31"),
+            execution_support=pd.Timestamp("2026-09-01"),
+        ),
+        authority=SimpleNamespace(pit_path=runner.ROOT / "authority.json", pit_sha256="pit-hash"),
+        authority_coverage_start="2010-01-04",
+        authority_coverage_end="2026-09-01",
+        segments_by_ticker={"000001": (segment,)},
+    )
+
+    passed = runner._p3_1_population_preflight(run)
+
+    assert passed["status"] == "PASS"
+    assert passed["window_id"] == "P3-2"
+    assert passed["actual_window"] == ("2022-01-03", "2026-08-31", "2026-09-01")
+    assert passed["p2_population_reused"] is False
+
+    run.authority_coverage_end = "2026-08-31"
     blocked = runner._p3_1_population_preflight(run)
     assert blocked["status"] == "CHECK_REQUIRED"
     assert blocked["checks"]["authority_coverage_execution_support"] is False
