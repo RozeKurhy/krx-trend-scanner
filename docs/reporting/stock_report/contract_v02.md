@@ -1,45 +1,57 @@
-# Stock Report Contract v0.2
+# 종목 리포트 계약 v0.2 (기반 계약)
 
-================================================================================
-1. 개요 및 목적 (Overview & Purpose)
-================================================================================
-Stock Report Contract v0.2는 KRX 상장 개별 종목에 대해 외부 네트워크 요청 없이(Zero Network Request), 로컬 시세 및 정본 아티팩트만을 조회하여 해당 종목의:
-1. **현재 기술적 국면 (Pattern A Score & Stage)**
-2. **투자 유동성 조건 (Phase 10 Investability)**
-3. **A FAST Core V2 공식 전략 상태 및 행동 (A FAST Core V2 Strategy State & Action)**
-4. **Pattern A FAST 주별 조기 신호 (Pattern A FAST Early Signal)**
-5. **과거 월별 점수/국면 변화 추이 (Historical Monthly Flow)**
-6. **외국인 수급 확증 (Phase 11 Foreign Flow)**
-7. **거래대금 추세 (Trading Value Trend)**
+## 1. 목적
 
-를 하나의 통일된 기계 판독 데이터 구조(JSON) 및 사람이 읽을 수 있는 문서(Markdown)로 제공하기 위한 공통 인터페이스 규약이다.
+이 계약은 KRX 상장 개별 종목의 다음 정보를 기계가 읽는 JSON과 사람이 읽는
+Markdown으로 함께 제공하기 위한 공통 규약이다. 리포트는 외부 네트워크 요청
+없이 로컬 가격 데이터와 확정된 정본 산출물만 조회해 만든다.
 
-v0.2의 핵심 승격 사항:
-- 공식 확정 전략인 **`PATTERN_A_FAST_FINAL_STRATEGY_V02` (A FAST Core V2 / 패스트 코어 V2)**의 현재 상태, 가상 전략 포지션(Canonical Strategy Position), 다음 거래일 행동, 진입 조건 체크리스트, 보호 상태, 재진입 상태, 전략 이력을 리포트 최상위 섹션(`a_fast_core`)으로 제공한다.
-- 프로덕션 노출 상태를 **`PRODUCTION_DECISION_SUPPORT`**로 공식 승격한다 (의사결정 지원 리포트, 자동 매매 아님).
+1. 현재 기술적 국면 (Pattern A 점수와 단계)
+2. 투자 유동성 조건 (Phase 10 투자 적격성)
+3. A FAST Core V2 공식 전략의 상태와 행동
+4. Pattern A FAST 주별 조기 신호
+5. 과거 월별 점수·국면 변화
+6. 외국인 수급 확증 (Phase 11)
+7. 거래대금 추세
 
---------------------------------------------------------------------------------
-2. 핵심 불변 원칙 및 가드레일 (Core Principles & Guardrails)
---------------------------------------------------------------------------------
-1. **Zero Network Request & Pure Local Execution**:
-   - 리포트 생성 과정에서 KRX, pykrx, Yahoo, Naver 등 외부 네트워크 요청을 일절 수행하지 않는다.
-   - 로컬 Parquet 일봉 캐시(`data/raw/stocks/{ticker}.parquet`)와 확정된 정본 아티팩트만을 사용한다.
-2. **Frozen Production Strategy Contract 재사용 (No Logic Mutation)**:
-   - `PATTERN_A_FAST_FINAL_STRATEGY_V02`의 동결 규칙(진입, -15% 손실가드, Exit 3, Exit 4, Coverage, 재진입, 상태 리셋)을 100% 동일하게 적용하며, 리포트 전용 임의 규칙을 생성하지 않는다.
-3. **Point-In-Time (PIT) & Strict No-Lookahead**:
-   - 임의의 분석 기준일(`requested_as_of`)에 대해 해당 시점 이하의 시계열만을 슬라이싱하여 평가하며, 미래 거래일, 미래 시가, 미래 월봉을 일절 참조하지 않는다.
-4. **Canonical Strategy Position 명시**:
-   - 전략 포지션은 사용자의 실제 계좌 잔고가 아닌, 패스트 코어 V2 규칙에 따른 가상 전략 경로(`Canonical Strategy Position`)임을 명시한다.
-5. **Deterministic Rule-Based Narrative (No Free LLM Hallucination)**:
-   - 요약문과 해석 문구는 상태 및 사유 코드에 기반한 결정론적 템플릿으로 작성되어 100% 재현성을 보장한다.
-6. **Fail-Closed & Explicit Missing Data**:
-   - 결측 데이터는 `null` 또는 `DATA_UNAVAILABLE`로 표기하며 결측 사유를 명시한다.
-7. **Descriptive Decision Support (Not Financial Advice)**:
-   - 매수/매도 추천, 목표가 제시, 수익 보장 표현을 일절 금지하며 순수 전략 의사결정 지원 정보만을 제공한다.
+이 문서는 현재 종목 리포트 계약의 기반이다. 이후 버전은 이 계약을 바꾸지
+않고 섹션을 더한다. v0.3은 시장 RS, v0.4는 업종 RS, v0.5는 펀더멘털을
+추가한다. 전체 구성과 읽는 순서는 [종목 리포트 안내](README.md)에서 확인한다.
 
---------------------------------------------------------------------------------
-3. JSON Data Schema Specification (v0.2)
---------------------------------------------------------------------------------
+v0.2에서 정한 사항은 다음과 같다.
+
+- 공식 전략 `PATTERN_A_FAST_FINAL_STRATEGY_V02`(A FAST Core V2, 패스트 코어
+  V2)의 현재 상태, 가상 전략 포지션, 다음 거래일 행동, 진입 조건 점검표,
+  보호 상태, 재진입 상태, 전략 이력을 최상위 섹션 `a_fast_core`로 제공한다.
+- 리포트 노출 상태를 의사결정 지원 운영 상태(`PRODUCTION_DECISION_SUPPORT`)로
+  정한다. 자동 매매가 아니라 의사결정을 돕는 리포트다.
+
+## 2. 핵심 원칙
+
+1. **외부 네트워크 요청 없음**: 리포트 생성 중 KRX, PyKRX, Yahoo, Naver 등
+   외부 네트워크를 요청하지 않는다. 로컬 가격 데이터와 확정된 정본 산출물만
+   사용한다. 가격 데이터 원천은 [v0.4 계약](contract_v04.md)을 따른다.
+2. **공식 전략 규칙 재사용**: `PATTERN_A_FAST_FINAL_STRATEGY_V02`의 동결
+   규칙(진입, -15% 손실 방어, Exit 3, Exit 4, Coverage, 재진입, 상태 초기화)을
+   그대로 적용하며 리포트 전용 규칙을 만들지 않는다.
+3. **시점 기준(PIT)과 미래 정보 차단**: 분석 기준일(`requested_as_of`) 이하의
+   시계열만 잘라 평가하며 미래 거래일, 미래 시가, 미래 월봉을 참조하지 않는다.
+4. **가상 전략 포지션 명시**: 전략 포지션은 사용자의 실제 계좌 잔고가 아니라
+   A FAST Core V2 규칙을 따른 가상 전략 경로(`Canonical Strategy Position`)임을
+   명시한다.
+5. **규칙 기반 서술**: 요약문과 해석 문구는 상태·사유 코드에 따른 고정
+   템플릿으로 만들어 같은 입력에서 항상 같은 결과를 낸다. 자유 생성 문장을
+   쓰지 않는다.
+6. **결측 명시**: 결측 데이터는 `null` 또는 `DATA_UNAVAILABLE`로 표기하고
+   결측 사유를 적는다.
+7. **의사결정 지원 한정**: 매수·매도 추천, 목표가, 수익 보장 표현을 쓰지 않고
+   전략 의사결정을 돕는 정보만 제공한다.
+
+## 3. JSON 스키마 (v0.2)
+
+아래 블록은 v0.2 JSON 구조를 사람이 읽기 위한 사본이다. 기계 검증용 스키마는
+[schema_v02.json](schema_v02.json)이다.
+
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
@@ -172,53 +184,54 @@ v0.2의 핵심 승격 사항:
 }
 ```
 
---------------------------------------------------------------------------------
-4. Markdown Document Structure (v0.2)
---------------------------------------------------------------------------------
-1. **0. 핵심 요약 (Executive Summary)**
-2. **1. 현재 기술적 국면 & 투자 적격성 스냅샷 (Current Snapshot)**
-3. **2. 패스트 코어 V2 전략 상태 (A FAST Core V2 Strategy State)**
-4. **3. Pattern A FAST 현재 신호 (Pattern A FAST Early Signal)**
-5. **4. Pattern A Monthly History — 최근 12개월 월별 추이 (Recent 12M Trajectory)**
-6. **5. Pattern A 국면 전환 이력 (Stage Transition History)**
-7. **6. Pattern A FAST Weekly History**
-8. **7. 외국인 수급 확증 (Foreign Flow Analysis - Phase 11)**
-9. **8. 거래대금 추세 분석 (Trading Value Flow)**
-10. **9. Pattern A 전체 월별 이력 (Full Monthly History)**
-11. **10. 데이터 품질 및 신원 (Data Quality & Provenance)**
+## 4. Markdown 구성 (v0.2)
 
+v0.2 리포트 Markdown은 다음 순서의 절로 구성한다. 절 제목은 생성 코드가
+출력하는 문구 그대로 적었다. 이후 버전에서 추가된 절을 포함한 전체 목차는
+[종목 리포트 안내](README.md)에서 확인한다.
 
-================================================================================
-5. production_status vs metadata_provenance_mode (Fix Round 07 Minor 1)
-================================================================================
-`a_fast_core`에는 의미가 다른 두 개의 상태 필드가 함께 존재한다. 이 둘을 혼동하면
-안 된다.
+1. `0. 핵심 요약 (Executive Summary)`
+2. `1. 현재 기술적 국면 & 투자 적격성 스냅샷 (Current Snapshot)`
+3. `2. 패스트 코어 V2 전략 상태 (A FAST Core V2 Strategy State)`
+4. `3. Pattern A FAST 현재 신호 (신호 라벨)`
+5. `4. Pattern A Monthly History — 최근 12개월 월별 추이 (Recent 12M Trajectory)`
+6. `5. Pattern A 국면 전환 이력 (Stage Transition History)`
+7. `6. Pattern A FAST Weekly History (신호 라벨)`
+8. `7. 외국인 수급 확증 (Foreign Flow Analysis - Phase 11)`
+9. `8. 거래대금 추세 분석 (Trading Value Flow)`
+10. `9. Pattern A 전체 월별 이력 (Full Monthly History)`
+11. `10. 데이터 품질 및 신원 (Data Quality & Provenance)`
 
-**`production_status`** = 전략 자체의 배포/maturity 상태. `PATTERN_A_FAST_FINAL_STRATEGY_V02`
-전략이 개발/백테스트 단계가 아니라 실제 production decision-support 용도로 확정
-승격됐다는 사실을 나타낸다. 현재 값은 항상 `"PRODUCTION_DECISION_SUPPORT"`이며,
-개별 리포트 인스턴스가 아니라 전략 자체의 속성이다.
+## 5. 전략 운영 상태와 메타데이터 신뢰 모드
 
-**`metadata_provenance_mode`** = 이 개별 report instance가 사용한 종목 메타데이터의
-신뢰 authority. 세 가지 값:
+`a_fast_core`에는 의미가 다른 상태 필드 두 개가 함께 있다. 둘을 혼동하지
+않는다.
 
-- **`CURRENT_VERIFIED`** — requested_as_of 시점의 종목 메타데이터가 KRX formal
-  source로 실제 검증됨(`classification_authority == asset_type_source ==
-  "FORMAL_SECURITY_TYPE"`). 이 report instance는 current production
-  decision-support metadata authority를 갖는다.
-- **`HISTORICAL_LEGACY_RESEARCH`** — requested_as_of 시점 metadata 자체는 formal
-  검증되지 않았지만(`LEGACY_UNVERIFIED`), 과거 시점을 명시적으로 조회하는
-  retrospective 질의로 인정되어 전략 상태를 계산했다. **retrospective research
-  only; not production decision support for that historical report instance.**
-- **`DATA_UNAVAILABLE`** — 메타데이터가 없거나(UNKNOWN), formal 검증도 legacy
-  frozen PIT snapshot도 아닌 다른 종류의 provenance(LEGACY_HEURISTIC/
-  NAME_BASED_HEURISTIC 등)이거나, asset_type 자체가 UNKNOWN이라 신뢰 근거가
-  불충분하다.
+**`production_status`**는 전략 자체의 운영 단계다.
+`PATTERN_A_FAST_FINAL_STRATEGY_V02`가 개발·백테스트 단계를 지나 실제 의사결정
+지원 용도로 승격됐다는 사실을 나타낸다. 값은 항상
+`"PRODUCTION_DECISION_SUPPORT"`이며, 개별 리포트가 아니라 전략의 속성이다.
 
-**중요**: `production_status = "PRODUCTION_DECISION_SUPPORT"`이면서 동시에
-`metadata_provenance_mode = "HISTORICAL_LEGACY_RESEARCH"`인 report instance가
-정상적으로 존재할 수 있다 — 이 경우 **해당 historical report instance는 production
-투자 판단 근거가 아니다.** `production_status`는 전략이 성숙했다는 것만 말할 뿐,
-개별 리포트가 지금 당장의 매매 판단에 쓸 수 있는지는 `metadata_provenance_mode`가
-결정한다. `production_status` 하나만 보고 개별 report instance를 "지금 사용해도
-되는 current production signal"로 해석해서는 안 된다.
+**`metadata_provenance_mode`**는 개별 리포트가 사용한 종목 메타데이터의 신뢰
+근거다. 값은 세 가지다.
+
+- **현재 검증됨 (`CURRENT_VERIFIED`)**: `requested_as_of` 시점의 종목
+  메타데이터가 KRX 공식 원천으로 검증됐다(`classification_authority ==
+  asset_type_source == "FORMAL_SECURITY_TYPE"`). 이 리포트는 현재 의사결정
+  지원에 쓸 수 있는 메타데이터 근거를 가진다.
+- **과거 연구용 (`HISTORICAL_LEGACY_RESEARCH`)**: 해당 시점 메타데이터가 공식
+  검증되지 않았지만(`LEGACY_UNVERIFIED`), 과거 시점을 명시적으로 조회하는 회고
+  질의로 인정되어 전략 상태를 계산했다. **회고 연구 전용이며, 이 과거 리포트는
+  의사결정 지원 근거가 아니다.**
+- **판단 불가 (`DATA_UNAVAILABLE`)**: 메타데이터가 없거나(`UNKNOWN`), 공식
+  검증도 과거 동결 PIT 스냅샷도 아닌 다른 근거(`LEGACY_HEURISTIC`,
+  `NAME_BASED_HEURISTIC` 등)이거나, `asset_type`이 `UNKNOWN`이라 신뢰 근거가
+  부족하다.
+
+**중요**: `production_status = "PRODUCTION_DECISION_SUPPORT"`이면서
+`metadata_provenance_mode = "HISTORICAL_LEGACY_RESEARCH"`인 리포트가 정상적으로
+있을 수 있다. 이 경우 **그 과거 리포트는 투자 판단 근거가 아니다.**
+`production_status`는 전략이 성숙했다는 사실만 말한다. 개별 리포트를 지금 매매
+판단에 쓸 수 있는지는 `metadata_provenance_mode`가 결정한다.
+`production_status`만 보고 개별 리포트를 현재 사용할 수 있는 신호로 해석하지
+않는다.

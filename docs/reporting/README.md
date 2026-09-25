@@ -1,9 +1,8 @@
-README.md
+# 리포트
 
-# Reporting
-
-Stock Report는 Pattern과 독립된 상위 계층이다.
+이 영역은 패턴·전략·수급·RS·펀더멘털 결과를 모아 보여주는 리포트 문서를
+관리한다. 리포트는 패턴과 독립된 상위 계층이다.
 
 | 항목 | 위치 |
 |---|---|
-| Stock Report | [stock_report/README.md](stock_report/README.md) |
+| 종목 리포트 | [stock_report/README.md](stock_report/README.md) |
