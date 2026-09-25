@@ -9,7 +9,7 @@ v0.3은 [v0.2 기반 계약](contract_v02.md)의 모든 필드를 유지하고 �
 
 ## 기계 계약
 
-- Draft 7 스키마: `docs/reporting/stock_report/schema_v03.json`
+- Draft 7 스키마: `docs/reporting/schema_v03.json`
 - `report_version`은 문자열 `0.3`이다.
 - v0.2 스키마와 계약 파일은 변경하지 않는다.
 - `relative_strength`의 숫자 필드는 원본 권위 CSV의 정밀도를 보존하며,

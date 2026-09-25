@@ -122,7 +122,7 @@ def test_v04_generator_schema_and_markdown_additive_contract():
     assert report.report_version == "0.4"
     assert "relative_strength" in payload
     assert "sector_relative_strength" in payload
-    schema = json.loads((ROOT / "docs/reporting/stock_report/schema_v04.json").read_text(encoding="utf-8"))
+    schema = json.loads((ROOT / "docs/reporting/schema_v04.json").read_text(encoding="utf-8"))
     assert list(Draft7Validator(schema).iter_errors(payload)) == []
     markdown = render_markdown_report(report)
     assert "종목 리포트 v0.4" in markdown

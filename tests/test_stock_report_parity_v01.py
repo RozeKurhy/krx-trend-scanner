@@ -44,7 +44,7 @@ def test_canonical_authority_is_54_reports_and_preserves_ticker_identity():
 
 
 def test_all_canonical_json_validate_against_frozen_v03_schema():
-    schema = json.loads((ROOT / "docs/reporting/stock_report/schema_v03.json").read_text(encoding="utf-8"))
+    schema = json.loads((ROOT / "docs/reporting/schema_v03.json").read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
     errors = []
     for path in sorted(CANONICAL_DIR.glob("*.json")):
@@ -62,7 +62,7 @@ def test_canaries_non_common_and_sector_julia_boundaries():
     assert etf["asset_type"] == "ETF"
     assert etf["relative_strength"]["applicability"] == "NOT_APPLICABLE"
     assert etf["relative_strength"]["data_status"] == "NOT_EVALUATED"
-    schema_text = (ROOT / "docs/reporting/stock_report/schema_v03.json").read_text(encoding="utf-8").lower()
+    schema_text = (ROOT / "docs/reporting/schema_v03.json").read_text(encoding="utf-8").lower()
     assert "sector_relative_strength" not in schema_text
     assert '"sector_rs"' not in schema_text
     assert '"julia"' not in schema_text

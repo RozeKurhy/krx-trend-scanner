@@ -85,7 +85,7 @@ liabilities / equity * 100
 
 이 문서는 ROE/부채비율 산식만 다룬다. Fundamentals Filter는
 [필터 기준 문서](opendart_fundamentals_v1_filter.md), Stock Report/Markdown/
-JSON 통합은 [Stock Report v0.5 계약](../reporting/stock_report/contract_v05.md),
+JSON 통합은 [Stock Report v0.5 계약](../reporting/contract_v05.md),
 운영 데이터 갱신은 별도 운영 스크립트가 각각 관리한다. ROA/ROIC/ROCE,
 가치평가, DuPont 분해, 금융업 전용 프로파일은 V1 범위에서 제외한다.
 PyKRX, KRX Open API, OpenDART live API, 웹 수집, 외부 시세 데이터 요청은

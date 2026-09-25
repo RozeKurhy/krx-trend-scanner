@@ -187,7 +187,7 @@ def test_all_production_markdown_rs_units_are_consistent():
 
 
 def test_contract_documents_units_and_anchor_semantics():
-    contract = (REPO_ROOT / "docs/reporting/stock_report/contract_v03.md").read_text(encoding="utf-8")
+    contract = (REPO_ROOT / "docs/reporting/contract_v03.md").read_text(encoding="utf-8")
     assert "anchor 날짜는 JSON contract의 provenance/diagnostic" in contract
     assert "Market RS level은 Markdown에서 `%`" in contract
     assert "percentage-point 단위인 `%p`" in contract

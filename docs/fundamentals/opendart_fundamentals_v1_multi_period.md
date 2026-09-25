@@ -70,7 +70,7 @@ result = provider.build("005930", fiscal_years, "YYYY-MM-DD")
 ROE/부채비율은 [ROE/부채비율 기준 문서](opendart_fundamentals_v1_roe_debt_ratio.md),
 Fundamentals Filter는 [필터 기준 문서](opendart_fundamentals_v1_filter.md),
 Stock Report schema·Markdown·JSON 통합은
-[Stock Report v0.5 계약](../reporting/stock_report/contract_v05.md)이 각각
+[Stock Report v0.5 계약](../reporting/contract_v05.md)이 각각
 관리한다. 전체 KRX 데이터 갱신과 전략/백테스트는 별도 운영 스크립트와
 전략 문서의 범위다. PyKRX, KRX 웹 수집, 실제 OpenDART API 호출, 외부 시세
 데이터, 수동 데이터 주입은 이 모듈에서 사용하지 않는다.

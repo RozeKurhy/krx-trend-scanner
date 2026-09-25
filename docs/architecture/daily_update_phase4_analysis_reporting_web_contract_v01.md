@@ -253,6 +253,6 @@ web/data/
 - [데일리 업데이트 기준 V01](daily_update_contract_v01.md)
 - [분석 입력 갱신 기준 V01](daily_update_phase3_analysis_inputs_contract_v01.md)
 - [A FAST Core V2 현재 기본 전략](../patterns/pattern_a_fast/strategy/version_02/README.md)
-- [Stock Report v0.5 안내](../reporting/stock_report/README.md)
-- [Stock Report v0.5 계약](../reporting/stock_report/contract_v05.md)
+- [Stock Report v0.5 안내](../reporting/README.md)
+- [Stock Report v0.5 계약](../reporting/contract_v05.md)
 - [웹 영역 안내](../web/README.md)

@@ -30,7 +30,7 @@ MARKET_AUTHORITY_MANIFEST_PATH = ROOT / "data/market/rolling_authority/manifest.
 METADATA_PATH = ROOT / "data/reference/krx_instrument_metadata.parquet"
 FUNDAMENTALS_PRODUCTION_ROOT = ROOT / "artifacts/fundamentals/production"
 STOCK_REPORTS_ROOT = ROOT / "artifacts/reporting/stock_reports"
-STOCK_REPORT_SCHEMA_PATH = ROOT / "docs/reporting/stock_report/schema_v05.json"
+STOCK_REPORT_SCHEMA_PATH = ROOT / "docs/reporting/schema_v05.json"
 WEB_STOCK_DATA_ROOT = ROOT / "web/data"
 VALID_FUNDAMENTALS_DATA_STATUSES = {"READY", "PARTIAL", "DATA_UNAVAILABLE", "NOT_APPLICABLE"}
 

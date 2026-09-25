@@ -85,5 +85,5 @@ Fundamentals Filter는 독립된 필터 계약이며 조건, 임계값, 상태 �
   임계값, 상태 우선순위
 - [ROE / 부채비율](opendart_fundamentals_v1_roe_debt_ratio.md) — 파생 지표
   산식과 실패 시 차단 조건
-- [Stock Report v0.5 계약](../reporting/stock_report/contract_v05.md) —
+- [Stock Report v0.5 계약](../reporting/contract_v05.md) —
   Fundamentals 산출물을 Stock Report에 통합하는 계약

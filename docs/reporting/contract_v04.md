@@ -7,7 +7,7 @@ v0.4는 [v0.3 계약](contract_v03.md)의 모든 필드와 의미를 유지하�
 
 ## 기계 계약
 
-- Draft 7 스키마: `docs/reporting/stock_report/schema_v04.json`
+- Draft 7 스키마: `docs/reporting/schema_v04.json`
 - `report_version`은 문자열 `0.4`다.
 - v0.3 계약과 스키마는 변경하지 않는다.
 - 기존 최상위 `relative_strength`는 시장 RS 전용이며 v0.4에서도 유지한다.
@@ -29,7 +29,7 @@ v0.4는 [v0.3 계약](contract_v03.md)의 모든 필드와 의미를 유지하�
 - 업종 RS는 기존 `compute_relative_strength_features(...)`를 재사용하며 종목
   수익률, 업종 수익률, RS 비율, 기준점을 새로 구현하지 않는다.
 - 업종 RS 순위·백분위는 이 섹션에 포함하지 않는다. 업종 내 순위는
-  [업종 내 상대강도 순위 계약](../../relative_strength/sector_rs_ranking_v01.md)에서
+  [업종 내 상대강도 순위 계약](../relative_strength/sector_rs_ranking_v01.md)에서
   별도로 관리한다.
 
 ## 적용 범위와 상태

@@ -45,8 +45,8 @@ Fundamentals Filter는 매출·이익 조건으로 종목의 적격성을 판단
 
 Stock Report는 Fundamentals 산출물(Multi-period/파생지표/필터 결과)을 추가
 계산 없이 그대로 소비한다. 통합 계약은
-[Stock Report v0.5 계약](../reporting/stock_report/contract_v05.md)과
-[schema](../reporting/stock_report/schema_v05.json)에서 관리한다.
+[Stock Report v0.5 계약](../reporting/contract_v05.md)과
+[schema](../reporting/schema_v05.json)에서 관리한다.
 
 ## 현재 기준 문서
 
