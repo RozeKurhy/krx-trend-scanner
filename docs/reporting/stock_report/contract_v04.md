@@ -21,8 +21,9 @@ v0.4는 [v0.3 계약](contract_v03.md)의 모든 필드와 의미를 유지하�
   `data/market/sector_membership/v01/sector_membership_YYYYMMDD.parquet`
 - 스냅샷의 효력일(`effective_date`)은 요청 기준일과 같아야 한다. 이전
   스냅샷 재사용, 미래 스냅샷의 소급 적용, 가까운 날짜 대체는 허용하지 않는다.
-  정확한 날짜의 스냅샷이 없으면 `SECTOR_MEMBERSHIP_SNAPSHOT_UNAVAILABLE`로
-  중단하고 업종 RS를 계산하지 않는다.
+  정확한 날짜의 스냅샷이 없으면 업종 RS를 계산하지 않고, 섹션을 산출 불가
+  (`DATA_UNAVAILABLE`)로 두며 사유 `SECTOR_MEMBERSHIP_SNAPSHOT_UNAVAILABLE`을
+  기록한다. 리포트 생성은 계속한다.
 - 업종 지수는 다음 로컬 캐시만 사용한다.
   `.cache/krx_openapi/sector_rs_migration/v01/sector_index_daily.parquet`
 - 업종 RS는 기존 `compute_relative_strength_features(...)`를 재사용하며 종목
