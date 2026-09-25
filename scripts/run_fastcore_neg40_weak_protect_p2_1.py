@@ -2933,6 +2933,181 @@ def _metric_difference_records(
     ]
 
 
+def _p3_1_effective_lifecycle_gate_diagnostics(
+    control: pd.DataFrame,
+    candidate: pd.DataFrame,
+    cutoff_date: str | pd.Timestamp,
+) -> dict[str, Any]:
+    """Separate raw identity-boundary diagnostics from unresolved terminal outcomes.
+
+    COMMON identity intervals can end at a market/security-authority boundary without
+    ending the economic position. Only a verified cutoff mark, a fully evidenced cash
+    settlement, or the already sealed 096300 authoritative-final class resolves the
+    corresponding raw gate finding. Raw counts remain untouched for auditability.
+    """
+    cutoff = pd.Timestamp(cutoff_date).normalize()
+    per_side: dict[str, dict[str, Any]] = {}
+    pair_labels: dict[str, dict[str, str]] = {"CONTROL": {}, "Candidate": {}}
+
+    for side, frame in (("CONTROL", control), ("Candidate", candidate)):
+        status = frame.get("trade_status", pd.Series("", index=frame.index)).fillna("").astype(str)
+        states = frame.get("lifecycle_state", pd.Series("", index=frame.index)).fillna("").astype(str)
+        trade_isus = frame.get("isu_cd", pd.Series("", index=frame.index)).fillna("").astype(str)
+        classes = frame.get(
+            "lifecycle_certification_class", pd.Series("", index=frame.index)
+        ).fillna("").astype(str)
+        event_types = frame.get("lifecycle_event_type", pd.Series("", index=frame.index)).fillna("").astype(str)
+        source_isus = frame.get("lifecycle_source_isu_cd", pd.Series("", index=frame.index)).fillna("").astype(str)
+        evidence_ids = frame.get("lifecycle_evidence_id", pd.Series("", index=frame.index)).fillna("").astype(str)
+        reasons = frame.get("terminal_reason", pd.Series("", index=frame.index)).fillna("").astype(str)
+        valuation_sources = frame.get(
+            "terminal_valuation_source", pd.Series("", index=frame.index)
+        ).fillna("").astype(str)
+        valuation_dates = pd.to_datetime(
+            frame.get("terminal_valuation_date", pd.Series(None, index=frame.index)),
+            errors="coerce",
+        ).dt.normalize()
+        identity_ends = pd.to_datetime(
+            frame.get("identity_effective_to", pd.Series(None, index=frame.index)),
+            errors="coerce",
+        ).dt.normalize()
+        valuation_prices = pd.to_numeric(
+            frame.get("terminal_valuation_price", pd.Series(None, index=frame.index)),
+            errors="coerce",
+        )
+        at_cutoff = frame.get(
+            "terminal_valuation_at_cutoff", pd.Series(False, index=frame.index)
+        ).fillna(False).astype(str).str.strip().str.lower().isin({"true", "1", "yes"})
+
+        open_at_cutoff = status.eq("OPEN_AT_CUTOFF")
+        raw_identity_open = open_at_cutoff & identity_ends.lt(cutoff)
+        raw_terminal_unresolved = open_at_cutoff & (valuation_dates.isna() | ~at_cutoff)
+        market_cutoff_mark = (
+            at_cutoff
+            & valuation_dates.eq(cutoff)
+            & valuation_prices.gt(0)
+            & valuation_sources.isin(
+                {"RepositoryV2DailyLoader.close", "RepositoryV2DailyLoader.successor_close"}
+            )
+        )
+        successor_mark_has_evidence = (
+            states.eq("SUCCESSOR_POSITION")
+            & evidence_ids.eq("KRX-LIFECYCLE-" + trade_isus.str.upper())
+        )
+        valid_cutoff_mark = market_cutoff_mark & (
+            valuation_sources.eq("RepositoryV2DailyLoader.close")
+            | successor_mark_has_evidence
+        )
+        confirmed_cash_settlement = (
+            states.eq("SETTLED")
+            & reasons.eq("MANDATORY_CASH_CORPORATE_ACTION")
+            & valuation_sources.eq("CONFIRMED_KRX_CASH_RECEIVABLE")
+            & evidence_ids.eq("KRX-LIFECYCLE-" + trade_isus.str.upper())
+            & valuation_dates.notna()
+            & valuation_dates.le(cutoff)
+            & valuation_prices.gt(0)
+        )
+        authoritative_final = (
+            states.eq("UNRESOLVED_SETTLEMENT")
+            & classes.eq(AUTHORITATIVE_FINAL_UNRESOLVED)
+            & source_isus.str.upper().isin(AUTHORITATIVE_FINAL_UNRESOLVED_SOURCE_ISUS)
+            & event_types.eq("LIQUIDATION_UNRESOLVED")
+            & evidence_ids.eq("KRX-LIFECYCLE-" + source_isus.str.upper())
+        )
+        remediable_lifecycle = (
+            states.isin(UNRESOLVED_LIFECYCLE_STATES)
+            & classes.eq(REMEDIABLE_UNRESOLVED)
+        )
+        resolved = valid_cutoff_mark | confirmed_cash_settlement
+        gate_relevant = raw_identity_open | raw_terminal_unresolved | remediable_lifecycle
+        effective_unresolved = (gate_relevant & ~resolved & ~authoritative_final) | remediable_lifecycle
+
+        row_labels = pd.Series("CLEAR", index=frame.index, dtype=object)
+        row_labels.loc[effective_unresolved] = "REMEDIABLE_UNRESOLVED"
+        row_labels.loc[authoritative_final] = "AUTHORITATIVE_EXCLUSION"
+        for index, pair_id in frame["pair_id"].astype(str).items():
+            pair_labels[side][pair_id] = str(row_labels.loc[index])
+
+        per_side[side] = {
+            "raw_identity_ended_open_count": int(raw_identity_open.sum()),
+            "raw_terminal_valuation_unresolved_count": int(raw_terminal_unresolved.sum()),
+            "effective_identity_ended_open_unresolved_count": int(
+                (raw_identity_open & ~resolved & ~authoritative_final).sum()
+            ),
+            "effective_terminal_valuation_unresolved_count": int(
+                (raw_terminal_unresolved & ~resolved & ~authoritative_final).sum()
+            ),
+            "effective_remediable_unresolved_count": int(effective_unresolved.sum()),
+            "resolved_cutoff_mark_count": int((gate_relevant & valid_cutoff_mark).sum()),
+            "resolved_cash_settlement_count": int((gate_relevant & confirmed_cash_settlement).sum()),
+            "raw_gate_affected_pair_ids": sorted(
+                frame.loc[gate_relevant, "pair_id"].astype(str).unique().tolist()
+            ),
+            "authoritative_exclusion_pair_ids": sorted(
+                frame.loc[authoritative_final, "pair_id"].astype(str).unique().tolist()
+            ),
+            "effective_unresolved_pair_ids": sorted(
+                frame.loc[effective_unresolved, "pair_id"].astype(str).unique().tolist()
+            ),
+        }
+
+    all_pair_ids = set(pair_labels["CONTROL"]) | set(pair_labels["Candidate"])
+    effective_unresolved_pair_ids = sorted(
+        pair_id
+        for pair_id in all_pair_ids
+        if pair_labels["CONTROL"].get(pair_id) == "REMEDIABLE_UNRESOLVED"
+        or pair_labels["Candidate"].get(pair_id) == "REMEDIABLE_UNRESOLVED"
+    )
+    authoritative_pair_ids = sorted(
+        pair_id
+        for pair_id in all_pair_ids
+        if pair_labels["CONTROL"].get(pair_id) == "AUTHORITATIVE_EXCLUSION"
+        or pair_labels["Candidate"].get(pair_id) == "AUTHORITATIVE_EXCLUSION"
+    )
+    gate_affected_pair_ids = (
+        set(effective_unresolved_pair_ids)
+        | set(authoritative_pair_ids)
+        | {
+            pair_id
+            for item in per_side.values()
+            for pair_id in item["raw_gate_affected_pair_ids"]
+        }
+    )
+    resolved_pair_ids = sorted(
+        pair_id
+        for pair_id in gate_affected_pair_ids
+        if pair_labels["CONTROL"].get(pair_id) == "CLEAR"
+        and pair_labels["Candidate"].get(pair_id) == "CLEAR"
+    )
+    symmetric = all(
+        pair_labels["CONTROL"].get(pair_id) == pair_labels["Candidate"].get(pair_id)
+        for pair_id in all_pair_ids
+    )
+    return {
+        "common_interval_end_before_cutoff_open_count": sum(
+            item["raw_identity_ended_open_count"] for item in per_side.values()
+        ),
+        "open_terminal_valuation_unresolved_count": sum(
+            item["raw_terminal_valuation_unresolved_count"] for item in per_side.values()
+        ),
+        "p3_1_lifecycle_gate_diagnostics_by_side": per_side,
+        "p3_1_effective_identity_ended_open_unresolved_count": sum(
+            item["effective_identity_ended_open_unresolved_count"] for item in per_side.values()
+        ),
+        "p3_1_effective_terminal_valuation_unresolved_count": sum(
+            item["effective_terminal_valuation_unresolved_count"] for item in per_side.values()
+        ),
+        "p3_1_effective_remediable_unresolved_count": sum(
+            item["effective_remediable_unresolved_count"] for item in per_side.values()
+        ),
+        "p3_1_authoritative_final_unresolved_pair_ids": authoritative_pair_ids,
+        "p3_1_effective_remediable_unresolved_pair_ids": effective_unresolved_pair_ids,
+        "p3_1_lifecycle_gate_raw_affected_pair_ids": sorted(gate_affected_pair_ids),
+        "p3_1_lifecycle_gate_resolved_pair_ids": resolved_pair_ids,
+        "p3_1_lifecycle_gate_control_candidate_symmetry": symmetric,
+    }
+
+
 def _validate_results(
     control: pd.DataFrame,
     candidate: pd.DataFrame,
@@ -3081,30 +3256,7 @@ def _validate_results(
     missing_support = int(candidate["execution_support_missing"].fillna(False).astype(bool).sum())
     unexecuted_signal_count = int(candidate["trade_status"].eq("UNEXECUTED_SIGNAL").sum())
     lifecycle_settled_count = int(candidate["trade_status"].eq("LIFECYCLE_SETTLED").sum())
-    common_interval_end_before_cutoff_open_count = int(
-        sum(
-            (
-                frame["trade_status"].eq("OPEN_AT_CUTOFF")
-                & (pd.to_datetime(frame["identity_effective_to"]) < end)
-            ).sum()
-            for frame in (control, candidate)
-        )
-    )
-    unresolved_open_valuation_count = int(
-        sum(
-            (
-                frame["trade_status"].eq("OPEN_AT_CUTOFF")
-                & (
-                    frame.get("terminal_valuation_date", pd.Series(index=frame.index, dtype=object)).isna()
-                    | ~frame.get(
-                        "terminal_valuation_at_cutoff",
-                        pd.Series(False, index=frame.index, dtype=bool),
-                    ).fillna(False).astype(bool)
-                )
-            ).sum()
-            for frame in (control, candidate)
-        )
-    )
+    p3_1_gate_diagnostics = _p3_1_effective_lifecycle_gate_diagnostics(control, candidate, end)
     preserved = candidate[
         candidate["candidate_action"].isin(["CONTROL_PRESERVED", "CONTROL_EXIT"])
         & candidate["trade_status"].ne("LIFECYCLE_SETTLED")
@@ -3147,10 +3299,11 @@ def _validate_results(
         "candidate_execution_support_missing_count": missing_support,
         "candidate_unexecuted_signal_count": unexecuted_signal_count,
         "candidate_lifecycle_settled_count": lifecycle_settled_count,
-        "common_interval_end_before_cutoff_open_count": common_interval_end_before_cutoff_open_count,
         # Backward-compatible alias for existing summary consumers.
-        "identity_end_before_cutoff_open_count": common_interval_end_before_cutoff_open_count,
-        "open_terminal_valuation_unresolved_count": unresolved_open_valuation_count,
+        "identity_end_before_cutoff_open_count": p3_1_gate_diagnostics[
+            "common_interval_end_before_cutoff_open_count"
+        ],
+        **p3_1_gate_diagnostics,
         "exit_window_violations": exit_window_violations,
         # Backward-compatible alias; the count now covers only window/support rules.
         "identity_signal_or_execution_violations": exit_window_violations,
@@ -4763,6 +4916,21 @@ def _run_impl(
             "unresolved_identity_end_open_trade_count": validation[
                 "common_interval_end_before_cutoff_open_count"
             ],
+            "effective_identity_ended_open_unresolved_count": validation[
+                "p3_1_effective_identity_ended_open_unresolved_count"
+            ],
+            "raw_open_terminal_valuation_unresolved_count": validation[
+                "open_terminal_valuation_unresolved_count"
+            ],
+            "effective_terminal_valuation_unresolved_count": validation[
+                "p3_1_effective_terminal_valuation_unresolved_count"
+            ],
+            "authoritative_final_unresolved_pair_ids": validation[
+                "p3_1_authoritative_final_unresolved_pair_ids"
+            ],
+            "effective_remediable_unresolved_pair_ids": validation[
+                "p3_1_effective_remediable_unresolved_pair_ids"
+            ],
             "market_execution_synthesized": False,
         }
         summary["p2_directional_comparison"] = p3_1_comparison
@@ -4786,8 +4954,11 @@ def _run_impl(
             validation.get("exit_window_violations") == 0,
             validation.get("candidate_unexecuted_signal_count") == 0,
             validation.get("candidate_execution_support_missing_count") == 0,
-            validation.get("common_interval_end_before_cutoff_open_count") == 0,
-            validation.get("open_terminal_valuation_unresolved_count") == 0,
+            validation.get("p3_1_effective_identity_ended_open_unresolved_count") == 0,
+            validation.get("p3_1_effective_terminal_valuation_unresolved_count") == 0,
+            validation.get("p3_1_effective_remediable_unresolved_count") == 0,
+            validation.get("matched_pairs_remediable_unresolved") == 0,
+            validation.get("p3_1_lifecycle_gate_control_candidate_symmetry") is True,
             validation.get("control_candidate_lifecycle_settlement_counts_equal") is True,
             validation.get("lifecycle_settlement_provenance_complete") is True,
             validation.get("ledger_pair_id_unique") is True,
@@ -4803,8 +4974,18 @@ def _run_impl(
             validation.get("candidate_overlap_count") == 0,
             validation.get("candidate_stage_asof_future_violations") == 0,
         )
-        summary["verdict"] = "P3_1_REPLAY_PASS" if all(required_checks) else "CHECK_REQUIRED"
-        summary["status"] = "COMPLETE" if all(required_checks) else "CHECK_REQUIRED"
+        p3_1_gate_pass = all(required_checks)
+        summary["verdict"] = "P3_1_REPLAY_PASS" if p3_1_gate_pass else "CHECK_REQUIRED"
+        summary["strategy_assessment"] = summary["verdict"]
+        summary["status"] = "COMPLETE" if p3_1_gate_pass else "CHECK_REQUIRED"
+        if not p3_1_gate_pass:
+            summary["p3_1_completion_verdict"] = "P3_1_CHECK_REQUIRED"
+        elif validation.get("matched_pairs_authoritative_excluded", 0):
+            summary["p3_1_completion_verdict"] = (
+                "P3_1_CERTIFIED_PASS_WITH_AUTHORITATIVE_EXCLUSION"
+            )
+        else:
+            summary["p3_1_completion_verdict"] = "P3_1_CERTIFIED_PASS"
 
     output = RUN_DIR
     _json_write(output / "summary.json", summary)

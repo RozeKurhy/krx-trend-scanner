@@ -402,6 +402,15 @@ def test_p3_1_summary_only_regenerates_from_raw_without_simulation(tmp_path, mon
                 "candidate_execution_support_missing_count": 0,
                 "common_interval_end_before_cutoff_open_count": 0,
                 "open_terminal_valuation_unresolved_count": 0,
+                "p3_1_effective_identity_ended_open_unresolved_count": 0,
+                "p3_1_effective_terminal_valuation_unresolved_count": 0,
+                "p3_1_effective_remediable_unresolved_count": 0,
+                "p3_1_authoritative_final_unresolved_pair_ids": [],
+                "p3_1_effective_remediable_unresolved_pair_ids": [],
+                "p3_1_lifecycle_gate_raw_affected_pair_ids": [],
+                "p3_1_lifecycle_gate_resolved_pair_ids": [],
+                "matched_pairs_remediable_unresolved": 0,
+                "p3_1_lifecycle_gate_control_candidate_symmetry": True,
                 "candidate_overlap_count": 0,
                 "candidate_stage_asof_future_violations": 0,
             },
@@ -2587,6 +2596,94 @@ def _contract_frames(pair_specs):
             )
         )
     return pd.DataFrame(control_rows), pd.DataFrame(candidate_rows)
+
+
+def _p3_1_gate_contract_frames():
+    specs = [
+        {"pair_id": "pair-cash-settled", "control_return": 2.0, "candidate_return": 2.0},
+        {"pair_id": "pair-successor-mark", "control_return": 3.0, "candidate_return": 3.0},
+        {"pair_id": "pair-market-mark", "control_return": -4.0, "candidate_return": -4.0},
+        {"pair_id": "pair-final-liquidation", "control_return": None, "candidate_return": None},
+    ]
+    frames = _contract_frames(specs)
+    cutoff = "2025-05-30"
+    shared = {
+        "trade_status": "OPEN_AT_CUTOFF",
+        "identity_effective_to": "2024-01-01",
+        "terminal_valuation_at_cutoff": False,
+    }
+    for frame in frames:
+        for index in range(len(frame)):
+            for field, value in shared.items():
+                frame.loc[index, field] = value
+        frame.loc[0, "isu_cd"] = "KR7003410008"
+        frame.loc[1, "isu_cd"] = "KR7008560005"
+        frame.loc[0, [
+            "lifecycle_state", "lifecycle_evidence_id", "terminal_reason",
+            "terminal_valuation_date", "terminal_valuation_price",
+            "terminal_valuation_source",
+        ]] = [
+            "SETTLED", "KRX-LIFECYCLE-KR7003410008", "MANDATORY_CASH_CORPORATE_ACTION",
+            "2024-07-10", 7000.0, "CONFIRMED_KRX_CASH_RECEIVABLE",
+        ]
+        frame.loc[1, [
+            "lifecycle_state", "lifecycle_evidence_id", "terminal_reason",
+            "terminal_valuation_date", "terminal_valuation_price",
+            "terminal_valuation_source", "terminal_valuation_at_cutoff",
+        ]] = [
+            "SUCCESSOR_POSITION", "KRX-LIFECYCLE-KR7008560005",
+            "MANDATORY_SHARE_EXCHANGE_SUCCESSOR_VALUE", cutoff, 50.0,
+            "RepositoryV2DailyLoader.successor_close", True,
+        ]
+        frame.loc[2, [
+            "terminal_valuation_date", "terminal_valuation_price",
+            "terminal_valuation_source", "terminal_valuation_at_cutoff",
+        ]] = [cutoff, 60.0, "RepositoryV2DailyLoader.close", True]
+        frame.loc[3, [
+            "lifecycle_state", "lifecycle_certification_class", "lifecycle_source_isu_cd",
+            "lifecycle_event_type", "lifecycle_evidence_id", "lifecycle_unresolved_reason",
+        ]] = [
+            "UNRESOLVED_SETTLEMENT", runner.AUTHORITATIVE_FINAL_UNRESOLVED,
+            "KR7096300009", "LIQUIDATION_UNRESOLVED",
+            "KRX-LIFECYCLE-KR7096300009", "final liquidation amount/date unknown",
+        ]
+    return frames
+
+
+def test_p3_1_gate_keeps_raw_counts_and_separates_verified_values_from_final_exclusion():
+    control, candidate = _p3_1_gate_contract_frames()
+
+    diagnostics = runner._p3_1_effective_lifecycle_gate_diagnostics(
+        control, candidate, "2025-05-30"
+    )
+
+    assert diagnostics["common_interval_end_before_cutoff_open_count"] == 8
+    assert diagnostics["open_terminal_valuation_unresolved_count"] == 4
+    assert diagnostics["p3_1_effective_identity_ended_open_unresolved_count"] == 0
+    assert diagnostics["p3_1_effective_terminal_valuation_unresolved_count"] == 0
+    assert diagnostics["p3_1_effective_remediable_unresolved_count"] == 0
+    assert diagnostics["p3_1_authoritative_final_unresolved_pair_ids"] == [
+        "pair-final-liquidation"
+    ]
+    assert diagnostics["p3_1_lifecycle_gate_resolved_pair_ids"] == [
+        "pair-cash-settled", "pair-market-mark", "pair-successor-mark"
+    ]
+    assert diagnostics["p3_1_lifecycle_gate_control_candidate_symmetry"] is True
+
+
+def test_p3_1_gate_does_not_hide_one_sided_remediable_unresolved_pair():
+    control, candidate = _p3_1_gate_contract_frames()
+    candidate.loc[3, "lifecycle_certification_class"] = runner.REMEDIABLE_UNRESOLVED
+
+    diagnostics = runner._p3_1_effective_lifecycle_gate_diagnostics(
+        control, candidate, "2025-05-30"
+    )
+
+    assert diagnostics["p3_1_effective_remediable_unresolved_count"] == 1
+    assert diagnostics["p3_1_effective_remediable_unresolved_pair_ids"] == [
+        "pair-final-liquidation"
+    ]
+    assert diagnostics["p3_1_lifecycle_gate_control_candidate_symmetry"] is False
 
 
 def test_unresolved_lifecycle_on_both_sides_is_preserved_and_excluded_pairwise():
