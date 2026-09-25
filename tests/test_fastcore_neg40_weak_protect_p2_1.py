@@ -3217,7 +3217,24 @@ def test_any_remediable_pair_blocks_certification_even_with_authoritative_exclus
         "matched_pairs_remediable_unresolved": 1,
     }
 
-    assert runner._certification_verdict(validation) == "CHECK_REQUIRED"
+    assert runner._certification_verdict(validation, "P3-2") == "CHECK_REQUIRED"
+
+
+def test_p3_effective_cutoff_unresolved_blocks_certification_even_without_remediable_class():
+    validation = {
+        "matched_pairs_authoritative_excluded": 1,
+        "matched_pairs_remediable_unresolved": 0,
+        "p3_2_effective_identity_ended_open_unresolved_count": 0,
+        "p3_2_effective_terminal_valuation_unresolved_count": 3,
+        "p3_2_effective_remediable_unresolved_count": 3,
+        "p3_2_lifecycle_gate_control_candidate_symmetry": True,
+        "p3_2_lifecycle_gate_unresolved_zero_by_side": {
+            "CONTROL": False,
+            "Candidate": False,
+        },
+    }
+
+    assert runner._certification_verdict(validation, "P3-2") == "CHECK_REQUIRED"
 
 
 def test_metric_difference_records_name_nested_field_values_and_signed_delta():

@@ -3622,7 +3622,10 @@ def _verdict(summary: Mapping[str, Any], validation: Mapping[str, Any]) -> str:
     return "MIXED"
 
 
-def _certification_verdict(validation: Mapping[str, Any]) -> str:
+def _certification_verdict(
+    validation: Mapping[str, Any],
+    window_id: str | None = None,
+) -> str:
     """Separate data-integrity certification from the strategy's qualitative result."""
     remediable_unresolved = validation.get(
         "matched_pairs_remediable_unresolved",
@@ -3630,6 +3633,26 @@ def _certification_verdict(validation: Mapping[str, Any]) -> str:
     )
     if remediable_unresolved:
         return "CHECK_REQUIRED"
+    prefix = window_id.lower().replace("-", "_") if window_id in P3_WINDOW_IDS else None
+    if prefix is not None:
+        if any(
+            validation.get(f"{prefix}_{field}", 0)
+            for field in (
+                "effective_identity_ended_open_unresolved_count",
+                "effective_terminal_valuation_unresolved_count",
+                "effective_remediable_unresolved_count",
+            )
+        ):
+            return "CHECK_REQUIRED"
+        if validation.get(f"{prefix}_lifecycle_gate_control_candidate_symmetry") is not True:
+            return "CHECK_REQUIRED"
+        unresolved_zero_by_side = validation.get(
+            f"{prefix}_lifecycle_gate_unresolved_zero_by_side"
+        )
+        if isinstance(unresolved_zero_by_side, Mapping) and not all(
+            unresolved_zero_by_side.values()
+        ):
+            return "CHECK_REQUIRED"
     blockers = (
         "duplicate_pair_ids",
         "control_overlap_count",
@@ -4186,7 +4209,7 @@ def _run_candidate_replay(workers: int) -> dict[str, Any]:
         },
         "candidate_diagnostics": diagnostics,
         "validation": validation,
-        "certification_verdict": _certification_verdict(validation),
+        "certification_verdict": _certification_verdict(validation, "P2-1"),
         "candidate_replay_correction": {
             "status": "APPLIED",
             "reason": "V2 monthly signal labels are mapped to the last local trading EOD, and candidate return arithmetic matches V2 exactly.",
@@ -5257,7 +5280,7 @@ def _run_impl(
         },
         "candidate_diagnostics": candidate_diagnostics,
         "validation": validation,
-        "certification_verdict": _certification_verdict(validation),
+        "certification_verdict": _certification_verdict(validation, selected_window),
         "verdict": None,
     }
     summary["verdict"] = _verdict(summary, validation)
