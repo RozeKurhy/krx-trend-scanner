@@ -72,6 +72,13 @@ MAX_FULL_ESTIMATE_SECONDS = 90 * 60
 DEFAULT_WORKERS = 8
 V2_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
 CANDIDATE_STRATEGY_ID = "PATTERN_A_FAST_CORE_V2_NEG40_WEAK_PROTECT_SOFT_EXIT_V01"
+UNRESOLVED_LIFECYCLE_STATES = frozenset(
+    {
+        "UNRESOLVED_SETTLEMENT",
+        "UNRESOLVED_SUCCESSOR",
+        "UNRESOLVED_POST_DELIST_VALUE",
+    }
+)
 
 
 def _configure_run(window_id: str, run_id_override: str | None = None) -> None:
@@ -1062,10 +1069,17 @@ def _mark_unresolved_lifecycle(
     event: Mapping[str, Any],
     reason: str,
 ) -> dict[str, Any]:
+    source_isu_cd = event.get("source_isu_cd")
+    if source_isu_cd is None or pd.isna(source_isu_cd) or not str(source_isu_cd).strip():
+        source_isu_cd = event.get("isu_cd")
+    if source_isu_cd is None or pd.isna(source_isu_cd) or not str(source_isu_cd).strip():
+        source_isu_cd = row.get("isu_cd")
     row.update(
         {
             "lifecycle_state": lifecycle_state,
             "lifecycle_evidence_id": event.get("evidence_id"),
+            "lifecycle_event_type": event.get("event_type"),
+            "lifecycle_source_isu_cd": source_isu_cd,
             "lifecycle_unresolved_reason": reason,
             "terminal_return": None,
             "terminal_valuation_date": None,
@@ -2065,15 +2079,21 @@ def _replay_candidate_ticker(
     }
 
 
-def _metrics(frame: pd.DataFrame) -> dict[str, Any]:
-    if frame.empty:
+def _metrics(
+    frame: pd.DataFrame,
+    *,
+    performance_pair_ids: set[str] | None = None,
+) -> dict[str, Any]:
+    performance_frame = frame
+    if performance_pair_ids is not None and not frame.empty:
+        performance_frame = frame[frame["pair_id"].astype(str).isin(performance_pair_ids)]
+    if performance_frame.empty:
         values = pd.Series(dtype=float)
-        statuses = pd.Series(dtype=str)
         holding = pd.Series(dtype=float)
     else:
-        values = pd.to_numeric(frame["terminal_return"], errors="coerce").dropna()
-        statuses = frame["trade_status"].fillna("").astype(str)
-        holding = pd.to_numeric(frame["holding_days"], errors="coerce").dropna()
+        values = pd.to_numeric(performance_frame["terminal_return"], errors="coerce").dropna()
+        holding = pd.to_numeric(performance_frame["holding_days"], errors="coerce").dropna()
+    statuses = frame["trade_status"].fillna("").astype(str) if not frame.empty else pd.Series(dtype=str)
     lifecycle_states = (
         frame.get("lifecycle_state", pd.Series(index=frame.index, dtype=object))
         .fillna("")
@@ -2083,6 +2103,7 @@ def _metrics(frame: pd.DataFrame) -> dict[str, Any]:
     )
     result: dict[str, Any] = {
         "trade_count": int(len(frame)),
+        "performance_pair_count": int(len(values)),
         "positive_count": int((values > 0).sum()),
         "positive_rate_pct": round(float((values > 0).mean() * 100), 4) if len(values) else None,
         "mean_terminal_return_pct": round(float(values.mean()), 4) if len(values) else None,
@@ -2117,13 +2138,45 @@ def _metrics(frame: pd.DataFrame) -> dict[str, Any]:
     return result
 
 
-def _paired_summary(control: pd.DataFrame, candidate: pd.DataFrame) -> dict[str, Any]:
+def _paired_numeric_partition(
+    control: pd.DataFrame,
+    candidate: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.Series]:
     merged = control[["pair_id", "terminal_return"]].merge(
-        candidate[["pair_id", "terminal_return"]], on="pair_id", suffixes=("_control", "_candidate"), validate="one_to_one"
+        candidate[["pair_id", "terminal_return"]],
+        on="pair_id",
+        suffixes=("_control", "_candidate"),
+        validate="one_to_one",
     )
-    delta = pd.to_numeric(merged["terminal_return_candidate"]) - pd.to_numeric(merged["terminal_return_control"])
+    control_returns = pd.to_numeric(merged["terminal_return_control"], errors="coerce")
+    candidate_returns = pd.to_numeric(merged["terminal_return_candidate"], errors="coerce")
+    return merged, control_returns.notna() & candidate_returns.notna()
+
+
+def _matched_pair_counts(control: pd.DataFrame, candidate: pd.DataFrame) -> dict[str, int]:
+    merged, numeric_mask = _paired_numeric_partition(control, candidate)
+    numeric_count = int(numeric_mask.sum())
+    total_count = int(len(merged))
     return {
-        "count": int(len(merged)),
+        "matched_pairs_total": total_count,
+        "matched_pairs_numeric_comparable": numeric_count,
+        "matched_pairs_unresolved": total_count - numeric_count,
+    }
+
+
+def _numeric_comparable_pair_ids(control: pd.DataFrame, candidate: pd.DataFrame) -> set[str]:
+    merged, numeric_mask = _paired_numeric_partition(control, candidate)
+    return set(merged.loc[numeric_mask, "pair_id"].astype(str))
+
+
+def _paired_summary(control: pd.DataFrame, candidate: pd.DataFrame) -> dict[str, Any]:
+    merged, numeric_mask = _paired_numeric_partition(control, candidate)
+    delta = (
+        pd.to_numeric(merged.loc[numeric_mask, "terminal_return_candidate"], errors="coerce")
+        - pd.to_numeric(merged.loc[numeric_mask, "terminal_return_control"], errors="coerce")
+    )
+    return {
+        "count": int(numeric_mask.sum()),
         "mean_delta_pct_points": round(float(delta.mean()), 4) if len(delta) else None,
         "median_delta_pct_points": round(float(delta.median()), 4) if len(delta) else None,
         "improved": int((delta > 0).sum()),
@@ -2217,8 +2270,19 @@ def _build_matched_trade_ledger(
 
     records: list[dict[str, Any]] = []
     for row in paired.to_dict(orient="records"):
-        control_return = float(row["terminal_return_control"])
-        candidate_return = float(row["terminal_return_candidate"])
+        control_value = row["terminal_return_control"]
+        candidate_value = row["terminal_return_candidate"]
+        control_return = None if pd.isna(control_value) else float(control_value)
+        candidate_return = None if pd.isna(candidate_value) else float(candidate_value)
+        paired_delta = (
+            None
+            if control_return is None or candidate_return is None
+            else round(candidate_return - control_return, 8)
+        )
+        control_holding_days = row["holding_days_control"]
+        candidate_holding_days = row["holding_days_candidate"]
+        control_source_isu_cd = row.get("lifecycle_source_isu_cd_control")
+        candidate_source_isu_cd = row.get("lifecycle_source_isu_cd_candidate")
         records.append(
             {
                 "trade_id": str(row["trade_id_control"]),
@@ -2243,7 +2307,11 @@ def _build_matched_trade_ledger(
                     {key.removesuffix("_control"): value for key, value in row.items() if key.endswith("_control")}
                 ),
                 "control_terminal_return": control_return,
-                "control_holding_days": int(row["holding_days_control"]),
+                "control_holding_days": (
+                    int(control_holding_days)
+                    if control_holding_days is not None and not pd.isna(control_holding_days)
+                    else None
+                ),
                 "control_open_at_cutoff": str(row["trade_status_control"]).startswith("OPEN"),
                 "candidate_exit_or_cutoff_date": _outcome_date(
                     {key.removesuffix("_candidate"): value for key, value in row.items() if key.endswith("_candidate")},
@@ -2253,16 +2321,28 @@ def _build_matched_trade_ledger(
                     {key.removesuffix("_candidate"): value for key, value in row.items() if key.endswith("_candidate")}
                 ),
                 "candidate_terminal_return": candidate_return,
-                "candidate_holding_days": int(row["holding_days_candidate"]),
+                "candidate_holding_days": (
+                    int(candidate_holding_days)
+                    if candidate_holding_days is not None and not pd.isna(candidate_holding_days)
+                    else None
+                ),
                 "candidate_open_at_cutoff": str(row["trade_status_candidate"]).startswith("OPEN"),
                 "candidate_soft_exit": (
                     str(row["candidate_action"]) == "SOFT_EXIT"
                     and str(row["trade_status_candidate"]) == "REALIZED"
                 ),
-                "paired_delta": round(candidate_return - control_return, 8),
+                "paired_delta": paired_delta,
                 "control_trade_status": str(row["trade_status_control"]),
                 "candidate_trade_status": str(row["trade_status_candidate"]),
                 "candidate_action": str(row["candidate_action"]),
+                "control_source_isu_cd": str(
+                    control_source_isu_cd
+                    if control_source_isu_cd is not None and not pd.isna(control_source_isu_cd)
+                    else row["isu_cd_control"]
+                ),
+                "control_lifecycle_event_type": row.get("lifecycle_event_type_control"),
+                "control_unresolved_reason": row.get("lifecycle_unresolved_reason_control"),
+                "control_lifecycle_evidence_id": row.get("lifecycle_evidence_id_control"),
                 "control_terminal_reason": row.get("terminal_reason_control"),
                 "control_lifecycle_state": row.get("lifecycle_state_control"),
                 "control_settlement_date": row.get("settlement_date_control"),
@@ -2275,6 +2355,14 @@ def _build_matched_trade_ledger(
                 "candidate_settlement_price": row.get("settlement_price_candidate"),
                 "candidate_settlement_type": row.get("settlement_type_candidate"),
                 "candidate_settlement_source": row.get("settlement_source_candidate"),
+                "candidate_source_isu_cd": str(
+                    candidate_source_isu_cd
+                    if candidate_source_isu_cd is not None and not pd.isna(candidate_source_isu_cd)
+                    else row["isu_cd_candidate"]
+                ),
+                "candidate_lifecycle_event_type": row.get("lifecycle_event_type_candidate"),
+                "candidate_unresolved_reason": row.get("lifecycle_unresolved_reason_candidate"),
+                "candidate_lifecycle_evidence_id": row.get("lifecycle_evidence_id_candidate"),
             }
         )
     ledger = pd.DataFrame(records).sort_values(["ticker", "entry_date", "pair_id"], kind="mergesort").reset_index(drop=True)
@@ -2324,8 +2412,11 @@ def _ledger_aggregates(ledger: pd.DataFrame) -> dict[str, Any]:
             "pair_id": ledger["pair_id"],
             "terminal_return": pd.to_numeric(ledger["control_terminal_return"]),
             "holding_days": pd.to_numeric(ledger["control_holding_days"]),
-            "trade_status": ledger["control_open_at_cutoff"].map(
-                lambda value: "OPEN_AT_CUTOFF" if bool(value) else "REALIZED"
+            "trade_status": ledger.get(
+                "control_trade_status",
+                ledger["control_open_at_cutoff"].map(
+                    lambda value: "OPEN_AT_CUTOFF" if bool(value) else "REALIZED"
+                ),
             ),
             "lifecycle_state": ledger.get("control_lifecycle_state", ""),
         }
@@ -2335,16 +2426,22 @@ def _ledger_aggregates(ledger: pd.DataFrame) -> dict[str, Any]:
             "pair_id": ledger["pair_id"],
             "terminal_return": pd.to_numeric(ledger["candidate_terminal_return"]),
             "holding_days": pd.to_numeric(ledger["candidate_holding_days"]),
-            "trade_status": ledger["candidate_open_at_cutoff"].map(
-                lambda value: "OPEN_AT_CUTOFF" if bool(value) else "REALIZED"
+            "trade_status": ledger.get(
+                "candidate_trade_status",
+                ledger["candidate_open_at_cutoff"].map(
+                    lambda value: "OPEN_AT_CUTOFF" if bool(value) else "REALIZED"
+                ),
             ),
             "lifecycle_state": ledger.get("candidate_lifecycle_state", ""),
         }
     )
+    pair_counts = _matched_pair_counts(control, candidate)
+    numeric_pair_ids = _numeric_comparable_pair_ids(control, candidate)
     return {
-        "control": _metrics(control),
-        "candidate": _metrics(candidate),
+        "control": _metrics(control, performance_pair_ids=numeric_pair_ids),
+        "candidate": _metrics(candidate, performance_pair_ids=numeric_pair_ids),
         "paired": _paired_summary(control, candidate),
+        "pair_counts": pair_counts,
     }
 
 
@@ -2679,31 +2776,50 @@ def _validate_results(
         raise RuntimeError("duplicate matched pair_id found")
     if set(control["pair_id"]) != set(candidate["pair_id"]):
         raise RuntimeError("CONTROL/Candidate entry population mismatch")
-    unresolved_lifecycle_rows = []
+    unresolved_trade_counts = {"CONTROL": 0, "Candidate": 0}
+    unresolved_state_counts: dict[str, dict[str, int]] = {
+        state: {"CONTROL": 0, "Candidate": 0} for state in sorted(UNRESOLVED_LIFECYCLE_STATES)
+    }
+    unresolved_pair_ids: set[str] = set()
     for side, frame in (("CONTROL", control), ("Candidate", candidate)):
-        if "lifecycle_state" not in frame:
-            continue
-        states = frame["lifecycle_state"].fillna("").astype(str)
-        unresolved_mask = states.str.startswith("UNRESOLVED") | states.eq("SUCCESSOR_PENDING")
-        missing_value_mask = unresolved_mask & pd.to_numeric(
-            frame["terminal_return"], errors="coerce"
-        ).isna()
-        for index in frame.index[missing_value_mask]:
-            item = frame.loc[index]
-            unresolved_lifecycle_rows.append(
-                {
-                    "side": side,
-                    "pair_id": item.get("pair_id"),
-                    "ticker": item.get("ticker"),
-                    "lifecycle_state": states.loc[index],
-                    "reason": item.get("lifecycle_unresolved_reason"),
-                }
-            )
-    if unresolved_lifecycle_rows:
-        raise RuntimeError(
-            "lifecycle terminal valuation is unresolved; refusing to aggregate or emit a complete ledger: "
-            f"{unresolved_lifecycle_rows[:10]}"
+        states = (
+            frame.get("lifecycle_state", pd.Series("", index=frame.index))
+            .fillna("")
+            .astype(str)
         )
+        raw_returns = frame["terminal_return"]
+        terminal_returns = pd.to_numeric(raw_returns, errors="coerce")
+        invalid_numeric_mask = raw_returns.notna() & terminal_returns.isna()
+        if invalid_numeric_mask.any():
+            raise RuntimeError(f"{side} terminal return contains a nonnumeric value")
+        unresolved_mask = states.isin(UNRESOLVED_LIFECYCLE_STATES)
+        missing_unmarked = terminal_returns.isna() & ~unresolved_mask
+        if missing_unmarked.any():
+            bad = frame.loc[missing_unmarked, ["pair_id", "ticker"]].to_dict(orient="records")
+            raise RuntimeError(
+                f"{side} terminal return is missing without an allowed unresolved lifecycle state: {bad[:10]}"
+            )
+        unresolved_with_value = unresolved_mask & terminal_returns.notna()
+        if unresolved_with_value.any():
+            bad = frame.loc[unresolved_with_value, ["pair_id", "ticker"]].to_dict(orient="records")
+            raise RuntimeError(f"{side} unresolved lifecycle trade has a numeric terminal return: {bad[:10]}")
+        unresolved_trade_counts[side] = int(unresolved_mask.sum())
+        for state in UNRESOLVED_LIFECYCLE_STATES:
+            state_mask = states.eq(state)
+            unresolved_state_counts[state][side] = int(state_mask.sum())
+            unresolved_pair_ids.update(frame.loc[state_mask, "pair_id"].astype(str))
+        if unresolved_mask.any():
+            required_provenance = (
+                "lifecycle_unresolved_reason",
+                "lifecycle_source_isu_cd",
+                "lifecycle_event_type",
+            )
+            for field in required_provenance:
+                values = frame.get(field, pd.Series(None, index=frame.index))
+                missing = values.isna() | values.astype(str).str.strip().eq("")
+                if (unresolved_mask & missing).any():
+                    raise RuntimeError(f"{side} unresolved lifecycle provenance is missing: {field}")
+    pair_counts = _matched_pair_counts(control, candidate)
     pairs = control.merge(candidate, on="pair_id", suffixes=("_control", "_candidate"), validate="one_to_one")
     for field in ("ticker", "isu_cd", "entry_signal_date", "entry_execution_date", "entry_open", "market"):
         left, right = pairs[f"{field}_control"], pairs[f"{field}_candidate"]
@@ -2817,6 +2933,14 @@ def _validate_results(
         "duplicate_pair_ids": 0,
         "entry_population_parity": True,
         "entry_field_parity": True,
+        **pair_counts,
+        "unresolved_lifecycle_trade_counts_by_side": unresolved_trade_counts,
+        "unresolved_lifecycle_state_counts": unresolved_state_counts,
+        "unresolved_lifecycle_state_totals": {
+            state: int(counts["CONTROL"] + counts["Candidate"])
+            for state, counts in unresolved_state_counts.items()
+        },
+        "unresolved_pair_ids": sorted(unresolved_pair_ids),
         "entry_signal_window_violations": 0,
         "entry_support_violations": 0,
         "identity_entry_violations": 0,
@@ -2904,6 +3028,9 @@ def _candidate_diagnostics(
         validate="one_to_one",
     )
     detail = detail.merge(d, on="pair_id", validate="one_to_one")
+    detail["control_return"] = pd.to_numeric(detail["control_return"], errors="coerce")
+    detail["candidate_return"] = pd.to_numeric(detail["candidate_return"], errors="coerce")
+    detail = detail[detail["control_return"].notna() & detail["candidate_return"].notna()].copy()
     detail["paired_delta"] = detail["candidate_return"] - detail["control_return"]
     detail["execution_open_return_pct"] = (
         (pd.to_numeric(detail["candidate_execution_open"], errors="coerce") / pd.to_numeric(detail["entry_open"], errors="coerce") - 1.0)
@@ -2960,6 +3087,8 @@ def _candidate_diagnostics(
 
 
 def _verdict(summary: Mapping[str, Any], validation: Mapping[str, Any]) -> str:
+    if validation.get("matched_pairs_unresolved", 0):
+        return "CHECK_REQUIRED"
     if (
         validation.get("candidate_overlap_count", 0)
         or validation.get("candidate_execution_support_missing_count", 0)
@@ -2984,7 +3113,10 @@ def _verdict(summary: Mapping[str, Any], validation: Mapping[str, Any]) -> str:
     tail50 = control["tail_counts"]["le_neg_50_pct"] - candidate["tail_counts"]["le_neg_50_pct"]
     winner_damage = summary["candidate_diagnostics"]["control_ge_50_winner_damaged_count"]
     paired = summary["paired"]
-    if (tail40 > 0 or tail50 > 0) and winner_damage <= max(1, round(control["trade_count"] * 0.01)):
+    numeric_count = summary.get("matched_pair_counts", {}).get(
+        "matched_pairs_numeric_comparable", control["trade_count"]
+    )
+    if (tail40 > 0 or tail50 > 0) and winner_damage <= max(1, round(numeric_count * 0.01)):
         if (
             paired["mean_delta_pct_points"] is not None
             and paired["mean_delta_pct_points"] >= -1.0
@@ -3078,6 +3210,7 @@ def _run_candidate_replay(workers: int) -> dict[str, Any]:
     if len(candidate) != len(control):
         raise RuntimeError(f"candidate replay count mismatch: {len(candidate)} != {len(control)}")
     validation = _validate_results(control, candidate, run)
+    numeric_pair_ids = _numeric_comparable_pair_ids(control, candidate)
     paired = control.merge(candidate, on="pair_id", suffixes=("_control", "_candidate"), validate="one_to_one")
     diagnostics = _candidate_diagnostics(control, candidate)
     replay_loads = sum(int(result["repository_load_count"]) for result in outcomes)
@@ -3111,9 +3244,10 @@ def _run_candidate_replay(workers: int) -> dict[str, Any]:
             "candidate_replay_repository_v2_load_count": replay_loads,
         },
         "data_authority": original_summary["data_authority"],
-        "control": _metrics(control),
-        "candidate": _metrics(candidate),
+        "control": _metrics(control, performance_pair_ids=numeric_pair_ids),
+        "candidate": _metrics(candidate, performance_pair_ids=numeric_pair_ids),
         "paired": _paired_summary(control, candidate),
+        "matched_pair_counts": _matched_pair_counts(control, candidate),
         "candidate_diagnostics": diagnostics,
         "validation": validation,
         "candidate_replay_correction": {
@@ -3541,6 +3675,90 @@ def _run(
         sample_control = pd.DataFrame(control_rows)
         sample_candidate = pd.DataFrame(candidate_rows)
         sample_validation = _validate_results(sample_control, sample_candidate, run)
+        sample_pair_counts = _matched_pair_counts(sample_control, sample_candidate)
+        sample_numeric_pair_ids = _numeric_comparable_pair_ids(sample_control, sample_candidate)
+        p2_1_sample_aggregate: dict[str, Any] | None = None
+        p2_1_sample_ledger_reconciliation: dict[str, bool] | None = None
+        p2_1_sample_unresolved_pairs: list[dict[str, Any]] = []
+        if selected_window == "P2-1":
+            sample_ledger = _build_matched_trade_ledger(
+                sample_control,
+                sample_candidate,
+                cutoff_date=run.window.effective_end.strftime("%Y-%m-%d"),
+            )
+            sample_ledger_aggregates = _ledger_aggregates(sample_ledger)
+            p2_1_sample_ledger_reconciliation = {
+                "control": _nested_values_equal(
+                    sample_ledger_aggregates["control"],
+                    _metrics(sample_control, performance_pair_ids=sample_numeric_pair_ids),
+                ),
+                "candidate": _nested_values_equal(
+                    sample_ledger_aggregates["candidate"],
+                    _metrics(sample_candidate, performance_pair_ids=sample_numeric_pair_ids),
+                ),
+                "paired": _nested_values_equal(
+                    sample_ledger_aggregates["paired"],
+                    _paired_summary(sample_control, sample_candidate),
+                ),
+            }
+            if not all(p2_1_sample_ledger_reconciliation.values()):
+                raise RuntimeError(
+                    "P2-1 sample ledger aggregates do not reconcile: "
+                    f"{p2_1_sample_ledger_reconciliation}"
+                )
+            unresolved_mask = sample_ledger["control_lifecycle_state"].fillna("").isin(
+                UNRESOLVED_LIFECYCLE_STATES
+            ) | sample_ledger["candidate_lifecycle_state"].fillna("").isin(
+                UNRESOLVED_LIFECYCLE_STATES
+            )
+            unresolved_columns = [
+                "pair_id",
+                "trade_id",
+                "ticker",
+                "control_trade_status",
+                "control_lifecycle_state",
+                "control_terminal_return",
+                "control_source_isu_cd",
+                "control_lifecycle_event_type",
+                "control_unresolved_reason",
+                "candidate_trade_status",
+                "candidate_lifecycle_state",
+                "candidate_terminal_return",
+                "candidate_source_isu_cd",
+                "candidate_lifecycle_event_type",
+                "candidate_unresolved_reason",
+            ]
+            for record in sample_ledger.loc[unresolved_mask, unresolved_columns].to_dict(orient="records"):
+                p2_1_sample_unresolved_pairs.append(
+                    {
+                        key: (
+                            None
+                            if pd.isna(value)
+                            else value.item()
+                            if isinstance(value, np.generic)
+                            else value
+                        )
+                        for key, value in record.items()
+                    }
+                )
+            sample_008560 = [
+                row for row in p2_1_sample_unresolved_pairs if str(row["ticker"]).zfill(6) == "008560"
+            ]
+            if not sample_008560 or any(
+                row["control_lifecycle_state"] != "UNRESOLVED_SUCCESSOR"
+                or row["candidate_lifecycle_state"] != "UNRESOLVED_SUCCESSOR"
+                or row["control_terminal_return"] is not None
+                or row["candidate_terminal_return"] is not None
+                for row in sample_008560
+            ):
+                raise RuntimeError("P2-1 sample did not preserve 008560 as a null-valued unresolved matched pair")
+            p2_1_sample_aggregate = {
+                **sample_ledger_aggregates,
+                **sample_pair_counts,
+            }
+            sample_validation["sample_ledger_pair_id_unique"] = bool(sample_ledger["pair_id"].is_unique)
+            sample_validation["sample_ledger_aggregate_reconciliation"] = p2_1_sample_ledger_reconciliation
+            sample_validation["sample_008560_unresolved_pair_count"] = len(sample_008560)
         p3_sample_ledger_reconciliation: dict[str, bool] | None = None
         p3_sample_event_counts: dict[str, int] | None = None
         if selected_window == "P3-1":
@@ -3553,8 +3771,14 @@ def _run(
             )
             sample_aggregates = _ledger_aggregates(sample_ledger)
             p3_sample_ledger_reconciliation = {
-                "control": _nested_values_equal(sample_aggregates["control"], _metrics(sample_control)),
-                "candidate": _nested_values_equal(sample_aggregates["candidate"], _metrics(sample_candidate)),
+                "control": _nested_values_equal(
+                    sample_aggregates["control"],
+                    _metrics(sample_control, performance_pair_ids=sample_numeric_pair_ids),
+                ),
+                "candidate": _nested_values_equal(
+                    sample_aggregates["candidate"],
+                    _metrics(sample_candidate, performance_pair_ids=sample_numeric_pair_ids),
+                ),
                 "paired": _nested_values_equal(
                     sample_aggregates["paired"],
                     _paired_summary(sample_control, sample_candidate),
@@ -3630,6 +3854,21 @@ def _run(
             "max_estimate_minutes": 90,
             "control_trade_rows_in_sample_not_used_for_performance_tuning": len(control_rows),
             "candidate_trade_rows_in_sample_not_used_for_performance_tuning": len(candidate_rows),
+            **sample_pair_counts,
+            "sample_aggregate": p2_1_sample_aggregate,
+            "sample_lifecycle_unresolved_pairs": p2_1_sample_unresolved_pairs,
+            "p2_1_sample_ledger_aggregate_reconciliation": p2_1_sample_ledger_reconciliation,
+            "sample_contract_verdict": (
+                "PASS"
+                if selected_window == "P2-1"
+                and p2_1_sample_ledger_reconciliation
+                and all(p2_1_sample_ledger_reconciliation.values())
+                and any(str(row["ticker"]).zfill(6) == "008560" for row in p2_1_sample_unresolved_pairs)
+                else "NOT_APPLICABLE"
+            ),
+            "recertification_verdict": (
+                "CHECK_REQUIRED" if sample_pair_counts["matched_pairs_unresolved"] else "SAMPLE_ONLY"
+            ),
             "sample_invariants": sample_validation,
             "sample_ledger_aggregate_reconciliation": p3_sample_ledger_reconciliation,
             "sample_soft_event_type_counts": p3_sample_event_counts,
@@ -3660,9 +3899,10 @@ def _run(
     if control.empty:
         raise RuntimeError(f"{selected_window} full run produced zero CONTROL entries")
     validation = _validate_results(control, candidate, run)
+    numeric_pair_ids = _numeric_comparable_pair_ids(control, candidate)
     paired = control.merge(candidate, on="pair_id", suffixes=("_control", "_candidate"), validate="one_to_one")
-    control_metrics = _metrics(control)
-    candidate_metrics = _metrics(candidate)
+    control_metrics = _metrics(control, performance_pair_ids=numeric_pair_ids)
+    candidate_metrics = _metrics(candidate, performance_pair_ids=numeric_pair_ids)
     paired_metrics = _paired_summary(control, candidate)
     candidate_diagnostics = _candidate_diagnostics(control, candidate)
     p2_2_ledger: pd.DataFrame | None = None
@@ -3814,6 +4054,7 @@ def _run(
         "control": control_metrics,
         "candidate": candidate_metrics,
         "paired": paired_metrics,
+        "matched_pair_counts": _matched_pair_counts(control, candidate),
         "candidate_diagnostics": candidate_diagnostics,
         "validation": validation,
         "verdict": None,

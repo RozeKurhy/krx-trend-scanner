@@ -2139,3 +2139,263 @@ def test_lifecycle_strategy_horizon_stops_source_signal_simulation_before_action
     assert ledger.loc[0, "control_lifecycle_state"] == expected_lifecycle_state
     aggregates = runner._ledger_aggregates(ledger)
     assert aggregates["control"]["lifecycle_state_counts"] == {expected_lifecycle_state: 1}
+
+
+def _unresolved_contract_run():
+    return SimpleNamespace(
+        window=SimpleNamespace(
+            window=SimpleNamespace(window_id="P2-1"),
+            effective_start=pd.Timestamp("2021-01-04"),
+            effective_end=pd.Timestamp("2025-05-30"),
+            execution_support=pd.Timestamp("2025-06-02"),
+        )
+    )
+
+
+def _contract_trade(pair_id, *, ticker, terminal_return, lifecycle_state=None, side="CONTROL"):
+    unresolved = lifecycle_state is not None
+    row = {
+        "pair_id": pair_id,
+        "trade_id": f"{ticker}_01",
+        "trade_sequence": 1,
+        "ticker": ticker,
+        "isu_cd": f"KR7{int(ticker):09d}",
+        "market": "KOSPI",
+        "identity_effective_from": "2020-01-01",
+        "identity_effective_to": "2025-12-31",
+        "entry_signal_date": "2025-01-03",
+        "entry_execution_date": "2025-01-06",
+        "entry_open": 100.0,
+        "exit_signal_date": None if unresolved else "2025-02-03",
+        "exit_execution_date": None if unresolved else "2025-02-04",
+        "exit_type": "NO_EXIT" if unresolved else "V2_EXIT",
+        "terminal_return": None if unresolved else terminal_return,
+        "holding_days": None if unresolved else 20,
+        "trade_status": "OPEN_AT_CUTOFF" if unresolved else "REALIZED",
+        "execution_support_missing": False,
+        "terminal_valuation_date": None,
+        "terminal_valuation_at_cutoff": False,
+        "stage_asof_date_at_signal": None,
+    }
+    if side == "Candidate":
+        row["candidate_action"] = "CONTROL_PRESERVED"
+    if unresolved:
+        row.update(
+            {
+                "lifecycle_state": lifecycle_state,
+                "lifecycle_unresolved_reason": f"test reason for {lifecycle_state}",
+                "lifecycle_source_isu_cd": f"KR7{int(ticker):09d}",
+                "lifecycle_event_type": "MANDATORY_SHARE_EXCHANGE"
+                if lifecycle_state == "UNRESOLVED_SUCCESSOR"
+                else "MANDATORY_CASH",
+                "lifecycle_evidence_id": f"evidence-{pair_id}-{side.lower()}",
+            }
+        )
+    return row
+
+
+def _contract_frames(pair_specs):
+    control_rows = []
+    candidate_rows = []
+    for index, spec in enumerate(pair_specs, start=1):
+        ticker = f"{index:06d}"
+        pair_id = spec["pair_id"]
+        control_state = spec.get("control_state")
+        candidate_state = spec.get("candidate_state")
+        control_rows.append(
+            _contract_trade(
+                pair_id,
+                ticker=ticker,
+                terminal_return=spec.get("control_return"),
+                lifecycle_state=control_state,
+                side="CONTROL",
+            )
+        )
+        candidate_rows.append(
+            _contract_trade(
+                pair_id,
+                ticker=ticker,
+                terminal_return=spec.get("candidate_return"),
+                lifecycle_state=candidate_state,
+                side="Candidate",
+            )
+        )
+    return pd.DataFrame(control_rows), pd.DataFrame(candidate_rows)
+
+
+def test_unresolved_lifecycle_on_both_sides_is_preserved_and_excluded_pairwise():
+    control, candidate = _contract_frames(
+        [
+            {
+                "pair_id": "pair-unresolved-both",
+                "control_state": "UNRESOLVED_SUCCESSOR",
+                "candidate_state": "UNRESOLVED_SUCCESSOR",
+            }
+        ]
+    )
+
+    validation = runner._validate_results(control, candidate, _unresolved_contract_run())
+    ledger = runner._build_matched_trade_ledger(control, candidate, cutoff_date="2025-05-30")
+    aggregates = runner._ledger_aggregates(ledger)
+
+    assert validation["matched_pairs_total"] == 1
+    assert validation["matched_pairs_numeric_comparable"] == 0
+    assert validation["matched_pairs_unresolved"] == 1
+    assert validation["unresolved_lifecycle_trade_counts_by_side"] == {"CONTROL": 1, "Candidate": 1}
+    assert validation["unresolved_lifecycle_state_counts"]["UNRESOLVED_SUCCESSOR"] == {
+        "CONTROL": 1,
+        "Candidate": 1,
+    }
+    assert validation["unresolved_lifecycle_state_totals"]["UNRESOLVED_SUCCESSOR"] == 2
+    assert ledger.loc[0, "control_terminal_return"] is None
+    assert ledger.loc[0, "candidate_terminal_return"] is None
+    assert ledger.loc[0, "paired_delta"] is None
+    assert ledger.loc[0, "control_unresolved_reason"] == "test reason for UNRESOLVED_SUCCESSOR"
+    assert ledger.loc[0, "candidate_source_isu_cd"] == "KR7000000001"
+    assert ledger.loc[0, "candidate_lifecycle_event_type"] == "MANDATORY_SHARE_EXCHANGE"
+    assert aggregates["control"]["mean_terminal_return_pct"] is None
+    assert aggregates["candidate"]["holding_days_mean"] is None
+    assert aggregates["paired"]["count"] == 0
+    assert aggregates["pair_counts"]["matched_pairs_unresolved"] == 1
+
+
+@pytest.mark.parametrize("unresolved_side", ["CONTROL", "Candidate"])
+def test_one_sided_unresolved_lifecycle_excludes_both_sides_from_metrics(unresolved_side):
+    spec = {"pair_id": f"pair-one-sided-{unresolved_side}"}
+    if unresolved_side == "CONTROL":
+        spec.update(control_state="UNRESOLVED_SETTLEMENT", candidate_return=12.0)
+    else:
+        spec.update(control_return=-8.0, candidate_state="UNRESOLVED_SETTLEMENT")
+    control, candidate = _contract_frames([spec])
+
+    validation = runner._validate_results(control, candidate, _unresolved_contract_run())
+    ledger = runner._build_matched_trade_ledger(control, candidate, cutoff_date="2025-05-30")
+    aggregates = runner._ledger_aggregates(ledger)
+
+    assert validation["matched_pairs_numeric_comparable"] == 0
+    assert validation["matched_pairs_unresolved"] == 1
+    assert ledger.loc[0, "paired_delta"] is None
+    assert aggregates["control"]["mean_terminal_return_pct"] is None
+    assert aggregates["candidate"]["mean_terminal_return_pct"] is None
+    assert aggregates["paired"]["count"] == 0
+
+
+def test_unresolved_settlement_provenance_survives_ledger_without_terminal_imputation():
+    control, candidate = _contract_frames(
+        [
+            {
+                "pair_id": "pair-unresolved-settlement",
+                "control_state": "UNRESOLVED_SETTLEMENT",
+                "candidate_state": "UNRESOLVED_SETTLEMENT",
+            }
+        ]
+    )
+
+    ledger = runner._build_matched_trade_ledger(control, candidate, cutoff_date="2025-05-30")
+
+    assert ledger.loc[0, "control_lifecycle_state"] == "UNRESOLVED_SETTLEMENT"
+    assert ledger.loc[0, "candidate_lifecycle_state"] == "UNRESOLVED_SETTLEMENT"
+    assert ledger.loc[0, "control_terminal_return"] is None
+    assert ledger.loc[0, "candidate_terminal_return"] is None
+    assert ledger.loc[0, "control_unresolved_reason"] == "test reason for UNRESOLVED_SETTLEMENT"
+    assert ledger.loc[0, "control_lifecycle_event_type"] == "MANDATORY_CASH"
+    assert ledger.loc[0, "control_source_isu_cd"] == "KR7000000001"
+
+
+def test_missing_terminal_return_without_allowed_unresolved_state_is_a_hard_failure():
+    control, candidate = _contract_frames(
+        [{"pair_id": "pair-unmarked-missing", "candidate_return": 1.0}]
+    )
+    control.loc[0, "terminal_return"] = None
+
+    with pytest.raises(RuntimeError, match="missing without an allowed unresolved lifecycle state"):
+        runner._validate_results(control, candidate, _unresolved_contract_run())
+
+
+def test_numeric_terminal_return_for_unresolved_lifecycle_is_a_hard_failure():
+    control, candidate = _contract_frames(
+        [
+            {
+                "pair_id": "pair-unresolved-with-value",
+                "control_state": "UNRESOLVED_POST_DELIST_VALUE",
+                "candidate_state": "UNRESOLVED_POST_DELIST_VALUE",
+            }
+        ]
+    )
+    control.loc[0, "terminal_return"] = 0.0
+
+    with pytest.raises(RuntimeError, match="unresolved lifecycle trade has a numeric terminal return"):
+        runner._validate_results(control, candidate, _unresolved_contract_run())
+
+
+def test_any_unresolved_matched_pair_prevents_recertified_pass():
+    summary = {
+        "window_id": "P2-1",
+        "control": {"trade_count": 1, "tail_counts": {"le_neg_40_pct": 0, "le_neg_50_pct": 0}},
+        "candidate": {"trade_count": 1},
+        "candidate_diagnostics": {"control_ge_50_winner_damaged_count": 0},
+        "paired": {"mean_delta_pct_points": 0.0, "improved": 1, "worsened": 0},
+        "matched_pair_counts": {"matched_pairs_numeric_comparable": 0},
+    }
+
+    assert runner._verdict(summary, {"matched_pairs_unresolved": 1}) == "CHECK_REQUIRED"
+
+
+def test_no_unresolved_pairs_keeps_the_existing_recertification_verdict_path():
+    summary = {
+        "window_id": "P2-1",
+        "control": {
+            "trade_count": 1,
+            "tail_counts": {"le_neg_40_pct": 0, "le_neg_50_pct": 0},
+            "mean_terminal_return_pct": 5.0,
+        },
+        "candidate": {
+            "trade_count": 1,
+            "tail_counts": {"le_neg_40_pct": 0, "le_neg_50_pct": 0},
+            "mean_terminal_return_pct": 5.0,
+        },
+        "candidate_diagnostics": {"control_ge_50_winner_damaged_count": 0},
+        "paired": {"mean_delta_pct_points": 0.0, "improved": 0, "worsened": 0},
+        "matched_pair_counts": {"matched_pairs_numeric_comparable": 1},
+    }
+
+    assert runner._verdict(summary, {"matched_pairs_unresolved": 0}) == "MIXED"
+
+
+def test_aggregate_denominators_use_only_numeric_comparable_pairs():
+    control, candidate = _contract_frames(
+        [
+            {"pair_id": "pair-numeric", "control_return": 5.0, "candidate_return": 10.0},
+            {
+                "pair_id": "pair-mixed",
+                "control_return": 20.0,
+                "candidate_state": "UNRESOLVED_SUCCESSOR",
+            },
+            {
+                "pair_id": "pair-both-unresolved",
+                "control_state": "UNRESOLVED_SETTLEMENT",
+                "candidate_state": "UNRESOLVED_POST_DELIST_VALUE",
+            },
+        ]
+    )
+
+    validation = runner._validate_results(control, candidate, _unresolved_contract_run())
+    ledger = runner._build_matched_trade_ledger(control, candidate, cutoff_date="2025-05-30")
+    aggregates = runner._ledger_aggregates(ledger)
+
+    assert validation["matched_pairs_total"] == 3
+    assert validation["matched_pairs_numeric_comparable"] == 1
+    assert validation["matched_pairs_unresolved"] == 2
+    assert aggregates["pair_counts"] == {
+        "matched_pairs_total": 3,
+        "matched_pairs_numeric_comparable": 1,
+        "matched_pairs_unresolved": 2,
+    }
+    assert aggregates["control"]["trade_count"] == 3
+    assert aggregates["candidate"]["trade_count"] == 3
+    assert aggregates["control"]["performance_pair_count"] == 1
+    assert aggregates["candidate"]["performance_pair_count"] == 1
+    assert aggregates["control"]["mean_terminal_return_pct"] == 5.0
+    assert aggregates["candidate"]["mean_terminal_return_pct"] == 10.0
+    assert aggregates["paired"]["count"] == 1
+    assert aggregates["paired"]["mean_delta_pct_points"] == 5.0
