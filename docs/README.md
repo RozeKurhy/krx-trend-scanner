@@ -33,7 +33,7 @@
 | [reporting/](reporting/README.md) | 패턴·전략·펀더멘털 결과를 모은 종목 보고서 문서 |
 | [strategies/](strategies/README.md) | 패턴 결과를 매매 규칙으로 연결하는 전략과 독립 전략 |
 | [validation/](validation/) | 이전 문서 경로 호환 안내와 영역 공통 현재 기준 문서 |
-| [web/](web/) | 웹 화면에 제공하는 정적 데이터·전달 계약 |
+| [web/](web/README.md) | 웹 화면에 제공하는 정적 데이터·전달 계약 |
 
 `patterns/`에는 Pattern A와 Pattern A FAST가 있다. A FAST Core 전략 문서는
 Pattern A FAST와 강하게 결합되어 있으므로 해당 패턴 아래에서 관리한다.
