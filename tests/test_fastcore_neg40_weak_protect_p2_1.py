@@ -164,6 +164,137 @@ def test_new_p3_2_permanent_exclusions_match_exact_approved_identities(ticker, i
     assert exclusions[0]["approval_scope"].startswith("P3-2 ")
 
 
+P1_UNAVAILABLE_12_IDENTITIES = {
+    ("001140", "KR7001140003"),
+    ("009730", "KR7009730003"),
+    ("031980", "KR7031980006"),
+    ("035290", "KR7035290006"),
+    ("036260", "KR7036260008"),
+    ("036620", "KR7036620003"),
+    ("043710", "KR7043710003"),
+    ("044060", "KR7044060002"),
+    ("052300", "KR7052300001"),
+    ("052400", "KR7052400009"),
+    ("068150", "KR7068150002"),
+    ("130660", "KR7130660004"),
+}
+
+PREEXISTING_PERMANENT_IDENTITY_EXCLUSIONS = {
+    ("010420", "KR7010420008"),
+    ("005390", "KR7005390000"),
+    ("006390", "KR7006390009"),
+    ("031440", "KR7031440001"),
+    ("049770", "KR7049770001"),
+    ("057050", "KR7057050007"),
+    ("138490", "KR7138490008"),
+    ("335890", "KR7335890000"),
+    ("950110", "KR8392070007"),
+    ("069460", "KR7069460004"),
+    ("246720", "KR7246720007"),
+}
+
+P1_FINAL_CLOSURE_V02_IDENTITIES = {
+    ("005950", "KR7005950001"),
+    ("002250", "KR7002250009"),
+    ("002270", "KR7002270007"),
+    ("002550", "KR7002550002"),
+    ("003450", "KR7003450004"),
+    ("003600", "KR7003600004"),
+    ("005190", "KR7005190004"),
+    ("008020", "KR7008020000"),
+    ("008720", "KR7008720005"),
+    ("013450", "KR7013450002"),
+    ("016170", "KR7016170003"),
+    ("019680", "KR7019680008"),
+    ("020760", "KR7020760005"),
+    ("031860", "KR7031860000"),
+    ("032980", "KR7032980005"),
+    ("033630", "KR7033630005"),
+    ("033660", "KR7033660002"),
+    ("043220", "KR7043220003"),
+    ("123100", "KR7123100000"),
+    ("130960", "KR7130960008"),
+}
+
+
+def test_p1_unavailable_12_permanent_exclusions_are_exact_pairs():
+    registered = {
+        identity
+        for identity, policy in runner.PERMANENT_IDENTITY_EXCLUSIONS.items()
+        if policy.get("approval_scope") == "P1 UNAVAILABLE 12 permanent exclusion V01"
+    }
+    assert registered == P1_UNAVAILABLE_12_IDENTITIES
+
+    segments = [
+        IdentitySegment(
+            ticker=ticker,
+            isu_cd=isu_cd,
+            market="KOSPI",
+            effective_from=pd.Timestamp("2010-01-04"),
+            effective_to=pd.Timestamp("2026-08-31"),
+        )
+        for ticker, isu_cd in sorted(P1_UNAVAILABLE_12_IDENTITIES)
+    ]
+    segments.append(
+        IdentitySegment(
+            ticker="001140",
+            isu_cd="KR7999990001",
+            market="KOSPI",
+            effective_from=pd.Timestamp("2026-09-01"),
+            effective_to=pd.Timestamp("2026-09-30"),
+        )
+    )
+
+    kept, exclusions = apply_permanent_identity_exclusions(segments)
+
+    assert len(exclusions) == 12
+    assert {(item["ticker"], item["isu_cd"]) for item in exclusions} == registered
+    assert [segment.isu_cd for segment in kept] == ["KR7999990001"]
+    assert {item["failure_class"] for item in exclusions} == {
+        "A_PIPELINE_BUG",
+        "C_SOURCE_OR_AUTHORITY_GAP",
+    }
+
+
+def test_p1_final_closure_v02_permanent_exclusions_are_exact_pairs_and_preserve_ticker_reuse():
+    registered = {
+        identity
+        for identity, policy in runner.PERMANENT_IDENTITY_EXCLUSIONS.items()
+        if policy.get("approval_scope") == "P1 final exclusion closure V02"
+    }
+    assert registered == P1_FINAL_CLOSURE_V02_IDENTITIES
+    assert set(runner.PERMANENT_IDENTITY_EXCLUSIONS) == (
+        PREEXISTING_PERMANENT_IDENTITY_EXCLUSIONS
+        | P1_UNAVAILABLE_12_IDENTITIES
+        | P1_FINAL_CLOSURE_V02_IDENTITIES
+    )
+
+    segments = [
+        IdentitySegment(
+            ticker=ticker,
+            isu_cd=isu_cd,
+            market="KOSPI",
+            effective_from=pd.Timestamp("2010-01-04"),
+            effective_to=pd.Timestamp("2026-08-31"),
+        )
+        for ticker, isu_cd in sorted(P1_FINAL_CLOSURE_V02_IDENTITIES)
+    ]
+    ticker_reuse = IdentitySegment(
+        ticker="005950",
+        isu_cd="KR7999990001",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2026-09-01"),
+        effective_to=pd.Timestamp("2026-09-30"),
+    )
+    segments.append(ticker_reuse)
+
+    kept, exclusions = apply_permanent_identity_exclusions(segments)
+
+    assert kept == [ticker_reuse]
+    assert {(item["ticker"], item["isu_cd"]) for item in exclusions} == registered
+    assert all(item["approval_scope"] == "P1 final exclusion closure V02" for item in exclusions)
+
+
 def test_p3_2_saved_raw_recognition_filters_both_sides_without_mutating_raw_sources():
     identities = sorted(
         key
