@@ -66,6 +66,18 @@ PERMANENT_IDENTITY_EXCLUSIONS: dict[tuple[str, str], dict[str, str]] = {
         "approved_date": "2026-09-25",
         "policy_version": "permanent_identity_exclusions_v01",
     },
+    ("069460", "KR7069460004"): {
+        "reason": "user-approved permanent exclusion because authoritative terminal pricing is unavailable through the P3-2 cutoff",
+        "approval_scope": "P3-2 final closure V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
+    ("246720", "KR7246720007"): {
+        "reason": "user-approved permanent exclusion because authoritative terminal pricing is unavailable through the P3-2 cutoff",
+        "approval_scope": "P3-2 final closure V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
 }
 
 

@@ -137,6 +137,8 @@ def test_permanent_identity_exclusion_matches_ticker_and_isu_only():
         ("138490", "KR7138490008"),
         ("335890", "KR7335890000"),
         ("950110", "KR8392070007"),
+        ("069460", "KR7069460004"),
+        ("246720", "KR7246720007"),
     ],
 )
 def test_new_p3_2_permanent_exclusions_match_exact_approved_identities(ticker, isu_cd):
@@ -159,14 +161,14 @@ def test_new_p3_2_permanent_exclusions_match_exact_approved_identities(ticker, i
 
     assert kept == [ticker_reuse]
     assert [(item["ticker"], item["isu_cd"]) for item in exclusions] == [(ticker, isu_cd)]
-    assert exclusions[0]["approval_scope"] == "P3-2 recertification V01"
+    assert exclusions[0]["approval_scope"].startswith("P3-2 ")
 
 
 def test_p3_2_saved_raw_recognition_filters_both_sides_without_mutating_raw_sources():
     identities = sorted(
         key
         for key, policy in runner.PERMANENT_IDENTITY_EXCLUSIONS.items()
-        if policy.get("approval_scope") == "P3-2 recertification V01"
+        if str(policy.get("approval_scope", "")).startswith("P3-2 ")
     )
     control = pd.DataFrame(
         [
@@ -205,8 +207,8 @@ def test_p3_2_saved_raw_recognition_filters_both_sides_without_mutating_raw_sour
     assert filtered_control["pair_id"].tolist() == ["keep"]
     assert filtered_candidate["pair_id"].tolist() == ["keep"]
     assert filtered_events["pair_id"].tolist() == ["keep"]
-    assert assessment["excluded_pair_count"] == 8
-    assert assessment["excluded_soft_event_rows"] == 8
+    assert assessment["excluded_pair_count"] == 10
+    assert assessment["excluded_soft_event_rows"] == 10
     assert assessment["source_raw_files_modified"] is False
     pd.testing.assert_frame_equal(control, raw_control_snapshot)
 

@@ -3990,7 +3990,7 @@ def _apply_permanent_exclusions_to_saved_p3_2_raw(
     required_new_keys = {
         identity
         for identity, policy in PERMANENT_IDENTITY_EXCLUSIONS.items()
-        if policy.get("approval_scope") == "P3-2 recertification V01"
+        if str(policy.get("approval_scope", "")).startswith("P3-2 ")
     }
 
     def mask_for(frame: pd.DataFrame) -> pd.Series:
