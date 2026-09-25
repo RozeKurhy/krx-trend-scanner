@@ -29,7 +29,7 @@
 | [architecture/](architecture/README.md) | 프로젝트 공통 구조, 데이터 처리 방식, 공용 기술 문서 |
 | [fundamentals/](fundamentals/README.md) | OpenDART/XBRL 기반 기업 실적·재무 데이터와 검증 문서 |
 | [patterns/](patterns/README.md) | 종목·시장 상태를 판단하는 패턴의 정의와 연구·검증 기록 |
-| [relative_strength/](relative_strength/) | 시장·업종 상대강도 계산과 제공 계약 |
+| [relative_strength/](relative_strength/sector_rs_ranking_v01.md) | 업종 내 상대강도 순위 계산과 산출물 계약 |
 | [reporting/](reporting/README.md) | 패턴·전략·펀더멘털 결과를 모은 종목 보고서 문서 |
 | [strategies/](strategies/README.md) | 패턴 결과를 매매 규칙으로 연결하는 전략과 독립 전략 |
 | [validation/](validation/) | 이전 문서 경로 호환 안내와 영역 공통 현재 기준 문서 |
