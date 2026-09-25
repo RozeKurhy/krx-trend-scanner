@@ -443,6 +443,19 @@ def test_p3_2_uses_isolated_window_specific_artifact_namespace():
         runner._configure_run("P2-1")
 
 
+def test_p1_uses_isolated_standard_window_artifact_namespace():
+    try:
+        runner._configure_run("P1", "run_test_p1_long_history")
+        assert runner.RUN_ID == "run_test_p1_long_history"
+        assert runner.RUN_DIR.parent.name == "p1_neg40_weak_protect_v01"
+        assert runner.SAMPLE_PATH.name == "sample_benchmark_p1_common_pit_v01.json"
+        assert runner.MATCHED_LEDGER_PATH.name == "p1_matched_trades.csv"
+        assert runner.SOFT_EVENTS_PATH.name == "p1_soft_events.csv"
+        assert runner.LEDGER_SUMMARY_PATH.name == "p1_summary.json"
+    finally:
+        runner._configure_run("P2-1")
+
+
 def test_p3_2_gate_fields_have_a_window_specific_namespace():
     values = {
         "p3_1_effective_remediable_unresolved_count": 2,
@@ -455,6 +468,22 @@ def test_p3_2_gate_fields_have_a_window_specific_namespace():
     assert renamed == {
         "p3_2_effective_remediable_unresolved_count": 2,
         "p3_2_lifecycle_gate_control_candidate_symmetry": False,
+        "common_interval_end_before_cutoff_open_count": 3,
+    }
+
+
+def test_p1_gate_fields_have_a_window_specific_namespace():
+    values = {
+        "p3_1_effective_remediable_unresolved_count": 2,
+        "p3_1_lifecycle_gate_control_candidate_symmetry": False,
+        "common_interval_end_before_cutoff_open_count": 3,
+    }
+
+    renamed = runner._namespace_p3_gate_fields(values, "P1")
+
+    assert renamed == {
+        "p1_effective_remediable_unresolved_count": 2,
+        "p1_lifecycle_gate_control_candidate_symmetry": False,
         "common_interval_end_before_cutoff_open_count": 3,
     }
 

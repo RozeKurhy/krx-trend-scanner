@@ -56,10 +56,13 @@ P2_2_LEDGER_SUMMARY_PATH = (
     ROOT
     / "artifacts/backtests/p2_2_neg40_weak_protect_v01/run_20260924_final_corrective_v01/p2_2_summary.json"
 )
+P1_RUN_ID = "run_20260925_standard_full_worker10_v01"
+P1_RUN_DIR = ROOT / "artifacts/backtests/p1_neg40_weak_protect_v01" / P1_RUN_ID
 P3_1_RUN_ID = "run_20260924_single_window_v01"
 P3_1_RUN_DIR = ROOT / "artifacts/backtests/p3_1_neg40_weak_protect_v01" / P3_1_RUN_ID
 P3_2_RUN_ID = "run_20260925_p3_2_worker10_artifact_first_v01"
 P3_WINDOW_IDS = frozenset({"P3-1", "P3-2"})
+COMMON_PIT_WINDOW_IDS = frozenset({"P1", *P3_WINDOW_IDS})
 LIFECYCLE_SETTLEMENT_EVIDENCE_PATH = (
     ROOT / "docs/strategies/p2_2_lifecycle_settlement_evidence_v01.json"
 )
@@ -75,6 +78,7 @@ MATCHED_LEDGER_PATH = CORRECTED_RUN_DIR / "p2_1_matched_trades.csv"
 SOFT_EVENTS_PATH = CORRECTED_RUN_DIR / "p2_1_soft_events.csv"
 LEDGER_SUMMARY_PATH = P2_1_LEDGER_SUMMARY_PATH
 MAX_FULL_ESTIMATE_SECONDS = 90 * 60
+MAX_P1_FULL_ESTIMATE_SECONDS = 4 * 60 * 60
 DEFAULT_WORKERS = 8
 V2_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
 CANDIDATE_STRATEGY_ID = "PATTERN_A_FAST_CORE_V2_NEG40_WEAK_PROTECT_SOFT_EXIT_V01"
@@ -133,6 +137,18 @@ def _configure_run(window_id: str, run_id_override: str | None = None) -> None:
         ledger_name = "p2_2_matched_trades.csv"
         events_name = "p2_2_soft_events.csv"
         ledger_summary_name = "p2_2_summary.json"
+    elif window_id == "P1":
+        run_id = P1_RUN_ID if run_id_override is None else run_id_override
+        if run_id_override is not None and (
+            not run_id.startswith("run_")
+            or not all(char.isascii() and (char.isalnum() or char in "_-") for char in run_id)
+        ):
+            raise ValueError("P1 run id must start with 'run_' and contain only ASCII letters, digits, '_' or '-'")
+        run_dir = P1_RUN_DIR if run_id_override is None else ROOT / "artifacts/backtests/p1_neg40_weak_protect_v01" / run_id
+        corrected_dir = run_dir
+        ledger_name = "p1_matched_trades.csv"
+        events_name = "p1_soft_events.csv"
+        ledger_summary_name = "p1_summary.json"
     elif window_id in P3_WINDOW_IDS:
         window_slug = window_id.lower().replace("-", "_")
         default_run_id = P3_1_RUN_ID if window_id == "P3-1" else P3_2_RUN_ID
@@ -151,7 +167,7 @@ def _configure_run(window_id: str, run_id_override: str | None = None) -> None:
     else:
         raise ValueError(f"unsupported matched A/B window: {window_id}")
 
-    if run_id_override is not None and window_id not in {"P2-1", "P2-2", *P3_WINDOW_IDS}:
+    if run_id_override is not None and window_id not in {"P1", "P2-1", "P2-2", *P3_WINDOW_IDS}:
         raise ValueError("--run-id override is not supported for the selected window")
 
     WINDOW_ID = window_id
@@ -161,7 +177,7 @@ def _configure_run(window_id: str, run_id_override: str | None = None) -> None:
         "sample_benchmark_p2_2_pit_extension_v01.json"
         if window_id == "P2-2"
         else f"sample_benchmark_{window_id.lower().replace('-', '_')}_common_pit_v01.json"
-        if window_id in P3_WINDOW_IDS
+        if window_id in COMMON_PIT_WINDOW_IDS
         else "sample_benchmark.json"
     )
     CONTROL_FULL_PATH = run_dir / "control_trades.csv"
@@ -632,6 +648,7 @@ def _load_context(window_id: str | None = None) -> RunContext:
     selected_window = window_id or WINDOW_ID
     window = resolve_standard_backtest_window(selected_window, calendar)
     expected_by_window = {
+        "P1": ("2014-01-02", "2026-08-31", "2026-09-01"),
         "P2-1": ("2021-01-04", "2025-05-30", "2025-06-02"),
         "P2-2": ("2021-01-04", "2026-08-31", "2026-09-01"),
         "P3-1": ("2022-01-03", "2025-05-30", "2025-06-02"),
@@ -654,11 +671,11 @@ def _load_context(window_id: str | None = None) -> RunContext:
     base_calendar = load_historical_trading_calendar(HISTORICAL_IDENTITY_CALENDAR_PATH)
     authority_coverage_start = str(base_calendar["first_trading_date"])
     authority_coverage_end = str(base_calendar["last_trading_date"])
-    if selected_window in {"P2-2", "P3-2"}:
+    if selected_window in {"P1", "P2-2", "P3-2"}:
         authority, authority_coverage_start, authority_coverage_end = _load_p2_2_extended_identity_authority(
             authority
         )
-    if selected_window in {"P2-1", "P2-2", *P3_WINDOW_IDS}:
+    if selected_window in {"P1", "P2-1", "P2-2", *P3_WINDOW_IDS}:
         lifecycle_settlements = _load_lifecycle_event_catalog()
     else:
         lifecycle_settlements = ()
@@ -752,11 +769,12 @@ def _p2_2_identity_authority_preflight(run: RunContext) -> dict[str, Any]:
 
 
 def _p3_1_population_preflight(run: RunContext) -> dict[str, Any]:
-    """Validate a P3 window and its freshly derived COMMON PIT population."""
+    """Validate a long-window's freshly derived COMMON PIT population."""
     window_id = run.window.window.window_id
-    if window_id not in P3_WINDOW_IDS:
-        raise ValueError("P3 population preflight requires a P3-1 or P3-2 RunContext")
+    if window_id not in COMMON_PIT_WINDOW_IDS:
+        raise ValueError("common PIT population preflight requires a P1 or P3 RunContext")
     expected_by_window = {
+        "P1": ("2014-01-02", "2026-08-31", "2026-09-01"),
         "P3-1": ("2022-01-03", "2025-05-30", "2025-06-02"),
         "P3-2": ("2022-01-03", "2026-08-31", "2026-09-01"),
     }
@@ -2650,7 +2668,7 @@ def _build_soft_event_ledger(
             if event["event_type"] != "SOFT_EXIT_SIGNAL":
                 continue
             if pd.isna(event["execution_date"]) or pd.isna(event["execution_open"]):
-                if run.window.window.window_id in P3_WINDOW_IDS:
+                if run.window.window.window.window_id in COMMON_PIT_WINDOW_IDS:
                     raise RuntimeError(
                         f"{run.window.window.window_id} SOFT_EXIT lacks required execution support: {event}"
                     )
@@ -2834,8 +2852,8 @@ def _compare_p3_1_directions(
     window_id: str = "P3-1",
 ) -> dict[str, Any]:
     """Compare only the direction of a P3 window's effects with completed P2 windows."""
-    if window_id not in P3_WINDOW_IDS:
-        raise ValueError(f"directional comparison requires a P3 window: {window_id}")
+    if window_id not in COMMON_PIT_WINDOW_IDS:
+        raise ValueError(f"directional comparison requires a P1 or P3 window: {window_id}")
     p2_paths = {
         "P2-1": P2_1_LEDGER_SUMMARY_PATH,
         "P2-2": P2_2_LEDGER_SUMMARY_PATH,
@@ -3233,14 +3251,15 @@ def _p3_1_effective_lifecycle_gate_diagnostics(
 
 
 def _namespace_p3_gate_fields(values: dict[str, Any], window_id: str) -> dict[str, Any]:
-    """Give P3-2 lifecycle gate fields their own namespace; keep P3-1 byte-compatible."""
+    """Namespace common-PIT lifecycle gate fields for the selected long window."""
     if window_id == "P3-1":
         return values
-    if window_id != "P3-2":
+    if window_id not in {"P1", "P3-2"}:
         return values
+    prefix = window_id.lower().replace("-", "_") + "_"
     for key in tuple(values):
         if key.startswith("p3_1_"):
-            renamed_key = "p3_2_" + key[len("p3_1_") :]
+            renamed_key = prefix + key[len("p3_1_") :]
             values[renamed_key] = values.pop(key)
     return values
 
@@ -3588,12 +3607,12 @@ def _verdict(summary: Mapping[str, Any], validation: Mapping[str, Any]) -> str:
         or validation.get("candidate_stage_asof_future_violations", 0)
     ):
         return "CHECK_REQUIRED"
-    if summary.get("window_id") in P3_WINDOW_IDS and validation.get(
+    if summary.get("window_id") in COMMON_PIT_WINDOW_IDS and validation.get(
         "common_interval_end_before_cutoff_open_count",
         validation.get("identity_end_before_cutoff_open_count", 0),
     ):
         return "CHECK_REQUIRED"
-    if summary.get("window_id") in P3_WINDOW_IDS and validation.get(
+    if summary.get("window_id") in COMMON_PIT_WINDOW_IDS and validation.get(
         "open_terminal_valuation_unresolved_count", 0
     ):
         return "CHECK_REQUIRED"
@@ -3633,7 +3652,7 @@ def _certification_verdict(
     )
     if remediable_unresolved:
         return "CHECK_REQUIRED"
-    prefix = window_id.lower().replace("-", "_") if window_id in P3_WINDOW_IDS else None
+    prefix = window_id.lower().replace("-", "_") if window_id in COMMON_PIT_WINDOW_IDS else None
     if prefix is not None:
         if any(
             validation.get(f"{prefix}_{field}", 0)
@@ -3723,7 +3742,7 @@ def _raw_artifact_paths(selected_window: str) -> dict[str, Path]:
         "candidate": RUN_DIR / "candidate_trades.csv",
         "paired": RUN_DIR / "paired_trades.csv",
     }
-    if selected_window in {"P2-2", *P3_WINDOW_IDS}:
+    if selected_window in {"P1", "P2-2", *P3_WINDOW_IDS}:
         paths["matched_ledger"] = MATCHED_LEDGER_PATH
         paths["soft_events"] = SOFT_EVENTS_PATH
     return paths
@@ -3750,6 +3769,7 @@ def _persist_raw_artifacts(
         "run_id": RUN_ID,
         "window_id": selected_window,
         "start_head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+        "p1_only": selected_window == "P1",
         "p2_1_only": selected_window == "P2-1",
         "p2_2_only": selected_window == "P2-2",
         "p3_1_only": selected_window == "P3-1",
@@ -3847,21 +3867,21 @@ def _persist_partial_worker_failure(
             )
         except Exception as exc:
             persistence_errors.append(f"paired raw: {type(exc).__name__}: {exc}")
-        if paired is not None and selected_window in {"P2-2", *P3_WINDOW_IDS}:
+        if paired is not None and selected_window in {"P1", "P2-2", *P3_WINDOW_IDS}:
             try:
                 matched_ledger = _build_matched_trade_ledger(
                     control,
                     candidate,
                     cutoff_date=run.window.effective_end.strftime("%Y-%m-%d"),
                 )
-                if selected_window in P3_WINDOW_IDS:
+                if selected_window in COMMON_PIT_WINDOW_IDS:
                     matched_ledger = _add_p3_1_ledger_contract_fields(matched_ledger)
             except Exception as exc:
                 persistence_errors.append(f"matched ledger raw: {type(exc).__name__}: {exc}")
 
     soft_events = (
         _raw_soft_event_ledger(trade_diagnostics)
-        if selected_window in {"P2-2", *P3_WINDOW_IDS}
+        if selected_window in {"P1", "P2-2", *P3_WINDOW_IDS}
         else None
     )
     failure_path = RUN_DIR / "full_failure.json"
@@ -4532,7 +4552,7 @@ def _run_impl(
             raise RuntimeError("full run window must match the measured sample window")
         if sample.get("worker_count") != workers:
             raise RuntimeError(f"full {selected_window} worker count must match the measured sample")
-        if selected_window == "P3-2" and (
+        if selected_window in {"P1", "P3-2"} and (
             sample.get("status") != "COMPLETE"
             or sample.get("errors") != []
             or sample.get("population_preflight", {}).get("status") != "PASS"
@@ -4545,10 +4565,14 @@ def _run_impl(
             or sample.get("sample_invariants", {}).get("soft_event_duplicates") != 0
             or sample.get("sample_invariants", {}).get("unexecuted_signal_count") != 0
         ):
-            raise RuntimeError("P3-2 full replay requires a passing, error-free same-path sample")
-        if float(sample.get("estimated_full_seconds", float("inf"))) > MAX_FULL_ESTIMATE_SECONDS:
+            raise RuntimeError(f"{selected_window} full replay requires a passing, error-free same-path sample")
+        estimate_limit = (
+            MAX_P1_FULL_ESTIMATE_SECONDS if selected_window == "P1" else MAX_FULL_ESTIMATE_SECONDS
+        )
+        if float(sample.get("estimated_full_seconds", float("inf"))) > estimate_limit:
             raise RuntimeError(
-                f"full {selected_window} refused because measured runtime estimate exceeds 90 minutes; "
+                f"full {selected_window} refused because measured runtime estimate exceeds "
+                f"{estimate_limit / 60:.0f} minutes; "
                 "inspect/optimize only accuracy-preserving bottlenecks first"
             )
         expected_outputs = [
@@ -4562,7 +4586,7 @@ def _run_impl(
             expected_outputs.extend(
                 ("p2_2_matched_trades.csv", "p2_2_soft_events.csv", "p2_2_summary.json")
             )
-        elif selected_window in P3_WINDOW_IDS:
+        elif selected_window in COMMON_PIT_WINDOW_IDS:
             expected_outputs.extend(
                 (MATCHED_LEDGER_PATH.name, SOFT_EVENTS_PATH.name, LEDGER_SUMMARY_PATH.name)
             )
@@ -4631,7 +4655,7 @@ def _run_impl(
                 + json.dumps(preflight, ensure_ascii=False, sort_keys=True)
             )
     p3_preflight: dict[str, Any] | None = None
-    if selected_window in P3_WINDOW_IDS:
+    if selected_window in COMMON_PIT_WINDOW_IDS:
         p3_preflight = _p3_1_population_preflight(run)
         if p3_preflight["status"] != "PASS":
             raise RuntimeError(
@@ -4857,7 +4881,7 @@ def _run_impl(
             )
         p3_sample_ledger_reconciliation: dict[str, bool] | None = None
         p3_sample_event_counts: dict[str, int] | None = None
-        if selected_window in P3_WINDOW_IDS:
+        if selected_window in COMMON_PIT_WINDOW_IDS:
             sample_ledger = _add_p3_1_ledger_contract_fields(
                 _build_matched_trade_ledger(
                     sample_control,
@@ -4947,7 +4971,9 @@ def _run_impl(
             ],
             "estimated_full_seconds": round(estimated, 3),
             "estimated_full_minutes": round(estimated / 60, 2),
-            "max_estimate_minutes": 90,
+            "max_estimate_minutes": (
+                MAX_P1_FULL_ESTIMATE_SECONDS // 60 if selected_window == "P1" else 90
+            ),
             "control_trade_rows_in_sample_not_used_for_performance_tuning": len(control_rows),
             "candidate_trade_rows_in_sample_not_used_for_performance_tuning": len(candidate_rows),
             **sample_pair_counts,
@@ -5027,7 +5053,7 @@ def _run_impl(
     if control.empty:
         raise RuntimeError(f"{selected_window} full run produced zero CONTROL entries")
     if mode == "full":
-        if selected_window in {"P2-2", *P3_WINDOW_IDS}:
+        if selected_window in {"P1", "P2-2", *P3_WINDOW_IDS}:
             raw_soft_events = _raw_soft_event_ledger(trade_diagnostics)
         execution_metadata = {
             "workers": workers,
@@ -5061,13 +5087,13 @@ def _run_impl(
             execution=execution_metadata,
             run=run,
         )
-        if selected_window in {"P2-2", *P3_WINDOW_IDS}:
+        if selected_window in {"P1", "P2-2", *P3_WINDOW_IDS}:
             raw_matched_ledger = _build_matched_trade_ledger(
                 control,
                 candidate,
                 cutoff_date=run.window.effective_end.strftime("%Y-%m-%d"),
             )
-            if selected_window in P3_WINDOW_IDS:
+            if selected_window in COMMON_PIT_WINDOW_IDS:
                 raw_matched_ledger = _add_p3_1_ledger_contract_fields(raw_matched_ledger)
             _persist_raw_artifacts(
                 selected_window=selected_window,
@@ -5096,7 +5122,7 @@ def _run_impl(
     ledger_reconciliation: dict[str, bool] | None = None
     p2_1_comparison: dict[str, Any] | None = None
     p3_1_comparison: dict[str, Any] | None = None
-    if selected_window in {"P2-2", *P3_WINDOW_IDS}:
+    if selected_window in {"P1", "P2-2", *P3_WINDOW_IDS}:
         cutoff_date = run.window.effective_end.strftime("%Y-%m-%d")
         if p2_2_ledger is None:
             p2_2_ledger = _build_matched_trade_ledger(
@@ -5104,7 +5130,7 @@ def _run_impl(
                 candidate,
                 cutoff_date=cutoff_date,
             )
-            if selected_window in P3_WINDOW_IDS:
+            if selected_window in COMMON_PIT_WINDOW_IDS:
                 p2_2_ledger = _add_p3_1_ledger_contract_fields(p2_2_ledger)
         ledger_aggregates = _ledger_aggregates(p2_2_ledger)
         ledger_reconciliation = {
@@ -5202,7 +5228,7 @@ def _run_impl(
         "identity_policy": "COMMON PIT identity intervals; no ticker-list broadcast; no identity stitching; no future fallback",
         "common_identity_segments": (
             int(p3_preflight["common_identity_segment_count"])
-            if selected_window in P3_WINDOW_IDS and p3_preflight is not None
+            if selected_window in COMMON_PIT_WINDOW_IDS and p3_preflight is not None
             else total_segments
         ),
         "unique_tickers_processed": processed_ticker_count,
@@ -5218,7 +5244,7 @@ def _run_impl(
         )
     if selected_window == "P2-1":
         population["raw_candidate_artifact"] = str(RAW_CANDIDATE_PATH.relative_to(ROOT))
-    elif selected_window in P3_WINDOW_IDS:
+    elif selected_window in COMMON_PIT_WINDOW_IDS:
         population.update(
             {
                 "population_id": f"{selected_window.replace('-', '_')}_COMMON_PIT_DERIVED_FRESH_V01",
@@ -5346,7 +5372,7 @@ def _run_impl(
             "terminal_reason": "SHARE_EXCHANGE_CASH_SETTLEMENT",
             "market_execution_synthesized": False,
         }
-    elif selected_window in P3_WINDOW_IDS:
+    elif selected_window in COMMON_PIT_WINDOW_IDS:
         p3_prefix = selected_window.lower().replace("-", "_")
         assert p2_2_ledger is not None and p2_2_events is not None
         assert ledger_aggregates is not None and ledger_reconciliation is not None
@@ -5448,7 +5474,7 @@ def _run_impl(
                 "ledger_recomputation_pass": all(ledger_reconciliation.values()),
             }
         )
-    if selected_window in P3_WINDOW_IDS:
+    if selected_window in COMMON_PIT_WINDOW_IDS:
         p3_prefix = selected_window.lower().replace("-", "_")
         summary["strategy_assessment"] = summary["verdict"]
         required_checks = (
@@ -5494,7 +5520,7 @@ def _run_impl(
     output = RUN_DIR
     _json_write(output / "summary.json", summary)
     output_names = [str((output / "summary.json").relative_to(ROOT))]
-    if selected_window in {"P2-2", *P3_WINDOW_IDS}:
+    if selected_window in {"P1", "P2-2", *P3_WINDOW_IDS}:
         _json_write(LEDGER_SUMMARY_PATH, summary)
         output_names.extend(
             [str(LEDGER_SUMMARY_PATH.relative_to(ROOT))]
@@ -5536,12 +5562,12 @@ def main() -> None:
     parser.add_argument(
         "--mode", choices=("sample", "full", "summarize", "replay", "ledger"), required=True
     )
-    parser.add_argument("--window", choices=("P2-1", "P2-2", "P3-1", "P3-2"), default="P2-1")
+    parser.add_argument("--window", choices=("P1", "P2-1", "P2-2", "P3-1", "P3-2"), default="P2-1")
     parser.add_argument("--workers", type=int, default=DEFAULT_WORKERS)
     parser.add_argument("--sample-tickers", type=int, default=40)
     parser.add_argument(
         "--run-id",
-        help="optional isolated P2-1/P2-2/P3-1/P3-2 output run id (must start with run_)",
+        help="optional isolated standard-window output run id (must start with run_)",
     )
     args = parser.parse_args()
     _configure_run(args.window, args.run_id)
