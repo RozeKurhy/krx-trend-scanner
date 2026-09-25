@@ -1615,8 +1615,95 @@ def test_confirmed_share_event_with_partial_terms_stops_with_unresolved_successo
 
     assert applied
     assert unresolved["lifecycle_state"] == "UNRESOLVED_SUCCESSOR"
+    assert unresolved["lifecycle_certification_class"] == runner.REMEDIABLE_UNRESOLVED
     assert unresolved["terminal_return"] is None
     assert unresolved["terminal_valuation_price"] is None
+
+
+def test_share_exchange_without_successor_availability_is_remediable_unresolved():
+    segment = IdentitySegment(
+        ticker="000001",
+        isu_cd="KR7000000001",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2020-01-01"),
+        effective_to=pd.Timestamp("2025-12-31"),
+    )
+    event = {
+        "evidence_id": "missing-availability-fixture",
+        "event_evidence_status": "CONFIRMED",
+        "economic_terms_status": "PARTIAL",
+        "ticker": segment.ticker,
+        "isu_cd": segment.isu_cd,
+        "market": segment.market,
+        "event_type": "MANDATORY_SHARE_EXCHANGE",
+        "event_effective_date": "2025-05-30",
+        "source_published_date": "2025-05-01",
+        "successor_ticker": "999999",
+        "successor_isu_cd": "KR7999990009",
+        "successor_market": "KOSPI",
+        "conversion_ratio": 0.5,
+    }
+
+    unresolved, applied = runner._apply_lifecycle_event(
+        _open_lifecycle_row(segment),
+        segment=segment,
+        event=event,
+        cutoff_date=pd.Timestamp("2025-06-02"),
+        source_daily=_daily([100.0, 101.0]),
+        calendar=_lifecycle_calendar(),
+        successor_identity_validated=True,
+    )
+
+    assert applied
+    assert unresolved["lifecycle_state"] == "UNRESOLVED_SUCCESSOR"
+    assert unresolved["lifecycle_certification_class"] == runner.REMEDIABLE_UNRESOLVED
+    assert unresolved["terminal_return"] is None
+
+
+def test_successor_availability_published_after_cutoff_fails_closed_without_lookahead():
+    segment = IdentitySegment(
+        ticker="000001",
+        isu_cd="KR7000000001",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2020-01-01"),
+        effective_to=pd.Timestamp("2025-12-31"),
+    )
+    event = {
+        "evidence_id": "future-availability-fixture",
+        "event_evidence_status": "CONFIRMED",
+        "economic_terms_status": "PARTIAL",
+        "ticker": segment.ticker,
+        "isu_cd": segment.isu_cd,
+        "market": segment.market,
+        "event_type": "MANDATORY_SHARE_EXCHANGE",
+        "event_effective_date": "2025-05-30",
+        "event_effective_date_known_from": "2025-05-01",
+        "source_published_date": "2025-05-01",
+        "successor_ticker": "999999",
+        "successor_isu_cd": "KR7999990009",
+        "successor_market": "KOSPI",
+        "successor_identity_known_from": "2025-05-01",
+        "conversion_ratio": 0.5,
+        "conversion_ratio_known_from": "2025-05-01",
+        "successor_available_date": "2025-06-03",
+        "successor_available_date_known_from": "2025-06-03",
+    }
+
+    unresolved, applied = runner._apply_lifecycle_event(
+        _open_lifecycle_row(segment),
+        segment=segment,
+        event=event,
+        cutoff_date=pd.Timestamp("2025-06-02"),
+        source_daily=_daily([100.0, 101.0]),
+        calendar=_lifecycle_calendar(),
+        successor_identity_validated=True,
+    )
+
+    assert applied
+    assert unresolved["lifecycle_state"] == "UNRESOLVED_SUCCESSOR"
+    assert unresolved["lifecycle_certification_class"] == runner.REMEDIABLE_UNRESOLVED
+    assert "published after the replay cutoff" in unresolved["lifecycle_unresolved_reason"]
+    assert unresolved["terminal_return"] is None
 
 
 def test_check_required_event_is_not_applied_even_with_confirmed_economics():
@@ -1715,7 +1802,7 @@ def test_typed_share_exchange_carries_only_economics_and_requires_successor_cuto
     event = {
         "evidence_id": "exchange-fixture",
         "event_evidence_status": "CONFIRMED",
-        "economic_terms_status": "CONFIRMED",
+        "economic_terms_status": "PARTIAL",
         "ticker": segment.ticker,
         "isu_cd": segment.isu_cd,
         "market": segment.market,
@@ -1727,8 +1814,6 @@ def test_typed_share_exchange_carries_only_economics_and_requires_successor_cuto
         "successor_market": "KOSPI",
         "conversion_ratio": 0.25,
         "successor_available_date": "2025-06-02",
-        "fractional_cash_rule": "CASH_PER_SOURCE_SHARE",
-        "fractional_cash_per_source_share": 5.0,
     }
     successor_daily = pd.DataFrame(
         {"open": [118.0], "high": [125.0], "low": [115.0], "close": [120.0]},
@@ -1752,9 +1837,10 @@ def test_typed_share_exchange_carries_only_economics_and_requires_successor_cuto
     assert applied
     assert valued["lifecycle_state"] == "SUCCESSOR_POSITION"
     assert valued["successor_quantity"] == 0.25
-    assert valued["fractional_cash"] == 5.0
-    assert valued["terminal_valuation_price"] == 35.0
-    assert valued["terminal_return"] == -65.0
+    assert valued["fractional_cash"] == 0.0
+    assert valued["successor_valuation_basis"] == "NORMALIZED_FRACTIONAL_QUANTITY_X_SUCCESSOR_CLOSE"
+    assert valued["terminal_valuation_price"] == 30.0
+    assert valued["terminal_return"] == -70.0
     assert valued["pattern_a_stage_at_cutoff"] == "WEAK"
     assert valued["candidate_action"] == "CONTROL_PRESERVED"
 
@@ -1961,6 +2047,7 @@ def test_096300_liquidation_closure_remains_unresolved_and_runtime_fails_closed(
     )
     assert applied
     assert unresolved["lifecycle_state"] == "UNRESOLVED_SETTLEMENT"
+    assert unresolved["lifecycle_certification_class"] == runner.AUTHORITATIVE_FINAL_UNRESOLVED
     assert unresolved["terminal_return"] is None
     assert unresolved["terminal_valuation_date"] is None
     assert unresolved["terminal_valuation_price"] is None
@@ -2183,6 +2270,7 @@ def _contract_trade(pair_id, *, ticker, terminal_return, lifecycle_state=None, s
         row.update(
             {
                 "lifecycle_state": lifecycle_state,
+                "lifecycle_certification_class": runner.REMEDIABLE_UNRESOLVED,
                 "lifecycle_unresolved_reason": f"test reason for {lifecycle_state}",
                 "lifecycle_source_isu_cd": f"KR7{int(ticker):09d}",
                 "lifecycle_event_type": "MANDATORY_SHARE_EXCHANGE"
@@ -2328,7 +2416,7 @@ def test_numeric_terminal_return_for_unresolved_lifecycle_is_a_hard_failure():
         runner._validate_results(control, candidate, _unresolved_contract_run())
 
 
-def test_any_unresolved_matched_pair_prevents_recertified_pass():
+def test_remediable_unresolved_matched_pair_prevents_recertified_pass():
     summary = {
         "window_id": "P2-1",
         "control": {"trade_count": 1, "tail_counts": {"le_neg_40_pct": 0, "le_neg_50_pct": 0}},
@@ -2338,7 +2426,98 @@ def test_any_unresolved_matched_pair_prevents_recertified_pass():
         "matched_pair_counts": {"matched_pairs_numeric_comparable": 0},
     }
 
-    assert runner._verdict(summary, {"matched_pairs_unresolved": 1}) == "CHECK_REQUIRED"
+    assert runner._verdict(
+        summary,
+        {"matched_pairs_unresolved": 1, "matched_pairs_remediable_unresolved": 1},
+    ) == "CHECK_REQUIRED"
+
+
+def test_authoritative_final_only_allows_certification_with_explicit_exclusion():
+    control, candidate = _contract_frames(
+        [
+            {
+                "pair_id": "pair-authoritative-final",
+                "control_state": "UNRESOLVED_SETTLEMENT",
+                "candidate_state": "UNRESOLVED_SETTLEMENT",
+            }
+        ]
+    )
+    for frame in (control, candidate):
+        frame.loc[0, "lifecycle_certification_class"] = runner.AUTHORITATIVE_FINAL_UNRESOLVED
+        frame.loc[0, "lifecycle_source_isu_cd"] = "KR7096300009"
+        frame.loc[0, "lifecycle_event_type"] = "LIQUIDATION_UNRESOLVED"
+
+    validation = runner._validate_results(control, candidate, _unresolved_contract_run())
+    ledger = runner._build_matched_trade_ledger(control, candidate, cutoff_date="2025-05-30")
+    aggregates = runner._ledger_aggregates(ledger)
+
+    assert validation["matched_pairs_total"] == 1
+    assert validation["matched_pairs_numeric_comparable"] == 0
+    assert validation["matched_pairs_authoritative_excluded"] == 1
+    assert validation["matched_pairs_remediable_unresolved"] == 0
+    assert runner._certification_verdict(validation) == "RECERTIFIED_PASS_WITH_AUTHORITATIVE_EXCLUSION"
+    assert ledger.loc[0, "control_terminal_return"] is None
+    assert ledger.loc[0, "candidate_terminal_return"] is None
+    assert ledger.loc[0, "pair_certification_class"] == runner.AUTHORITATIVE_FINAL_UNRESOLVED
+    assert aggregates["paired"]["count"] == 0
+
+
+def test_any_remediable_pair_blocks_certification_even_with_authoritative_exclusion():
+    validation = {
+        "matched_pairs_authoritative_excluded": 1,
+        "matched_pairs_remediable_unresolved": 1,
+    }
+
+    assert runner._certification_verdict(validation) == "CHECK_REQUIRED"
+
+
+def test_metric_difference_records_name_nested_field_values_and_signed_delta():
+    differences = runner._metric_difference_records(
+        {
+            "holding_days_mean": 12.25,
+            "tail_counts": {"le_neg_40_pct": 2},
+        },
+        {
+            "holding_days_mean": 12.0,
+            "tail_counts": {"le_neg_40_pct": 1},
+        },
+    )
+
+    assert differences == [
+        {
+            "metric": "holding_days_mean",
+            "ledger_expected": 12.25,
+            "summary_actual": 12.0,
+            "delta": -0.25,
+        },
+        {
+            "metric": "tail_counts.le_neg_40_pct",
+            "ledger_expected": 2,
+            "summary_actual": 1,
+            "delta": -1.0,
+        },
+    ]
+
+
+@pytest.mark.parametrize("delta", [0.0001, 0.05, 0.1])
+def test_aggregate_float_tolerance_accepts_differences_through_0_1pp(delta):
+    assert runner._nested_values_equal({"mean_return_pct": 10.0}, {"mean_return_pct": 10.0 + delta})
+
+
+def test_aggregate_float_tolerance_rejects_differences_over_0_1pp():
+    assert not runner._nested_values_equal({"mean_return_pct": 10.0}, {"mean_return_pct": 10.1001})
+
+
+def test_aggregate_float_tolerance_keeps_counts_identity_and_status_exact():
+    assert not runner._nested_values_equal({"trade_count": 40}, {"trade_count": 41})
+    assert not runner._nested_values_equal({"identity": "KR7000010006"}, {"identity": "KR7000010007"})
+    assert not runner._nested_values_equal({"status": "REALIZED"}, {"status": "OPEN_AT_CUTOFF"})
+
+
+def test_aggregate_float_tolerance_does_not_hide_nan_missing_or_type_mismatch():
+    assert not runner._nested_values_equal({"mean_return_pct": float("nan")}, {"mean_return_pct": float("nan")})
+    assert not runner._nested_values_equal({"mean_return_pct": 1.0}, {})
+    assert not runner._nested_values_equal({"trade_count": 1}, {"trade_count": 1.0})
 
 
 def test_no_unresolved_pairs_keeps_the_existing_recertification_verdict_path():

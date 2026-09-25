@@ -79,6 +79,15 @@ UNRESOLVED_LIFECYCLE_STATES = frozenset(
         "UNRESOLVED_POST_DELIST_VALUE",
     }
 )
+REMEDIABLE_UNRESOLVED = "REMEDIABLE_UNRESOLVED"
+AUTHORITATIVE_FINAL_UNRESOLVED = "AUTHORITATIVE_FINAL_UNRESOLVED"
+LIFECYCLE_CERTIFICATION_CLASSES = frozenset(
+    {REMEDIABLE_UNRESOLVED, AUTHORITATIVE_FINAL_UNRESOLVED}
+)
+# This ISU is the already-sealed liquidation case. Keep the classification
+# policy explicit here rather than editing or re-investigating its evidence row.
+AUTHORITATIVE_FINAL_UNRESOLVED_SOURCE_ISUS = frozenset({"KR7096300009"})
+AGGREGATE_FLOAT_TOLERANCE_PP = 0.1
 
 
 def _configure_run(window_id: str, run_id_override: str | None = None) -> None:
@@ -456,8 +465,6 @@ def _validate_confirmed_lifecycle_event(record: Mapping[str, Any]) -> None:
             or not record.get("successor_available_date")
         ):
             raise RuntimeError("confirmed share exchange lacks successor identity/economics")
-        if not record.get("fractional_cash_rule"):
-            raise RuntimeError("confirmed share exchange lacks a fractional-share cash rule")
         pd.Timestamp(record["successor_available_date"]).normalize()
     elif record["event_type"] == "LIQUIDATION_UNRESOLVED" and terms_status == "CONFIRMED":
         raise RuntimeError("unresolved liquidation cannot have confirmed economic terms")
@@ -1068,6 +1075,7 @@ def _mark_unresolved_lifecycle(
     lifecycle_state: str,
     event: Mapping[str, Any],
     reason: str,
+    certification_class: str = REMEDIABLE_UNRESOLVED,
 ) -> dict[str, Any]:
     source_isu_cd = event.get("source_isu_cd")
     if source_isu_cd is None or pd.isna(source_isu_cd) or not str(source_isu_cd).strip():
@@ -1081,6 +1089,7 @@ def _mark_unresolved_lifecycle(
             "lifecycle_event_type": event.get("event_type"),
             "lifecycle_source_isu_cd": source_isu_cd,
             "lifecycle_unresolved_reason": reason,
+            "lifecycle_certification_class": certification_class,
             "terminal_return": None,
             "terminal_valuation_date": None,
             "terminal_valuation_price": None,
@@ -1277,32 +1286,44 @@ def _apply_lifecycle_event(
         return updated, True
 
     if event_type == "MANDATORY_SHARE_EXCHANGE":
-        if _lifecycle_economic_terms_status(event) != "CONFIRMED":
+        terms_status = _lifecycle_economic_terms_status(event)
+        successor_ticker_raw = event.get("successor_ticker")
+        successor_ticker = str(successor_ticker_raw).zfill(6) if successor_ticker_raw else ""
+        successor_isu = str(event.get("successor_isu_cd") or "").strip().upper()
+        try:
+            ratio = float(event.get("conversion_ratio", 0))
+        except (TypeError, ValueError):
+            ratio = 0.0
+        raw_available_date = event.get("successor_available_date")
+        core_terms_complete = (
+            terms_status != "UNRESOLVED"
+            and np.isfinite(ratio)
+            and ratio > 0
+            and bool(successor_ticker)
+            and bool(successor_isu)
+            and bool(str(event.get("successor_market") or "").strip())
+            and raw_available_date is not None
+            and not pd.isna(raw_available_date)
+            and bool(str(raw_available_date).strip())
+        )
+        if not core_terms_complete:
             return _mark_unresolved_lifecycle(
                 updated,
                 lifecycle_state="UNRESOLVED_SUCCESSOR",
                 event=event,
-                reason="share-exchange event is confirmed but successor economics are incomplete",
+                reason="share-exchange identity, ratio, or successor availability is incomplete",
             ), True
-        for fact in ("conversion_ratio", "successor_available_date", "fractional_cash_rule"):
-            if event.get(fact) is not None and not _lifecycle_fact_known_as_of(
-                event, fact, cutoff_date
-            ):
+        for fact in ("conversion_ratio", "successor_available_date", "successor_identity"):
+            if not _lifecycle_fact_known_as_of(event, fact, cutoff_date):
                 return _mark_unresolved_lifecycle(
                     updated,
                     lifecycle_state="UNRESOLVED_SUCCESSOR",
                     event=event,
                     reason=f"{fact} was published after the replay cutoff",
                 ), True
-        successor_ticker = str(event.get("successor_ticker", "")).zfill(6)
-        successor_isu = str(event.get("successor_isu_cd", "")).strip().upper()
-        ratio = float(event.get("conversion_ratio", 0))
         available_date = pd.Timestamp(event["successor_available_date"]).normalize()
         source_quantity = float(updated.get("source_quantity", 1.0))
         successor_quantity = source_quantity * ratio
-        fractional_units = successor_quantity - np.floor(successor_quantity)
-        fractional_rule = str(event.get("fractional_cash_rule", ""))
-        fractional_cash_per_source_share = event.get("fractional_cash_per_source_share")
         if not successor_identity_validated or not successor_isu or not successor_ticker:
             return _mark_unresolved_lifecycle(
                 updated,
@@ -1310,19 +1331,10 @@ def _apply_lifecycle_event(
                 event=event,
                 reason="successor ISU/ticker/market could not be matched to the PIT identity authority",
             ), True
-        if fractional_units > 1e-9 and fractional_cash_per_source_share is None:
-            if fractional_rule not in {"NO_FRACTIONAL_CASH_REQUIRED"}:
-                return _mark_unresolved_lifecycle(
-                    updated,
-                    lifecycle_state="UNRESOLVED_SUCCESSOR",
-                    event=event,
-                    reason="fractional successor entitlement has no confirmed cash-in-lieu amount",
-                ), True
-        fractional_cash = (
-            float(fractional_cash_per_source_share) * source_quantity
-            if fractional_cash_per_source_share is not None
-            else 0.0
-        )
+        # This normalized-return model carries fractional successor units as
+        # economic exposure. Cash-in-lieu is portfolio/accounting treatment and
+        # is intentionally not mixed into this return calculation.
+        fractional_cash = 0.0
         if available_date > pd.Timestamp(cutoff_date).normalize():
             return _mark_unresolved_lifecycle(
                 updated,
@@ -1350,7 +1362,7 @@ def _apply_lifecycle_event(
                 reason="successor price is unavailable at the replay cutoff",
             ), True
         terminal_price = float(valuation_rows.iloc[-1]["close"])
-        terminal_value = terminal_price * successor_quantity + fractional_cash
+        terminal_value = terminal_price * successor_quantity
         _refresh_lifecycle_economic_metrics(
             updated,
             source_daily=pre_event_source_daily,
@@ -1372,6 +1384,7 @@ def _apply_lifecycle_event(
                 "successor_quantity": successor_quantity,
                 "successor_valuation_price": terminal_price,
                 "fractional_cash": fractional_cash,
+                "successor_valuation_basis": "NORMALIZED_FRACTIONAL_QUANTITY_X_SUCCESSOR_CLOSE",
                 "terminal_reason": "MANDATORY_SHARE_EXCHANGE_SUCCESSOR_VALUE",
                 "terminal_valuation_date": pd.Timestamp(valuation_rows.index[-1]).strftime("%Y-%m-%d"),
                 "terminal_valuation_price": terminal_value,
@@ -1401,11 +1414,18 @@ def _apply_lifecycle_event(
         return updated, False
 
     if event_type == "LIQUIDATION_UNRESOLVED":
+        source_isu = str(event.get("source_isu_cd") or event.get("isu_cd") or "").strip().upper()
+        certification_class = (
+            AUTHORITATIVE_FINAL_UNRESOLVED
+            if source_isu in AUTHORITATIVE_FINAL_UNRESOLVED_SOURCE_ISUS
+            else REMEDIABLE_UNRESOLVED
+        )
         return _mark_unresolved_lifecycle(
             updated,
             lifecycle_state="UNRESOLVED_SETTLEMENT",
             event=event,
             reason="liquidation amount/payment date is unresolved; no terminal price is imputed",
+            certification_class=certification_class,
         ), True
 
     raise RuntimeError(f"unsupported confirmed lifecycle event type: {event_type}")
@@ -2164,6 +2184,66 @@ def _matched_pair_counts(control: pd.DataFrame, candidate: pd.DataFrame) -> dict
     }
 
 
+def _pair_certification_class(
+    control_state: Any,
+    control_class: Any,
+    candidate_state: Any,
+    candidate_class: Any,
+) -> str | None:
+    classes: list[str] = []
+    for state, certification_class in (
+        (control_state, control_class),
+        (candidate_state, candidate_class),
+    ):
+        if str(state or "") not in UNRESOLVED_LIFECYCLE_STATES:
+            continue
+        value = str(certification_class or "").strip()
+        if value not in LIFECYCLE_CERTIFICATION_CLASSES:
+            raise RuntimeError("unresolved lifecycle trade lacks a valid certification class")
+        classes.append(value)
+    if REMEDIABLE_UNRESOLVED in classes:
+        return REMEDIABLE_UNRESOLVED
+    if AUTHORITATIVE_FINAL_UNRESOLVED in classes:
+        return AUTHORITATIVE_FINAL_UNRESOLVED
+    return None
+
+
+def _matched_pair_certification_counts(
+    control: pd.DataFrame,
+    candidate: pd.DataFrame,
+) -> dict[str, int]:
+    fields = []
+    for side, frame in (("control", control), ("candidate", candidate)):
+        fields.append(
+            pd.DataFrame(
+                {
+                    "pair_id": frame["pair_id"].astype(str),
+                    f"{side}_state": frame.get(
+                        "lifecycle_state", pd.Series("", index=frame.index)
+                    ).fillna("").astype(str),
+                    f"{side}_class": frame.get(
+                        "lifecycle_certification_class", pd.Series("", index=frame.index)
+                    ).fillna("").astype(str),
+                }
+            )
+        )
+    pairs = fields[0].merge(fields[1], on="pair_id", validate="one_to_one")
+    counts = {AUTHORITATIVE_FINAL_UNRESOLVED: 0, REMEDIABLE_UNRESOLVED: 0}
+    for row in pairs.itertuples(index=False):
+        value = _pair_certification_class(
+            row.control_state,
+            row.control_class,
+            row.candidate_state,
+            row.candidate_class,
+        )
+        if value is not None:
+            counts[value] += 1
+    return {
+        "matched_pairs_authoritative_excluded": counts[AUTHORITATIVE_FINAL_UNRESOLVED],
+        "matched_pairs_remediable_unresolved": counts[REMEDIABLE_UNRESOLVED],
+    }
+
+
 def _numeric_comparable_pair_ids(control: pd.DataFrame, candidate: pd.DataFrame) -> set[str]:
     merged, numeric_mask = _paired_numeric_partition(control, candidate)
     return set(merged.loc[numeric_mask, "pair_id"].astype(str))
@@ -2283,6 +2363,14 @@ def _build_matched_trade_ledger(
         candidate_holding_days = row["holding_days_candidate"]
         control_source_isu_cd = row.get("lifecycle_source_isu_cd_control")
         candidate_source_isu_cd = row.get("lifecycle_source_isu_cd_candidate")
+        control_certification_class = row.get("lifecycle_certification_class_control")
+        candidate_certification_class = row.get("lifecycle_certification_class_candidate")
+        pair_certification_class = _pair_certification_class(
+            row.get("lifecycle_state_control"),
+            control_certification_class,
+            row.get("lifecycle_state_candidate"),
+            candidate_certification_class,
+        )
         records.append(
             {
                 "trade_id": str(row["trade_id_control"]),
@@ -2345,12 +2433,15 @@ def _build_matched_trade_ledger(
                 "control_lifecycle_evidence_id": row.get("lifecycle_evidence_id_control"),
                 "control_terminal_reason": row.get("terminal_reason_control"),
                 "control_lifecycle_state": row.get("lifecycle_state_control"),
+                "control_certification_class": control_certification_class,
                 "control_settlement_date": row.get("settlement_date_control"),
                 "control_settlement_price": row.get("settlement_price_control"),
                 "control_settlement_type": row.get("settlement_type_control"),
                 "control_settlement_source": row.get("settlement_source_control"),
                 "candidate_terminal_reason": row.get("terminal_reason_candidate"),
                 "candidate_lifecycle_state": row.get("lifecycle_state_candidate"),
+                "candidate_certification_class": candidate_certification_class,
+                "pair_certification_class": pair_certification_class,
                 "candidate_settlement_date": row.get("settlement_date_candidate"),
                 "candidate_settlement_price": row.get("settlement_price_candidate"),
                 "candidate_settlement_type": row.get("settlement_type_candidate"),
@@ -2758,13 +2849,79 @@ def _compare_p3_1_directions(
 def _nested_values_equal(left: Any, right: Any) -> bool:
     if isinstance(left, Mapping) and isinstance(right, Mapping):
         return set(left) == set(right) and all(_nested_values_equal(left[key], right[key]) for key in left)
-    if isinstance(left, bool) or isinstance(right, bool):
-        return left is right
-    if isinstance(left, (int, float, np.number)) and isinstance(right, (int, float, np.number)):
-        if pd.isna(left) and pd.isna(right):
-            return True
-        return bool(np.isclose(float(left), float(right), atol=1e-8, rtol=0))
-    return left == right
+    if isinstance(left, (bool, np.bool_)) or isinstance(right, (bool, np.bool_)):
+        return type(left) is type(right) and bool(left) == bool(right)
+    left_is_integer = isinstance(left, (int, np.integer))
+    right_is_integer = isinstance(right, (int, np.integer))
+    if left_is_integer or right_is_integer:
+        return left_is_integer and right_is_integer and int(left) == int(right)
+    left_is_float = isinstance(left, (float, np.floating))
+    right_is_float = isinstance(right, (float, np.floating))
+    if left_is_float or right_is_float:
+        if not (left_is_float and right_is_float):
+            return False
+        left_float = float(left)
+        right_float = float(right)
+        if not (np.isfinite(left_float) and np.isfinite(right_float)):
+            return False
+        return abs(left_float - right_float) <= AGGREGATE_FLOAT_TOLERANCE_PP
+    return type(left) is type(right) and left == right
+
+
+def _metric_difference_records(
+    ledger_expected: Any,
+    summary_actual: Any,
+    *,
+    metric_prefix: str = "",
+) -> list[dict[str, Any]]:
+    """Expose exact ledger-vs-summary field mismatches for reconciliation failures."""
+    if isinstance(ledger_expected, Mapping) and isinstance(summary_actual, Mapping):
+        differences: list[dict[str, Any]] = []
+        keys = sorted(set(ledger_expected) | set(summary_actual), key=str)
+        for key in keys:
+            metric = f"{metric_prefix}.{key}" if metric_prefix else str(key)
+            if key not in ledger_expected or key not in summary_actual:
+                differences.append(
+                    {
+                        "metric": metric,
+                        "ledger_expected": ledger_expected.get(key, "<missing>"),
+                        "summary_actual": summary_actual.get(key, "<missing>"),
+                        "delta": None,
+                    }
+                )
+            else:
+                differences.extend(
+                    _metric_difference_records(
+                        ledger_expected[key],
+                        summary_actual[key],
+                        metric_prefix=metric,
+                    )
+                )
+        return differences
+    if _nested_values_equal(ledger_expected, summary_actual):
+        return []
+    numeric_pair = (
+        isinstance(ledger_expected, (int, float, np.number))
+        and not isinstance(ledger_expected, (bool, np.bool_))
+        and isinstance(summary_actual, (int, float, np.number))
+        and not isinstance(summary_actual, (bool, np.bool_))
+        and np.isfinite(float(ledger_expected))
+        and np.isfinite(float(summary_actual))
+    )
+    return [
+        {
+            "metric": metric_prefix or "value",
+            "ledger_expected": ledger_expected.item()
+            if isinstance(ledger_expected, np.generic)
+            else ledger_expected,
+            "summary_actual": summary_actual.item()
+            if isinstance(summary_actual, np.generic)
+            else summary_actual,
+            "delta": round(float(summary_actual) - float(ledger_expected), 10)
+            if numeric_pair
+            else None,
+        }
+    ]
 
 
 def _validate_results(
@@ -2793,6 +2950,35 @@ def _validate_results(
         if invalid_numeric_mask.any():
             raise RuntimeError(f"{side} terminal return contains a nonnumeric value")
         unresolved_mask = states.isin(UNRESOLVED_LIFECYCLE_STATES)
+        certification_classes = (
+            frame.get("lifecycle_certification_class", pd.Series("", index=frame.index))
+            .fillna("")
+            .astype(str)
+        )
+        invalid_class = unresolved_mask & ~certification_classes.isin(
+            LIFECYCLE_CERTIFICATION_CLASSES
+        )
+        if invalid_class.any():
+            bad = frame.loc[invalid_class, ["pair_id", "ticker"]].to_dict(orient="records")
+            raise RuntimeError(f"{side} unresolved lifecycle certification class is invalid: {bad[:10]}")
+        class_without_unresolved_state = certification_classes.ne("") & ~unresolved_mask
+        if class_without_unresolved_state.any():
+            raise RuntimeError(f"{side} lifecycle certification class is set on a resolved trade")
+        final_mask = unresolved_mask & certification_classes.eq(AUTHORITATIVE_FINAL_UNRESOLVED)
+        if final_mask.any():
+            source_isus = frame.get("lifecycle_source_isu_cd", pd.Series(None, index=frame.index))
+            event_types = frame.get("lifecycle_event_type", pd.Series(None, index=frame.index))
+            allowed_final = (
+                source_isus.fillna("").astype(str).str.strip().str.upper().isin(
+                    AUTHORITATIVE_FINAL_UNRESOLVED_SOURCE_ISUS
+                )
+                & states.eq("UNRESOLVED_SETTLEMENT")
+                & event_types.fillna("").astype(str).eq("LIQUIDATION_UNRESOLVED")
+            )
+            if (final_mask & ~allowed_final).any():
+                raise RuntimeError(
+                    f"{side} authoritative-final lifecycle class is not the sealed 096300 liquidation"
+                )
         missing_unmarked = terminal_returns.isna() & ~unresolved_mask
         if missing_unmarked.any():
             bad = frame.loc[missing_unmarked, ["pair_id", "ticker"]].to_dict(orient="records")
@@ -2813,6 +2999,7 @@ def _validate_results(
                 "lifecycle_unresolved_reason",
                 "lifecycle_source_isu_cd",
                 "lifecycle_event_type",
+                "lifecycle_certification_class",
             )
             for field in required_provenance:
                 values = frame.get(field, pd.Series(None, index=frame.index))
@@ -2820,6 +3007,7 @@ def _validate_results(
                 if (unresolved_mask & missing).any():
                     raise RuntimeError(f"{side} unresolved lifecycle provenance is missing: {field}")
     pair_counts = _matched_pair_counts(control, candidate)
+    certification_pair_counts = _matched_pair_certification_counts(control, candidate)
     pairs = control.merge(candidate, on="pair_id", suffixes=("_control", "_candidate"), validate="one_to_one")
     for field in ("ticker", "isu_cd", "entry_signal_date", "entry_execution_date", "entry_open", "market"):
         left, right = pairs[f"{field}_control"], pairs[f"{field}_candidate"]
@@ -2934,6 +3122,7 @@ def _validate_results(
         "entry_population_parity": True,
         "entry_field_parity": True,
         **pair_counts,
+        **certification_pair_counts,
         "unresolved_lifecycle_trade_counts_by_side": unresolved_trade_counts,
         "unresolved_lifecycle_state_counts": unresolved_state_counts,
         "unresolved_lifecycle_state_totals": {
@@ -3087,7 +3276,11 @@ def _candidate_diagnostics(
 
 
 def _verdict(summary: Mapping[str, Any], validation: Mapping[str, Any]) -> str:
-    if validation.get("matched_pairs_unresolved", 0):
+    remediable_unresolved = validation.get(
+        "matched_pairs_remediable_unresolved",
+        validation.get("matched_pairs_unresolved", 0),
+    )
+    if remediable_unresolved:
         return "CHECK_REQUIRED"
     if (
         validation.get("candidate_overlap_count", 0)
@@ -3128,6 +3321,34 @@ def _verdict(summary: Mapping[str, Any], validation: Mapping[str, Any]) -> str:
         if candidate["mean_terminal_return_pct"] < control["mean_terminal_return_pct"] - 3.0 and tail40 <= 0:
             return "REJECT"
     return "MIXED"
+
+
+def _certification_verdict(validation: Mapping[str, Any]) -> str:
+    """Separate data-integrity certification from the strategy's qualitative result."""
+    remediable_unresolved = validation.get(
+        "matched_pairs_remediable_unresolved",
+        validation.get("matched_pairs_unresolved", 0),
+    )
+    if remediable_unresolved:
+        return "CHECK_REQUIRED"
+    blockers = (
+        "duplicate_pair_ids",
+        "control_overlap_count",
+        "candidate_overlap_count",
+        "candidate_execution_support_missing_count",
+        "candidate_unexecuted_signal_count",
+        "candidate_stage_asof_future_violations",
+        "exit_window_violations",
+    )
+    if any(validation.get(field, 0) for field in blockers):
+        return "CHECK_REQUIRED"
+    if validation.get("entry_population_parity") is False or validation.get(
+        "entry_field_parity"
+    ) is False:
+        return "CHECK_REQUIRED"
+    if validation.get("matched_pairs_authoritative_excluded", 0):
+        return "RECERTIFIED_PASS_WITH_AUTHORITATIVE_EXCLUSION"
+    return "RECERTIFIED_PASS"
 
 
 def _json_write(path: Path, payload: Mapping[str, Any]) -> None:
@@ -3247,9 +3468,13 @@ def _run_candidate_replay(workers: int) -> dict[str, Any]:
         "control": _metrics(control, performance_pair_ids=numeric_pair_ids),
         "candidate": _metrics(candidate, performance_pair_ids=numeric_pair_ids),
         "paired": _paired_summary(control, candidate),
-        "matched_pair_counts": _matched_pair_counts(control, candidate),
+        "matched_pair_counts": {
+            **_matched_pair_counts(control, candidate),
+            **_matched_pair_certification_counts(control, candidate),
+        },
         "candidate_diagnostics": diagnostics,
         "validation": validation,
+        "certification_verdict": _certification_verdict(validation),
         "candidate_replay_correction": {
             "status": "APPLIED",
             "reason": "V2 monthly signal labels are mapped to the last local trading EOD, and candidate return arithmetic matches V2 exactly.",
@@ -3702,9 +3927,22 @@ def _run(
                 ),
             }
             if not all(p2_1_sample_ledger_reconciliation.values()):
+                metric_differences = {
+                    side: _metric_difference_records(
+                        sample_ledger_aggregates[side],
+                        _metrics(
+                            sample_control if side == "control" else sample_candidate,
+                            performance_pair_ids=sample_numeric_pair_ids,
+                        )
+                        if side in {"control", "candidate"}
+                        else _paired_summary(sample_control, sample_candidate),
+                    )
+                    for side, passed in p2_1_sample_ledger_reconciliation.items()
+                    if not passed
+                }
                 raise RuntimeError(
                     "P2-1 sample ledger aggregates do not reconcile: "
-                    f"{p2_1_sample_ledger_reconciliation}"
+                    f"{json.dumps({'reconciliation': p2_1_sample_ledger_reconciliation, 'metric_differences': metric_differences}, ensure_ascii=False, sort_keys=True, default=str)}"
                 )
             unresolved_mask = sample_ledger["control_lifecycle_state"].fillna("").isin(
                 UNRESOLVED_LIFECYCLE_STATES
@@ -3717,12 +3955,15 @@ def _run(
                 "ticker",
                 "control_trade_status",
                 "control_lifecycle_state",
+                "control_certification_class",
                 "control_terminal_return",
                 "control_source_isu_cd",
                 "control_lifecycle_event_type",
                 "control_unresolved_reason",
                 "candidate_trade_status",
                 "candidate_lifecycle_state",
+                "candidate_certification_class",
+                "pair_certification_class",
                 "candidate_terminal_return",
                 "candidate_source_isu_cd",
                 "candidate_lifecycle_event_type",
@@ -3741,24 +3982,31 @@ def _run(
                         for key, value in record.items()
                     }
                 )
-            sample_008560 = [
-                row for row in p2_1_sample_unresolved_pairs if str(row["ticker"]).zfill(6) == "008560"
+            sample_008560 = sample_ledger[
+                sample_ledger["ticker"].astype(str).str.zfill(6).eq("008560")
             ]
-            if not sample_008560 or any(
-                row["control_lifecycle_state"] != "UNRESOLVED_SUCCESSOR"
-                or row["candidate_lifecycle_state"] != "UNRESOLVED_SUCCESSOR"
-                or row["control_terminal_return"] is not None
-                or row["candidate_terminal_return"] is not None
-                for row in sample_008560
+            sample_008560_numeric_pair_ids = set(sample_008560["pair_id"].astype(str)) & sample_numeric_pair_ids
+            if (
+                sample_008560.empty
+                or len(sample_008560_numeric_pair_ids) != len(sample_008560)
+                or sample_008560["control_terminal_return"].isna().any()
+                or sample_008560["candidate_terminal_return"].isna().any()
             ):
-                raise RuntimeError("P2-1 sample did not preserve 008560 as a null-valued unresolved matched pair")
+                raise RuntimeError("P2-1 sample did not make 008560 numerically comparable")
+            sample_certification_counts = {
+                **sample_pair_counts,
+                **_matched_pair_certification_counts(sample_control, sample_candidate),
+            }
             p2_1_sample_aggregate = {
                 **sample_ledger_aggregates,
                 **sample_pair_counts,
             }
             sample_validation["sample_ledger_pair_id_unique"] = bool(sample_ledger["pair_id"].is_unique)
             sample_validation["sample_ledger_aggregate_reconciliation"] = p2_1_sample_ledger_reconciliation
-            sample_validation["sample_008560_unresolved_pair_count"] = len(sample_008560)
+            sample_validation["sample_008560_numeric_comparable_pair_count"] = len(sample_008560_numeric_pair_ids)
+            sample_validation["sample_096300_included"] = bool(
+                sample_ledger["ticker"].astype(str).str.zfill(6).eq("096300").any()
+            )
         p3_sample_ledger_reconciliation: dict[str, bool] | None = None
         p3_sample_event_counts: dict[str, int] | None = None
         if selected_window == "P3-1":
@@ -3856,6 +4104,12 @@ def _run(
             "candidate_trade_rows_in_sample_not_used_for_performance_tuning": len(candidate_rows),
             **sample_pair_counts,
             "sample_aggregate": p2_1_sample_aggregate,
+            "sample_certification_counts": sample_certification_counts
+            if selected_window == "P2-1"
+            else None,
+            "sample_096300_included": sample_validation.get("sample_096300_included")
+            if selected_window == "P2-1"
+            else None,
             "sample_lifecycle_unresolved_pairs": p2_1_sample_unresolved_pairs,
             "p2_1_sample_ledger_aggregate_reconciliation": p2_1_sample_ledger_reconciliation,
             "sample_contract_verdict": (
@@ -3863,12 +4117,13 @@ def _run(
                 if selected_window == "P2-1"
                 and p2_1_sample_ledger_reconciliation
                 and all(p2_1_sample_ledger_reconciliation.values())
-                and any(str(row["ticker"]).zfill(6) == "008560" for row in p2_1_sample_unresolved_pairs)
+                and sample_008560_numeric_pair_ids
+                and sample_certification_counts["matched_pairs_remediable_unresolved"] == 0
+                else "CHECK_REQUIRED"
+                if selected_window == "P2-1"
                 else "NOT_APPLICABLE"
             ),
-            "recertification_verdict": (
-                "CHECK_REQUIRED" if sample_pair_counts["matched_pairs_unresolved"] else "SAMPLE_ONLY"
-            ),
+            "recertification_verdict": "SAMPLE_ONLY",
             "sample_invariants": sample_validation,
             "sample_ledger_aggregate_reconciliation": p3_sample_ledger_reconciliation,
             "sample_soft_event_type_counts": p3_sample_event_counts,
@@ -4054,9 +4309,13 @@ def _run(
         "control": control_metrics,
         "candidate": candidate_metrics,
         "paired": paired_metrics,
-        "matched_pair_counts": _matched_pair_counts(control, candidate),
+        "matched_pair_counts": {
+            **_matched_pair_counts(control, candidate),
+            **_matched_pair_certification_counts(control, candidate),
+        },
         "candidate_diagnostics": candidate_diagnostics,
         "validation": validation,
+        "certification_verdict": _certification_verdict(validation),
         "verdict": None,
     }
     summary["verdict"] = _verdict(summary, validation)
