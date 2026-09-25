@@ -34,6 +34,10 @@ from trend_scanner.data.market_calendar import load_rolling_production_market_ca
 from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2
 from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
 from trend_scanner.universe.survivorship_safe_denominator_freeze import pit_denominator_manifest_sha256
+from trend_scanner.universe.permanent_identity_exclusions import (
+    PERMANENT_IDENTITY_EXCLUSIONS,
+    apply_permanent_identity_exclusions,
+)
 from trend_scanner.validation import pattern_a_fast_core_v02_reentry as v2
 
 
@@ -208,6 +212,7 @@ class RunContext:
     authority_coverage_start: str
     authority_coverage_end: str
     setup_seconds: float
+    permanent_identity_exclusions: tuple[dict[str, str], ...] = ()
 
 
 def _sha256(path: Path) -> str:
@@ -676,6 +681,7 @@ def _load_context(window_id: str | None = None) -> RunContext:
                 effective_to=end,
             )
         )
+    segments, permanent_exclusions = apply_permanent_identity_exclusions(segments)
     if len({segment.key for segment in segments}) != len(segments):
         raise RuntimeError("duplicate COMMON identity interval in effective PIT authority")
     segments.sort(key=lambda row: (row.ticker, row.effective_from, row.effective_to, row.isu_cd))
@@ -707,6 +713,7 @@ def _load_context(window_id: str | None = None) -> RunContext:
         authority_coverage_start=authority_coverage_start,
         authority_coverage_end=authority_coverage_end,
         setup_seconds=time.perf_counter() - started,
+        permanent_identity_exclusions=tuple(permanent_exclusions),
     )
 
 
@@ -775,6 +782,11 @@ def _p3_1_population_preflight(run: RunContext) -> dict[str, Any]:
         "common_identity_segment_unique": len({item.key for item in relevant}) == len(relevant),
         "identity_boundary_contract": all(item.effective_from <= item.effective_to for item in relevant),
         "p2_population_not_reused": True,
+        "permanent_identity_exclusions_absent": not any(
+            (segment.ticker, segment.stable_security_id) in PERMANENT_IDENTITY_EXCLUSIONS
+            for rows in run.segments_by_ticker.values()
+            for segment in rows
+        ),
     }
     return {
         "status": "PASS" if all(checks.values()) else "CHECK_REQUIRED",
@@ -789,6 +801,18 @@ def _p3_1_population_preflight(run: RunContext) -> dict[str, Any]:
         "population_source": str(run.authority.pit_path.relative_to(ROOT)),
         "p2_population_reused": False,
         "effective_pit_sha256": run.authority.pit_sha256,
+        "permanent_identity_exclusions": list(
+            getattr(run, "permanent_identity_exclusions", ())
+        ),
+        "permanent_excluded_identity_count": len(
+            {
+                (item["ticker"], item["isu_cd"])
+                for item in getattr(run, "permanent_identity_exclusions", ())
+            }
+        ),
+        "permanent_excluded_segment_count": len(
+            getattr(run, "permanent_identity_exclusions", ())
+        ),
         "checks": checks,
     }
 
@@ -3091,10 +3115,93 @@ def _p3_1_effective_lifecycle_gate_diagnostics(
         if pair_labels["CONTROL"].get(pair_id) == "CLEAR"
         and pair_labels["Candidate"].get(pair_id) == "CLEAR"
     )
-    symmetric = all(
-        pair_labels["CONTROL"].get(pair_id) == pair_labels["Candidate"].get(pair_id)
-        for pair_id in all_pair_ids
-    )
+    symmetry_failures: list[str] = []
+    control_pairs = set(control["pair_id"].astype(str))
+    candidate_pairs = set(candidate["pair_id"].astype(str))
+    if control_pairs != candidate_pairs:
+        symmetry_failures.append("PAIR_ID_SET_MISMATCH")
+    if control["pair_id"].duplicated().any() or candidate["pair_id"].duplicated().any():
+        symmetry_failures.append("DUPLICATE_PAIR_ID")
+    if control_pairs == candidate_pairs and not symmetry_failures:
+        paired = control.merge(
+            candidate,
+            on="pair_id",
+            how="inner",
+            suffixes=("_control", "_candidate"),
+            validate="one_to_one",
+        )
+        shared_identity_fields = (
+            "trade_id",
+            "ticker",
+            "isu_cd",
+            "market",
+            "identity_effective_from",
+            "identity_effective_to",
+            "entry_signal_date",
+            "entry_execution_date",
+            "entry_open",
+        )
+        for field in shared_identity_fields:
+            left_name = f"{field}_control"
+            right_name = f"{field}_candidate"
+            if left_name not in paired or right_name not in paired:
+                continue
+            left = paired[left_name].fillna("").astype(str).str.strip()
+            right = paired[right_name].fillna("").astype(str).str.strip()
+            if not left.equals(right):
+                symmetry_failures.append(f"SHARED_IDENTITY_OR_ENTRY_MISMATCH:{field}")
+
+        # Strategy-specific exit/status/finding differences are intentional.
+        # Shared source evidence is compared only when both strategies actually
+        # carry the same kind of lifecycle/terminal record.
+        for field in (
+            "lifecycle_source_isu_cd",
+            "lifecycle_evidence_id",
+            "lifecycle_event_type",
+        ):
+            left_name = f"{field}_control"
+            right_name = f"{field}_candidate"
+            if left_name not in paired or right_name not in paired:
+                continue
+            left = paired[left_name].fillna("").astype(str).str.strip().str.upper()
+            right = paired[right_name].fillna("").astype(str).str.strip().str.upper()
+            both_present = left.ne("") & right.ne("")
+            if not left.loc[both_present].equals(right.loc[both_present]):
+                symmetry_failures.append(f"SHARED_LIFECYCLE_SOURCE_MISMATCH:{field}")
+
+        both_settled = (
+            paired.get("trade_status_control", pd.Series("", index=paired.index))
+            .fillna("").astype(str).eq("LIFECYCLE_SETTLED")
+            & paired.get("trade_status_candidate", pd.Series("", index=paired.index))
+            .fillna("").astype(str).eq("LIFECYCLE_SETTLED")
+        )
+        for field in ("settlement_date", "settlement_price", "settlement_type", "settlement_source"):
+            left_name = f"{field}_control"
+            right_name = f"{field}_candidate"
+            if left_name not in paired or right_name not in paired:
+                continue
+            left = paired[left_name].fillna("").astype(str).str.strip()
+            right = paired[right_name].fillna("").astype(str).str.strip()
+            if not left.loc[both_settled].equals(right.loc[both_settled]):
+                symmetry_failures.append(f"SHARED_SETTLEMENT_SOURCE_MISMATCH:{field}")
+
+        control_at_cutoff = paired.get(
+            "terminal_valuation_at_cutoff_control", pd.Series(False, index=paired.index)
+        ).fillna(False).astype(str).str.strip().str.lower().isin({"true", "1", "yes"})
+        candidate_at_cutoff = paired.get(
+            "terminal_valuation_at_cutoff_candidate", pd.Series(False, index=paired.index)
+        ).fillna(False).astype(str).str.strip().str.lower().isin({"true", "1", "yes"})
+        both_at_cutoff = control_at_cutoff & candidate_at_cutoff
+        for field in ("terminal_valuation_date", "terminal_valuation_price", "terminal_valuation_source"):
+            left_name = f"{field}_control"
+            right_name = f"{field}_candidate"
+            if left_name not in paired or right_name not in paired:
+                continue
+            left = paired[left_name].fillna("").astype(str).str.strip()
+            right = paired[right_name].fillna("").astype(str).str.strip()
+            if not left.loc[both_at_cutoff].equals(right.loc[both_at_cutoff]):
+                symmetry_failures.append(f"SHARED_CUTOFF_MARK_MISMATCH:{field}")
+    symmetric = not symmetry_failures
     return {
         "common_interval_end_before_cutoff_open_count": sum(
             item["raw_identity_ended_open_count"] for item in per_side.values()
@@ -3117,6 +3224,11 @@ def _p3_1_effective_lifecycle_gate_diagnostics(
         "p3_1_lifecycle_gate_raw_affected_pair_ids": sorted(gate_affected_pair_ids),
         "p3_1_lifecycle_gate_resolved_pair_ids": resolved_pair_ids,
         "p3_1_lifecycle_gate_control_candidate_symmetry": symmetric,
+        "p3_1_lifecycle_gate_symmetry_failures": symmetry_failures,
+        "p3_1_lifecycle_gate_unresolved_zero_by_side": {
+            side: item["effective_remediable_unresolved_count"] == 0
+            for side, item in per_side.items()
+        },
     }
 
 
@@ -3604,6 +3716,9 @@ def _persist_raw_artifacts(
     soft_events: pd.DataFrame | None,
     execution: Mapping[str, Any],
     run: RunContext,
+    simulation_status: str = "SIMULATION_COMPLETE",
+    raw_status_override: str | None = None,
+    failure_metadata: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Persist simulation outputs and execution provenance before aggregation."""
     paths = _raw_artifact_paths(selected_window)
@@ -3621,13 +3736,19 @@ def _persist_raw_artifacts(
         "score_contract_sha256": _sha256(SCORE_CONTRACT_PATH),
         "stage_contract_sha256": _sha256(STAGE_CONTRACT_PATH),
         "sample_benchmark": str(SAMPLE_PATH.relative_to(ROOT)),
-        "simulation_status": "SIMULATION_COMPLETE",
+        "simulation_status": simulation_status,
         "raw_artifacts_status": "WRITING",
-        "postprocess_status": "PENDING",
+        "postprocess_status": "PENDING" if simulation_status == "SIMULATION_COMPLETE" else "NOT_RUN",
         "execution": dict(execution),
+        "permanent_identity_exclusions": list(
+            getattr(run, "permanent_identity_exclusions", ())
+        ),
         "raw_artifacts": {key: str(path.relative_to(ROOT)) for key, path in paths.items()},
         "outputs": [str(path.relative_to(ROOT)) for path in paths.values()],
     }
+    if failure_metadata is not None:
+        manifest["failure_metadata"] = dict(failure_metadata)
+        manifest["certification_status"] = "NOT_CERTIFIED_WORKER_FAILURE"
     _json_write(manifest_path, manifest)
     for key, frame in (("control", control), ("candidate", candidate)):
         paths[key].parent.mkdir(parents=True, exist_ok=True)
@@ -3653,7 +3774,7 @@ def _persist_raw_artifacts(
         matched_ledger is not None and soft_events is not None
     )
     complete = paired is not None and lifecycle_artifacts_complete
-    manifest["raw_artifacts_status"] = "COMPLETE" if complete else "PARTIAL"
+    manifest["raw_artifacts_status"] = raw_status_override or ("COMPLETE" if complete else "PARTIAL")
     if not complete:
         manifest["raw_artifacts_pending"] = [
             key
@@ -3668,6 +3789,97 @@ def _persist_raw_artifacts(
         manifest.pop("raw_artifacts_pending", None)
     manifest["outputs"] = [str(path.relative_to(ROOT)) for path in persisted_paths]
     _json_write(manifest_path, manifest)
+    return manifest
+
+
+def _persist_partial_worker_failure(
+    *,
+    selected_window: str,
+    control_rows: Sequence[Mapping[str, Any]],
+    candidate_rows: Sequence[Mapping[str, Any]],
+    trade_diagnostics: Sequence[Mapping[str, Any]],
+    execution: Mapping[str, Any],
+    worker_errors: Sequence[str],
+    run: RunContext,
+) -> dict[str, Any]:
+    """Keep successful ticker raw output before surfacing a worker failure."""
+    control = pd.DataFrame(control_rows)
+    candidate = pd.DataFrame(candidate_rows)
+    sort_columns = ["ticker", "identity_effective_from", "trade_sequence"]
+    if not control.empty:
+        control = control.sort_values(sort_columns, kind="mergesort").reset_index(drop=True)
+    if not candidate.empty:
+        candidate = candidate.sort_values(sort_columns, kind="mergesort").reset_index(drop=True)
+
+    paired: pd.DataFrame | None = None
+    matched_ledger: pd.DataFrame | None = None
+    persistence_errors: list[str] = []
+    if not control.empty and not candidate.empty:
+        try:
+            paired = control.merge(
+                candidate,
+                on="pair_id",
+                suffixes=("_control", "_candidate"),
+                validate="one_to_one",
+            )
+        except Exception as exc:
+            persistence_errors.append(f"paired raw: {type(exc).__name__}: {exc}")
+        if paired is not None and selected_window in {"P2-2", *P3_WINDOW_IDS}:
+            try:
+                matched_ledger = _build_matched_trade_ledger(
+                    control,
+                    candidate,
+                    cutoff_date=run.window.effective_end.strftime("%Y-%m-%d"),
+                )
+                if selected_window in P3_WINDOW_IDS:
+                    matched_ledger = _add_p3_1_ledger_contract_fields(matched_ledger)
+            except Exception as exc:
+                persistence_errors.append(f"matched ledger raw: {type(exc).__name__}: {exc}")
+
+    soft_events = (
+        _raw_soft_event_ledger(trade_diagnostics)
+        if selected_window in {"P2-2", *P3_WINDOW_IDS}
+        else None
+    )
+    failure_path = RUN_DIR / "full_failure.json"
+    failure = {
+        "status": "FAILED",
+        "mode": "full",
+        "errors": list(worker_errors),
+        "completed_tickers": int(execution.get("processed_tickers", 0)),
+        "target_tickers": int(execution.get("target_tickers", 0)),
+        "elapsed_seconds": execution.get("elapsed_seconds"),
+        "partial_raw_artifacts": "PARTIAL",
+        "persistence_errors": persistence_errors,
+    }
+    _json_write(failure_path, failure)
+    failure_metadata = {
+        "error_count": len(worker_errors),
+        "errors": list(worker_errors),
+        "failure_artifact": str(failure_path.relative_to(ROOT)),
+        "persistence_errors": persistence_errors,
+    }
+    manifest = _persist_raw_artifacts(
+        selected_window=selected_window,
+        control=control,
+        candidate=candidate,
+        paired=paired,
+        matched_ledger=matched_ledger,
+        soft_events=soft_events,
+        execution=execution,
+        run=run,
+        simulation_status="SIMULATION_PARTIAL",
+        raw_status_override="PARTIAL",
+        failure_metadata=failure_metadata,
+    )
+    manifest["failure_metadata"] = failure_metadata
+    manifest["certification_status"] = "NOT_CERTIFIED_WORKER_FAILURE"
+    manifest["outputs"] = list(
+        dict.fromkeys(
+            [*manifest.get("outputs", []), str(failure_path.relative_to(ROOT))]
+        )
+    )
+    _json_write(RUN_DIR / "run_manifest.json", manifest)
     return manifest
 
 
@@ -3728,6 +3940,132 @@ def _load_raw_artifacts_for_summary(
     matched = read(paths["matched_ledger"]) if "matched_ledger" in paths else None
     events = read(paths["soft_events"]) if "soft_events" in paths else None
     return control, candidate, paired, matched, events, manifest
+
+
+def _apply_permanent_exclusions_to_saved_p3_2_raw(
+    control: pd.DataFrame,
+    candidate: pd.DataFrame,
+    paired: pd.DataFrame,
+    matched_ledger: pd.DataFrame | None,
+    soft_events: pd.DataFrame | None,
+    manifest: Mapping[str, Any],
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, Any]]:
+    """Derive P3-2's assessment population from immutable saved raw trade outputs."""
+    if soft_events is None:
+        raise RuntimeError("P3-2 raw-only recertification requires its saved soft-event ledger")
+    required = {"ticker", "isu_cd", "pair_id", "trade_id"}
+    for name, frame in (("CONTROL", control), ("Candidate", candidate)):
+        missing = required - set(frame.columns)
+        if missing:
+            raise RuntimeError(f"P3-2 {name} raw trades lack identity fields: {sorted(missing)}")
+        if frame["pair_id"].duplicated().any():
+            raise RuntimeError(f"P3-2 {name} raw trades contain duplicate pair_id")
+    if "pair_id" not in soft_events:
+        raise RuntimeError("P3-2 raw soft-event ledger lacks pair_id")
+
+    policy_keys = set(PERMANENT_IDENTITY_EXCLUSIONS)
+    required_new_keys = {
+        identity
+        for identity, policy in PERMANENT_IDENTITY_EXCLUSIONS.items()
+        if policy.get("approval_scope") == "P3-2 recertification V01"
+    }
+
+    def mask_for(frame: pd.DataFrame) -> pd.Series:
+        keys = pd.Series(
+            list(
+                zip(
+                    frame["ticker"].fillna("").astype(str).str.strip().str.zfill(6),
+                    frame["isu_cd"].fillna("").astype(str).str.strip().str.upper(),
+                )
+            ),
+            index=frame.index,
+        )
+        return keys.isin(policy_keys)
+
+    control_mask = mask_for(control)
+    candidate_mask = mask_for(candidate)
+    control_excluded = control.loc[control_mask]
+    candidate_excluded = candidate.loc[candidate_mask]
+    control_pair_ids = set(control_excluded["pair_id"].astype(str))
+    candidate_pair_ids = set(candidate_excluded["pair_id"].astype(str))
+    if control_pair_ids != candidate_pair_ids:
+        raise RuntimeError("P3-2 permanent exclusions are not symmetric across CONTROL/Candidate raw trades")
+
+    observed_control = {
+        (str(row.ticker).zfill(6), str(row.isu_cd).upper())
+        for row in control.itertuples()
+    }
+    observed_candidate = {
+        (str(row.ticker).zfill(6), str(row.isu_cd).upper())
+        for row in candidate.itertuples()
+    }
+    missing_required = sorted(
+        key
+        for key in required_new_keys
+        if key not in observed_control or key not in observed_candidate
+    )
+    if missing_required:
+        raise RuntimeError(
+            "P3-2 saved raw trades do not contain every newly approved exclusion on both sides: "
+            + json.dumps(missing_required)
+        )
+
+    control_ids = control.set_index("pair_id")["trade_id"].astype(str).sort_index()
+    candidate_ids = candidate.set_index("pair_id")["trade_id"].astype(str).sort_index()
+    if not control_ids.equals(candidate_ids):
+        raise RuntimeError("P3-2 raw CONTROL/Candidate trade_id sets differ before recertification")
+
+    excluded_pair_ids = sorted(control_pair_ids)
+    excluded_events = soft_events[soft_events["pair_id"].astype(str).isin(control_pair_ids)]
+    kept_events = soft_events[~soft_events["pair_id"].astype(str).isin(control_pair_ids)].copy()
+    exclusion_records: list[dict[str, Any]] = []
+    for (ticker, isu_cd), rows in control_excluded.groupby(
+        [control_excluded["ticker"].astype(str).str.zfill(6), control_excluded["isu_cd"].astype(str).str.upper()],
+        sort=True,
+    ):
+        identity = (str(ticker), str(isu_cd))
+        exclusion_records.append(
+            {
+                "ticker": identity[0],
+                "isu_cd": identity[1],
+                "pair_ids": sorted(rows["pair_id"].astype(str).unique().tolist()),
+                "trade_count_per_side": int(len(rows)),
+                **PERMANENT_IDENTITY_EXCLUSIONS[identity],
+            }
+        )
+
+    prior_manifest_exclusions = {
+        (str(item.get("ticker", "")).zfill(6), str(item.get("isu_cd", "")).upper())
+        for item in manifest.get("permanent_identity_exclusions", [])
+        if isinstance(item, Mapping)
+    }
+    new_to_raw_exclusions = sorted(policy_keys - prior_manifest_exclusions)
+    assessment = {
+        "method": "in-memory exact (ticker, ISU) filter on saved CONTROL/Candidate trades and saved soft events; raw CSVs are unchanged",
+        "policy_version": "permanent_identity_exclusions_v01",
+        "source_control_trade_rows": int(len(control)),
+        "source_candidate_trade_rows": int(len(candidate)),
+        "source_paired_trade_rows": int(len(paired)),
+        "source_matched_ledger_rows": int(len(matched_ledger)) if matched_ledger is not None else None,
+        "source_soft_event_rows": int(len(soft_events)),
+        "excluded_control_trade_rows": int(int(control_mask.sum())),
+        "excluded_candidate_trade_rows": int(int(candidate_mask.sum())),
+        "excluded_pair_count": len(excluded_pair_ids),
+        "excluded_pair_ids": excluded_pair_ids,
+        "excluded_soft_event_rows": int(len(excluded_events)),
+        "excluded_identities": exclusion_records,
+        "newly_approved_identity_keys_present_in_both_sources": [
+            list(key) for key in sorted(required_new_keys)
+        ],
+        "policy_keys_added_since_source_full_run": [list(key) for key in new_to_raw_exclusions],
+        "source_raw_files_modified": False,
+    }
+    return (
+        control.loc[~control_mask].copy().reset_index(drop=True),
+        candidate.loc[~candidate_mask].copy().reset_index(drop=True),
+        kept_events.reset_index(drop=True),
+        assessment,
+    )
 
 
 def _run_candidate_replay(workers: int) -> dict[str, Any]:
@@ -4221,8 +4559,45 @@ def _run_impl(
         pd.DataFrame | None,
         dict[str, Any],
     ] | None = None
+    permanent_exclusion_recertification: dict[str, Any] | None = None
+    source_raw_matched_ledger_row_count: int | None = None
     if mode == "summarize":
         saved_raw = _load_raw_artifacts_for_summary(selected_window)
+        if selected_window == "P3-2":
+            (
+                raw_control,
+                raw_candidate,
+                raw_paired,
+                raw_matched_ledger,
+                raw_soft_events,
+                raw_manifest,
+            ) = saved_raw
+            (
+                recert_control,
+                recert_candidate,
+                recert_soft_events,
+                permanent_exclusion_recertification,
+            ) = _apply_permanent_exclusions_to_saved_p3_2_raw(
+                raw_control,
+                raw_candidate,
+                raw_paired,
+                raw_matched_ledger,
+                raw_soft_events,
+                raw_manifest,
+            )
+            source_raw_matched_ledger_row_count = (
+                int(len(raw_matched_ledger)) if raw_matched_ledger is not None else None
+            )
+            # Rebuild the paired and matched assessment tables later from the
+            # filtered source trades; keep all source raw CSVs untouched.
+            saved_raw = (
+                recert_control,
+                recert_candidate,
+                None,
+                None,
+                recert_soft_events,
+                raw_manifest,
+            )
 
     run = _load_context(selected_window)
     if mode == "full" and selected_window == "P2-2":
@@ -4302,6 +4677,12 @@ def _run_impl(
                     )
         elapsed = time.perf_counter() - started
         if errors:
+            total_segments = sum(int(result["segments_seen"]) for result in outcomes)
+            processed_ticker_count = len(outcomes)
+            repository_load_count = sum(int(item["repository_load_count"]) for item in outcomes)
+            control_rows = [row for result in outcomes for row in result["control_rows"]]
+            candidate_rows = [row for result in outcomes for row in result["candidate_rows"]]
+            trade_diagnostics = [row for result in outcomes for row in result["diagnostics"]]
             failure = {
                 "status": "FAILED",
                 "mode": mode,
@@ -4311,6 +4692,24 @@ def _run_impl(
                 "elapsed_seconds": round(elapsed, 3),
             }
             _json_write(RUN_DIR / f"{mode}_failure.json", failure)
+            if mode == "full":
+                _persist_partial_worker_failure(
+                    selected_window=selected_window,
+                    control_rows=control_rows,
+                    candidate_rows=candidate_rows,
+                    trade_diagnostics=trade_diagnostics,
+                    execution={
+                        "workers": workers,
+                        "processed_tickers": processed_ticker_count,
+                        "target_tickers": len(tickers),
+                        "total_segments": total_segments,
+                        "elapsed_seconds": round(elapsed, 3),
+                        "setup_seconds": round(run.setup_seconds, 3),
+                        "repository_load_count": repository_load_count,
+                    },
+                    worker_errors=errors,
+                    run=run,
+                )
             raise RuntimeError(f"{mode} run encountered {len(errors)} ticker errors; see {mode}_failure.json")
 
         total_segments = sum(int(result["segments_seen"]) for result in outcomes)
@@ -4584,7 +4983,12 @@ def _run_impl(
         candidate = candidate.sort_values(
             ["ticker", "identity_effective_from", "trade_sequence"], kind="mergesort"
         ).reset_index(drop=True)
-        paired = saved_paired
+        paired = control.merge(
+            candidate,
+            on="pair_id",
+            suffixes=("_control", "_candidate"),
+            validate="one_to_one",
+        )
         raw_matched_ledger = saved_ledger
         raw_soft_events = saved_events
     else:
@@ -4773,13 +5177,22 @@ def _run_impl(
     population = {
         "filter_contract": "no separate market-cap, minimum trading-value/volume, or fundamentals filter",
         "identity_policy": "COMMON PIT identity intervals; no ticker-list broadcast; no identity stitching; no future fallback",
-        "common_identity_segments": total_segments,
+        "common_identity_segments": (
+            int(p3_preflight["common_identity_segment_count"])
+            if selected_window in P3_WINDOW_IDS and p3_preflight is not None
+            else total_segments
+        ),
         "unique_tickers_processed": processed_ticker_count,
+        "assessment_universe_ticker_count": len(all_tickers),
         "tickers_with_entries": int(control["ticker"].nunique()),
         "control_entry_count": len(control),
         "candidate_entry_count": len(candidate),
         "raw_candidate_artifact_reused": False,
     }
+    if permanent_exclusion_recertification is not None:
+        population["permanent_identity_exclusion_recertification"] = (
+            permanent_exclusion_recertification
+        )
     if selected_window == "P2-1":
         population["raw_candidate_artifact"] = str(RAW_CANDIDATE_PATH.relative_to(ROOT))
     elif selected_window in P3_WINDOW_IDS:
@@ -4799,6 +5212,11 @@ def _run_impl(
             saved_manifest.get("start_head")
             if mode == "summarize" and saved_raw is not None
             else subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+        ),
+        "recertification_code_head": (
+            subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+            if mode == "summarize" and permanent_exclusion_recertification is not None
+            else None
         ),
         "runner_sha256": _sha256(Path(__file__).resolve()),
         "strategy_ids": {"control": V2_STRATEGY_ID, "candidate": CANDIDATE_STRATEGY_ID},
@@ -4912,6 +5330,11 @@ def _run_impl(
         summary["ledger"] = {
             "path": str(MATCHED_LEDGER_PATH.relative_to(ROOT)),
             "row_count": int(len(p2_2_ledger)),
+            "raw_source_row_count": source_raw_matched_ledger_row_count,
+            "assessment_population_rebuilt_from_filtered_source_trades": (
+                permanent_exclusion_recertification is not None
+            ),
+            "raw_source_csv_modified": False,
             "pair_id_unique_count": int(p2_2_ledger["pair_id"].nunique()),
             "distinct_source_trade_id_count": int(p2_2_ledger["trade_id"].nunique()),
             "source_trade_id_preserved": True,
@@ -4932,6 +5355,17 @@ def _run_impl(
         summary["soft_events"] = {
             "path": str(SOFT_EVENTS_PATH.relative_to(ROOT)),
             "row_count": int(len(p2_2_events)),
+            "raw_source_row_count": (
+                permanent_exclusion_recertification.get("source_soft_event_rows")
+                if permanent_exclusion_recertification is not None
+                else None
+            ),
+            "excluded_source_event_rows": (
+                permanent_exclusion_recertification.get("excluded_soft_event_rows")
+                if permanent_exclusion_recertification is not None
+                else 0
+            ),
+            "raw_source_csv_modified": False,
             "event_type_counts": {
                 str(event_type): int(count)
                 for event_type, count in p2_2_events["event_type"].value_counts().sort_index().items()
@@ -5048,6 +5482,10 @@ def _run_impl(
     manifest["postprocess_stage"] = "COMPLETE"
     manifest["summary_status"] = summary["status"]
     manifest["summarized_from_raw_artifacts"] = mode == "summarize"
+    if permanent_exclusion_recertification is not None:
+        manifest["recertification_population_exclusions"] = (
+            permanent_exclusion_recertification
+        )
     manifest.pop("postprocess_error", None)
     manifest["outputs"] = list(dict.fromkeys([*manifest.get("outputs", []), *output_names]))
     _json_write(output / "run_manifest.json", manifest)

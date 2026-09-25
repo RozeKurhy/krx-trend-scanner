@@ -16,6 +16,7 @@ from scripts.run_fastcore_neg40_weak_protect_p2_1 import (
     _outcome_reason,
     _pct,
 )
+from trend_scanner.universe.permanent_identity_exclusions import apply_permanent_identity_exclusions
 
 
 def test_official_backtest_callers_pass_the_complete_window_contract_explicitly():
@@ -96,6 +97,244 @@ def test_stable_security_identity_survives_authority_revision_and_market_transfe
     assert prior.stable_security_id == revised_coverage.stable_security_id
     assert prior.key != revised_coverage.key
     assert recycled_code.stable_security_id != prior.stable_security_id
+
+
+def test_permanent_identity_exclusion_matches_ticker_and_isu_only():
+    excluded = IdentitySegment(
+        ticker="010420",
+        isu_cd="KR7010420008",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2010-01-04"),
+        effective_to=pd.Timestamp("2025-09-24"),
+    )
+    ticker_reuse = IdentitySegment(
+        ticker="010420",
+        isu_cd="KR7099990001",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2025-09-25"),
+        effective_to=pd.Timestamp("2026-08-31"),
+    )
+
+    kept, exclusions = apply_permanent_identity_exclusions([excluded, ticker_reuse])
+
+    assert kept == [ticker_reuse]
+    assert len(exclusions) == 1
+    assert (exclusions[0]["ticker"], exclusions[0]["isu_cd"]) == (
+        "010420",
+        "KR7010420008",
+    )
+    assert "delisting" in exclusions[0]["reason"]
+
+
+@pytest.mark.parametrize(
+    ("ticker", "isu_cd"),
+    [
+        ("005390", "KR7005390000"),
+        ("006390", "KR7006390009"),
+        ("031440", "KR7031440001"),
+        ("049770", "KR7049770001"),
+        ("057050", "KR7057050007"),
+        ("138490", "KR7138490008"),
+        ("335890", "KR7335890000"),
+        ("950110", "KR8392070007"),
+    ],
+)
+def test_new_p3_2_permanent_exclusions_match_exact_approved_identities(ticker, isu_cd):
+    excluded = IdentitySegment(
+        ticker=ticker,
+        isu_cd=isu_cd,
+        market="KOSPI",
+        effective_from=pd.Timestamp("2010-01-04"),
+        effective_to=pd.Timestamp("2025-09-24"),
+    )
+    ticker_reuse = IdentitySegment(
+        ticker=ticker,
+        isu_cd="KR7999990001",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2025-09-25"),
+        effective_to=pd.Timestamp("2026-08-31"),
+    )
+
+    kept, exclusions = apply_permanent_identity_exclusions([excluded, ticker_reuse])
+
+    assert kept == [ticker_reuse]
+    assert [(item["ticker"], item["isu_cd"]) for item in exclusions] == [(ticker, isu_cd)]
+    assert exclusions[0]["approval_scope"] == "P3-2 recertification V01"
+
+
+def test_p3_2_saved_raw_recognition_filters_both_sides_without_mutating_raw_sources():
+    identities = sorted(
+        key
+        for key, policy in runner.PERMANENT_IDENTITY_EXCLUSIONS.items()
+        if policy.get("approval_scope") == "P3-2 recertification V01"
+    )
+    control = pd.DataFrame(
+        [
+            {
+                "ticker": ticker,
+                "isu_cd": isu_cd,
+                "pair_id": f"{ticker}|{isu_cd}",
+                "trade_id": f"{ticker}_01",
+            }
+            for ticker, isu_cd in identities
+        ]
+        + [{"ticker": "000001", "isu_cd": "KR7000000001", "pair_id": "keep", "trade_id": "000001_01"}]
+    )
+    candidate = control.copy()
+    paired = pd.DataFrame({"pair_id": control["pair_id"]})
+    ledger = pd.DataFrame({"pair_id": control["pair_id"]})
+    events = pd.DataFrame(
+        {
+            "pair_id": control["pair_id"],
+            "event_type": ["SOFT_EXIT_SIGNAL"] * len(control),
+        }
+    )
+    raw_control_snapshot = control.copy(deep=True)
+
+    filtered_control, filtered_candidate, filtered_events, assessment = (
+        runner._apply_permanent_exclusions_to_saved_p3_2_raw(
+            control,
+            candidate,
+            paired,
+            ledger,
+            events,
+            {"permanent_identity_exclusions": [{"ticker": "010420", "isu_cd": "KR7010420008"}]},
+        )
+    )
+
+    assert filtered_control["pair_id"].tolist() == ["keep"]
+    assert filtered_candidate["pair_id"].tolist() == ["keep"]
+    assert filtered_events["pair_id"].tolist() == ["keep"]
+    assert assessment["excluded_pair_count"] == 8
+    assert assessment["excluded_soft_event_rows"] == 8
+    assert assessment["source_raw_files_modified"] is False
+    pd.testing.assert_frame_equal(control, raw_control_snapshot)
+
+
+@pytest.mark.parametrize("matched_ledger_fails", [False, True])
+def test_full_worker_failure_persists_successful_ticker_raw_as_partial(
+    tmp_path,
+    monkeypatch,
+    matched_ledger_fails,
+):
+    monkeypatch.setattr(runner, "ROOT", tmp_path)
+    monkeypatch.setattr(runner, "SCORE_CONTRACT_PATH", tmp_path / "score.json")
+    monkeypatch.setattr(runner, "STAGE_CONTRACT_PATH", tmp_path / "stage.json")
+    runner.SCORE_CONTRACT_PATH.write_text("{}", encoding="utf-8")
+    runner.STAGE_CONTRACT_PATH.write_text("{}", encoding="utf-8")
+    runner._configure_run("P3-2", "run_test_partial_worker_failure")
+    try:
+        control, candidate = _contract_frames(
+            [{"pair_id": "pair-partial", "control_return": 2.0, "candidate_return": 3.0}]
+        )
+        segments = {
+            ticker: (
+                IdentitySegment(
+                    ticker=ticker,
+                    isu_cd=f"KR7{int(ticker):09d}",
+                    market="KOSPI",
+                    effective_from=pd.Timestamp("2020-01-01"),
+                    effective_to=pd.Timestamp("2026-08-31"),
+                ),
+            )
+            for ticker in ("000001", "000002")
+        }
+        run = SimpleNamespace(
+            window=SimpleNamespace(
+                window=SimpleNamespace(window_id="P3-2"),
+                effective_start=pd.Timestamp("2022-01-03"),
+                effective_end=pd.Timestamp("2026-08-31"),
+                execution_support=pd.Timestamp("2026-09-01"),
+            ),
+            authority=SimpleNamespace(pit_sha256="pit-hash"),
+            segments_by_ticker=segments,
+            setup_seconds=1.0,
+            permanent_identity_exclusions=(),
+        )
+        runner.SAMPLE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        runner._json_write(
+            runner.SAMPLE_PATH,
+            {
+                "window_id": "P3-2",
+                "worker_count": 10,
+                "status": "COMPLETE",
+                "errors": [],
+                "estimated_full_seconds": 10.0,
+                "population_preflight": {
+                    "status": "PASS",
+                    "effective_pit_sha256": "pit-hash",
+                    "common_identity_segment_count": 2,
+                },
+                "sample_ledger_aggregate_reconciliation": {
+                    "control": True,
+                    "candidate": True,
+                    "paired": True,
+                },
+                "sample_invariants": {
+                    "ledger_pair_id_unique": True,
+                    "control_candidate_pair_id_sets_equal": True,
+                    "control_candidate_source_trade_id_equal_by_pair": True,
+                    "soft_event_duplicates": 0,
+                    "unexecuted_signal_count": 0,
+                },
+            },
+        )
+        monkeypatch.setattr(runner, "_load_context", lambda window_id: run)
+        monkeypatch.setattr(
+            runner,
+            "_p3_1_population_preflight",
+            lambda _: {
+                "status": "PASS",
+                "effective_pit_sha256": "pit-hash",
+                "common_identity_segment_count": 2,
+            },
+        )
+        monkeypatch.setattr(runner.subprocess, "check_output", lambda *args, **kwargs: "test-head")
+
+        def process(ticker, _):
+            if ticker == "000002":
+                raise ValueError("fixture worker failure")
+            return {
+                "ticker": ticker,
+                "segments_seen": 1,
+                "repository_load_count": 1,
+                "control_rows": control.to_dict(orient="records"),
+                "candidate_rows": candidate.to_dict(orient="records"),
+                "diagnostics": [{"soft_events": []}],
+                "elapsed_seconds": 0.1,
+            }
+
+        monkeypatch.setattr(runner, "_process_ticker", process)
+        if matched_ledger_fails:
+            monkeypatch.setattr(
+                runner,
+                "_build_matched_trade_ledger",
+                lambda *args, **kwargs: (_ for _ in ()).throw(
+                    RuntimeError("fixture ledger persistence failure")
+                ),
+            )
+
+        with pytest.raises(RuntimeError, match="full run encountered 1 ticker errors"):
+            runner._run("full", 10, 40, "P3-2")
+
+        assert pd.read_csv(runner.RUN_DIR / "control_trades.csv").shape[0] == 1
+        assert pd.read_csv(runner.RUN_DIR / "candidate_trades.csv").shape[0] == 1
+        assert pd.read_csv(runner.RUN_DIR / "paired_trades.csv").shape[0] == 1
+        if matched_ledger_fails:
+            assert not runner.MATCHED_LEDGER_PATH.exists()
+        else:
+            assert pd.read_csv(runner.MATCHED_LEDGER_PATH).shape[0] == 1
+        assert (runner.RUN_DIR / "full_failure.json").is_file()
+        manifest = json.loads((runner.RUN_DIR / "run_manifest.json").read_text(encoding="utf-8"))
+        assert manifest["simulation_status"] == "SIMULATION_PARTIAL"
+        assert manifest["raw_artifacts_status"] == "PARTIAL"
+        assert manifest["postprocess_status"] == "NOT_RUN"
+        assert manifest["certification_status"] == "NOT_CERTIFIED_WORKER_FAILURE"
+        assert manifest["failure_metadata"]["error_count"] == 1
+        assert bool(manifest["failure_metadata"]["persistence_errors"]) is matched_ledger_fails
+        assert not (runner.RUN_DIR / "summary.json").exists()
+    finally:
+        runner._configure_run("P2-1")
 
 
 def test_standard_runner_fails_closed_without_window_execution_support():
@@ -2657,7 +2896,7 @@ def _contract_trade(pair_id, *, ticker, terminal_return, lifecycle_state=None, s
                 "lifecycle_event_type": "MANDATORY_SHARE_EXCHANGE"
                 if lifecycle_state == "UNRESOLVED_SUCCESSOR"
                 else "MANDATORY_CASH",
-                "lifecycle_evidence_id": f"evidence-{pair_id}-{side.lower()}",
+                "lifecycle_evidence_id": f"evidence-{pair_id}",
             }
         )
     return row
@@ -2777,7 +3016,48 @@ def test_p3_1_gate_does_not_hide_one_sided_remediable_unresolved_pair():
     assert diagnostics["p3_1_effective_remediable_unresolved_pair_ids"] == [
         "pair-final-liquidation"
     ]
+    assert diagnostics["p3_1_lifecycle_gate_control_candidate_symmetry"] is True
+    assert diagnostics["p3_1_lifecycle_gate_unresolved_zero_by_side"] == {
+        "CONTROL": True,
+        "Candidate": False,
+    }
+    assert diagnostics["p3_1_lifecycle_gate_symmetry_failures"] == []
+
+
+def test_p3_1_gate_allows_strategy_status_divergence_but_keeps_unresolved_on_side():
+    control, candidate = _contract_frames(
+        [{"pair_id": "pair-strategy-divergence", "control_state": "UNRESOLVED_SUCCESSOR"}]
+    )
+    candidate.loc[0, "trade_status"] = "REALIZED"
+    candidate.loc[0, "terminal_return"] = -60.65
+    candidate.loc[0, "terminal_valuation_date"] = "2026-02-11"
+    candidate.loc[0, "terminal_valuation_price"] = 37.0
+    candidate.loc[0, "terminal_valuation_source"] = "RepositoryV2DailyLoader.close"
+    candidate.loc[0, "terminal_valuation_at_cutoff"] = False
+
+    diagnostics = runner._p3_1_effective_lifecycle_gate_diagnostics(
+        control, candidate, "2026-08-31"
+    )
+
+    assert diagnostics["p3_1_lifecycle_gate_control_candidate_symmetry"] is True
+    assert diagnostics["p3_1_lifecycle_gate_unresolved_zero_by_side"] == {
+        "CONTROL": False,
+        "Candidate": True,
+    }
+
+
+def test_p3_1_gate_rejects_shared_lifecycle_source_evidence_mismatch():
+    control, candidate = _p3_1_gate_contract_frames()
+    candidate.loc[3, "lifecycle_evidence_id"] = "KRX-LIFECYCLE-KR7000000001"
+
+    diagnostics = runner._p3_1_effective_lifecycle_gate_diagnostics(
+        control, candidate, "2025-05-30"
+    )
+
     assert diagnostics["p3_1_lifecycle_gate_control_candidate_symmetry"] is False
+    assert "SHARED_LIFECYCLE_SOURCE_MISMATCH:lifecycle_evidence_id" in diagnostics[
+        "p3_1_lifecycle_gate_symmetry_failures"
+    ]
 
 
 def test_unresolved_lifecycle_on_both_sides_is_preserved_and_excluded_pairwise():
