@@ -1446,3 +1446,627 @@ def test_soft_signal_without_open_is_accepted_only_with_lifecycle_settlement_ter
     assert len(events) == 1
     assert events.iloc[0]["event_type"] == "SOFT_EXIT_SIGNAL"
     assert pd.isna(events.iloc[0]["execution_date"])
+
+
+def _lifecycle_calendar():
+    return SimpleNamespace(
+        trading_dates=pd.to_datetime(
+            ["2025-05-28", "2025-05-29", "2025-05-30", "2025-06-02", "2025-06-03", "2025-06-20"]
+        )
+    )
+
+
+def _open_lifecycle_row(segment: IdentitySegment, *, entry_open: float = 100.0) -> dict:
+    return {
+        "ticker": segment.ticker,
+        "isu_cd": segment.isu_cd,
+        "market": segment.market,
+        "pair_id": "lifecycle-pair",
+        "trade_id": "lifecycle-trade",
+        "entry_execution_date": "2025-05-28",
+        "entry_open": entry_open,
+        "exit_signal_date": None,
+        "exit_execution_date": None,
+        "exit_price": None,
+        "exit_type": "NO_EXIT",
+        "trade_status": "OPEN_AT_CUTOFF",
+        "terminal_return": 0.0,
+        "terminal_valuation_date": "2025-05-29",
+        "terminal_valuation_price": 100.0,
+        "execution_support_missing": False,
+    }
+
+
+def _confirmed_cash_event(segment: IdentitySegment, **overrides) -> dict:
+    return {
+        "evidence_id": "cash-fixture",
+        "event_evidence_status": "CONFIRMED",
+        "economic_terms_status": "CONFIRMED",
+        "ticker": segment.ticker,
+        "isu_cd": segment.isu_cd,
+        "market": segment.market,
+        "event_type": "MANDATORY_CASH",
+        "event_effective_date": "2025-05-30",
+        "source_published_date": "2025-05-01",
+        "cash_per_share": 90.0,
+        "payment_date": "2025-06-20",
+        **overrides,
+    }
+
+
+def test_typed_cash_event_at_cutoff_values_receivable_without_future_payment_lookahead():
+    segment = IdentitySegment(
+        ticker="029960",
+        isu_cd="KR7029960002",
+        market="KOSDAQ",
+        effective_from=pd.Timestamp("2010-01-04"),
+        effective_to=pd.Timestamp("2025-05-29"),
+    )
+    sparse_source_daily = pd.DataFrame(
+        {"open": [100.0, 101.0], "high": [102.0, 103.0], "low": [99.0, 100.0], "close": [101.0, 102.0]},
+        index=pd.to_datetime(["2025-05-28", "2025-05-29"]),
+    )
+
+    valued, applied = runner._apply_lifecycle_event(
+        _open_lifecycle_row(segment),
+        segment=segment,
+        event=_confirmed_cash_event(segment, cash_per_share=90.0),
+        cutoff_date=pd.Timestamp("2025-05-30"),
+        source_daily=sparse_source_daily,
+        calendar=_lifecycle_calendar(),
+    )
+
+    assert applied
+    assert valued["lifecycle_state"] == "SETTLEMENT_PENDING"
+    assert valued["trade_status"] == "OPEN_AT_CUTOFF"
+    assert valued["settlement_date"] == "2025-06-20"
+    assert valued["terminal_valuation_date"] == "2025-05-30"
+    assert valued["terminal_valuation_price"] == 90.0
+    assert valued["terminal_return"] == -10.0
+    assert valued["holding_days"] == 3
+    assert valued["terminal_valuation_at_cutoff"] is True
+
+
+def test_typed_lifecycle_event_published_after_cutoff_fails_closed_without_lookahead():
+    segment = IdentitySegment(
+        ticker="029960",
+        isu_cd="KR7029960002",
+        market="KOSDAQ",
+        effective_from=pd.Timestamp("2010-01-04"),
+        effective_to=pd.Timestamp("2025-05-30"),
+    )
+    valued, applied = runner._apply_lifecycle_event(
+        _open_lifecycle_row(segment),
+        segment=segment,
+        event=_confirmed_cash_event(segment, source_published_date="2025-06-10"),
+        cutoff_date=pd.Timestamp("2025-05-30"),
+        source_daily=_daily([100.0, 101.0]),
+        calendar=_lifecycle_calendar(),
+    )
+
+    assert not applied
+    assert "lifecycle_state" not in valued
+    assert valued["terminal_return"] == 0.0
+
+
+def test_confirmed_cash_event_with_partial_terms_keeps_known_receivable_pending():
+    segment = IdentitySegment(
+        ticker="029960",
+        isu_cd="KR7029960002",
+        market="KOSDAQ",
+        effective_from=pd.Timestamp("2010-01-04"),
+        effective_to=pd.Timestamp("2025-05-29"),
+    )
+    event = _confirmed_cash_event(
+        segment,
+        economic_terms_status="PARTIAL",
+        payment_date=None,
+    )
+
+    valued, applied = runner._apply_lifecycle_event(
+        _open_lifecycle_row(segment),
+        segment=segment,
+        event=event,
+        cutoff_date=pd.Timestamp("2025-05-30"),
+        source_daily=pd.DataFrame(
+            {"open": [100.0], "high": [102.0], "low": [99.0], "close": [101.0]},
+            index=pd.to_datetime(["2025-05-29"]),
+        ),
+        calendar=_lifecycle_calendar(),
+    )
+
+    assert applied
+    assert valued["lifecycle_state"] == "SETTLEMENT_PENDING"
+    assert valued["settlement_date"] is None
+    assert valued["terminal_valuation_price"] == 90.0
+    assert valued["terminal_valuation_at_cutoff"] is True
+    assert valued["terminal_return"] == -10.0
+
+
+def test_confirmed_share_event_with_partial_terms_stops_with_unresolved_successor():
+    segment = IdentitySegment(
+        ticker="000001",
+        isu_cd="KR7000000001",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2020-01-01"),
+        effective_to=pd.Timestamp("2025-12-31"),
+    )
+    event = {
+        "evidence_id": "partial-share-fixture",
+        "event_evidence_status": "CONFIRMED",
+        "economic_terms_status": "PARTIAL",
+        "ticker": segment.ticker,
+        "isu_cd": segment.isu_cd,
+        "market": segment.market,
+        "event_type": "MANDATORY_SHARE_EXCHANGE",
+        "event_effective_date": "2025-05-30",
+        "source_published_date": "2025-05-01",
+        "official_source_refs": [{"url": "https://kind.krx.co.kr/external/fixture.htm"}],
+    }
+
+    unresolved, applied = runner._apply_lifecycle_event(
+        _open_lifecycle_row(segment),
+        segment=segment,
+        event=event,
+        cutoff_date=pd.Timestamp("2025-06-02"),
+        source_daily=_daily([100.0, 101.0]),
+        calendar=_lifecycle_calendar(),
+    )
+
+    assert applied
+    assert unresolved["lifecycle_state"] == "UNRESOLVED_SUCCESSOR"
+    assert unresolved["terminal_return"] is None
+    assert unresolved["terminal_valuation_price"] is None
+
+
+def test_check_required_event_is_not_applied_even_with_confirmed_economics():
+    segment = IdentitySegment(
+        ticker="029960",
+        isu_cd="KR7029960002",
+        market="KOSDAQ",
+        effective_from=pd.Timestamp("2010-01-04"),
+        effective_to=pd.Timestamp("2025-05-29"),
+    )
+    event = _confirmed_cash_event(segment, event_evidence_status="CHECK_REQUIRED")
+
+    unchanged, applied = runner._apply_lifecycle_event(
+        _open_lifecycle_row(segment),
+        segment=segment,
+        event=event,
+        cutoff_date=pd.Timestamp("2025-05-30"),
+        source_daily=_daily([100.0, 101.0]),
+        calendar=_lifecycle_calendar(),
+    )
+
+    assert not applied
+    assert "lifecycle_state" not in unchanged
+    assert unchanged["terminal_return"] == 0.0
+
+
+def test_typed_lifecycle_event_rejects_wrong_source_ticker_or_market():
+    segment = IdentitySegment(
+        ticker="029960",
+        isu_cd="KR7029960002",
+        market="KOSDAQ",
+        effective_from=pd.Timestamp("2010-01-04"),
+        effective_to=pd.Timestamp("2025-05-29"),
+    )
+    for override in ({"ticker": "000001"}, {"market": "KOSPI"}):
+        with pytest.raises(RuntimeError, match="lifecycle source identity mismatch"):
+            runner._apply_lifecycle_event(
+                _open_lifecycle_row(segment),
+                segment=segment,
+                event=_confirmed_cash_event(segment, **override),
+                cutoff_date=pd.Timestamp("2025-05-30"),
+                source_daily=_daily([100.0, 101.0]),
+                calendar=_lifecycle_calendar(),
+            )
+
+
+def test_lifecycle_event_uses_stable_isu_and_validates_ticker_market_at_event_context():
+    entry_segment = IdentitySegment(
+        ticker="000001",
+        isu_cd="KR7000000001",
+        market="KOSDAQ",
+        effective_from=pd.Timestamp("2025-01-01"),
+        effective_to=pd.Timestamp("2025-05-29"),
+    )
+    event_segment = IdentitySegment(
+        ticker="000002",
+        isu_cd="KR7000000001",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2025-05-30"),
+        effective_to=pd.Timestamp("2025-12-31"),
+    )
+    event = {
+        **_confirmed_cash_event(entry_segment),
+        "ticker": "000002",
+        "market": "KOSPI",
+        "source_ticker": "000002",
+        "source_market": "KOSPI",
+    }
+
+    matched = runner._confirmed_lifecycle_event_for_segment(
+        entry_segment,
+        (event,),
+        pd.Timestamp("2025-06-02"),
+        {"000001": (entry_segment,), "000002": (event_segment,)},
+    )
+    assert matched["isu_cd"] == entry_segment.stable_security_id
+    assert matched["ticker"] == "000002"
+
+    with pytest.raises(RuntimeError, match="conflicts with PIT identity at event date"):
+        runner._confirmed_lifecycle_event_for_segment(
+            entry_segment,
+            ({**event, "ticker": "000003", "source_ticker": "000003"},),
+            pd.Timestamp("2025-06-02"),
+            {"000001": (entry_segment,), "000002": (event_segment,)},
+        )
+
+
+def test_typed_share_exchange_carries_only_economics_and_requires_successor_cutoff_price():
+    segment = IdentitySegment(
+        ticker="000001",
+        isu_cd="KR7000000001",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2020-01-01"),
+        effective_to=pd.Timestamp("2025-12-31"),
+    )
+    event = {
+        "evidence_id": "exchange-fixture",
+        "event_evidence_status": "CONFIRMED",
+        "economic_terms_status": "CONFIRMED",
+        "ticker": segment.ticker,
+        "isu_cd": segment.isu_cd,
+        "market": segment.market,
+        "event_type": "MANDATORY_SHARE_EXCHANGE",
+        "event_effective_date": "2025-05-30",
+        "source_published_date": "2025-05-01",
+        "successor_ticker": "999999",
+        "successor_isu_cd": "KR7999990009",
+        "successor_market": "KOSPI",
+        "conversion_ratio": 0.25,
+        "successor_available_date": "2025-06-02",
+        "fractional_cash_rule": "CASH_PER_SOURCE_SHARE",
+        "fractional_cash_per_source_share": 5.0,
+    }
+    successor_daily = pd.DataFrame(
+        {"open": [118.0], "high": [125.0], "low": [115.0], "close": [120.0]},
+        index=pd.to_datetime(["2025-06-02"]),
+    )
+    row = _open_lifecycle_row(segment)
+    row["pattern_a_stage_at_cutoff"] = "WEAK"
+    row["candidate_action"] = "CONTROL_PRESERVED"
+
+    valued, applied = runner._apply_lifecycle_event(
+        row,
+        segment=segment,
+        event=event,
+        cutoff_date=pd.Timestamp("2025-06-02"),
+        source_daily=_daily([100.0, 101.0]),
+        calendar=_lifecycle_calendar(),
+        successor_daily=successor_daily,
+        successor_identity_validated=True,
+    )
+
+    assert applied
+    assert valued["lifecycle_state"] == "SUCCESSOR_POSITION"
+    assert valued["successor_quantity"] == 0.25
+    assert valued["fractional_cash"] == 5.0
+    assert valued["terminal_valuation_price"] == 35.0
+    assert valued["terminal_return"] == -65.0
+    assert valued["pattern_a_stage_at_cutoff"] == "WEAK"
+    assert valued["candidate_action"] == "CONTROL_PRESERVED"
+
+    pending, applied = runner._apply_lifecycle_event(
+        row,
+        segment=segment,
+        event=event,
+        cutoff_date=pd.Timestamp("2025-06-03"),
+        source_daily=_daily([100.0, 101.0]),
+        calendar=_lifecycle_calendar(),
+        successor_daily=successor_daily,
+        successor_identity_validated=True,
+    )
+    assert applied
+    assert pending["lifecycle_state"] == "SUCCESSOR_PENDING"
+    assert pending["terminal_return"] is None
+
+
+def test_optional_right_never_uses_offer_price_and_liquidation_is_unresolved():
+    segment = IdentitySegment(
+        ticker="000001",
+        isu_cd="KR7000000001",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2020-01-01"),
+        effective_to=pd.Timestamp("2025-12-31"),
+    )
+    optional = {
+        "evidence_id": "optional-fixture",
+        "event_evidence_status": "CONFIRMED",
+        "economic_terms_status": "UNRESOLVED",
+        "ticker": segment.ticker,
+        "isu_cd": segment.isu_cd,
+        "market": segment.market,
+        "event_type": "OPTIONAL_RIGHT",
+        "event_effective_date": "2025-05-30",
+        "source_published_date": "2025-05-01",
+        "holder_action_required": True,
+        "offer_price": 999.0,
+        "delisting_date": "2025-05-30",
+    }
+    unresolved, applied = runner._apply_lifecycle_event(
+        _open_lifecycle_row(segment),
+        segment=segment,
+        event=optional,
+        cutoff_date=pd.Timestamp("2025-06-02"),
+        source_daily=_daily([100.0, 101.0]),
+        calendar=_lifecycle_calendar(),
+    )
+    assert applied
+    assert unresolved["lifecycle_state"] == "UNRESOLVED_POST_DELIST_VALUE"
+    assert unresolved["terminal_return"] is None
+    assert unresolved["terminal_valuation_price"] is None
+
+    still_listed, applied = runner._apply_lifecycle_event(
+        _open_lifecycle_row(segment),
+        segment=segment,
+        event={key: value for key, value in optional.items() if key != "delisting_date"},
+        cutoff_date=pd.Timestamp("2025-06-02"),
+        source_daily=_daily([100.0, 101.0]),
+        calendar=_lifecycle_calendar(),
+    )
+    assert not applied
+    assert still_listed["terminal_return"] == 0.0
+    assert still_listed.get("settlement_price") is None
+
+    liquidation, applied = runner._apply_lifecycle_event(
+        _open_lifecycle_row(segment),
+        segment=segment,
+        event={**optional, "event_type": "LIQUIDATION_UNRESOLVED", "evidence_id": "liquidation-fixture"},
+        cutoff_date=pd.Timestamp("2025-06-02"),
+        source_daily=_daily([100.0, 101.0]),
+        calendar=_lifecycle_calendar(),
+    )
+    assert applied
+    assert liquidation["lifecycle_state"] == "UNRESOLVED_SETTLEMENT"
+    assert liquidation["terminal_return"] is None
+
+
+def test_v02_catalog_preserves_all_22_roster_entries_with_split_statuses():
+    records = runner._load_lifecycle_event_evidence(runner.LIFECYCLE_EVENT_EVIDENCE_V02_PATH)
+    type_counts = {}
+    for record in records:
+        type_counts[record["event_type"]] = type_counts.get(record["event_type"], 0) + 1
+
+    assert len(records) == 22
+    assert type_counts == {
+        "MANDATORY_CASH": 5,
+        "MANDATORY_SHARE_EXCHANGE": 13,
+        "OPTIONAL_RIGHT": 3,
+        "LIQUIDATION_UNRESOLVED": 1,
+    }
+    assert {record["event_evidence_status"] for record in records} == {"CONFIRMED"}
+    audit_counts = {}
+    for record in records:
+        audit_counts[record["audit_classification"]] = audit_counts.get(record["audit_classification"], 0) + 1
+    assert audit_counts == {
+        "SETTLEMENT_CONFIRMED": 17,
+        "LIFECYCLE_EVENT_CONFIRMED": 3,
+        "CHECK_REQUIRED": 2,
+    }
+    assert {record["economic_terms_status"] for record in records} <= {
+        "CONFIRMED",
+        "PARTIAL",
+        "UNRESOLVED",
+        "NOT_APPLICABLE",
+    }
+    by_ticker = {record["ticker"]: record for record in records}
+    assert by_ticker["029960"]["event_evidence_status"] == "CONFIRMED"
+    assert by_ticker["029960"]["economic_terms_status"] == "CONFIRMED"
+    assert by_ticker["029960"]["payment_date"] == "2025-06-20"
+    assert by_ticker["029960"]["payment_date_known_from"] == "2025-06-10"
+    for ticker, event_date, amount, payment_date in (
+        ("115390", "2024-11-22", 8750, "2024-12-06"),
+        ("138580", "2024-11-08", 15849, "2024-11-29"),
+        ("230360", "2026-06-15", 16000, "2026-07-09"),
+    ):
+        record = by_ticker[ticker]
+        assert record["event_evidence_status"] == "CONFIRMED"
+        assert record["economic_terms_status"] == "CONFIRMED"
+        assert record["event_effective_date"] == event_date
+        assert record["cash_consideration_per_source_share"] == amount
+        assert record["payment_date"] == payment_date
+    locknlock = by_ticker["115390"]
+    assert locknlock["source_published_date"] == "2024-08-30"
+    assert len(locknlock["official_source_refs"]) == 3
+    assert "2024-11-24" in locknlock["official_source_refs"][2]["supports"][0]
+    assert by_ticker["006390"]["event_evidence_status"] == "CONFIRMED"
+    assert by_ticker["006390"]["economic_terms_status"] == "PARTIAL"
+    assert by_ticker["096300"]["event_evidence_status"] == "CONFIRMED"
+    assert by_ticker["096300"]["economic_terms_status"] == "UNRESOLVED"
+    assert "successor_ticker" in by_ticker["006390"]["unresolved_fields"]
+    assert "distribution_per_share" in by_ticker["096300"]["unresolved_fields"]
+    for ticker in ("005390", "335890", "950110"):
+        assert by_ticker[ticker]["event_type"] == "OPTIONAL_RIGHT"
+        assert by_ticker[ticker]["requires_holder_action"] is True
+        assert by_ticker[ticker]["offer_price"] > 0
+
+    combined = runner._load_lifecycle_event_catalog()
+    assert len(combined) == 23
+    assert combined[0]["isu_cd"] == "KR7010420008"
+    assert sum(record.get("event_evidence_status") == "CONFIRMED" for record in combined) == 23
+
+
+def test_029960_catalog_retains_later_payment_fact_without_cutoff_lookahead():
+    segment = IdentitySegment(
+        ticker="029960",
+        isu_cd="KR7029960002",
+        market="KOSDAQ",
+        effective_from=pd.Timestamp("2010-01-04"),
+        effective_to=pd.Timestamp("2025-05-29"),
+    )
+    event = next(
+        record
+        for record in runner._load_lifecycle_event_evidence(runner.LIFECYCLE_EVENT_EVIDENCE_V02_PATH)
+        if record["ticker"] == "029960"
+    )
+    source_daily = pd.DataFrame(
+        {
+            "open": [10000.0, 10000.0],
+            "high": [10100.0, 10200.0],
+            "low": [9900.0, 9800.0],
+            "close": [10000.0, 9900.0],
+        },
+        index=pd.to_datetime(["2025-05-28", "2025-05-29"]),
+    )
+
+    early, applied = runner._apply_lifecycle_event(
+        _open_lifecycle_row(segment, entry_open=10000.0),
+        segment=segment,
+        event=event,
+        cutoff_date=pd.Timestamp("2025-05-30"),
+        source_daily=source_daily,
+        calendar=_lifecycle_calendar(),
+    )
+    assert applied
+    assert early["lifecycle_state"] == "SETTLEMENT_PENDING"
+    assert early["settlement_date"] is None
+    assert early["terminal_valuation_price"] == 9000.0
+    assert early["terminal_return"] == -10.0
+
+    later, applied = runner._apply_lifecycle_event(
+        _open_lifecycle_row(segment, entry_open=10000.0),
+        segment=segment,
+        event=event,
+        cutoff_date=pd.Timestamp("2025-06-25"),
+        source_daily=source_daily,
+        calendar=_lifecycle_calendar(),
+    )
+    assert applied
+    assert later["lifecycle_state"] == "SETTLED"
+    assert later["settlement_date"] == "2025-06-20"
+    assert later["terminal_valuation_date"] == "2025-06-20"
+    assert later["terminal_valuation_price"] == 9000.0
+
+@pytest.mark.parametrize("window_id", ["P2-1", "P2-2", "P3-1"])
+@pytest.mark.parametrize("event_type", ["MANDATORY_CASH", "MANDATORY_SHARE_EXCHANGE"])
+def test_lifecycle_strategy_horizon_stops_source_signal_simulation_before_action(
+    monkeypatch,
+    window_id,
+    event_type,
+):
+    segment = IdentitySegment(
+        ticker="029960",
+        isu_cd="KR7029960002",
+        market="KOSDAQ",
+        effective_from=pd.Timestamp("2025-01-01"),
+        effective_to=pd.Timestamp("2025-05-29"),
+    )
+    full_daily = pd.DataFrame(
+        {"open": [100.0, 101.0, 80.0, 81.0, 82.0], "high": [101.0, 102.0, 81.0, 82.0, 83.0],
+         "low": [99.0, 100.0, 79.0, 80.0, 81.0], "close": [100.0, 101.0, 80.0, 81.0, 82.0]},
+        index=pd.to_datetime(["2025-05-28", "2025-05-29", "2025-05-30", "2025-06-02", "2025-06-03"]),
+    )
+    captured = {}
+
+    class FakeLoader:
+        def __init__(self, repository, *, start, end):
+            self.load_count = 0
+
+        def load(self, ticker):
+            self.load_count += 1
+            return full_daily.copy()
+
+    class FakeRecord:
+        entry_signal_date = "2025-05-28"
+        entry_execution_date = "2025-05-29"
+        entry_open = 101.0
+        trade_id = "029960_01"
+        exit_signal_date = None
+        exit_execution_date = None
+        first_progressed_effective_trading_date = None
+
+        def to_dict(self):
+            return {
+                "ticker": "029960", "name": "029960", "market": "KOSDAQ", "trade_id": self.trade_id,
+                "trade_sequence": 1, "entry_signal_date": self.entry_signal_date,
+                "entry_execution_date": self.entry_execution_date, "entry_open": self.entry_open,
+                "entry_pattern_a_stage": "EARLY_TREND", "first_progressed_effective_trading_date": None,
+                "exit_type": "NO_EXIT", "exit_signal_date": None, "exit_execution_date": None,
+                "exit_price": None, "terminal_return": 0.0, "mfe": 0.0, "mae": 0.0,
+                "peak_giveback": 0.0, "profit_capture": None, "holding_weeks": 0.4,
+                "trade_status": "OPEN_AT_CUTOFF",
+            }
+
+    def fake_simulator(**kwargs):
+        captured["last_source_date"] = kwargs["daily"].index.max().strftime("%Y-%m-%d")
+        captured["signal_cutoff_date"] = kwargs["signal_cutoff_date"]
+        captured["execution_support_date"] = kwargs["execution_support_date"]
+        captured["entry_execution_cutoff_date"] = kwargs["entry_execution_cutoff_date"]
+        return [FakeRecord()]
+
+    monkeypatch.setattr(runner, "RepositoryV2DailyLoader", FakeLoader)
+    monkeypatch.setattr(runner.v2, "build_precomputed_ticker_context", lambda *args: object())
+    monkeypatch.setattr(runner.v2, "simulate_ticker_core_v02_reentry", fake_simulator)
+    event = _confirmed_cash_event(segment)
+    event["source_identity_context_verified"] = True
+    segments_by_ticker = {"029960": (segment,)}
+    expected_lifecycle_state = "SETTLEMENT_PENDING"
+    if event_type == "MANDATORY_SHARE_EXCHANGE":
+        successor_segment = IdentitySegment(
+            ticker="001234",
+            isu_cd="KR7001230004",
+            market="KOSPI",
+            effective_from=pd.Timestamp("2025-05-30"),
+            effective_to=pd.Timestamp("2025-12-31"),
+        )
+        event.update(
+            {
+                "event_type": "MANDATORY_SHARE_EXCHANGE",
+                "successor_ticker": successor_segment.ticker,
+                "successor_isu_cd": successor_segment.isu_cd,
+                "successor_market": successor_segment.market,
+                "conversion_ratio": 1.0,
+                "successor_available_date": "2025-05-30",
+                "fractional_cash_rule": "NO_FRACTIONAL_CASH_REQUIRED",
+            }
+        )
+        segments_by_ticker[successor_segment.ticker] = (successor_segment,)
+        expected_lifecycle_state = "SUCCESSOR_POSITION"
+    run = SimpleNamespace(
+        window=SimpleNamespace(
+            window=SimpleNamespace(window_id=window_id),
+            effective_start=pd.Timestamp("2025-01-01"),
+            effective_end=pd.Timestamp("2025-06-02"),
+            execution_support=pd.Timestamp("2025-06-03"),
+        ),
+        segments_by_ticker=segments_by_ticker,
+        loader=SimpleNamespace(repository=object()),
+        score_contract={},
+        stage_contract={},
+        calendar=_lifecycle_calendar(),
+        lifecycle_settlements=(event,),
+    )
+
+    result = runner._process_ticker("029960", run)
+
+    assert captured["last_source_date"] == "2025-05-29"
+    assert captured["entry_execution_cutoff_date"] == pd.Timestamp("2025-05-29")
+    assert captured["signal_cutoff_date"] == pd.Timestamp("2025-06-02")
+    assert captured["execution_support_date"] == pd.Timestamp("2025-06-03")
+    assert result["control_rows"][0]["lifecycle_state"] == expected_lifecycle_state
+    assert result["candidate_rows"][0]["lifecycle_state"] == expected_lifecycle_state
+    assert runner._outcome_reason(result["control_rows"][0]) in {
+        "MANDATORY_CASH_CORPORATE_ACTION",
+        "MANDATORY_SHARE_EXCHANGE_SUCCESSOR_VALUE",
+    }
+    ledger = runner._build_matched_trade_ledger(
+        pd.DataFrame(result["control_rows"]),
+        pd.DataFrame(result["candidate_rows"]),
+        cutoff_date="2025-06-02",
+    )
+    assert ledger.loc[0, "control_exit_reason"] == ledger.loc[0, "candidate_exit_reason"]
+    assert ledger.loc[0, "control_lifecycle_state"] == expected_lifecycle_state
+    aggregates = runner._ledger_aggregates(ledger)
+    assert aggregates["control"]["lifecycle_state_counts"] == {expected_lifecycle_state: 1}

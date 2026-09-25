@@ -57,6 +57,7 @@ P3_1_RUN_DIR = ROOT / "artifacts/backtests/p3_1_neg40_weak_protect_v01" / P3_1_R
 LIFECYCLE_SETTLEMENT_EVIDENCE_PATH = (
     ROOT / "docs/strategies/p2_2_lifecycle_settlement_evidence_v01.json"
 )
+LIFECYCLE_EVENT_EVIDENCE_V02_PATH = ROOT / "docs/strategies/lifecycle_event_evidence_v02.json"
 WINDOW_ID = "P2-1"
 RUN_ID = P2_1_RUN_ID
 RUN_DIR = P2_1_RUN_DIR
@@ -274,6 +275,217 @@ def _load_lifecycle_settlement_evidence(path: Path) -> tuple[dict[str, Any], ...
     return tuple(accepted)
 
 
+def _load_lifecycle_event_evidence(path: Path) -> tuple[dict[str, Any], ...]:
+    """Load lifecycle facts separately from the completeness of their economics."""
+    if not path.is_file():
+        raise RuntimeError(f"lifecycle event evidence missing: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("schema") != "lifecycle_event_evidence_v02":
+        raise RuntimeError("lifecycle event evidence schema mismatch")
+    records = payload.get("records")
+    if not isinstance(records, list):
+        raise RuntimeError("lifecycle event evidence records must be a list")
+
+    event_types = {
+        "MANDATORY_CASH",
+        "MANDATORY_SHARE_EXCHANGE",
+        "OPTIONAL_RIGHT",
+        "LIQUIDATION_UNRESOLVED",
+    }
+    event_statuses = {"CONFIRMED", "CHECK_REQUIRED"}
+    economic_statuses = {"CONFIRMED", "PARTIAL", "UNRESOLVED", "NOT_APPLICABLE"}
+    required = {
+        "evidence_id",
+        "source_ticker",
+        "source_isu_cd",
+        "source_market",
+        "event_type",
+        "event_evidence_status",
+        "economic_terms_status",
+        "source_published_date",
+        "official_source_refs",
+        "unresolved_fields",
+    }
+    seen_ids: set[str] = set()
+    seen_identities: set[tuple[str, str]] = set()
+    accepted: list[dict[str, Any]] = []
+    for record in records:
+        if not isinstance(record, dict) or not required.issubset(record):
+            raise RuntimeError("lifecycle event evidence record is missing required fields")
+        ticker = str(record["source_ticker"]).zfill(6)
+        isu_cd = str(record["source_isu_cd"]).strip().upper()
+        market = str(record["source_market"]).strip().upper()
+        evidence_id = str(record["evidence_id"]).strip()
+        if not ticker.isdigit() or not isu_cd or not evidence_id:
+            raise RuntimeError("lifecycle event evidence is missing source identity")
+        if market not in {"KOSPI", "KOSDAQ", "KONEX"}:
+            raise RuntimeError(f"unsupported lifecycle source market: {market}")
+        event_evidence_status = record["event_evidence_status"]
+        economic_terms_status = record["economic_terms_status"]
+        if (
+            record["event_type"] not in event_types
+            or event_evidence_status not in event_statuses
+            or economic_terms_status not in economic_statuses
+        ):
+            raise RuntimeError("unsupported lifecycle event type or evidence status")
+        if evidence_id in seen_ids or (ticker, isu_cd) in seen_identities:
+            raise RuntimeError("duplicate lifecycle event id or source identity in v02 catalog")
+        seen_ids.add(evidence_id)
+        seen_identities.add((ticker, isu_cd))
+        refs = record["official_source_refs"]
+        if not isinstance(refs, list):
+            raise RuntimeError("lifecycle official_source_refs must be a list")
+        normalized_refs = []
+        for source in refs:
+            if not isinstance(source, dict) or not str(source.get("url", "")).startswith(
+                "https://kind.krx.co.kr/"
+            ):
+                raise RuntimeError("lifecycle provenance must point to official KRX KIND")
+            published_date = source.get("published_date")
+            if published_date:
+                try:
+                    pd.Timestamp(published_date).normalize()
+                except (TypeError, ValueError) as exc:
+                    raise RuntimeError("invalid lifecycle source published date") from exc
+            normalized_refs.append(dict(source))
+        unresolved_fields = record["unresolved_fields"]
+        if not isinstance(unresolved_fields, list) or any(
+            not isinstance(value, str) or not value for value in unresolved_fields
+        ):
+            raise RuntimeError("lifecycle unresolved_fields must be a list of non-empty strings")
+        source_published_date = record.get("source_published_date")
+        if source_published_date:
+            try:
+                pd.Timestamp(source_published_date).normalize()
+            except (TypeError, ValueError) as exc:
+                raise RuntimeError("invalid lifecycle source published date") from exc
+        for field, raw in record.items():
+            if field.endswith("_known_from") and raw:
+                try:
+                    pd.Timestamp(raw).normalize()
+                except (TypeError, ValueError) as exc:
+                    raise RuntimeError(f"invalid lifecycle fact known_from: {field}") from exc
+        if event_evidence_status == "CONFIRMED":
+            if not source_published_date or not normalized_refs:
+                raise RuntimeError("confirmed lifecycle event has incomplete publication provenance")
+            known_fields_by_value = {
+                "event_effective_date": "event_effective_date_known_from",
+                "cash_consideration_per_source_share": "cash_consideration_known_from",
+                "cash_per_share": "cash_consideration_known_from",
+                "payment_date": "payment_date_known_from",
+                "conversion_ratio": "conversion_ratio_known_from",
+                "successor_available_date": "successor_available_date_known_from",
+                "fractional_cash_rule": "fractional_cash_rule_known_from",
+                "delisting_date": "delisting_date_known_from",
+                "offer_price": "offer_price_known_from",
+            }
+            for value_field, known_field in known_fields_by_value.items():
+                if record.get(value_field) is not None and not record.get(known_field):
+                    raise RuntimeError(
+                        f"confirmed lifecycle fact has no known_from: {value_field}"
+                    )
+            if record["event_type"] == "OPTIONAL_RIGHT":
+                holder_action_known_from = record.get("requires_holder_action_known_from")
+                if not holder_action_known_from:
+                    raise RuntimeError("confirmed optional right has no holder-action known_from")
+            _validate_confirmed_lifecycle_event(
+                {
+                    **record,
+                    "event_evidence_status": event_evidence_status,
+                    "economic_terms_status": economic_terms_status,
+                }
+            )
+        accepted.append(
+            {
+                **record,
+                "ticker": ticker,
+                "isu_cd": isu_cd,
+                "market": market,
+                "event_evidence_status": event_evidence_status,
+                "economic_terms_status": economic_terms_status,
+                "official_source_refs": normalized_refs,
+            }
+        )
+    return tuple(accepted)
+
+
+def _validate_confirmed_lifecycle_event(record: Mapping[str, Any]) -> None:
+    """Validate confirmed event facts without conflating them with incomplete terms."""
+    for field in ("event_effective_date", "source_published_date"):
+        if not record.get(field):
+            raise RuntimeError(f"confirmed lifecycle event is missing {field}")
+        try:
+            pd.Timestamp(record[field]).normalize()
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError(f"invalid lifecycle date: {field}") from exc
+    if not record.get("official_source_refs"):
+        raise RuntimeError("confirmed lifecycle event has no official source refs")
+    if record["event_type"] == "OPTIONAL_RIGHT" and record.get(
+        "requires_holder_action", record.get("holder_action_required")
+    ) is not True:
+        raise RuntimeError("optional right must explicitly require holder action")
+    if record.get("source_identity_context_verified") is not True:
+        raise RuntimeError("confirmed lifecycle event lacks verified source identity context")
+    terms_status = str(record["economic_terms_status"])
+    if record["event_type"] == "MANDATORY_CASH" and terms_status == "CONFIRMED":
+        amount = float(
+            record.get(
+                "cash_consideration_per_source_share",
+                record.get("cash_per_share", 0),
+            )
+            or 0
+        )
+        if not np.isfinite(amount) or amount <= 0 or not record.get("payment_date"):
+            raise RuntimeError("confirmed mandatory cash event lacks amount or payment date")
+        pd.Timestamp(record["payment_date"]).normalize()
+    elif record["event_type"] == "MANDATORY_SHARE_EXCHANGE" and terms_status == "CONFIRMED":
+        ratio = float(record.get("conversion_ratio", 0) or 0)
+        if (
+            not np.isfinite(ratio)
+            or ratio <= 0
+            or not record.get("successor_ticker")
+            or not record.get("successor_isu_cd")
+            or not record.get("successor_market")
+            or not record.get("successor_available_date")
+        ):
+            raise RuntimeError("confirmed share exchange lacks successor identity/economics")
+        if not record.get("fractional_cash_rule"):
+            raise RuntimeError("confirmed share exchange lacks a fractional-share cash rule")
+        pd.Timestamp(record["successor_available_date"]).normalize()
+    elif record["event_type"] == "LIQUIDATION_UNRESOLVED" and terms_status == "CONFIRMED":
+        raise RuntimeError("unresolved liquidation cannot have confirmed economic terms")
+
+
+def _lifecycle_event_evidence_status(event: Mapping[str, Any]) -> str:
+    """Read split v02 status while retaining compatibility with focused legacy fixtures."""
+    status = event.get("event_evidence_status")
+    if status is None:
+        status = event.get("evidence_status", "CHECK_REQUIRED")
+    return str(status)
+
+
+def _lifecycle_economic_terms_status(event: Mapping[str, Any]) -> str:
+    """Legacy confirmed fixtures represent complete terms; v02 records are explicit."""
+    status = event.get("economic_terms_status")
+    if status is None:
+        return "CONFIRMED" if event.get("evidence_status") == "CONFIRMED" else "UNRESOLVED"
+    return str(status)
+
+
+def _load_lifecycle_event_catalog() -> tuple[dict[str, Any], ...]:
+    """Keep the v01 cash evidence intact while exposing v02 events to all matched windows."""
+    legacy = tuple(
+        {
+            **record,
+            "event_evidence_status": "CONFIRMED",
+            "economic_terms_status": "CONFIRMED",
+        }
+        for record in _load_lifecycle_settlement_evidence(LIFECYCLE_SETTLEMENT_EVIDENCE_PATH)
+    )
+    typed = _load_lifecycle_event_evidence(LIFECYCLE_EVENT_EVIDENCE_V02_PATH)
+    return (*legacy, *typed)
+
+
 def _extension_content_digest(items: Sequence[Any]) -> str:
     blob = json.dumps(list(items), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
@@ -416,10 +628,8 @@ def _load_context(window_id: str | None = None) -> RunContext:
         authority, authority_coverage_start, authority_coverage_end = _load_p2_2_extended_identity_authority(
             authority
         )
-    if selected_window in {"P2-2", "P3-1"}:
-        lifecycle_settlements = _load_lifecycle_settlement_evidence(
-            LIFECYCLE_SETTLEMENT_EVIDENCE_PATH
-        )
+    if selected_window in {"P2-1", "P2-2", "P3-1"}:
+        lifecycle_settlements = _load_lifecycle_event_catalog()
     else:
         lifecycle_settlements = ()
     segments: list[IdentitySegment] = []
@@ -799,6 +1009,394 @@ def _apply_lifecycle_settlement(
     return settled_row, True
 
 
+def _event_effective_date(record: Mapping[str, Any]) -> pd.Timestamp | None:
+    raw = record.get("event_effective_date") or record.get("settlement_date")
+    return pd.Timestamp(raw).normalize() if raw else None
+
+
+def _lifecycle_fact_known_from(record: Mapping[str, Any], fact: str) -> pd.Timestamp | None:
+    known_from_fields = {
+        "event_effective_date": ("event_effective_date_known_from",),
+        "cash_consideration": ("cash_consideration_known_from",),
+        "payment_date": ("payment_date_known_from",),
+        "conversion_ratio": ("conversion_ratio_known_from", "share_conversion_ratio_known_from"),
+        "successor_available_date": ("successor_available_date_known_from",),
+        "fractional_cash_rule": ("fractional_cash_rule_known_from",),
+        "offer_price": ("offer_price_known_from",),
+        "delisting_date": ("delisting_date_known_from",),
+        "requires_holder_action": ("requires_holder_action_known_from",),
+        "successor_identity": ("successor_identity_known_from",),
+    }
+    raw = next(
+        (record[field] for field in known_from_fields.get(fact, ()) if record.get(field)),
+        record.get("source_published_date"),
+    )
+    return pd.Timestamp(raw).normalize() if raw else None
+
+
+def _lifecycle_fact_known_as_of(
+    record: Mapping[str, Any],
+    fact: str,
+    cutoff_date: pd.Timestamp,
+) -> bool:
+    known_from = _lifecycle_fact_known_from(record, fact)
+    return known_from is None or known_from <= pd.Timestamp(cutoff_date).normalize()
+
+
+def _lifecycle_trading_days(
+    calendar: Any,
+    start_date: pd.Timestamp,
+    end_date: pd.Timestamp,
+) -> int:
+    dates = getattr(calendar, "trading_dates", None)
+    if dates is None:
+        raise RuntimeError("lifecycle holding period requires the authoritative KRX trading calendar")
+    normalized = pd.DatetimeIndex(pd.to_datetime(dates)).normalize()
+    return int(((normalized >= start_date.normalize()) & (normalized <= end_date.normalize())).sum())
+
+
+def _mark_unresolved_lifecycle(
+    row: dict[str, Any],
+    *,
+    lifecycle_state: str,
+    event: Mapping[str, Any],
+    reason: str,
+) -> dict[str, Any]:
+    row.update(
+        {
+            "lifecycle_state": lifecycle_state,
+            "lifecycle_evidence_id": event.get("evidence_id"),
+            "lifecycle_unresolved_reason": reason,
+            "terminal_return": None,
+            "terminal_valuation_date": None,
+            "terminal_valuation_price": None,
+            "terminal_valuation_source": None,
+            "terminal_valuation_at_cutoff": False,
+            "execution_support_missing": False,
+        }
+    )
+    return row
+
+
+def _refresh_lifecycle_economic_metrics(
+    row: dict[str, Any],
+    *,
+    source_daily: pd.DataFrame,
+    successor_daily: pd.DataFrame | None,
+    entry_date: pd.Timestamp,
+    entry_open: float,
+    terminal_value: float,
+    valuation_date: pd.Timestamp,
+    calendar: Any,
+    successor_quantity: float = 0.0,
+    fractional_cash: float = 0.0,
+) -> None:
+    source_holding = source_daily[
+        (source_daily.index >= entry_date) & (source_daily.index < valuation_date)
+    ]
+    highs = source_holding["high"].astype(float).tolist() if not source_holding.empty else [entry_open]
+    lows = source_holding["low"].astype(float).tolist() if not source_holding.empty else [entry_open]
+    if successor_daily is not None and not successor_daily.empty and successor_quantity > 0:
+        successor_holding = successor_daily[successor_daily.index <= valuation_date]
+        highs.extend((successor_holding["high"].astype(float) * successor_quantity + fractional_cash).tolist())
+        lows.extend((successor_holding["low"].astype(float) * successor_quantity + fractional_cash).tolist())
+    highs.append(terminal_value)
+    lows.append(terminal_value)
+    terminal = _pct(terminal_value, entry_open)
+    mfe = round((max(highs) / entry_open - 1.0) * 100.0, 2)
+    mae = round((min(lows) / entry_open - 1.0) * 100.0, 2)
+    held_days = _lifecycle_trading_days(calendar, entry_date, valuation_date)
+    row.update(
+        {
+            "terminal_return": terminal,
+            "mfe": mfe,
+            "mae": mae,
+            "peak_giveback": round(mfe - terminal, 2),
+            "profit_capture": round(terminal / mfe, 4) if mfe > 0 else None,
+            "holding_days": held_days,
+            "holding_weeks": round(held_days / 5.0, 1),
+        }
+    )
+
+
+def _apply_lifecycle_event(
+    row: Mapping[str, Any],
+    *,
+    segment: IdentitySegment,
+    event: Mapping[str, Any],
+    cutoff_date: pd.Timestamp,
+    source_daily: pd.DataFrame,
+    calendar: Any,
+    successor_daily: pd.DataFrame | None = None,
+    successor_identity_validated: bool = False,
+    source_identity_validated: bool = False,
+) -> tuple[dict[str, Any], bool]:
+    """Apply one fully typed v02 action without carrying strategy state into a successor."""
+    updated = dict(row)
+    event_type = str(event.get("event_type") or "")
+    if _lifecycle_event_evidence_status(event) != "CONFIRMED":
+        return updated, False
+    effective_date = _event_effective_date(event)
+    if effective_date is None or effective_date > pd.Timestamp(cutoff_date).normalize():
+        return updated, False
+    if not _lifecycle_fact_known_as_of(event, "event_effective_date", cutoff_date):
+        return updated, False
+    if str(event.get("isu_cd", event.get("source_isu_cd", ""))).strip().upper() != segment.stable_security_id:
+        raise RuntimeError(f"lifecycle stable ISU mismatch: event={event.get('evidence_id')} segment={segment.key}")
+    if not source_identity_validated and (
+        str(event.get("ticker", event.get("source_ticker", ""))).zfill(6) != segment.ticker
+        or str(event.get("market", event.get("source_market", ""))).strip().upper() != segment.market
+    ):
+        raise RuntimeError(
+            "lifecycle source identity mismatch: "
+            f"event={event.get('evidence_id')} segment={segment.key}"
+        )
+    entry_date = pd.Timestamp(updated["entry_execution_date"]).normalize()
+    if effective_date < entry_date:
+        raise RuntimeError(f"lifecycle event predates matched entry: pair_id={updated.get('pair_id')}")
+    pre_event_source_daily = source_daily[source_daily.index < effective_date]
+
+    status = str(updated.get("trade_status") or "")
+    execution_date = updated.get("exit_execution_date")
+    if status == "REALIZED":
+        if execution_date is None or pd.isna(execution_date) or not str(execution_date):
+            raise RuntimeError("REALIZED trade has no execution date before lifecycle event")
+        if pd.Timestamp(execution_date).normalize() <= effective_date:
+            return updated, False
+        raise RuntimeError(
+            "market exit execution occurs after mandatory lifecycle event: "
+            f"pair_id={updated.get('pair_id')} event={effective_date:%Y-%m-%d}"
+        )
+    if status not in {"OPEN_AT_CUTOFF", "UNEXECUTED_SIGNAL"}:
+        raise RuntimeError(f"unsupported trade state for lifecycle event: {status}")
+
+    if event_type == "MANDATORY_CASH":
+        raw_cash_per_share = event.get(
+            "cash_consideration_per_source_share",
+            event.get("cash_per_share"),
+        )
+        if raw_cash_per_share is not None and not _lifecycle_fact_known_as_of(
+            event, "cash_consideration", cutoff_date
+        ):
+            return _mark_unresolved_lifecycle(
+                updated,
+                lifecycle_state="UNRESOLVED_SETTLEMENT",
+                event=event,
+                reason="cash consideration was published after the replay cutoff",
+            ), True
+        try:
+            cash_per_share = float(raw_cash_per_share)
+        except (TypeError, ValueError):
+            cash_per_share = 0.0
+        terms_status = _lifecycle_economic_terms_status(event)
+        if not np.isfinite(cash_per_share) or cash_per_share <= 0:
+            return _mark_unresolved_lifecycle(
+                updated,
+                lifecycle_state="UNRESOLVED_SETTLEMENT",
+                event=event,
+                reason="cash consideration is not confirmed; no terminal value is imputed",
+            ), True
+        raw_payment_date = event.get("payment_date")
+        payment_date_known = raw_payment_date is not None and _lifecycle_fact_known_as_of(
+            event, "payment_date", cutoff_date
+        )
+        payment_date = (
+            pd.Timestamp(raw_payment_date).normalize()
+            if payment_date_known
+            else None
+        )
+        if terms_status == "UNRESOLVED":
+            return _mark_unresolved_lifecycle(
+                updated,
+                lifecycle_state="UNRESOLVED_SETTLEMENT",
+                event=event,
+                reason="mandatory cash economics are unresolved; no terminal value is imputed",
+            ), True
+        source_quantity = float(updated.get("source_quantity", 1.0))
+        receivable = cash_per_share * source_quantity
+        is_paid = (
+            terms_status == "CONFIRMED"
+            and payment_date is not None
+            and payment_date <= pd.Timestamp(cutoff_date).normalize()
+        )
+        valuation_date = (
+            payment_date if is_paid else pd.Timestamp(cutoff_date).normalize()
+        )
+        _refresh_lifecycle_economic_metrics(
+            updated,
+            source_daily=pre_event_source_daily,
+            successor_daily=None,
+            entry_date=entry_date,
+            entry_open=float(updated["entry_open"]),
+            terminal_value=receivable,
+            valuation_date=valuation_date,
+            calendar=calendar,
+        )
+        updated.update(
+            {
+                "lifecycle_state": "SETTLED" if is_paid else "SETTLEMENT_PENDING",
+                "lifecycle_evidence_id": event.get("evidence_id"),
+                "settlement_date": payment_date.strftime("%Y-%m-%d") if payment_date is not None else None,
+                "settlement_price": cash_per_share,
+                "settlement_type": "CASH_PER_SHARE",
+                "settlement_source": str(
+                    event.get("settlement_source")
+                    or next(
+                        (
+                            source.get("url")
+                            for source in event.get("official_source_refs", ())
+                            if source.get("url")
+                        ),
+                        "CONFIRMED_KRX_LIFECYCLE_EVIDENCE",
+                    )
+                ),
+                "terminal_reason": "MANDATORY_CASH_CORPORATE_ACTION",
+                "terminal_valuation_date": valuation_date.strftime("%Y-%m-%d"),
+                "terminal_valuation_price": receivable,
+                "terminal_valuation_source": "CONFIRMED_KRX_CASH_RECEIVABLE",
+                "terminal_valuation_at_cutoff": not is_paid,
+                "exit_execution_date": None,
+                "exit_price": None,
+                "execution_support_missing": False,
+            }
+        )
+        return updated, True
+
+    if event_type == "MANDATORY_SHARE_EXCHANGE":
+        if _lifecycle_economic_terms_status(event) != "CONFIRMED":
+            return _mark_unresolved_lifecycle(
+                updated,
+                lifecycle_state="UNRESOLVED_SUCCESSOR",
+                event=event,
+                reason="share-exchange event is confirmed but successor economics are incomplete",
+            ), True
+        for fact in ("conversion_ratio", "successor_available_date", "fractional_cash_rule"):
+            if event.get(fact) is not None and not _lifecycle_fact_known_as_of(
+                event, fact, cutoff_date
+            ):
+                return _mark_unresolved_lifecycle(
+                    updated,
+                    lifecycle_state="UNRESOLVED_SUCCESSOR",
+                    event=event,
+                    reason=f"{fact} was published after the replay cutoff",
+                ), True
+        successor_ticker = str(event.get("successor_ticker", "")).zfill(6)
+        successor_isu = str(event.get("successor_isu_cd", "")).strip().upper()
+        ratio = float(event.get("conversion_ratio", 0))
+        available_date = pd.Timestamp(event["successor_available_date"]).normalize()
+        source_quantity = float(updated.get("source_quantity", 1.0))
+        successor_quantity = source_quantity * ratio
+        fractional_units = successor_quantity - np.floor(successor_quantity)
+        fractional_rule = str(event.get("fractional_cash_rule", ""))
+        fractional_cash_per_source_share = event.get("fractional_cash_per_source_share")
+        if not successor_identity_validated or not successor_isu or not successor_ticker:
+            return _mark_unresolved_lifecycle(
+                updated,
+                lifecycle_state="UNRESOLVED_SUCCESSOR",
+                event=event,
+                reason="successor ISU/ticker/market could not be matched to the PIT identity authority",
+            ), True
+        if fractional_units > 1e-9 and fractional_cash_per_source_share is None:
+            if fractional_rule not in {"NO_FRACTIONAL_CASH_REQUIRED"}:
+                return _mark_unresolved_lifecycle(
+                    updated,
+                    lifecycle_state="UNRESOLVED_SUCCESSOR",
+                    event=event,
+                    reason="fractional successor entitlement has no confirmed cash-in-lieu amount",
+                ), True
+        fractional_cash = (
+            float(fractional_cash_per_source_share) * source_quantity
+            if fractional_cash_per_source_share is not None
+            else 0.0
+        )
+        if available_date > pd.Timestamp(cutoff_date).normalize():
+            return _mark_unresolved_lifecycle(
+                updated,
+                lifecycle_state="SUCCESSOR_PENDING",
+                event=event,
+                reason="successor position is not yet available by replay cutoff",
+            ), True
+        if successor_daily is None or successor_daily.empty:
+            return _mark_unresolved_lifecycle(
+                updated,
+                lifecycle_state="SUCCESSOR_PENDING",
+                event=event,
+                reason="successor has no authoritative Repository V2 price rows by cutoff",
+            ), True
+        successor_daily = successor_daily.sort_index()
+        valuation_rows = successor_daily[
+            (successor_daily.index >= available_date)
+            & (successor_daily.index <= pd.Timestamp(cutoff_date).normalize())
+        ]
+        if valuation_rows.empty or pd.Timestamp(valuation_rows.index[-1]).normalize() < pd.Timestamp(cutoff_date).normalize():
+            return _mark_unresolved_lifecycle(
+                updated,
+                lifecycle_state="SUCCESSOR_PENDING",
+                event=event,
+                reason="successor price is unavailable at the replay cutoff",
+            ), True
+        terminal_price = float(valuation_rows.iloc[-1]["close"])
+        terminal_value = terminal_price * successor_quantity + fractional_cash
+        _refresh_lifecycle_economic_metrics(
+            updated,
+            source_daily=pre_event_source_daily,
+            successor_daily=valuation_rows,
+            entry_date=entry_date,
+            entry_open=float(updated["entry_open"]),
+            terminal_value=terminal_value,
+            valuation_date=pd.Timestamp(valuation_rows.index[-1]).normalize(),
+            calendar=calendar,
+            successor_quantity=successor_quantity,
+            fractional_cash=fractional_cash,
+        )
+        updated.update(
+            {
+                "lifecycle_state": "SUCCESSOR_POSITION",
+                "lifecycle_evidence_id": event.get("evidence_id"),
+                "successor_ticker": successor_ticker,
+                "successor_isu_cd": successor_isu,
+                "successor_quantity": successor_quantity,
+                "successor_valuation_price": terminal_price,
+                "fractional_cash": fractional_cash,
+                "terminal_reason": "MANDATORY_SHARE_EXCHANGE_SUCCESSOR_VALUE",
+                "terminal_valuation_date": pd.Timestamp(valuation_rows.index[-1]).strftime("%Y-%m-%d"),
+                "terminal_valuation_price": terminal_value,
+                "terminal_valuation_source": "RepositoryV2DailyLoader.successor_close",
+                "terminal_valuation_at_cutoff": True,
+                "execution_support_missing": False,
+                "exit_execution_date": None,
+                "exit_price": None,
+            }
+        )
+        return updated, True
+
+    if event_type == "OPTIONAL_RIGHT":
+        if event.get("requires_holder_action", event.get("holder_action_required")) is not True:
+            raise RuntimeError("optional lifecycle right lacks explicit holder-action contract")
+        delisting_date = event.get("delisting_date")
+        delisting_known = delisting_date and _lifecycle_fact_known_as_of(
+            event, "delisting_date", cutoff_date
+        )
+        if delisting_known and pd.Timestamp(delisting_date).normalize() <= pd.Timestamp(cutoff_date).normalize():
+            return _mark_unresolved_lifecycle(
+                updated,
+                lifecycle_state="UNRESOLVED_POST_DELIST_VALUE",
+                event=event,
+                reason="optional offer is not an automatic terminal value and no post-delist value is confirmed",
+            ), True
+        return updated, False
+
+    if event_type == "LIQUIDATION_UNRESOLVED":
+        return _mark_unresolved_lifecycle(
+            updated,
+            lifecycle_state="UNRESOLVED_SETTLEMENT",
+            event=event,
+            reason="liquidation amount/payment date is unresolved; no terminal price is imputed",
+        ), True
+
+    raise RuntimeError(f"unsupported confirmed lifecycle event type: {event_type}")
+
+
 def _candidate_trade(
     base: Mapping[str, Any],
     *,
@@ -1039,6 +1637,90 @@ def _assert_entry_executions_within_effective_end(
         )
 
 
+def _confirmed_lifecycle_event_for_segment(
+    segment: IdentitySegment,
+    evidence: Sequence[Mapping[str, Any]],
+    cutoff_date: pd.Timestamp,
+    segments_by_ticker: Mapping[str, Sequence[IdentitySegment]],
+) -> Mapping[str, Any] | None:
+    matches = [
+        record
+        for record in evidence
+        if record.get("event_type") in {
+            "MANDATORY_CASH",
+            "MANDATORY_SHARE_EXCHANGE",
+            "OPTIONAL_RIGHT",
+            "LIQUIDATION_UNRESOLVED",
+        }
+        and str(record.get("isu_cd", record.get("source_isu_cd", ""))).strip().upper()
+        == segment.stable_security_id
+        and _lifecycle_event_evidence_status(record) == "CONFIRMED"
+        and _event_effective_date(record) is not None
+        and _event_effective_date(record) <= pd.Timestamp(cutoff_date).normalize()
+        and _lifecycle_fact_known_as_of(record, "event_effective_date", cutoff_date)
+    ]
+    if not matches:
+        return None
+    if len(matches) > 1:
+        raise RuntimeError(
+            "multiple confirmed lifecycle events match stable security identity: "
+            f"isu_cd={segment.stable_security_id}"
+        )
+    event = matches[0]
+    event_date = _event_effective_date(event)
+    source_ticker = str(event.get("ticker", event.get("source_ticker", ""))).zfill(6)
+    source_market = str(event.get("market", event.get("source_market", ""))).strip().upper()
+    same_isu_segments = [
+        item
+        for items in segments_by_ticker.values()
+        for item in items
+        if item.stable_security_id == segment.stable_security_id
+    ]
+    covering = [item for item in same_isu_segments if item.effective_from <= event_date <= item.effective_to]
+    exact_cover = any(
+        item.ticker == source_ticker and item.market == source_market for item in covering
+    )
+    if covering and not exact_cover:
+        raise RuntimeError(
+            "lifecycle source ticker/market conflicts with PIT identity at event date: "
+            f"event={event.get('evidence_id')} event_date={event_date:%Y-%m-%d}"
+        )
+    prior_context = any(
+        item.ticker == source_ticker
+        and item.market == source_market
+        and item.effective_from <= event_date
+        for item in same_isu_segments
+    )
+    if not exact_cover and not (
+        prior_context and event.get("source_identity_context_verified") is True
+    ):
+        raise RuntimeError(
+            "lifecycle source ticker/market lacks verified event identity context: "
+            f"event={event.get('evidence_id')}"
+        )
+    return event
+
+
+def _successor_identity_is_authoritative(
+    event: Mapping[str, Any],
+    segments_by_ticker: Mapping[str, Sequence[IdentitySegment]],
+) -> bool:
+    ticker = str(event.get("successor_ticker", "")).zfill(6)
+    isu_cd = str(event.get("successor_isu_cd", "")).strip().upper()
+    market = str(event.get("successor_market", "")).strip().upper()
+    raw_available = event.get("successor_available_date")
+    if not ticker or not isu_cd or not market or not raw_available:
+        return False
+    available = pd.Timestamp(raw_available).normalize()
+    return any(
+        segment.ticker == ticker
+        and segment.stable_security_id == isu_cd
+        and segment.market == market
+        and segment.effective_from <= available <= segment.effective_to
+        for segment in segments_by_ticker.get(ticker, ())
+    )
+
+
 def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
     started = time.perf_counter()
     control_rows: list[dict[str, Any]] = []
@@ -1070,18 +1752,60 @@ def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
             raise RuntimeError(f"no Repository V2 rows through the window support for {segment.key}")
         daily = daily.sort_index()
 
-        ticker_context = v2.build_precomputed_ticker_context(ticker, ticker, daily)
+        lifecycle_evidence = tuple(getattr(run, "lifecycle_settlements", ()))
+        typed_event = _confirmed_lifecycle_event_for_segment(
+            segment,
+            lifecycle_evidence,
+            window_effective_end,
+            run.segments_by_ticker,
+        )
+        strategy_daily = daily
+        strategy_cutoff = window_effective_end
+        strategy_execution_support = window_execution_support
+        if typed_event is not None:
+            event_effective = _event_effective_date(typed_event)
+            calendar_dates = pd.DatetimeIndex(pd.to_datetime(run.calendar.trading_dates)).normalize()
+            prior_sessions = calendar_dates[calendar_dates < event_effective]
+            if len(prior_sessions) == 0:
+                segments_seen += 1
+                continue
+            strategy_cutoff = min(window_effective_end, pd.Timestamp(prior_sessions[-1]).normalize())
+            strategy_execution_support = min(window_execution_support, strategy_cutoff)
+            strategy_daily = daily[daily.index < event_effective]
+            if strategy_daily.empty:
+                segments_seen += 1
+                continue
+
+        successor_daily: pd.DataFrame | None = None
+        successor_identity_validated = False
+        if typed_event is not None and typed_event.get("event_type") == "MANDATORY_SHARE_EXCHANGE":
+            successor_identity_validated = _successor_identity_is_authoritative(
+                typed_event,
+                run.segments_by_ticker,
+            )
+            successor_ticker = str(typed_event.get("successor_ticker", "")).zfill(6)
+            available_raw = typed_event.get("successor_available_date")
+            if successor_identity_validated and available_raw:
+                successor_loader = RepositoryV2DailyLoader(
+                    run.loader.repository,
+                    start=pd.Timestamp(available_raw).normalize(),
+                    end=window_effective_end,
+                )
+                successor_daily = successor_loader.load(successor_ticker)
+                repository_load_count += successor_loader.load_count
+
+        ticker_context = v2.build_precomputed_ticker_context(ticker, ticker, strategy_daily)
         entry_eligibility_cutoff = _common_entry_eligibility_cutoff(
             segment,
-            window_effective_end,
+            strategy_cutoff,
         )
-        if entry_eligibility_cutoff > window_effective_end:
-            raise RuntimeError("standard backtest runner entry eligibility exceeds window effective_end")
+        if entry_eligibility_cutoff > strategy_cutoff:
+            raise RuntimeError("standard backtest runner entry eligibility exceeds the active strategy horizon")
         base_records = v2.simulate_ticker_core_v02_reentry(
             ticker=ticker,
             name=ticker,
             market=segment.market,
-            daily=daily,
+            daily=strategy_daily,
             score_contract=run.score_contract,
             stage_contract=run.stage_contract,
             cutoff_date=window_effective_end,
@@ -1097,27 +1821,27 @@ def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
         stage_timeline: dict[pd.Timestamp, str] = {}
         if any(record.first_progressed_effective_trading_date for record in base_records):
             stage_timeline = _stage_timeline(
-                daily,
+                strategy_daily,
                 ticker_context,
                 run.window.effective_start,
-                run.window.effective_end,
+                strategy_cutoff,
                 run.calendar,
             )
 
         for record in base_records:
             base = record.to_dict()
             expected_entry = _next_local_session(
-                daily,
+                strategy_daily,
                 pd.Timestamp(record.entry_signal_date).normalize(),
-                run.window.execution_support,
+                strategy_execution_support,
             )
             if expected_entry is None or expected_entry.strftime("%Y-%m-%d") != record.entry_execution_date:
                 raise RuntimeError(f"V2 entry is not next local-session OPEN for {segment.key}/{record.trade_id}")
             if record.exit_signal_date and record.exit_execution_date:
                 expected_exit = _next_local_session(
-                    daily,
+                    strategy_daily,
                     pd.Timestamp(record.exit_signal_date).normalize(),
-                    run.window.execution_support,
+                    strategy_execution_support,
                 )
                 if expected_exit is None or expected_exit.strftime("%Y-%m-%d") != record.exit_execution_date:
                     raise RuntimeError(f"V2 exit is not next local-session OPEN for {segment.key}/{record.trade_id}")
@@ -1132,14 +1856,14 @@ def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
                     "strategy_id": V2_STRATEGY_ID,
                     "holding_days": int(
                         len(
-                            daily[
-                                (daily.index >= pd.Timestamp(record.entry_execution_date))
+                            strategy_daily[
+                                (strategy_daily.index >= pd.Timestamp(record.entry_execution_date))
                                 & (
-                                    daily.index
+                                    strategy_daily.index
                                     <= (
                                         pd.Timestamp(record.exit_execution_date)
                                         if record.exit_execution_date
-                                        else run.window.effective_end
+                                        else strategy_cutoff
                                     )
                                 )
                             ]
@@ -1148,9 +1872,9 @@ def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
                 }
             )
             if str(base_row.get("trade_status") or "").startswith("OPEN"):
-                terminal_rows = daily[
-                    (daily.index >= pd.Timestamp(record.entry_execution_date))
-                    & (daily.index <= run.window.effective_end)
+                terminal_rows = strategy_daily[
+                    (strategy_daily.index >= pd.Timestamp(record.entry_execution_date))
+                    & (strategy_daily.index <= strategy_cutoff)
                 ]
                 valuation_date = pd.Timestamp(terminal_rows.index[-1]).normalize() if not terminal_rows.empty else None
                 base_row.update(
@@ -1167,14 +1891,14 @@ def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
                 base,
                 pair_id=pair_id,
                 segment=segment,
-                daily=daily,
+                daily=strategy_daily,
                 stage_timeline=stage_timeline,
                 window=run.window,
             )
             if str(candidate_row.get("trade_status") or "") == "OPEN_AT_CUTOFF":
-                terminal_rows = daily[
-                    (daily.index >= pd.Timestamp(record.entry_execution_date))
-                    & (daily.index <= run.window.effective_end)
+                terminal_rows = strategy_daily[
+                    (strategy_daily.index >= pd.Timestamp(record.entry_execution_date))
+                    & (strategy_daily.index <= strategy_cutoff)
                 ]
                 valuation_date = pd.Timestamp(terminal_rows.index[-1]).normalize() if not terminal_rows.empty else None
                 candidate_row.update(
@@ -1187,33 +1911,65 @@ def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
                         ) if valuation_date is not None else False,
                     }
                 )
-            if getattr(getattr(run.window, "window", None), "window_id", None) in {"P2-2", "P3-1"}:
-                settlement_cutoff = pd.Timestamp(run.window.effective_end).normalize()
+            settlement_cutoff = window_effective_end
+            legacy_evidence = tuple(
+                item
+                for item in lifecycle_evidence
+                if item.get("settlement_type") == "CASH_PER_SHARE"
+                and str(item.get("isu_cd", "")).strip().upper() == segment.stable_security_id
+            )
+            if legacy_evidence:
                 control_settled, control_was_settled = _apply_lifecycle_settlement(
                     base_row,
                     segment=segment,
-                    evidence=getattr(run, "lifecycle_settlements", ()),
+                    evidence=legacy_evidence,
                     cutoff_date=settlement_cutoff,
                     daily=daily,
                 )
                 candidate_row, candidate_was_settled = _apply_lifecycle_settlement(
                     candidate_row,
                     segment=segment,
-                    evidence=getattr(run, "lifecycle_settlements", ()),
+                    evidence=legacy_evidence,
                     cutoff_date=settlement_cutoff,
                     daily=daily,
                 )
-                if control_was_settled != candidate_was_settled:
-                    raise RuntimeError(
-                        "matched CONTROL/Candidate lifecycle settlement parity failed: "
-                        f"pair_id={pair_id}"
-                    )
-                if candidate_was_settled:
-                    diag["lifecycle_settled"] = True
-                    diag["execution_support_missing"] = False
-                    diag["incremental_soft_exit"] = False
-                    candidate_row["incremental_soft_exit"] = False
-                base_row = control_settled
+            elif typed_event is not None:
+                control_settled, control_was_settled = _apply_lifecycle_event(
+                    base_row,
+                    segment=segment,
+                    event=typed_event,
+                    cutoff_date=settlement_cutoff,
+                    source_daily=daily,
+                    calendar=run.calendar,
+                    successor_daily=successor_daily,
+                    successor_identity_validated=successor_identity_validated,
+                    source_identity_validated=True,
+                )
+                candidate_row, candidate_was_settled = _apply_lifecycle_event(
+                    candidate_row,
+                    segment=segment,
+                    event=typed_event,
+                    cutoff_date=settlement_cutoff,
+                    source_daily=daily,
+                    calendar=run.calendar,
+                    successor_daily=successor_daily,
+                    successor_identity_validated=successor_identity_validated,
+                    source_identity_validated=True,
+                )
+            else:
+                control_settled, control_was_settled = dict(base_row), False
+                candidate_row, candidate_was_settled = dict(candidate_row), False
+            if control_was_settled != candidate_was_settled:
+                raise RuntimeError(
+                    "matched CONTROL/Candidate lifecycle settlement parity failed: "
+                    f"pair_id={pair_id}"
+                )
+            if control_was_settled:
+                diag["lifecycle_settled"] = True
+                diag["execution_support_missing"] = False
+                diag["incremental_soft_exit"] = False
+                candidate_row["incremental_soft_exit"] = False
+            base_row = control_settled
             control_rows.append(base_row)
             candidate_rows.append(candidate_row)
             diagnostics.append(diag)
@@ -1318,6 +2074,13 @@ def _metrics(frame: pd.DataFrame) -> dict[str, Any]:
         values = pd.to_numeric(frame["terminal_return"], errors="coerce").dropna()
         statuses = frame["trade_status"].fillna("").astype(str)
         holding = pd.to_numeric(frame["holding_days"], errors="coerce").dropna()
+    lifecycle_states = (
+        frame.get("lifecycle_state", pd.Series(index=frame.index, dtype=object))
+        .fillna("")
+        .astype(str)
+        if not frame.empty
+        else pd.Series(dtype=str)
+    )
     result: dict[str, Any] = {
         "trade_count": int(len(frame)),
         "positive_count": int((values > 0).sum()),
@@ -1325,6 +2088,10 @@ def _metrics(frame: pd.DataFrame) -> dict[str, Any]:
         "mean_terminal_return_pct": round(float(values.mean()), 4) if len(values) else None,
         "median_terminal_return_pct": round(float(values.median()), 4) if len(values) else None,
         "open_at_cutoff_count": int(statuses.str.startswith("OPEN").sum()),
+        "lifecycle_state_counts": {
+            str(state): int(count)
+            for state, count in lifecycle_states[lifecycle_states.ne("")].value_counts().sort_index().items()
+        },
         "holding_days_mean": round(float(holding.mean()), 4) if len(holding) else None,
         "holding_days_median": round(float(holding.median()), 4) if len(holding) else None,
         "tail_counts": {},
@@ -1367,11 +2134,23 @@ def _paired_summary(control: pd.DataFrame, candidate: pd.DataFrame) -> dict[str,
 
 def _outcome_date(row: Mapping[str, Any], cutoff_date: str) -> str:
     status = str(row.get("trade_status") or "")
+    lifecycle_state = str(row.get("lifecycle_state") or "")
     if status == "LIFECYCLE_SETTLED":
         settlement = row.get("settlement_date")
         if settlement is None or pd.isna(settlement) or not str(settlement):
             raise RuntimeError("LIFECYCLE_SETTLED outcome has no settlement_date")
         return str(settlement)
+    if lifecycle_state in {"SETTLEMENT_PENDING", "SUCCESSOR_PENDING", "SUCCESSOR_POSITION"}:
+        valuation_date = row.get("terminal_valuation_date")
+        if valuation_date is None or pd.isna(valuation_date) or not str(valuation_date):
+            return cutoff_date
+        return str(valuation_date)
+    if lifecycle_state in {
+        "UNRESOLVED_SETTLEMENT",
+        "UNRESOLVED_SUCCESSOR",
+        "UNRESOLVED_POST_DELIST_VALUE",
+    }:
+        return cutoff_date
     if status.startswith("OPEN"):
         return cutoff_date
     execution = row.get("exit_execution_date")
@@ -1385,11 +2164,17 @@ def _outcome_date(row: Mapping[str, Any], cutoff_date: str) -> str:
 
 def _outcome_reason(row: Mapping[str, Any]) -> str:
     status = str(row.get("trade_status") or "")
+    lifecycle_state = str(row.get("lifecycle_state") or "")
     if status == "LIFECYCLE_SETTLED":
         reason = row.get("terminal_reason")
         if reason is None or pd.isna(reason) or not str(reason):
             raise RuntimeError("LIFECYCLE_SETTLED outcome has no terminal_reason")
         return str(reason)
+    if lifecycle_state:
+        reason = row.get("terminal_reason")
+        if reason is not None and not pd.isna(reason) and str(reason):
+            return str(reason)
+        return lifecycle_state
     if status.startswith("OPEN"):
         return "OPEN_AT_CUTOFF"
     return str(row.get("exit_type") or status or "UNKNOWN")
@@ -1479,11 +2264,13 @@ def _build_matched_trade_ledger(
                 "candidate_trade_status": str(row["trade_status_candidate"]),
                 "candidate_action": str(row["candidate_action"]),
                 "control_terminal_reason": row.get("terminal_reason_control"),
+                "control_lifecycle_state": row.get("lifecycle_state_control"),
                 "control_settlement_date": row.get("settlement_date_control"),
                 "control_settlement_price": row.get("settlement_price_control"),
                 "control_settlement_type": row.get("settlement_type_control"),
                 "control_settlement_source": row.get("settlement_source_control"),
                 "candidate_terminal_reason": row.get("terminal_reason_candidate"),
+                "candidate_lifecycle_state": row.get("lifecycle_state_candidate"),
                 "candidate_settlement_date": row.get("settlement_date_candidate"),
                 "candidate_settlement_price": row.get("settlement_price_candidate"),
                 "candidate_settlement_type": row.get("settlement_type_candidate"),
@@ -1540,6 +2327,7 @@ def _ledger_aggregates(ledger: pd.DataFrame) -> dict[str, Any]:
             "trade_status": ledger["control_open_at_cutoff"].map(
                 lambda value: "OPEN_AT_CUTOFF" if bool(value) else "REALIZED"
             ),
+            "lifecycle_state": ledger.get("control_lifecycle_state", ""),
         }
     )
     candidate = pd.DataFrame(
@@ -1550,6 +2338,7 @@ def _ledger_aggregates(ledger: pd.DataFrame) -> dict[str, Any]:
             "trade_status": ledger["candidate_open_at_cutoff"].map(
                 lambda value: "OPEN_AT_CUTOFF" if bool(value) else "REALIZED"
             ),
+            "lifecycle_state": ledger.get("candidate_lifecycle_state", ""),
         }
     )
     return {
@@ -1668,16 +2457,25 @@ def _build_soft_event_ledger(
     for event in soft.loc[missing_execution].to_dict(orient="records"):
         candidate_row = candidate_by_pair.get(str(event["pair_id"]), {})
         has_confirmed_terminal = (
-            candidate_row.get("trade_status") == "LIFECYCLE_SETTLED"
-            and not bool(candidate_row.get("execution_support_missing"))
-            and all(
-                candidate_row.get(field) is not None
-                and not pd.isna(candidate_row.get(field))
-                and str(candidate_row.get(field))
-                for field in settlement_fields
+            (
+                candidate_row.get("trade_status") == "LIFECYCLE_SETTLED"
+                or candidate_row.get("lifecycle_state")
+                in {"SETTLEMENT_PENDING", "SETTLED", "SUCCESSOR_POSITION"}
             )
-            and pd.Timestamp(candidate_row["settlement_date"])
-            >= pd.Timestamp(event["date"])
+            and not bool(candidate_row.get("execution_support_missing"))
+            and (
+                candidate_row.get("lifecycle_state") == "SUCCESSOR_POSITION"
+                or all(
+                    candidate_row.get(field) is not None
+                    and not pd.isna(candidate_row.get(field))
+                    and str(candidate_row.get(field))
+                    for field in settlement_fields
+                )
+            )
+            and (
+                candidate_row.get("lifecycle_state") == "SUCCESSOR_POSITION"
+                or pd.Timestamp(candidate_row["settlement_date"]) >= pd.Timestamp(event["date"])
+            )
             and not bool(candidate_row.get("terminal_valuation_at_cutoff"))
         )
         if not has_confirmed_terminal:
@@ -1881,6 +2679,31 @@ def _validate_results(
         raise RuntimeError("duplicate matched pair_id found")
     if set(control["pair_id"]) != set(candidate["pair_id"]):
         raise RuntimeError("CONTROL/Candidate entry population mismatch")
+    unresolved_lifecycle_rows = []
+    for side, frame in (("CONTROL", control), ("Candidate", candidate)):
+        if "lifecycle_state" not in frame:
+            continue
+        states = frame["lifecycle_state"].fillna("").astype(str)
+        unresolved_mask = states.str.startswith("UNRESOLVED") | states.eq("SUCCESSOR_PENDING")
+        missing_value_mask = unresolved_mask & pd.to_numeric(
+            frame["terminal_return"], errors="coerce"
+        ).isna()
+        for index in frame.index[missing_value_mask]:
+            item = frame.loc[index]
+            unresolved_lifecycle_rows.append(
+                {
+                    "side": side,
+                    "pair_id": item.get("pair_id"),
+                    "ticker": item.get("ticker"),
+                    "lifecycle_state": states.loc[index],
+                    "reason": item.get("lifecycle_unresolved_reason"),
+                }
+            )
+    if unresolved_lifecycle_rows:
+        raise RuntimeError(
+            "lifecycle terminal valuation is unresolved; refusing to aggregate or emit a complete ledger: "
+            f"{unresolved_lifecycle_rows[:10]}"
+        )
     pairs = control.merge(candidate, on="pair_id", suffixes=("_control", "_candidate"), validate="one_to_one")
     for field in ("ticker", "isu_cd", "entry_signal_date", "entry_execution_date", "entry_open", "market"):
         left, right = pairs[f"{field}_control"], pairs[f"{field}_candidate"]
