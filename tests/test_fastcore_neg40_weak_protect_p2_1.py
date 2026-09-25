@@ -1885,6 +1885,17 @@ def test_v02_catalog_preserves_all_22_roster_entries_with_split_statuses():
     assert by_ticker["006390"]["economic_terms_status"] == "PARTIAL"
     assert by_ticker["096300"]["event_evidence_status"] == "CONFIRMED"
     assert by_ticker["096300"]["economic_terms_status"] == "UNRESOLVED"
+    assert by_ticker["096300"]["dissolution_date"] == "2023-02-01"
+    assert by_ticker["096300"]["dissolution_date_known_from"] == "2022-12-26"
+    assert by_ticker["096300"]["delisting_date"] == "2023-02-02"
+    assert by_ticker["096300"]["observed_facts"]["pre_liquidation_estimate_per_share"] == 72.58
+    assert by_ticker["096300"]["observed_facts"]["earlier_partial_cash_distribution_per_share"] == 150
+    assert "payment_date" not in by_ticker["096300"]
+    assert "liquidation_distribution_per_source_share" not in by_ticker["096300"]
+    assert any(
+        source["url"] == "https://kind.krx.co.kr/common/disclsviewer.do?acptno=20221226000898&method=search"
+        for source in by_ticker["096300"]["official_source_refs"]
+    )
     assert "successor_ticker" in by_ticker["006390"]["unresolved_fields"]
     assert "distribution_per_share" in by_ticker["096300"]["unresolved_fields"]
     for ticker in ("005390", "335890", "950110"):
@@ -1896,6 +1907,64 @@ def test_v02_catalog_preserves_all_22_roster_entries_with_split_statuses():
     assert len(combined) == 23
     assert combined[0]["isu_cd"] == "KR7010420008"
     assert sum(record.get("event_evidence_status") == "CONFIRMED" for record in combined) == 23
+
+
+def test_096300_liquidation_closure_remains_unresolved_and_runtime_fails_closed():
+    record = next(
+        item
+        for item in runner._load_lifecycle_event_evidence(
+            runner.LIFECYCLE_EVENT_EVIDENCE_V02_PATH
+        )
+        if item["source_ticker"] == "096300"
+    )
+    assert record["event_evidence_status"] == "CONFIRMED"
+    assert record["economic_terms_status"] == "UNRESOLVED"
+    assert record["event_effective_date"] == record["delisting_date"] == "2023-02-02"
+    assert record["dissolution_date"] == "2023-02-01"
+    assert {"distribution_per_share", "payment_date", "liquidation_close_date"} <= set(
+        record["unresolved_fields"]
+    )
+    assert not record.get("liquidation_distribution_per_source_share")
+    assert not record.get("payment_date")
+
+    segment = IdentitySegment(
+        ticker="096300",
+        isu_cd="KR7096300009",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2020-01-01"),
+        effective_to=pd.Timestamp("2023-02-01"),
+    )
+    row = _open_lifecycle_row(segment)
+    row["entry_execution_date"] = "2023-01-30"
+    source_daily = _daily([100.0, 101.0]).set_axis(
+        pd.to_datetime(["2023-01-30", "2023-01-31"])
+    )
+
+    before_event, applied = runner._apply_lifecycle_event(
+        row,
+        segment=segment,
+        event=record,
+        cutoff_date=pd.Timestamp("2023-02-01"),
+        source_daily=source_daily,
+        calendar=SimpleNamespace(trading_dates=pd.to_datetime(["2023-01-30", "2023-01-31"])),
+    )
+    assert not applied
+    assert before_event["terminal_return"] == 0.0
+
+    unresolved, applied = runner._apply_lifecycle_event(
+        row,
+        segment=segment,
+        event=record,
+        cutoff_date=pd.Timestamp("2023-02-02"),
+        source_daily=source_daily,
+        calendar=SimpleNamespace(trading_dates=pd.to_datetime(["2023-01-30", "2023-01-31"])),
+    )
+    assert applied
+    assert unresolved["lifecycle_state"] == "UNRESOLVED_SETTLEMENT"
+    assert unresolved["terminal_return"] is None
+    assert unresolved["terminal_valuation_date"] is None
+    assert unresolved["terminal_valuation_price"] is None
+    assert unresolved.get("settlement_price") is None
 
 
 def test_029960_catalog_retains_later_payment_fact_without_cutoff_lookahead():
