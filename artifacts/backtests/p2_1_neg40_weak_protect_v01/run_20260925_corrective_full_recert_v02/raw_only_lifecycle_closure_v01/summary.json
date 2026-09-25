@@ -1,0 +1,649 @@
+{
+  "status": "COMPLETE",
+  "work_id": "P2_1_RAW_ONLY_LIFECYCLE_CLOSURE_V01",
+  "window_id": "P2-1",
+  "source_run_id": "run_20260925_corrective_full_recert_v02",
+  "source_head": "4536d2bf80681141ad2e43ab6a2f8082ec4df6e3",
+  "evaluation_head": "6f2b4bba5e83d91782656e6bff984ff2832738e5",
+  "runner_sha256": "fef5ff71703133467995220ced7f3b60ea93a99c57c3f3bd05e6698ee64c3a2d",
+  "closure_script_sha256": "a31634c879ab4dca54e639ab77623a6d379501fa34ceea227d4749ba35ace58a",
+  "strategy_ids": {
+    "control": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "candidate": "PATTERN_A_FAST_CORE_V2_NEG40_WEAK_PROTECT_SOFT_EXIT_V01"
+  },
+  "window": {
+    "calendar_start": "2021-01-01",
+    "calendar_end": "2025-05-31",
+    "effective_start": "2021-01-04",
+    "effective_end": "2025-05-30",
+    "execution_support": "2025-06-02"
+  },
+  "population": {
+    "actual_window": [
+      "2021-01-04",
+      "2025-05-30",
+      "2025-06-02"
+    ],
+    "calendar_certified_through": "2026-09-21",
+    "calendar_manifest_sha256": null,
+    "source_segment_count": 2657,
+    "source_ticker_count": 2648,
+    "registry_excluded_segment_count": 31,
+    "registry_excluded_identity_count": 31,
+    "closure_excluded_segment_count": 7,
+    "closure_excluded_identity_count": 7,
+    "final_segment_count": 2619,
+    "final_ticker_count": 2610,
+    "final_identity_count": 2610,
+    "tickers_with_entries": 1169,
+    "control_entry_count": 1801,
+    "candidate_entry_count": 1801
+  },
+  "exclusions": {
+    "registry_identities": [
+      {
+        "ticker": "002270",
+        "isu_cd": "KR7002270007",
+        "reason": "user-approved permanent exclusion after a P1 lifecycle remediable-unresolved gate finding",
+        "approval_scope": "P1 final exclusion closure V02",
+        "failure_class": "P1_LIFECYCLE_REMEDIABLE_UNRESOLVED",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "005390",
+        "isu_cd": "KR7005390000",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "005950",
+        "isu_cd": "KR7005950001",
+        "reason": "user-approved permanent exclusion after a P1 soft-exit next-session execution contract mismatch",
+        "approval_scope": "P1 final exclusion closure V02",
+        "failure_class": "P1_EXECUTION_ANOMALY",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "006390",
+        "isu_cd": "KR7006390009",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "010420",
+        "isu_cd": "KR7010420008",
+        "reason": "user-approved permanent exclusion for the 2025-09-25 delisting / wholly owned subsidiary lifecycle",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "031440",
+        "isu_cd": "KR7031440001",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "032980",
+        "isu_cd": "KR7032980005",
+        "reason": "user-approved permanent exclusion after a P1 lifecycle remediable-unresolved gate finding",
+        "approval_scope": "P1 final exclusion closure V02",
+        "failure_class": "P1_LIFECYCLE_REMEDIABLE_UNRESOLVED",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "036620",
+        "isu_cd": "KR7036620003",
+        "reason": "user-approved permanent exclusion for P1 Pattern A stage UNAVAILABLE caused by an empty resampler week bucket",
+        "approval_scope": "P1 UNAVAILABLE 12 permanent exclusion V01",
+        "failure_class": "A_PIPELINE_BUG",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "043220",
+        "isu_cd": "KR7043220003",
+        "reason": "user-approved permanent exclusion after a P1 lifecycle remediable-unresolved gate finding",
+        "approval_scope": "P1 final exclusion closure V02",
+        "failure_class": "P1_LIFECYCLE_REMEDIABLE_UNRESOLVED",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "044060",
+        "isu_cd": "KR7044060002",
+        "reason": "user-approved permanent exclusion for P1 Pattern A stage UNAVAILABLE caused by Repository V2 source gaps",
+        "approval_scope": "P1 UNAVAILABLE 12 permanent exclusion V01",
+        "failure_class": "C_SOURCE_OR_AUTHORITY_GAP",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "049770",
+        "isu_cd": "KR7049770001",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "057050",
+        "isu_cd": "KR7057050007",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "069460",
+        "isu_cd": "KR7069460004",
+        "reason": "user-approved permanent exclusion because authoritative terminal pricing is unavailable through the P3-2 cutoff",
+        "approval_scope": "P3-2 final closure V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "138490",
+        "isu_cd": "KR7138490008",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "335890",
+        "isu_cd": "KR7335890000",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "950110",
+        "isu_cd": "KR8392070007",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      }
+    ],
+    "closure_identities": [
+      {
+        "ticker": "008560",
+        "isu_cd": "KR7008560005",
+        "reason": "v02 frozen raw holds UNRESOLVED_SUCCESSOR with no terminal value; current-contract resolution would require successor re-valuation",
+        "approval_scope": "P2-1 raw-only lifecycle closure V01",
+        "policy_version": "p2_1_lifecycle_closure_exclusions_v01"
+      },
+      {
+        "ticker": "023890",
+        "isu_cd": "KR7023890007",
+        "reason": "v02 frozen raw holds UNRESOLVED_SUCCESSOR with no terminal value; current-contract resolution would require successor re-valuation",
+        "approval_scope": "P2-1 raw-only lifecycle closure V01",
+        "policy_version": "p2_1_lifecycle_closure_exclusions_v01"
+      },
+      {
+        "ticker": "043290",
+        "isu_cd": "KR7043290006",
+        "reason": "v02 frozen raw holds UNRESOLVED_SUCCESSOR with no terminal value; current-contract resolution would require successor re-valuation",
+        "approval_scope": "P2-1 raw-only lifecycle closure V01",
+        "policy_version": "p2_1_lifecycle_closure_exclusions_v01"
+      },
+      {
+        "ticker": "046140",
+        "isu_cd": "KR7046140000",
+        "reason": "v02 frozen raw holds UNRESOLVED_SUCCESSOR with no terminal value; current-contract resolution would require successor re-valuation",
+        "approval_scope": "P2-1 raw-only lifecycle closure V01",
+        "policy_version": "p2_1_lifecycle_closure_exclusions_v01"
+      },
+      {
+        "ticker": "213090",
+        "isu_cd": "KR7213090004",
+        "reason": "v02 frozen raw holds UNRESOLVED_SUCCESSOR with no terminal value; current-contract resolution would require successor re-valuation",
+        "approval_scope": "P2-1 raw-only lifecycle closure V01",
+        "policy_version": "p2_1_lifecycle_closure_exclusions_v01"
+      },
+      {
+        "ticker": "225330",
+        "isu_cd": "KR7225330000",
+        "reason": "v02 frozen raw holds UNRESOLVED_SUCCESSOR with no terminal value; current-contract resolution would require successor re-valuation",
+        "approval_scope": "P2-1 raw-only lifecycle closure V01",
+        "policy_version": "p2_1_lifecycle_closure_exclusions_v01"
+      },
+      {
+        "ticker": "282690",
+        "isu_cd": "KR7282690007",
+        "reason": "v02 frozen raw holds UNRESOLVED_SUCCESSOR with no terminal value; current-contract resolution would require successor re-valuation",
+        "approval_scope": "P2-1 raw-only lifecycle closure V01",
+        "policy_version": "p2_1_lifecycle_closure_exclusions_v01"
+      }
+    ]
+  },
+  "control": {
+    "trade_count": 1801,
+    "performance_pair_count": 1800,
+    "positive_count": 579,
+    "positive_rate_pct": 32.1667,
+    "mean_terminal_return_pct": 3.8632,
+    "median_terminal_return_pct": -15.18,
+    "open_at_cutoff_count": 239,
+    "lifecycle_state_counts": {
+      "SETTLED": 3,
+      "SETTLEMENT_PENDING": 1,
+      "UNRESOLVED_SETTLEMENT": 1
+    },
+    "holding_days_mean": 129.7967,
+    "holding_days_median": 74.0,
+    "tail_counts": {
+      "le_neg_30_pct": 37,
+      "le_neg_40_pct": 24,
+      "le_neg_50_pct": 11,
+      "le_neg_60_pct": 6
+    },
+    "winner_counts": {
+      "ge_pos_30_pct": 295,
+      "ge_pos_50_pct": 187,
+      "ge_pos_100_pct": 64
+    },
+    "top_winner_concentration": {
+      "top_5": {
+        "mean_after_removal_pct": 2.7203,
+        "positive_return_contribution_pct": 7.5372,
+        "top_winner_sum_pct_points": 2070.86
+      },
+      "top_10": {
+        "mean_after_removal_pct": 2.1169,
+        "positive_return_contribution_pct": 11.5175,
+        "top_winner_sum_pct_points": 3164.46
+      }
+    }
+  },
+  "candidate": {
+    "trade_count": 1801,
+    "performance_pair_count": 1800,
+    "positive_count": 579,
+    "positive_rate_pct": 32.1667,
+    "mean_terminal_return_pct": 3.9157,
+    "median_terminal_return_pct": -15.185,
+    "open_at_cutoff_count": 222,
+    "lifecycle_state_counts": {
+      "SETTLED": 3,
+      "SETTLEMENT_PENDING": 1,
+      "UNRESOLVED_SETTLEMENT": 1
+    },
+    "holding_days_mean": 125.6939,
+    "holding_days_median": 74.0,
+    "tail_counts": {
+      "le_neg_30_pct": 41,
+      "le_neg_40_pct": 28,
+      "le_neg_50_pct": 4,
+      "le_neg_60_pct": 2
+    },
+    "winner_counts": {
+      "ge_pos_30_pct": 295,
+      "ge_pos_50_pct": 187,
+      "ge_pos_100_pct": 64
+    },
+    "top_winner_concentration": {
+      "top_5": {
+        "mean_after_removal_pct": 2.7729,
+        "positive_return_contribution_pct": 7.5372,
+        "top_winner_sum_pct_points": 2070.86
+      },
+      "top_10": {
+        "mean_after_removal_pct": 2.1697,
+        "positive_return_contribution_pct": 11.5175,
+        "top_winner_sum_pct_points": 3164.46
+      }
+    }
+  },
+  "paired": {
+    "count": 1800,
+    "mean_delta_pct_points": 0.0525,
+    "median_delta_pct_points": 0.0,
+    "improved": 16,
+    "worsened": 9,
+    "same": 1775
+  },
+  "matched_pair_counts": {
+    "matched_pairs_total": 1801,
+    "matched_pairs_numeric_comparable": 1800,
+    "matched_pairs_unresolved": 1,
+    "matched_pairs_authoritative_excluded": 1,
+    "matched_pairs_remediable_unresolved": 0
+  },
+  "candidate_diagnostics": {
+    "post_progressed_neg40_touch_trade_count": 34,
+    "post_progressed_neg40_touch_eod_event_count": 2021,
+    "weak_protect_trade_count": 16,
+    "weak_protect_eod_event_count": 1996,
+    "soft_signal_count": 25,
+    "incremental_soft_exit_count": 25,
+    "control_exit_deferred_then_resumed_count": 0,
+    "control_exit_deferred_open_at_cutoff_count": 0,
+    "control_ge_50_winner_damaged_count": 0,
+    "control_ge_100_winner_damaged_count": 0,
+    "control_deep_tail_improved_counts": {
+      "40": 2,
+      "50": 8,
+      "60": 5
+    },
+    "new_candidate_le_neg40_from_control_gt_neg40_count": 6,
+    "new_candidate_le_neg40_trades": [
+      {
+        "pair_id": "010950|KR7010950004|KOSPI|2010-01-04|2026-08-21|010950_01",
+        "trade_id": "010950_01",
+        "ticker": "010950",
+        "control_terminal_pct": -39.56,
+        "candidate_terminal_pct": -42.67,
+        "soft_signal_date": "2025-04-07",
+        "signal_return_pct": -43.22,
+        "execution_date": "2025-04-08",
+        "execution_open_return_pct": -42.67,
+        "paired_delta_pct_points": -3.1099999999999994
+      },
+      {
+        "pair_id": "025980|KR7025980004|KOSDAQ|2010-01-04|2026-08-21|025980_01",
+        "trade_id": "025980_01",
+        "ticker": "025980",
+        "control_terminal_pct": -33.75,
+        "candidate_terminal_pct": -40.18,
+        "soft_signal_date": "2022-06-20",
+        "signal_return_pct": -40.36,
+        "execution_date": "2022-06-21",
+        "execution_open_return_pct": -40.18,
+        "paired_delta_pct_points": -6.43
+      },
+      {
+        "pair_id": "073640|KR7073640005|KOSDAQ|2010-01-04|2026-08-21|073640_01",
+        "trade_id": "073640_01",
+        "ticker": "073640",
+        "control_terminal_pct": -12.41,
+        "candidate_terminal_pct": -49.36,
+        "soft_signal_date": "2023-08-23",
+        "signal_return_pct": -46.68,
+        "execution_date": "2023-08-24",
+        "execution_open_return_pct": -49.36,
+        "paired_delta_pct_points": -36.95
+      },
+      {
+        "pair_id": "092200|KR7092200005|KOSPI|2010-01-04|2026-08-21|092200_01",
+        "trade_id": "092200_01",
+        "ticker": "092200",
+        "control_terminal_pct": -23.2,
+        "candidate_terminal_pct": -44.56,
+        "soft_signal_date": "2024-12-09",
+        "signal_return_pct": -44.14,
+        "execution_date": "2024-12-10",
+        "execution_open_return_pct": -44.56,
+        "paired_delta_pct_points": -21.360000000000003
+      },
+      {
+        "pair_id": "105550|KR7105550008|KOSDAQ|2014-07-11|2026-08-21|105550_01",
+        "trade_id": "105550_01",
+        "ticker": "105550",
+        "control_terminal_pct": -13.74,
+        "candidate_terminal_pct": -40.0,
+        "soft_signal_date": "2022-12-21",
+        "signal_return_pct": -40.0,
+        "execution_date": "2022-12-22",
+        "execution_open_return_pct": -40.0,
+        "paired_delta_pct_points": -26.259999999999998
+      },
+      {
+        "pair_id": "192820|KR7192820009|KOSPI|2014-04-07|2026-08-21|192820_01",
+        "trade_id": "192820_01",
+        "ticker": "192820",
+        "control_terminal_pct": -14.03,
+        "candidate_terminal_pct": -42.06,
+        "soft_signal_date": "2022-01-18",
+        "signal_return_pct": -41.59,
+        "execution_date": "2022-01-19",
+        "execution_open_return_pct": -42.06,
+        "paired_delta_pct_points": -28.03
+      }
+    ]
+  },
+  "ledger": {
+    "path": "raw_only_lifecycle_closure_v01/p2_1_matched_trades.csv",
+    "row_count": 1801,
+    "aggregates_recomputed_from_full_ledger": {
+      "control": {
+        "trade_count": 1801,
+        "performance_pair_count": 1800,
+        "positive_count": 579,
+        "positive_rate_pct": 32.1667,
+        "mean_terminal_return_pct": 3.8632,
+        "median_terminal_return_pct": -15.18,
+        "open_at_cutoff_count": 239,
+        "lifecycle_state_counts": {
+          "SETTLED": 3,
+          "SETTLEMENT_PENDING": 1,
+          "UNRESOLVED_SETTLEMENT": 1
+        },
+        "holding_days_mean": 129.7967,
+        "holding_days_median": 74.0,
+        "tail_counts": {
+          "le_neg_30_pct": 37,
+          "le_neg_40_pct": 24,
+          "le_neg_50_pct": 11,
+          "le_neg_60_pct": 6
+        },
+        "winner_counts": {
+          "ge_pos_30_pct": 295,
+          "ge_pos_50_pct": 187,
+          "ge_pos_100_pct": 64
+        },
+        "top_winner_concentration": {
+          "top_5": {
+            "mean_after_removal_pct": 2.7203,
+            "positive_return_contribution_pct": 7.5372,
+            "top_winner_sum_pct_points": 2070.86
+          },
+          "top_10": {
+            "mean_after_removal_pct": 2.1169,
+            "positive_return_contribution_pct": 11.5175,
+            "top_winner_sum_pct_points": 3164.46
+          }
+        }
+      },
+      "candidate": {
+        "trade_count": 1801,
+        "performance_pair_count": 1800,
+        "positive_count": 579,
+        "positive_rate_pct": 32.1667,
+        "mean_terminal_return_pct": 3.9157,
+        "median_terminal_return_pct": -15.185,
+        "open_at_cutoff_count": 222,
+        "lifecycle_state_counts": {
+          "SETTLED": 3,
+          "SETTLEMENT_PENDING": 1,
+          "UNRESOLVED_SETTLEMENT": 1
+        },
+        "holding_days_mean": 125.6939,
+        "holding_days_median": 74.0,
+        "tail_counts": {
+          "le_neg_30_pct": 41,
+          "le_neg_40_pct": 28,
+          "le_neg_50_pct": 4,
+          "le_neg_60_pct": 2
+        },
+        "winner_counts": {
+          "ge_pos_30_pct": 295,
+          "ge_pos_50_pct": 187,
+          "ge_pos_100_pct": 64
+        },
+        "top_winner_concentration": {
+          "top_5": {
+            "mean_after_removal_pct": 2.7729,
+            "positive_return_contribution_pct": 7.5372,
+            "top_winner_sum_pct_points": 2070.86
+          },
+          "top_10": {
+            "mean_after_removal_pct": 2.1697,
+            "positive_return_contribution_pct": 11.5175,
+            "top_winner_sum_pct_points": 3164.46
+          }
+        }
+      },
+      "paired": {
+        "count": 1800,
+        "mean_delta_pct_points": 0.0525,
+        "median_delta_pct_points": 0.0,
+        "improved": 16,
+        "worsened": 9,
+        "same": 1775
+      },
+      "pair_counts": {
+        "matched_pairs_total": 1801,
+        "matched_pairs_numeric_comparable": 1800,
+        "matched_pairs_unresolved": 1
+      }
+    },
+    "aggregate_reconciliation": {
+      "control_metrics_match_summary": true,
+      "candidate_metrics_match_summary": true,
+      "paired_metrics_match_summary": true
+    },
+    "float_tolerance_pp": 0.1
+  },
+  "validation": {
+    "duplicate_pair_ids": 0,
+    "entry_population_parity": true,
+    "entry_field_parity": true,
+    "matched_pairs_total": 1801,
+    "matched_pairs_numeric_comparable": 1800,
+    "matched_pairs_unresolved": 1,
+    "matched_pairs_authoritative_excluded": 1,
+    "matched_pairs_remediable_unresolved": 0,
+    "unresolved_lifecycle_trade_counts_by_side": {
+      "CONTROL": 1,
+      "Candidate": 1
+    },
+    "unresolved_lifecycle_state_counts": {
+      "UNRESOLVED_POST_DELIST_VALUE": {
+        "CONTROL": 0,
+        "Candidate": 0
+      },
+      "UNRESOLVED_SETTLEMENT": {
+        "CONTROL": 1,
+        "Candidate": 1
+      },
+      "UNRESOLVED_SUCCESSOR": {
+        "CONTROL": 0,
+        "Candidate": 0
+      }
+    },
+    "unresolved_lifecycle_state_totals": {
+      "UNRESOLVED_POST_DELIST_VALUE": 0,
+      "UNRESOLVED_SETTLEMENT": 2,
+      "UNRESOLVED_SUCCESSOR": 0
+    },
+    "unresolved_pair_ids": [
+      "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01"
+    ],
+    "entry_signal_window_violations": 0,
+    "entry_support_violations": 0,
+    "identity_entry_violations": 0,
+    "control_overlap_count": 0,
+    "candidate_overlap_count": 0,
+    "candidate_execution_support_missing_count": 0,
+    "candidate_unexecuted_signal_count": 0,
+    "candidate_lifecycle_settled_count": 0,
+    "identity_end_before_cutoff_open_count": 8,
+    "common_interval_end_before_cutoff_open_count": 8,
+    "open_terminal_valuation_unresolved_count": 8,
+    "p2_1_lifecycle_gate_diagnostics_by_side": {
+      "CONTROL": {
+        "raw_identity_ended_open_count": 4,
+        "raw_terminal_valuation_unresolved_count": 4,
+        "effective_identity_ended_open_unresolved_count": 0,
+        "effective_terminal_valuation_unresolved_count": 0,
+        "effective_remediable_unresolved_count": 0,
+        "resolved_cutoff_mark_count": 0,
+        "resolved_cash_settlement_count": 3,
+        "raw_gate_affected_pair_ids": [
+          "003410|KR7003410008|KOSPI|2010-01-04|2024-07-08|003410_01",
+          "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01",
+          "115390|KR7115390007|KOSPI|2010-01-28|2024-12-06|115390_02",
+          "138580|KR7138580006|KOSDAQ|2017-11-30|2024-11-21|138580_03"
+        ],
+        "authoritative_exclusion_pair_ids": [
+          "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01"
+        ],
+        "effective_unresolved_pair_ids": []
+      },
+      "Candidate": {
+        "raw_identity_ended_open_count": 4,
+        "raw_terminal_valuation_unresolved_count": 4,
+        "effective_identity_ended_open_unresolved_count": 0,
+        "effective_terminal_valuation_unresolved_count": 0,
+        "effective_remediable_unresolved_count": 0,
+        "resolved_cutoff_mark_count": 0,
+        "resolved_cash_settlement_count": 3,
+        "raw_gate_affected_pair_ids": [
+          "003410|KR7003410008|KOSPI|2010-01-04|2024-07-08|003410_01",
+          "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01",
+          "115390|KR7115390007|KOSPI|2010-01-28|2024-12-06|115390_02",
+          "138580|KR7138580006|KOSDAQ|2017-11-30|2024-11-21|138580_03"
+        ],
+        "authoritative_exclusion_pair_ids": [
+          "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01"
+        ],
+        "effective_unresolved_pair_ids": []
+      }
+    },
+    "p2_1_effective_identity_ended_open_unresolved_count": 0,
+    "p2_1_effective_terminal_valuation_unresolved_count": 0,
+    "p2_1_effective_remediable_unresolved_count": 0,
+    "p2_1_authoritative_final_unresolved_pair_ids": [
+      "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01"
+    ],
+    "p2_1_effective_remediable_unresolved_pair_ids": [],
+    "p2_1_lifecycle_gate_raw_affected_pair_ids": [
+      "003410|KR7003410008|KOSPI|2010-01-04|2024-07-08|003410_01",
+      "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01",
+      "115390|KR7115390007|KOSPI|2010-01-28|2024-12-06|115390_02",
+      "138580|KR7138580006|KOSDAQ|2017-11-30|2024-11-21|138580_03"
+    ],
+    "p2_1_lifecycle_gate_resolved_pair_ids": [
+      "003410|KR7003410008|KOSPI|2010-01-04|2024-07-08|003410_01",
+      "115390|KR7115390007|KOSPI|2010-01-28|2024-12-06|115390_02",
+      "138580|KR7138580006|KOSDAQ|2017-11-30|2024-11-21|138580_03"
+    ],
+    "p2_1_lifecycle_gate_control_candidate_symmetry": true,
+    "p2_1_lifecycle_gate_symmetry_failures": [],
+    "p2_1_lifecycle_gate_unresolved_zero_by_side": {
+      "CONTROL": true,
+      "Candidate": true
+    },
+    "exit_window_violations": 0,
+    "identity_signal_or_execution_violations": 0,
+    "control_preserved_rows": 222,
+    "control_exit_rows": 1554,
+    "control_unchanged_rows": 1776,
+    "control_unchanged_return_matches": 1775,
+    "candidate_stage_asof_future_violations": 0,
+    "lookahead": "completed monthly Pattern A snapshots only; no snapshot later than EOD signal",
+    "ledger_pair_id_unique": true,
+    "ledger_pair_id_set_matches_sources": true,
+    "ledger_source_trade_id_equal_by_pair": true,
+    "control_candidate_pair_id_sets_equal": true,
+    "control_candidate_source_trade_id_equal_by_pair": true,
+    "paired_pair_id_unique": true,
+    "all_ledger_aggregates_match_summary": true,
+    "terminal_numeric_symmetry": true
+  },
+  "simulation_replay_performed": false,
+  "verdict": "P2_1_CERTIFIED_PASS_WITH_AUTHORITATIVE_EXCLUSIONS",
+  "certification_verdict": "P2_1_CERTIFIED_PASS_WITH_AUTHORITATIVE_EXCLUSIONS",
+  "strategy_assessment": "PROMISING"
+}
