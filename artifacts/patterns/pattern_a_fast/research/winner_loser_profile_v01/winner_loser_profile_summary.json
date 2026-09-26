@@ -1,0 +1,1949 @@
+{
+  "work_id": "PATTERN_A_FAST_CORE_V2_WINNER_LOSER_PROFILE_V01",
+  "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "scope": "CONTROL only; existing certified simple-backtest ledgers; no backtest, signal generation, threshold change, or network",
+  "source_selection_authority": "docs/patterns/pattern_a_fast/strategy/FAST_CORE_V2_NEG40_WEAK_PROTECT_5_WINDOW_SYNTHESIS_V01.md",
+  "windows": {
+    "P1": {
+      "ledger": "artifacts/backtests/p1_neg40_weak_protect_v01/run_20260925_standard_full_worker10_v01/raw_only_exclusion_closure_v02/control_trades.csv",
+      "verdict": "P1_CERTIFIED_PASS_WITH_AUTHORITATIVE_EXCLUSIONS",
+      "cutoff": "2026-08-31"
+    },
+    "P2-1": {
+      "ledger": "artifacts/backtests/p2_1_neg40_weak_protect_v01/run_20260925_corrective_full_recert_v02/raw_only_lifecycle_closure_v01/control_trades.csv",
+      "verdict": "P2_1_CERTIFIED_PASS_WITH_AUTHORITATIVE_EXCLUSIONS",
+      "cutoff": "2025-05-30"
+    },
+    "P2-2": {
+      "ledger": "artifacts/backtests/p2_2_neg40_weak_protect_v01/run_20260924_final_corrective_v01/control_trades.csv",
+      "verdict": "COMPLETE / PROMISING; ledger aggregate reconciliation PASS",
+      "cutoff": "2026-08-31"
+    },
+    "P3-1": {
+      "ledger": "artifacts/backtests/p3_1_neg40_weak_protect_v01/run_20260925_worker10_replay_v01/control_trades.csv",
+      "verdict": "P3_1_REPLAY_PASS; certified with authoritative exclusion",
+      "cutoff": "2025-05-30"
+    },
+    "P3-2": {
+      "ledger": "artifacts/backtests/p3_2_neg40_weak_protect_v01/run_20260925_p3_2_worker10_corrective_v01/control_trades.csv",
+      "verdict": "P3_2_REPLAY_PASS; certified with authoritative exclusion",
+      "cutoff": "2026-08-31"
+    }
+  },
+  "input_gate_synthesis_reproduction": {
+    "P1": {
+      "observed": {
+        "n": 4982,
+        "positive_rate": 30.0682,
+        "mean": 9.5307,
+        "median": -15.29,
+        "le": [
+          109,
+          66,
+          42,
+          31
+        ],
+        "ge": [
+          1025,
+          757,
+          320
+        ]
+      },
+      "expected": {
+        "n": 4982,
+        "positive_rate": 30.0682,
+        "mean": 9.5307,
+        "median": -15.29,
+        "le": [
+          109,
+          66,
+          42,
+          31
+        ],
+        "ge": [
+          1025,
+          757,
+          320
+        ]
+      },
+      "match": true
+    },
+    "P2-1": {
+      "observed": {
+        "n": 1800,
+        "positive_rate": 32.1667,
+        "mean": 3.8632,
+        "median": -15.18,
+        "le": [
+          37,
+          24,
+          11,
+          6
+        ],
+        "ge": [
+          295,
+          187,
+          64
+        ]
+      },
+      "expected": {
+        "n": 1800,
+        "positive_rate": 32.1667,
+        "mean": 3.8632,
+        "median": -15.18,
+        "le": [
+          37,
+          24,
+          11,
+          6
+        ],
+        "ge": [
+          295,
+          187,
+          64
+        ]
+      },
+      "match": true
+    },
+    "P2-2": {
+      "observed": {
+        "n": 2424,
+        "positive_rate": 30.7343,
+        "mean": 7.9321,
+        "median": -15.16,
+        "le": [
+          57,
+          37,
+          22,
+          13
+        ],
+        "ge": [
+          462,
+          336,
+          134
+        ]
+      },
+      "expected": {
+        "n": 2424,
+        "positive_rate": 30.7343,
+        "mean": 7.9321,
+        "median": -15.16,
+        "le": [
+          57,
+          37,
+          22,
+          13
+        ],
+        "ge": [
+          462,
+          336,
+          134
+        ]
+      },
+      "match": true
+    },
+    "P3-1": {
+      "observed": {
+        "n": 1173,
+        "positive_rate": 29.2413,
+        "mean": 0.7892,
+        "median": -15.29,
+        "le": [
+          22,
+          14,
+          7,
+          4
+        ],
+        "ge": [
+          165,
+          106,
+          30
+        ]
+      },
+      "expected": {
+        "n": 1173,
+        "positive_rate": 29.2413,
+        "mean": 0.7892,
+        "median": -15.29,
+        "le": [
+          22,
+          14,
+          7,
+          4
+        ],
+        "ge": [
+          165,
+          106,
+          30
+        ]
+      },
+      "match": true
+    },
+    "P3-2": {
+      "observed": {
+        "n": 1792,
+        "positive_rate": 27.9018,
+        "mean": 6.4094,
+        "median": -15.265,
+        "le": [
+          37,
+          22,
+          8,
+          5
+        ],
+        "ge": [
+          322,
+          249,
+          96
+        ]
+      },
+      "expected": {
+        "n": 1792,
+        "positive_rate": 27.9018,
+        "mean": 6.4094,
+        "median": -15.265,
+        "le": [
+          37,
+          22,
+          8,
+          5
+        ],
+        "ge": [
+          322,
+          249,
+          96
+        ]
+      },
+      "match": true
+    }
+  },
+  "return_contract": "terminal_return as recorded (OPEN_AT_CUTOFF marked to window cutoff, as in the synthesis); closed-only (REALIZED + LIFECYCLE_SETTLED) is a sensitivity check",
+  "pooled_population_rule": "union of certification exclusion identities applied to every window before pooling; null terminal_return (authoritative-final unresolved) removed",
+  "dedup": {
+    "identity_key": [
+      "ticker",
+      "isu_cd",
+      "entry_signal_date",
+      "entry_execution_date"
+    ],
+    "representative_priority": [
+      "P1",
+      "P3-2",
+      "P2-2",
+      "P2-1",
+      "P3-1"
+    ],
+    "priority_rule": "latest cutoff first; among the 2026-08-31 cutoff windows P1 and P3-2 (current lifecycle-contract recertifications) precede P2-2 (earlier run)",
+    "stacked_window_rows": 12175,
+    "excluded_by_certification_identity_union_rows": 77,
+    "excluded_by_certification_identity_union_by_window": {
+      "P2-2": 38,
+      "P3-1": 15,
+      "P1": 14,
+      "P3-2": 10
+    },
+    "exclusion_identity_count": 50,
+    "null_terminal_return_rows": 4,
+    "null_terminal_return_trade_ids": [
+      "P1:096300_02",
+      "P2-1:096300_01",
+      "P3-1:096300_01",
+      "P3-2:096300_01"
+    ],
+    "rows_after_filters": 12094,
+    "dedup_trade_count": 5380,
+    "duplicate_rows_removed": 6714,
+    "identities_by_n_windows": {
+      "1": 2915,
+      "2": 302,
+      "3": 1085,
+      "4": 70,
+      "5": 1008
+    },
+    "representative_window_counts": {
+      "P1": 4968,
+      "P3-2": 208,
+      "P2-2": 201,
+      "P2-1": 3
+    },
+    "same_cutoff_return_disagreement_count": 4,
+    "same_cutoff_return_disagreement_examples": [
+      {
+        "ticker": "138580",
+        "isu_cd": "KR7138580006",
+        "entry_signal_date": "2023-10-13",
+        "entry_execution_date": "2023-10-16",
+        "observed_windows": "P1|P2-1|P2-2|P3-1|P3-2",
+        "representative_window": "P1",
+        "terminal_return": 14.02,
+        "same_cutoff_return_spread": 0.009999999999999787
+      },
+      {
+        "ticker": "115390",
+        "isu_cd": "KR7115390007",
+        "entry_signal_date": "2024-05-31",
+        "entry_execution_date": "2024-06-03",
+        "observed_windows": "P1|P2-1|P2-2|P3-1|P3-2",
+        "representative_window": "P1",
+        "terminal_return": 0.46,
+        "same_cutoff_return_spread": 1.03
+      },
+      {
+        "ticker": "029960",
+        "isu_cd": "KR7029960002",
+        "entry_signal_date": "2024-11-15",
+        "entry_execution_date": "2024-11-18",
+        "observed_windows": "P1|P2-1|P2-2|P3-1|P3-2",
+        "representative_window": "P1",
+        "terminal_return": 0.56,
+        "same_cutoff_return_spread": 0.67
+      },
+      {
+        "ticker": "019440",
+        "isu_cd": "KR7019440007",
+        "entry_signal_date": "2025-07-04",
+        "entry_execution_date": "2025-07-07",
+        "observed_windows": "P1|P2-2|P3-2",
+        "representative_window": "P1",
+        "terminal_return": 22.26,
+        "same_cutoff_return_spread": 3.1199999999999974
+      }
+    ]
+  },
+  "nesting": {
+    "P2-1_not_in_P2-2": {
+      "count": 17,
+      "examples": [
+        [
+          "002230",
+          "KR7002230001",
+          "2023-06-02",
+          "2023-06-05"
+        ],
+        [
+          "003720",
+          "KR7003720000",
+          "2024-09-13",
+          "2024-09-19"
+        ],
+        [
+          "006800",
+          "KR7006800007",
+          "2024-02-16",
+          "2024-02-19"
+        ],
+        [
+          "006800",
+          "KR7006800007",
+          "2024-09-13",
+          "2024-09-19"
+        ],
+        [
+          "010060",
+          "KR7010060002",
+          "2022-07-01",
+          "2022-07-04"
+        ],
+        [
+          "010060",
+          "KR7010060002",
+          "2023-04-21",
+          "2023-04-24"
+        ],
+        [
+          "019210",
+          "KR7019210004",
+          "2025-05-16",
+          "2025-05-19"
+        ],
+        [
+          "032960",
+          "KR7032960007",
+          "2023-02-03",
+          "2023-02-06"
+        ],
+        [
+          "058650",
+          "KR7058650003",
+          "2024-02-02",
+          "2024-02-05"
+        ],
+        [
+          "095610",
+          "KR7095610002",
+          "2024-04-12",
+          "2024-04-15"
+        ],
+        [
+          "095610",
+          "KR7095610002",
+          "2025-03-14",
+          "2025-03-17"
+        ],
+        [
+          "095610",
+          "KR7095610002",
+          "2025-04-25",
+          "2025-04-28"
+        ],
+        [
+          "104830",
+          "KR7104830005",
+          "2022-05-13",
+          "2022-05-16"
+        ],
+        [
+          "104830",
+          "KR7104830005",
+          "2024-03-08",
+          "2024-03-11"
+        ],
+        [
+          "122870",
+          "KR7122870009",
+          "2024-12-13",
+          "2024-12-16"
+        ],
+        [
+          "134380",
+          "KR7134380005",
+          "2023-09-08",
+          "2023-09-11"
+        ],
+        [
+          "267270",
+          "KR7267270007",
+          "2025-01-24",
+          "2025-01-31"
+        ]
+      ]
+    },
+    "P3-1_not_in_P3-2": {
+      "count": 12,
+      "examples": [
+        [
+          "003720",
+          "KR7003720000",
+          "2024-09-13",
+          "2024-09-19"
+        ],
+        [
+          "005390",
+          "KR7005390000",
+          "2025-05-16",
+          "2025-05-19"
+        ],
+        [
+          "010420",
+          "KR7010420008",
+          "2025-04-11",
+          "2025-04-14"
+        ],
+        [
+          "049770",
+          "KR7049770001",
+          "2024-04-19",
+          "2024-04-22"
+        ],
+        [
+          "049770",
+          "KR7049770001",
+          "2025-04-18",
+          "2025-04-21"
+        ],
+        [
+          "057050",
+          "KR7057050007",
+          "2024-04-12",
+          "2024-04-15"
+        ],
+        [
+          "057050",
+          "KR7057050007",
+          "2025-02-21",
+          "2025-02-24"
+        ],
+        [
+          "069460",
+          "KR7069460004",
+          "2025-05-02",
+          "2025-05-07"
+        ],
+        [
+          "122870",
+          "KR7122870009",
+          "2024-12-13",
+          "2024-12-16"
+        ],
+        [
+          "267270",
+          "KR7267270007",
+          "2025-01-24",
+          "2025-01-31"
+        ],
+        [
+          "335890",
+          "KR7335890000",
+          "2025-05-09",
+          "2025-05-12"
+        ],
+        [
+          "950110",
+          "KR8392070007",
+          "2024-11-29",
+          "2024-12-02"
+        ]
+      ]
+    },
+    "P2-2_not_in_P1": {
+      "count": 339,
+      "examples": [
+        [
+          "000100",
+          "KR7000100008",
+          "2023-06-02",
+          "2023-06-05"
+        ],
+        [
+          "000180",
+          "KR7000180000",
+          "2021-01-22",
+          "2021-01-25"
+        ],
+        [
+          "000480",
+          "KR7000480004",
+          "2021-05-07",
+          "2021-05-10"
+        ],
+        [
+          "000480",
+          "KR7000480004",
+          "2023-03-31",
+          "2023-04-03"
+        ],
+        [
+          "000500",
+          "KR7000500009",
+          "2021-03-26",
+          "2021-03-29"
+        ],
+        [
+          "000720",
+          "KR7000720003",
+          "2021-04-30",
+          "2021-05-03"
+        ],
+        [
+          "000850",
+          "KR7000850008",
+          "2021-04-30",
+          "2021-05-03"
+        ],
+        [
+          "000850",
+          "KR7000850008",
+          "2022-06-03",
+          "2022-06-07"
+        ],
+        [
+          "000850",
+          "KR7000850008",
+          "2025-07-04",
+          "2025-07-07"
+        ],
+        [
+          "000880",
+          "KR7000880005",
+          "2021-08-27",
+          "2021-08-30"
+        ],
+        [
+          "001040",
+          "KR7001040005",
+          "2021-01-15",
+          "2021-01-18"
+        ],
+        [
+          "001040",
+          "KR7001040005",
+          "2023-01-06",
+          "2023-01-09"
+        ],
+        [
+          "001040",
+          "KR7001040005",
+          "2023-12-08",
+          "2023-12-11"
+        ],
+        [
+          "001130",
+          "KR7001130004",
+          "2021-05-07",
+          "2021-05-10"
+        ],
+        [
+          "001130",
+          "KR7001130004",
+          "2022-03-04",
+          "2022-03-07"
+        ],
+        [
+          "001130",
+          "KR7001130004",
+          "2023-02-10",
+          "2023-02-13"
+        ],
+        [
+          "001130",
+          "KR7001130004",
+          "2025-06-13",
+          "2025-06-16"
+        ],
+        [
+          "001270",
+          "KR7001270008",
+          "2024-02-16",
+          "2024-02-19"
+        ],
+        [
+          "001340",
+          "KR7001340009",
+          "2021-01-22",
+          "2021-01-25"
+        ],
+        [
+          "001450",
+          "KR7001450006",
+          "2021-10-22",
+          "2021-10-25"
+        ]
+      ]
+    },
+    "P3-2_not_in_P1": {
+      "count": 217,
+      "examples": [
+        [
+          "000100",
+          "KR7000100008",
+          "2023-06-02",
+          "2023-06-05"
+        ],
+        [
+          "000320",
+          "KR7000320002",
+          "2023-09-01",
+          "2023-09-04"
+        ],
+        [
+          "000480",
+          "KR7000480004",
+          "2023-03-31",
+          "2023-04-03"
+        ],
+        [
+          "000850",
+          "KR7000850008",
+          "2022-06-03",
+          "2022-06-07"
+        ],
+        [
+          "000850",
+          "KR7000850008",
+          "2025-07-04",
+          "2025-07-07"
+        ],
+        [
+          "000880",
+          "KR7000880005",
+          "2023-06-02",
+          "2023-06-05"
+        ],
+        [
+          "000880",
+          "KR7000880005",
+          "2024-02-02",
+          "2024-02-05"
+        ],
+        [
+          "000880",
+          "KR7000880005",
+          "2025-02-14",
+          "2025-02-17"
+        ],
+        [
+          "001040",
+          "KR7001040005",
+          "2023-01-06",
+          "2023-01-09"
+        ],
+        [
+          "001040",
+          "KR7001040005",
+          "2023-12-08",
+          "2023-12-11"
+        ],
+        [
+          "001130",
+          "KR7001130004",
+          "2022-03-04",
+          "2022-03-07"
+        ],
+        [
+          "001130",
+          "KR7001130004",
+          "2023-02-10",
+          "2023-02-13"
+        ],
+        [
+          "001130",
+          "KR7001130004",
+          "2025-06-13",
+          "2025-06-16"
+        ],
+        [
+          "001270",
+          "KR7001270008",
+          "2024-02-16",
+          "2024-02-19"
+        ],
+        [
+          "001450",
+          "KR7001450006",
+          "2022-06-03",
+          "2022-06-07"
+        ],
+        [
+          "001450",
+          "KR7001450006",
+          "2025-07-04",
+          "2025-07-07"
+        ],
+        [
+          "001510",
+          "KR7001510007",
+          "2025-06-13",
+          "2025-06-16"
+        ],
+        [
+          "001740",
+          "KR7001740000",
+          "2023-06-02",
+          "2023-06-05"
+        ],
+        [
+          "002030",
+          "KR7002030005",
+          "2023-02-24",
+          "2023-02-27"
+        ],
+        [
+          "002200",
+          "KR7002200004",
+          "2022-11-25",
+          "2022-11-28"
+        ]
+      ]
+    },
+    "note": "Windows share start dates (P2-1/P2-2 2021-01, P3-1/P3-2 2022-01) but trades are path-dependent per ticker; a different cutoff, data authority, lifecycle contract, or earlier P1 history changes later entries. Window agreement is therefore not independent confirmation."
+  },
+  "enrichment_audit": {
+    "key_count": 5428,
+    "identity_count": 1879,
+    "status_counts": {
+      "READY": 5428
+    },
+    "stage_mismatch_count": 0,
+    "fast_score_match_count": 5428,
+    "fast_score_mismatch_count": 0,
+    "leakage_check": {
+      "sample_size": 20,
+      "checked": 20,
+      "mismatch_count": 0,
+      "mismatches": []
+    },
+    "network_requests": 0,
+    "repository_end": "2026-09-21",
+    "workers": 8,
+    "elapsed_seconds": 3222.8,
+    "enrichment_sha256": "df83019132f19c4c7ed0644543338f00237ed3cc15194899bb25543199910afc"
+  },
+  "features": {
+    "numeric_entry": [
+      "fast_score",
+      "pattern_a_score",
+      "fast_weekly_core_score",
+      "range_position_24m",
+      "monthly_down_month_ratio_12m",
+      "distance_to_prior_26w_high_pct",
+      "close_vs_wma200_pct",
+      "higher_weekly_low_count_13w",
+      "wma52_slope_1w",
+      "wma12_vs_wma26_pct",
+      "weeks_since_26w_close_breakout",
+      "post_breakout_min_low_vs_level_pct_26w",
+      "recent_5d_max_gap_abs_pct",
+      "atr_14_pct",
+      "market_cap_eok",
+      "avg_trading_value_20d_eok",
+      "avg_trading_value_60d_eok"
+    ],
+    "categorical_entry": {
+      "market": [
+        "KOSDAQ"
+      ],
+      "entry_pattern_a_stage": [
+        "EARLY_TREND"
+      ],
+      "daily_risk": [
+        "ELEVATED"
+      ],
+      "fast_score_state": [
+        "PARTIAL"
+      ],
+      "entry_kind": [
+        "REENTRY"
+      ],
+      "fast_conditional_status": [
+        "EVENT_OBSERVED"
+      ],
+      "investability_status": null
+    },
+    "constant_entry_fields_no_variance": {
+      "fast_stage": {
+        "TRIGGER": 5380
+      },
+      "monthly_regime": {
+        "PERMITTED_REGIME": 5380
+      }
+    },
+    "window_dependent_fields": {
+      "entry_kind": "derived from previous_exit_type; REENTRY vs FIRST_IN_WINDOW depends on window start"
+    },
+    "post_entry_descriptive_only": {
+      "numeric": [
+        "days_to_first_progressed",
+        "holding_days",
+        "mfe",
+        "mae",
+        "peak_giveback",
+        "profit_capture"
+      ],
+      "categorical": [
+        "lifecycle_class",
+        "exit_type",
+        "trade_status",
+        "loss_guard_triggered"
+      ]
+    },
+    "unavailable_not_rebuilt": [
+      "fixed 20/40/60 trading-day MAE/MFE",
+      "first -15/-30/-40 touch date",
+      "entry-time Pattern A score components beyond the FAST contract inputs"
+    ]
+  },
+  "grade_rules": {
+    "min_group_n": 10,
+    "weak_auc_abs": 0.05,
+    "weak_share_pp": 5.0,
+    "min_qualifying_windows": 3,
+    "consistent_window_share": 0.8,
+    "disjoint_split_date": "2021-01-01",
+    "definition": {
+      "INSUFFICIENT_EVIDENCE": "pooled group or reference n < 10, or fewer than 3 windows where both sides have n >= 10",
+      "WEAK": "pooled |AUC-0.5| < 0.05 (numeric) or |share difference| < 5pp (categorical)",
+      "CONSISTENT": "not WEAK, >= 80% of qualifying windows have the pooled sign, and both disjoint periods (entry < 2021-01-01 / >= 2021-01-01) have the pooled sign when both qualify",
+      "MIXED": "not WEAK and not CONSISTENT"
+    }
+  },
+  "group_counts_path": "group_counts.csv",
+  "grade_counts_by_comparison": {
+    "LOSS_30_vs_REST": {
+      "CONSISTENT": 12,
+      "INSUFFICIENT_EVIDENCE": 0,
+      "MIXED": 2,
+      "WEAK": 12
+    },
+    "LOSS_50_vs_REST": {
+      "CONSISTENT": 4,
+      "INSUFFICIENT_EVIDENCE": 2,
+      "MIXED": 7,
+      "WEAK": 13
+    },
+    "LOSS_ANY_vs_POSITIVE": {
+      "CONSISTENT": 3,
+      "INSUFFICIENT_EVIDENCE": 0,
+      "MIXED": 1,
+      "WEAK": 22
+    },
+    "WIN_100_vs_LOSS_50": {
+      "CONSISTENT": 6,
+      "INSUFFICIENT_EVIDENCE": 2,
+      "MIXED": 10,
+      "WEAK": 8
+    },
+    "WIN_100_vs_REST": {
+      "CONSISTENT": 1,
+      "INSUFFICIENT_EVIDENCE": 0,
+      "MIXED": 5,
+      "WEAK": 20
+    },
+    "WIN_50_vs_LOSS_30": {
+      "CONSISTENT": 11,
+      "INSUFFICIENT_EVIDENCE": 0,
+      "MIXED": 4,
+      "WEAK": 11
+    },
+    "WIN_50_vs_REST": {
+      "CONSISTENT": 0,
+      "INSUFFICIENT_EVIDENCE": 0,
+      "MIXED": 5,
+      "WEAK": 21
+    }
+  },
+  "closed_only_sensitivity": [
+    {
+      "comparison": "WIN_50_vs_REST",
+      "feature": "atr_14_pct",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": -0.0522,
+      "closed_only_effect": -0.061,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_REST",
+      "feature": "avg_trading_value_20d_eok",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": -0.0504,
+      "closed_only_effect": -0.0625,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_REST",
+      "feature": "entry_kind",
+      "level": "REENTRY",
+      "grade": "MIXED",
+      "all_effect": -5.2255,
+      "closed_only_effect": -5.9207,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_REST",
+      "feature": "investability_status",
+      "level": "FILTERED_MARKET_CAP",
+      "grade": "MIXED",
+      "all_effect": 5.4638,
+      "closed_only_effect": 6.5641,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_REST",
+      "feature": "investability_status",
+      "level": "INVESTABLE",
+      "grade": "MIXED",
+      "all_effect": -7.2803,
+      "closed_only_effect": -8.5601,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_REST",
+      "feature": "market_cap_eok",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": -0.0595,
+      "closed_only_effect": -0.0665,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_REST",
+      "feature": "avg_trading_value_20d_eok",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": -0.0597,
+      "closed_only_effect": -0.0803,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_REST",
+      "feature": "avg_trading_value_60d_eok",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": -0.0627,
+      "closed_only_effect": -0.0804,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_REST",
+      "feature": "entry_kind",
+      "level": "REENTRY",
+      "grade": "MIXED",
+      "all_effect": -9.2045,
+      "closed_only_effect": -10.3963,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_REST",
+      "feature": "investability_status",
+      "level": "FILTERED_MARKET_CAP",
+      "grade": "CONSISTENT",
+      "all_effect": 11.7428,
+      "closed_only_effect": 12.5539,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_REST",
+      "feature": "investability_status",
+      "level": "INVESTABLE",
+      "grade": "MIXED",
+      "all_effect": -12.8927,
+      "closed_only_effect": -14.5517,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_ANY_vs_POSITIVE",
+      "feature": "range_position_24m",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": -0.0571,
+      "closed_only_effect": -0.0642,
+      "closed_only_group_n": 3582,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_ANY_vs_POSITIVE",
+      "feature": "atr_14_pct",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": 0.0525,
+      "closed_only_effect": 0.0421,
+      "closed_only_group_n": 3582,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_ANY_vs_POSITIVE",
+      "feature": "avg_trading_value_20d_eok",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": 0.0506,
+      "closed_only_effect": 0.0466,
+      "closed_only_group_n": 3582,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_ANY_vs_POSITIVE",
+      "feature": "investability_status",
+      "level": "INVESTABLE",
+      "grade": "MIXED",
+      "all_effect": 5.0339,
+      "closed_only_effect": 5.4616,
+      "closed_only_group_n": 3582,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "fast_score",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": 0.06,
+      "closed_only_effect": 0.0763,
+      "closed_only_group_n": 54,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "fast_weekly_core_score",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": 0.0599,
+      "closed_only_effect": 0.0761,
+      "closed_only_group_n": 54,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "range_position_24m",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": 0.0821,
+      "closed_only_effect": 0.1524,
+      "closed_only_group_n": 54,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "monthly_down_month_ratio_12m",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": -0.0506,
+      "closed_only_effect": -0.0902,
+      "closed_only_group_n": 54,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "close_vs_wma200_pct",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": 0.0574,
+      "closed_only_effect": 0.1045,
+      "closed_only_group_n": 49,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "wma52_slope_1w",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": 0.1487,
+      "closed_only_effect": 0.2039,
+      "closed_only_group_n": 54,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "wma12_vs_wma26_pct",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": 0.0794,
+      "closed_only_effect": 0.1474,
+      "closed_only_group_n": 54,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "post_breakout_min_low_vs_level_pct_26w",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": -0.0828,
+      "closed_only_effect": -0.1209,
+      "closed_only_group_n": 24,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "recent_5d_max_gap_abs_pct",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": 0.055,
+      "closed_only_effect": 0.0813,
+      "closed_only_group_n": 54,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "atr_14_pct",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": 0.0971,
+      "closed_only_effect": 0.1151,
+      "closed_only_group_n": 54,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "avg_trading_value_60d_eok",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": 0.0531,
+      "closed_only_effect": 0.0685,
+      "closed_only_group_n": 54,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "market",
+      "level": "KOSDAQ",
+      "grade": "CONSISTENT",
+      "all_effect": 16.2998,
+      "closed_only_effect": 21.8617,
+      "closed_only_group_n": 54,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "entry_kind",
+      "level": "REENTRY",
+      "grade": "CONSISTENT",
+      "all_effect": -8.7494,
+      "closed_only_effect": -14.6753,
+      "closed_only_group_n": 54,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "fast_conditional_status",
+      "level": "EVENT_OBSERVED",
+      "grade": "MIXED",
+      "all_effect": 5.0216,
+      "closed_only_effect": 6.201,
+      "closed_only_group_n": 54,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_50_vs_REST",
+      "feature": "pattern_a_score",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": -0.0771,
+      "closed_only_effect": -0.0382,
+      "closed_only_group_n": 9,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_50_vs_REST",
+      "feature": "distance_to_prior_26w_high_pct",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": -0.0816,
+      "closed_only_effect": -0.0524,
+      "closed_only_group_n": 9,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_50_vs_REST",
+      "feature": "wma52_slope_1w",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": 0.147,
+      "closed_only_effect": 0.2542,
+      "closed_only_group_n": 9,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_50_vs_REST",
+      "feature": "weeks_since_26w_close_breakout",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": 0.0751,
+      "closed_only_effect": 0.1468,
+      "closed_only_group_n": 9,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_50_vs_REST",
+      "feature": "atr_14_pct",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": 0.1219,
+      "closed_only_effect": 0.0777,
+      "closed_only_group_n": 9,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_50_vs_REST",
+      "feature": "avg_trading_value_20d_eok",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": 0.0868,
+      "closed_only_effect": 0.1042,
+      "closed_only_group_n": 9,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_50_vs_REST",
+      "feature": "avg_trading_value_60d_eok",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": 0.1046,
+      "closed_only_effect": 0.1212,
+      "closed_only_group_n": 9,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_50_vs_REST",
+      "feature": "market",
+      "level": "KOSDAQ",
+      "grade": "CONSISTENT",
+      "all_effect": 9.4532,
+      "closed_only_effect": 1.262,
+      "closed_only_group_n": 9,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_50_vs_REST",
+      "feature": "entry_pattern_a_stage",
+      "level": "EARLY_TREND",
+      "grade": "MIXED",
+      "all_effect": -8.9448,
+      "closed_only_effect": -3.096,
+      "closed_only_group_n": 9,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_50_vs_REST",
+      "feature": "entry_kind",
+      "level": "REENTRY",
+      "grade": "MIXED",
+      "all_effect": -5.8657,
+      "closed_only_effect": -14.5455,
+      "closed_only_group_n": 9,
+      "same_sign": true
+    },
+    {
+      "comparison": "LOSS_50_vs_REST",
+      "feature": "fast_conditional_status",
+      "level": "EVENT_OBSERVED",
+      "grade": "MIXED",
+      "all_effect": 15.0558,
+      "closed_only_effect": 28.4077,
+      "closed_only_group_n": 9,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "fast_score",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": -0.051,
+      "closed_only_effect": -0.0653,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "fast_weekly_core_score",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": -0.0595,
+      "closed_only_effect": -0.0762,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "range_position_24m",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": -0.0791,
+      "closed_only_effect": -0.1544,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "monthly_down_month_ratio_12m",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": 0.0593,
+      "closed_only_effect": 0.0996,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "close_vs_wma200_pct",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": -0.078,
+      "closed_only_effect": -0.1274,
+      "closed_only_group_n": 755,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "wma52_slope_1w",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": -0.1695,
+      "closed_only_effect": -0.2264,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "wma12_vs_wma26_pct",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": -0.0995,
+      "closed_only_effect": -0.1704,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "post_breakout_min_low_vs_level_pct_26w",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": 0.0836,
+      "closed_only_effect": 0.1226,
+      "closed_only_group_n": 299,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "recent_5d_max_gap_abs_pct",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": -0.0756,
+      "closed_only_effect": -0.1025,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "atr_14_pct",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": -0.1362,
+      "closed_only_effect": -0.1594,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "avg_trading_value_20d_eok",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": -0.0832,
+      "closed_only_effect": -0.1041,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "avg_trading_value_60d_eok",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": -0.088,
+      "closed_only_effect": -0.1095,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "market",
+      "level": "KOSDAQ",
+      "grade": "CONSISTENT",
+      "all_effect": -17.1084,
+      "closed_only_effect": -22.8647,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "investability_status",
+      "level": "FILTERED_MARKET_CAP",
+      "grade": "MIXED",
+      "all_effect": 5.3779,
+      "closed_only_effect": 9.7269,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "investability_status",
+      "level": "INVESTABLE",
+      "grade": "MIXED",
+      "all_effect": -6.4951,
+      "closed_only_effect": -11.3804,
+      "closed_only_group_n": 784,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "pattern_a_score",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": 0.0941,
+      "closed_only_effect": 0.061,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "range_position_24m",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": -0.0566,
+      "closed_only_effect": -0.286,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "distance_to_prior_26w_high_pct",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": 0.074,
+      "closed_only_effect": 0.0562,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "wma52_slope_1w",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": -0.1789,
+      "closed_only_effect": -0.2856,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "wma12_vs_wma26_pct",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": -0.0621,
+      "closed_only_effect": -0.1903,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "weeks_since_26w_close_breakout",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": -0.0781,
+      "closed_only_effect": -0.153,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "atr_14_pct",
+      "level": null,
+      "grade": "CONSISTENT",
+      "all_effect": -0.1509,
+      "closed_only_effect": -0.1188,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "market_cap_eok",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": -0.0529,
+      "closed_only_effect": -0.1092,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "avg_trading_value_20d_eok",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": -0.135,
+      "closed_only_effect": -0.161,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "avg_trading_value_60d_eok",
+      "level": null,
+      "grade": "MIXED",
+      "all_effect": -0.1502,
+      "closed_only_effect": -0.1756,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "market",
+      "level": "KOSDAQ",
+      "grade": "CONSISTENT",
+      "all_effect": -9.9464,
+      "closed_only_effect": -2.6325,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "entry_pattern_a_stage",
+      "level": "EARLY_TREND",
+      "grade": "MIXED",
+      "all_effect": 5.5266,
+      "closed_only_effect": -0.0342,
+      "closed_only_group_n": 325,
+      "same_sign": false
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "fast_conditional_status",
+      "level": "EVENT_OBSERVED",
+      "grade": "MIXED",
+      "all_effect": -14.3522,
+      "closed_only_effect": -28.5128,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "investability_status",
+      "level": "FILTERED_LIQUIDITY",
+      "grade": "MIXED",
+      "all_effect": 5.2023,
+      "closed_only_effect": 5.5385,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "investability_status",
+      "level": "FILTERED_MARKET_CAP",
+      "grade": "MIXED",
+      "all_effect": 7.31,
+      "closed_only_effect": 17.7778,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "investability_status",
+      "level": "INVESTABLE",
+      "grade": "MIXED",
+      "all_effect": -12.5123,
+      "closed_only_effect": -23.3162,
+      "closed_only_group_n": 325,
+      "same_sign": true
+    }
+  ],
+  "market_split_for_consistent_features": [
+    {
+      "comparison": "WIN_100_vs_REST",
+      "feature": "investability_status",
+      "level": "FILTERED_MARKET_CAP",
+      "pooled_effect": 11.7428,
+      "KOSPI_effect": 9.7928,
+      "KOSPI_group_n": 161,
+      "KOSDAQ_effect": 13.6952,
+      "KOSDAQ_group_n": 185
+    },
+    {
+      "comparison": "LOSS_ANY_vs_POSITIVE",
+      "feature": "range_position_24m",
+      "level": null,
+      "pooled_effect": -0.0571,
+      "KOSPI_effect": -0.0555,
+      "KOSPI_group_n": 1661,
+      "KOSDAQ_effect": -0.0555,
+      "KOSDAQ_group_n": 2046
+    },
+    {
+      "comparison": "LOSS_ANY_vs_POSITIVE",
+      "feature": "atr_14_pct",
+      "level": null,
+      "pooled_effect": 0.0525,
+      "KOSPI_effect": 0.0456,
+      "KOSPI_group_n": 1661,
+      "KOSDAQ_effect": 0.0519,
+      "KOSDAQ_group_n": 2046
+    },
+    {
+      "comparison": "LOSS_ANY_vs_POSITIVE",
+      "feature": "avg_trading_value_20d_eok",
+      "level": null,
+      "pooled_effect": 0.0506,
+      "KOSPI_effect": 0.0458,
+      "KOSPI_group_n": 1661,
+      "KOSDAQ_effect": 0.0583,
+      "KOSDAQ_group_n": 2046
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "fast_score",
+      "level": null,
+      "pooled_effect": 0.06,
+      "KOSPI_effect": 0.0883,
+      "KOSPI_group_n": 33,
+      "KOSDAQ_effect": 0.0522,
+      "KOSDAQ_group_n": 77
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "fast_weekly_core_score",
+      "level": null,
+      "pooled_effect": 0.0599,
+      "KOSPI_effect": 0.0946,
+      "KOSPI_group_n": 33,
+      "KOSDAQ_effect": 0.0386,
+      "KOSDAQ_group_n": 77
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "range_position_24m",
+      "level": null,
+      "pooled_effect": 0.0821,
+      "KOSPI_effect": 0.1016,
+      "KOSPI_group_n": 33,
+      "KOSDAQ_effect": 0.085,
+      "KOSDAQ_group_n": 77
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "monthly_down_month_ratio_12m",
+      "level": null,
+      "pooled_effect": -0.0506,
+      "KOSPI_effect": -0.121,
+      "KOSPI_group_n": 33,
+      "KOSDAQ_effect": -0.0203,
+      "KOSDAQ_group_n": 77
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "close_vs_wma200_pct",
+      "level": null,
+      "pooled_effect": 0.0574,
+      "KOSPI_effect": 0.0286,
+      "KOSPI_group_n": 33,
+      "KOSDAQ_effect": 0.0572,
+      "KOSDAQ_group_n": 70
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "wma52_slope_1w",
+      "level": null,
+      "pooled_effect": 0.1487,
+      "KOSPI_effect": 0.1324,
+      "KOSPI_group_n": 33,
+      "KOSDAQ_effect": 0.1447,
+      "KOSDAQ_group_n": 77
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "wma12_vs_wma26_pct",
+      "level": null,
+      "pooled_effect": 0.0794,
+      "KOSPI_effect": 0.0318,
+      "KOSPI_group_n": 33,
+      "KOSDAQ_effect": 0.0897,
+      "KOSDAQ_group_n": 77
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "post_breakout_min_low_vs_level_pct_26w",
+      "level": null,
+      "pooled_effect": -0.0828,
+      "KOSPI_effect": -0.0611,
+      "KOSPI_group_n": 16,
+      "KOSDAQ_effect": -0.0835,
+      "KOSDAQ_group_n": 32
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "recent_5d_max_gap_abs_pct",
+      "level": null,
+      "pooled_effect": 0.055,
+      "KOSPI_effect": 0.0175,
+      "KOSPI_group_n": 33,
+      "KOSDAQ_effect": 0.0584,
+      "KOSDAQ_group_n": 77
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "atr_14_pct",
+      "level": null,
+      "pooled_effect": 0.0971,
+      "KOSPI_effect": 0.0404,
+      "KOSPI_group_n": 33,
+      "KOSDAQ_effect": 0.0896,
+      "KOSDAQ_group_n": 77
+    },
+    {
+      "comparison": "LOSS_30_vs_REST",
+      "feature": "entry_kind",
+      "level": "REENTRY",
+      "pooled_effect": -8.7494,
+      "KOSPI_effect": -10.616,
+      "KOSPI_group_n": 33,
+      "KOSDAQ_effect": -6.8772,
+      "KOSDAQ_group_n": 77
+    },
+    {
+      "comparison": "LOSS_50_vs_REST",
+      "feature": "pattern_a_score",
+      "level": null,
+      "pooled_effect": -0.0771,
+      "KOSPI_effect": -0.1208,
+      "KOSPI_group_n": 15,
+      "KOSDAQ_effect": -0.0489,
+      "KOSDAQ_group_n": 26
+    },
+    {
+      "comparison": "LOSS_50_vs_REST",
+      "feature": "wma52_slope_1w",
+      "level": null,
+      "pooled_effect": 0.147,
+      "KOSPI_effect": 0.1289,
+      "KOSPI_group_n": 15,
+      "KOSDAQ_effect": 0.146,
+      "KOSDAQ_group_n": 26
+    },
+    {
+      "comparison": "LOSS_50_vs_REST",
+      "feature": "atr_14_pct",
+      "level": null,
+      "pooled_effect": 0.1219,
+      "KOSPI_effect": 0.0253,
+      "KOSPI_group_n": 15,
+      "KOSDAQ_effect": 0.1713,
+      "KOSDAQ_group_n": 26
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "fast_score",
+      "level": null,
+      "pooled_effect": -0.051,
+      "KOSPI_effect": -0.0843,
+      "KOSPI_group_n": 391,
+      "KOSDAQ_effect": -0.041,
+      "KOSDAQ_group_n": 439
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "fast_weekly_core_score",
+      "level": null,
+      "pooled_effect": -0.0595,
+      "KOSPI_effect": -0.0995,
+      "KOSPI_group_n": 391,
+      "KOSDAQ_effect": -0.0331,
+      "KOSDAQ_group_n": 439
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "range_position_24m",
+      "level": null,
+      "pooled_effect": -0.0791,
+      "KOSPI_effect": -0.0993,
+      "KOSPI_group_n": 391,
+      "KOSDAQ_effect": -0.0838,
+      "KOSDAQ_group_n": 439
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "monthly_down_month_ratio_12m",
+      "level": null,
+      "pooled_effect": 0.0593,
+      "KOSPI_effect": 0.1332,
+      "KOSPI_group_n": 391,
+      "KOSDAQ_effect": 0.0271,
+      "KOSDAQ_group_n": 439
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "close_vs_wma200_pct",
+      "level": null,
+      "pooled_effect": -0.078,
+      "KOSPI_effect": -0.0498,
+      "KOSPI_group_n": 380,
+      "KOSDAQ_effect": -0.0792,
+      "KOSDAQ_group_n": 420
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "wma52_slope_1w",
+      "level": null,
+      "pooled_effect": -0.1695,
+      "KOSPI_effect": -0.1511,
+      "KOSPI_group_n": 391,
+      "KOSDAQ_effect": -0.1671,
+      "KOSDAQ_group_n": 439
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "wma12_vs_wma26_pct",
+      "level": null,
+      "pooled_effect": -0.0995,
+      "KOSPI_effect": -0.0522,
+      "KOSPI_group_n": 391,
+      "KOSDAQ_effect": -0.1094,
+      "KOSDAQ_group_n": 439
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "post_breakout_min_low_vs_level_pct_26w",
+      "level": null,
+      "pooled_effect": 0.0836,
+      "KOSPI_effect": 0.0689,
+      "KOSPI_group_n": 156,
+      "KOSDAQ_effect": 0.0812,
+      "KOSDAQ_group_n": 169
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "recent_5d_max_gap_abs_pct",
+      "level": null,
+      "pooled_effect": -0.0756,
+      "KOSPI_effect": -0.022,
+      "KOSPI_group_n": 391,
+      "KOSDAQ_effect": -0.0934,
+      "KOSDAQ_group_n": 439
+    },
+    {
+      "comparison": "WIN_50_vs_LOSS_30",
+      "feature": "atr_14_pct",
+      "level": null,
+      "pooled_effect": -0.1362,
+      "KOSPI_effect": -0.0815,
+      "KOSPI_group_n": 391,
+      "KOSDAQ_effect": -0.13,
+      "KOSDAQ_group_n": 439
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "pattern_a_score",
+      "level": null,
+      "pooled_effect": 0.0941,
+      "KOSPI_effect": 0.1219,
+      "KOSPI_group_n": 161,
+      "KOSDAQ_effect": 0.0778,
+      "KOSDAQ_group_n": 185
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "distance_to_prior_26w_high_pct",
+      "level": null,
+      "pooled_effect": 0.074,
+      "KOSPI_effect": 0.164,
+      "KOSPI_group_n": 161,
+      "KOSDAQ_effect": 0.0181,
+      "KOSDAQ_group_n": 185
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "wma52_slope_1w",
+      "level": null,
+      "pooled_effect": -0.1789,
+      "KOSPI_effect": -0.1547,
+      "KOSPI_group_n": 161,
+      "KOSDAQ_effect": -0.1904,
+      "KOSDAQ_group_n": 185
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "wma12_vs_wma26_pct",
+      "level": null,
+      "pooled_effect": -0.0621,
+      "KOSPI_effect": -0.0168,
+      "KOSPI_group_n": 161,
+      "KOSDAQ_effect": -0.084,
+      "KOSDAQ_group_n": 185
+    },
+    {
+      "comparison": "WIN_100_vs_LOSS_50",
+      "feature": "atr_14_pct",
+      "level": null,
+      "pooled_effect": -0.1509,
+      "KOSPI_effect": -0.0499,
+      "KOSPI_group_n": 161,
+      "KOSDAQ_effect": -0.2002,
+      "KOSDAQ_group_n": 185
+    }
+  ],
+  "network_requests": 0
+}
