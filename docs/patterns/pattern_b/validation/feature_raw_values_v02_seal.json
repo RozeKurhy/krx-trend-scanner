@@ -1,0 +1,18 @@
+{
+  "version": "PATTERN_B_HOLDOUT_V02_FEATURE_RAW",
+  "sample_count": 36,
+  "sample_id_min": "PBHOLD_001",
+  "sample_id_max": "PBHOLD_036",
+  "feature_names": [
+    "36M_RANGE_POSITION",
+    "MONTHLY_MA24_DISTANCE",
+    "52W_RANGE_POSITION"
+  ],
+  "feature_contract": "feature_contract_v01.md",
+  "feature_module_sha256": "2480497c2cdc85289f30ea215f67dc0a6d715a1d81a8045a4c0c97c8c3da00db",
+  "pit_policy": "sealed holdout as_of; Repository V2 adjusted daily from PIT COMMON identity segment start to as_of; completed MonthEnd/W-FRI bars with label <= as_of",
+  "holdout_private_manifest_sha256": "22e10c1295434b01964c92f240b5740b3e552a400fa7ccdd1c6922a131d28803",
+  "holdout_chart_pack_sha256": "9f199eec0edf690452c2abb9cbe9f03e2e214d0f5bb4496bfa5680e175727cab",
+  "raw_values_file_sha256": "5613bc03f0126ea6dbf3609e6826709c1ed119a0f919b02dec7f1eb74ce8f986",
+  "record_file_sha256": "93e71f9e6be969383fd392190a9cfcf2bed83ca86292dfa68737184f60b47ccb"
+}

@@ -1,0 +1,673 @@
+{
+  "development_set": true,
+  "rule_v01_predictions": {
+    "PBDEV2_001": "NORMAL",
+    "PBDEV2_002": "DEEP_DEPRESSED",
+    "PBDEV2_003": "NORMAL",
+    "PBDEV2_004": "DEPRESSED",
+    "PBDEV2_005": "DEPRESSED",
+    "PBDEV2_006": "OVERHEATED",
+    "PBDEV2_007": "NORMAL",
+    "PBDEV2_008": "NORMAL",
+    "PBDEV2_009": "NORMAL",
+    "PBDEV2_010": "NORMAL",
+    "PBDEV2_011": "DEPRESSED",
+    "PBDEV2_012": "DEEP_DEPRESSED",
+    "PBDEV2_013": "DEPRESSED",
+    "PBDEV2_014": "NORMAL",
+    "PBDEV2_015": "DEPRESSED",
+    "PBDEV2_016": "DEPRESSED",
+    "PBDEV2_017": "NORMAL",
+    "PBDEV2_018": "NORMAL",
+    "PBDEV2_019": "NORMAL",
+    "PBDEV2_020": "DEEP_DEPRESSED",
+    "PBDEV2_021": "OVERHEATED",
+    "PBDEV2_022": "OVERHEATED",
+    "PBDEV2_023": "NORMAL",
+    "PBDEV2_024": "DEPRESSED",
+    "PBDEV2_025": "DEPRESSED",
+    "PBDEV2_026": "DEPRESSED",
+    "PBDEV2_027": "DEPRESSED",
+    "PBDEV2_028": "NORMAL",
+    "PBDEV2_029": "DEPRESSED",
+    "PBDEV2_030": "DEPRESSED",
+    "PBDEV2_031": "OVERHEATED",
+    "PBDEV2_032": "NORMAL",
+    "PBDEV2_033": "DEPRESSED",
+    "PBDEV2_034": "NORMAL",
+    "PBDEV2_035": "DEPRESSED",
+    "PBDEV2_036": "NORMAL"
+  },
+  "rule_v01_metrics": {
+    "all": {
+      "n": 36,
+      "exact": 17,
+      "within_1": 35,
+      "mae": 0.5556,
+      "error_ge_2": 1,
+      "error_ge_3": 0
+    },
+    "high": {
+      "n": 35,
+      "exact": 17,
+      "within_1": 35,
+      "mae": 0.5143,
+      "error_ge_2": 0,
+      "error_ge_3": 0
+    },
+    "extreme": {
+      "n": 12,
+      "exact": 3,
+      "within_1": 11,
+      "mae": 0.8333,
+      "error_ge_2": 1,
+      "error_ge_3": 0
+    },
+    "per_state": {
+      "DEEP_DEPRESSED": {
+        "n": 11,
+        "exact": 3,
+        "within_1": 10,
+        "mae": 0.8182,
+        "error_ge_2": 1,
+        "error_ge_3": 0
+      },
+      "DEPRESSED": {
+        "n": 12,
+        "exact": 6,
+        "within_1": 12,
+        "mae": 0.5,
+        "error_ge_2": 0,
+        "error_ge_3": 0
+      },
+      "NORMAL": {
+        "n": 8,
+        "exact": 6,
+        "within_1": 8,
+        "mae": 0.25,
+        "error_ge_2": 0,
+        "error_ge_3": 0
+      },
+      "OVERHEATED": {
+        "n": 4,
+        "exact": 2,
+        "within_1": 4,
+        "mae": 0.5,
+        "error_ge_2": 0,
+        "error_ge_3": 0
+      },
+      "EXTREME_OVERHEATED": {
+        "n": 1,
+        "exact": 0,
+        "within_1": 1,
+        "mae": 1.0,
+        "error_ge_2": 0,
+        "error_ge_3": 0
+      }
+    },
+    "confusion": {
+      "DEEP_DEPRESSED": {
+        "DEEP_DEPRESSED": 3,
+        "DEPRESSED": 7,
+        "NORMAL": 1,
+        "OVERHEATED": 0,
+        "EXTREME_OVERHEATED": 0
+      },
+      "DEPRESSED": {
+        "DEEP_DEPRESSED": 0,
+        "DEPRESSED": 6,
+        "NORMAL": 6,
+        "OVERHEATED": 0,
+        "EXTREME_OVERHEATED": 0
+      },
+      "NORMAL": {
+        "DEEP_DEPRESSED": 0,
+        "DEPRESSED": 1,
+        "NORMAL": 6,
+        "OVERHEATED": 1,
+        "EXTREME_OVERHEATED": 0
+      },
+      "OVERHEATED": {
+        "DEEP_DEPRESSED": 0,
+        "DEPRESSED": 0,
+        "NORMAL": 2,
+        "OVERHEATED": 2,
+        "EXTREME_OVERHEATED": 0
+      },
+      "EXTREME_OVERHEATED": {
+        "DEEP_DEPRESSED": 0,
+        "DEPRESSED": 0,
+        "NORMAL": 0,
+        "OVERHEATED": 1,
+        "EXTREME_OVERHEATED": 0
+      }
+    },
+    "signed_error_counts": {
+      "-4": 0,
+      "-3": 0,
+      "-2": 0,
+      "-1": 4,
+      "0": 17,
+      "1": 14,
+      "2": 1,
+      "3": 0,
+      "4": 0
+    },
+    "mean_signed_error": 0.3333
+  },
+  "feature_diagnostics": {
+    "36M_RANGE_POSITION": {
+      "spearman": 0.8278,
+      "medians": {
+        "DEEP_DEPRESSED": 0.0404,
+        "DEPRESSED": 0.1819,
+        "NORMAL": 0.4517,
+        "OVERHEATED": 0.5849,
+        "EXTREME_OVERHEATED": 0.6479
+      },
+      "iqr": {
+        "DEEP_DEPRESSED": [
+          0.024,
+          0.0455
+        ],
+        "DEPRESSED": [
+          0.1321,
+          0.2805
+        ],
+        "NORMAL": [
+          0.3191,
+          0.6907
+        ],
+        "OVERHEATED": [
+          0.5615,
+          0.6402
+        ],
+        "EXTREME_OVERHEATED": [
+          0.6479,
+          0.6479
+        ]
+      },
+      "adjacent_median_increases": 4,
+      "adjacent_iqr_overlaps": [
+        "NORMAL/OVERHEATED"
+      ]
+    },
+    "MONTHLY_MA24_DISTANCE": {
+      "spearman": 0.7673,
+      "medians": {
+        "DEEP_DEPRESSED": -0.3103,
+        "DEPRESSED": -0.0728,
+        "NORMAL": 0.0261,
+        "OVERHEATED": 0.1647,
+        "EXTREME_OVERHEATED": 0.3049
+      },
+      "iqr": {
+        "DEEP_DEPRESSED": [
+          -0.4363,
+          -0.2367
+        ],
+        "DEPRESSED": [
+          -0.1876,
+          -0.0168
+        ],
+        "NORMAL": [
+          -0.0312,
+          0.069
+        ],
+        "OVERHEATED": [
+          0.0436,
+          0.2915
+        ],
+        "EXTREME_OVERHEATED": [
+          0.3049,
+          0.3049
+        ]
+      },
+      "adjacent_median_increases": 4,
+      "adjacent_iqr_overlaps": [
+        "DEPRESSED/NORMAL",
+        "NORMAL/OVERHEATED"
+      ]
+    },
+    "52W_RANGE_POSITION": {
+      "spearman": 0.6116,
+      "medians": {
+        "DEEP_DEPRESSED": 0.1074,
+        "DEPRESSED": 0.2693,
+        "NORMAL": 0.4393,
+        "OVERHEATED": 0.5055,
+        "EXTREME_OVERHEATED": 0.6855
+      },
+      "iqr": {
+        "DEEP_DEPRESSED": [
+          0.0171,
+          0.1869
+        ],
+        "DEPRESSED": [
+          0.1835,
+          0.3901
+        ],
+        "NORMAL": [
+          0.1927,
+          0.5766
+        ],
+        "OVERHEATED": [
+          0.4362,
+          0.5753
+        ],
+        "EXTREME_OVERHEATED": [
+          0.6855,
+          0.6855
+        ]
+      },
+      "adjacent_median_increases": 4,
+      "adjacent_iqr_overlaps": [
+        "DEEP_DEPRESSED/DEPRESSED",
+        "DEPRESSED/NORMAL",
+        "NORMAL/OVERHEATED"
+      ]
+    },
+    "36M_CLOSE_PERCENTILE_POSITION": {
+      "spearman": 0.7514,
+      "medians": {
+        "DEEP_DEPRESSED": 0.0286,
+        "DEPRESSED": 0.2571,
+        "NORMAL": 0.5429,
+        "OVERHEATED": 0.7571,
+        "EXTREME_OVERHEATED": 0.8286
+      },
+      "iqr": {
+        "DEEP_DEPRESSED": [
+          0.0,
+          0.0571
+        ],
+        "DEPRESSED": [
+          0.0286,
+          0.3571
+        ],
+        "NORMAL": [
+          0.4286,
+          0.9
+        ],
+        "OVERHEATED": [
+          0.65,
+          0.85
+        ],
+        "EXTREME_OVERHEATED": [
+          0.8286,
+          0.8286
+        ]
+      },
+      "adjacent_median_increases": 4,
+      "adjacent_iqr_overlaps": [
+        "DEEP_DEPRESSED/DEPRESSED",
+        "NORMAL/OVERHEATED",
+        "OVERHEATED/EXTREME_OVERHEATED"
+      ]
+    },
+    "52W_CLOSE_PERCENTILE_POSITION": {
+      "spearman": 0.5939,
+      "medians": {
+        "DEEP_DEPRESSED": 0.1765,
+        "DEPRESSED": 0.3431,
+        "NORMAL": 0.549,
+        "OVERHEATED": 0.7598,
+        "EXTREME_OVERHEATED": 0.6667
+      },
+      "iqr": {
+        "DEEP_DEPRESSED": [
+          0.0098,
+          0.299
+        ],
+        "DEPRESSED": [
+          0.0515,
+          0.5809
+        ],
+        "NORMAL": [
+          0.3382,
+          0.8088
+        ],
+        "OVERHEATED": [
+          0.6691,
+          0.8088
+        ],
+        "EXTREME_OVERHEATED": [
+          0.6667,
+          0.6667
+        ]
+      },
+      "adjacent_median_increases": 3,
+      "adjacent_iqr_overlaps": [
+        "DEEP_DEPRESSED/DEPRESSED",
+        "DEPRESSED/NORMAL",
+        "NORMAL/OVERHEATED"
+      ]
+    },
+    "36M_ROBUST_CLOSE_RANGE_POSITION": {
+      "spearman": 0.7886,
+      "medians": {
+        "DEEP_DEPRESSED": 0.0,
+        "DEPRESSED": 0.1054,
+        "NORMAL": 0.4738,
+        "OVERHEATED": 0.8245,
+        "EXTREME_OVERHEATED": 0.8076
+      },
+      "iqr": {
+        "DEEP_DEPRESSED": [
+          0.0,
+          0.0
+        ],
+        "DEPRESSED": [
+          0.0,
+          0.279
+        ],
+        "NORMAL": [
+          0.3405,
+          0.9985
+        ],
+        "OVERHEATED": [
+          0.6789,
+          0.9387
+        ],
+        "EXTREME_OVERHEATED": [
+          0.8076,
+          0.8076
+        ]
+      },
+      "adjacent_median_increases": 3,
+      "adjacent_iqr_overlaps": [
+        "DEEP_DEPRESSED/DEPRESSED",
+        "NORMAL/OVERHEATED",
+        "OVERHEATED/EXTREME_OVERHEATED"
+      ]
+    },
+    "52W_ROBUST_CLOSE_RANGE_POSITION": {
+      "spearman": 0.6103,
+      "medians": {
+        "DEEP_DEPRESSED": 0.046,
+        "DEPRESSED": 0.1716,
+        "NORMAL": 0.4961,
+        "OVERHEATED": 0.8231,
+        "EXTREME_OVERHEATED": 0.7995
+      },
+      "iqr": {
+        "DEEP_DEPRESSED": [
+          0.0,
+          0.1533
+        ],
+        "DEPRESSED": [
+          0.0,
+          0.5645
+        ],
+        "NORMAL": [
+          0.1883,
+          0.7412
+        ],
+        "OVERHEATED": [
+          0.6142,
+          0.9485
+        ],
+        "EXTREME_OVERHEATED": [
+          0.7995,
+          0.7995
+        ]
+      },
+      "adjacent_median_increases": 3,
+      "adjacent_iqr_overlaps": [
+        "DEEP_DEPRESSED/DEPRESSED",
+        "DEPRESSED/NORMAL",
+        "NORMAL/OVERHEATED",
+        "OVERHEATED/EXTREME_OVERHEATED"
+      ]
+    }
+  },
+  "candidate_structure": {
+    "label_free": {
+      "baseline": {
+        "36M_summary": {
+          "min": 0.0122,
+          "median": 0.2218,
+          "max": 0.787,
+          "le_0_10": 11,
+          "ge_0_90": 0
+        },
+        "52W_summary": {
+          "min": 0.0013,
+          "median": 0.2693,
+          "max": 0.6978,
+          "le_0_10": 7,
+          "ge_0_90": 0
+        },
+        "side_agreement_36m_52w": 26,
+        "strong_opposite_to_ma24": []
+      },
+      "percentile": {
+        "36M_summary": {
+          "min": 0.0,
+          "median": 0.2929,
+          "max": 0.9571,
+          "le_0_10": 13,
+          "ge_0_90": 3
+        },
+        "52W_summary": {
+          "min": 0.0,
+          "median": 0.3775,
+          "max": 0.9412,
+          "le_0_10": 9,
+          "ge_0_90": 2
+        },
+        "side_agreement_36m_52w": 22,
+        "strong_opposite_to_ma24": [],
+        "resolved_vs_baseline": [],
+        "new_vs_baseline": []
+      },
+      "robust_range": {
+        "36M_summary": {
+          "min": 0.0,
+          "median": 0.1752,
+          "max": 1.0,
+          "le_0_10": 16,
+          "ge_0_90": 6
+        },
+        "52W_summary": {
+          "min": 0.0,
+          "median": 0.1944,
+          "max": 1.0,
+          "le_0_10": 12,
+          "ge_0_90": 4
+        },
+        "side_agreement_36m_52w": 25,
+        "strong_opposite_to_ma24": [],
+        "resolved_vs_baseline": [],
+        "new_vs_baseline": []
+      }
+    },
+    "saturation": {
+      "baseline": {
+        "36M": {
+          "le_0_05": 10,
+          "ge_0_95": 0
+        },
+        "52W": {
+          "le_0_05": 5,
+          "ge_0_95": 0
+        }
+      },
+      "percentile": {
+        "36M": {
+          "le_0_05": 12,
+          "ge_0_95": 1
+        },
+        "52W": {
+          "le_0_05": 8,
+          "ge_0_95": 0
+        }
+      },
+      "robust_range": {
+        "36M": {
+          "le_0_05": 15,
+          "ge_0_95": 4
+        },
+        "52W": {
+          "le_0_05": 11,
+          "ge_0_95": 2
+        }
+      }
+    }
+  },
+  "large_errors": [
+    {
+      "sample_id": "PBDEV2_019",
+      "human_label": "DEEP_DEPRESSED",
+      "confidence": "MEDIUM",
+      "rule_v01": "NORMAL",
+      "ordinal_error": 2,
+      "36M_RANGE_POSITION": 0.2822,
+      "MONTHLY_MA24_DISTANCE": 0.0328,
+      "52W_RANGE_POSITION": 0.4885,
+      "36M_CLOSE_PERCENTILE_POSITION": 0.5143,
+      "52W_CLOSE_PERCENTILE_POSITION": 0.5686,
+      "36M_ROBUST_CLOSE_RANGE_POSITION": 0.314,
+      "52W_ROBUST_CLOSE_RANGE_POSITION": 0.6632,
+      "flags": [
+        "NORMAL_DEPRESSED_BOUNDARY"
+      ]
+    }
+  ],
+  "one_step_error_mechanism": {
+    "DEPRESSED->NORMAL": {
+      "n": 6,
+      "primary_band_differs": 5,
+      "combine_step_moved_primary": 1,
+      "band_triples": [
+        [
+          2,
+          3,
+          2
+        ],
+        [
+          2,
+          2,
+          2
+        ],
+        [
+          2,
+          2,
+          1
+        ],
+        [
+          2,
+          2,
+          2
+        ],
+        [
+          2,
+          2,
+          0
+        ],
+        [
+          1,
+          2,
+          2
+        ]
+      ]
+    },
+    "DEEP_DEPRESSED->DEPRESSED": {
+      "n": 7,
+      "primary_band_differs": 1,
+      "combine_step_moved_primary": 6,
+      "band_triples": [
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ],
+        [
+          0,
+          1,
+          2
+        ],
+        [
+          0,
+          1,
+          0
+        ],
+        [
+          0,
+          1,
+          1
+        ]
+      ]
+    },
+    "EXTREME_OVERHEATED->OVERHEATED": {
+      "n": 1,
+      "primary_band_differs": 1,
+      "combine_step_moved_primary": 0,
+      "band_triples": [
+        [
+          3,
+          3,
+          2
+        ]
+      ]
+    },
+    "OVERHEATED->NORMAL": {
+      "n": 2,
+      "primary_band_differs": 1,
+      "combine_step_moved_primary": 1,
+      "band_triples": [
+        [
+          3,
+          2,
+          2
+        ],
+        [
+          2,
+          2,
+          2
+        ]
+      ]
+    },
+    "NORMAL->DEPRESSED": {
+      "n": 1,
+      "primary_band_differs": 1,
+      "combine_step_moved_primary": 0,
+      "band_triples": [
+        [
+          1,
+          2,
+          1
+        ]
+      ]
+    },
+    "NORMAL->OVERHEATED": {
+      "n": 1,
+      "primary_band_differs": 1,
+      "combine_step_moved_primary": 0,
+      "band_triples": [
+        [
+          3,
+          4,
+          2
+        ]
+      ]
+    }
+  },
+  "raw_values_sha256": "d2d9eebc378fc559b7ca7ec2583c00217cac11154307f650d843117aaa82225e",
+  "labels_sha256": "c5dd216ffa793c0b00b28a09d13b598b80fb87a15454cea1a8b704eb4c9d9e2d"
+}

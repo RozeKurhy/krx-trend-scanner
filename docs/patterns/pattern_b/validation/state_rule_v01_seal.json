@@ -1,0 +1,42 @@
+{
+  "version": "PATTERN_B_STATE_RULE_V01",
+  "source_base": "d620b5e2eab1a20013c1be6b1722c69a8a2c730d",
+  "rule_family": "C",
+  "feature_names": [
+    "36M_RANGE_POSITION",
+    "MONTHLY_MA24_DISTANCE",
+    "52W_RANGE_POSITION"
+  ],
+  "thresholds": {
+    "36M_RANGE_POSITION": [
+      0.05,
+      0.25,
+      0.55,
+      0.8
+    ],
+    "MONTHLY_MA24_DISTANCE": [
+      -0.35,
+      -0.1,
+      0.15,
+      0.5
+    ],
+    "52W_RANGE_POSITION": [
+      0.15,
+      0.25,
+      0.7,
+      0.8
+    ]
+  },
+  "threshold_semantics": "band = count of thresholds with value >= threshold (lower bound inclusive)",
+  "hgt_sample_count": 36,
+  "exact_accuracy": 0.6389,
+  "within_1_accuracy": 1.0,
+  "ordinal_mae": 0.3611,
+  "errors_ge_2": 0,
+  "errors_ge_3": 0,
+  "high_exact_accuracy": 0.7727,
+  "high_ordinal_mae": 0.2273,
+  "rule_file_sha256": "a69280eb02b7c0aa434a14d126aaf9063f58ab5a603d887b1f73cdc9122e3d46",
+  "report_sha256": "247e274a8a5255332be5ed1a84c30a7bd95f1b1899be6013590128dde9f860f5",
+  "predictions_sha256": "7188b00b820b4cf2464693a74c17336ec10c651645956bfee445534653468ae8"
+}

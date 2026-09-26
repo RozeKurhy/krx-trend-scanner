@@ -1,0 +1,1006 @@
+{
+  "development_set": true,
+  "raw_values_sha256": "d2d9eebc378fc559b7ca7ec2583c00217cac11154307f650d843117aaa82225e",
+  "labels_sha256": "c5dd216ffa793c0b00b28a09d13b598b80fb87a15454cea1a8b704eb4c9d9e2d",
+  "candidates": {
+    "A0/B0": {
+      "deep_mode": "A0",
+      "boundary_36m_normal": 0.25,
+      "predictions": {
+        "PBDEV2_001": "NORMAL",
+        "PBDEV2_002": "DEEP_DEPRESSED",
+        "PBDEV2_003": "NORMAL",
+        "PBDEV2_004": "DEPRESSED",
+        "PBDEV2_005": "DEPRESSED",
+        "PBDEV2_006": "OVERHEATED",
+        "PBDEV2_007": "NORMAL",
+        "PBDEV2_008": "NORMAL",
+        "PBDEV2_009": "NORMAL",
+        "PBDEV2_010": "NORMAL",
+        "PBDEV2_011": "DEPRESSED",
+        "PBDEV2_012": "DEEP_DEPRESSED",
+        "PBDEV2_013": "DEPRESSED",
+        "PBDEV2_014": "NORMAL",
+        "PBDEV2_015": "DEPRESSED",
+        "PBDEV2_016": "DEPRESSED",
+        "PBDEV2_017": "NORMAL",
+        "PBDEV2_018": "NORMAL",
+        "PBDEV2_019": "NORMAL",
+        "PBDEV2_020": "DEEP_DEPRESSED",
+        "PBDEV2_021": "OVERHEATED",
+        "PBDEV2_022": "OVERHEATED",
+        "PBDEV2_023": "NORMAL",
+        "PBDEV2_024": "DEPRESSED",
+        "PBDEV2_025": "DEPRESSED",
+        "PBDEV2_026": "DEPRESSED",
+        "PBDEV2_027": "DEPRESSED",
+        "PBDEV2_028": "NORMAL",
+        "PBDEV2_029": "DEPRESSED",
+        "PBDEV2_030": "DEPRESSED",
+        "PBDEV2_031": "OVERHEATED",
+        "PBDEV2_032": "NORMAL",
+        "PBDEV2_033": "DEPRESSED",
+        "PBDEV2_034": "NORMAL",
+        "PBDEV2_035": "DEPRESSED",
+        "PBDEV2_036": "NORMAL"
+      },
+      "exact": 17,
+      "within_1": 35,
+      "mae": 0.5556,
+      "error_ge_2": 1,
+      "error_ge_3": 0,
+      "signed_error_counts": {
+        "-4": 0,
+        "-3": 0,
+        "-2": 0,
+        "-1": 4,
+        "0": 17,
+        "1": 14,
+        "2": 1,
+        "3": 0,
+        "4": 0
+      },
+      "per_state": {
+        "DEEP_DEPRESSED": {
+          "n": 11,
+          "exact": 3,
+          "within_1": 10
+        },
+        "DEPRESSED": {
+          "n": 12,
+          "exact": 6,
+          "within_1": 12
+        },
+        "NORMAL": {
+          "n": 8,
+          "exact": 6,
+          "within_1": 8
+        },
+        "OVERHEATED": {
+          "n": 4,
+          "exact": 2,
+          "within_1": 4
+        },
+        "EXTREME_OVERHEATED": {
+          "n": 1,
+          "exact": 0,
+          "within_1": 1
+        }
+      },
+      "transitions": {
+        "DEEP_DEPRESSED->DEPRESSED": 7,
+        "DEPRESSED->NORMAL": 6,
+        "NORMAL->DEPRESSED": 1,
+        "NORMAL->OVERHEATED": 1,
+        "OVERHEATED->NORMAL": 2
+      },
+      "new_errors_vs_v01": [],
+      "fixed_errors_vs_v01": [],
+      "changed_predictions_vs_v01": []
+    },
+    "A0/B1": {
+      "deep_mode": "A0",
+      "boundary_36m_normal": 0.3,
+      "predictions": {
+        "PBDEV2_001": "NORMAL",
+        "PBDEV2_002": "DEEP_DEPRESSED",
+        "PBDEV2_003": "NORMAL",
+        "PBDEV2_004": "DEPRESSED",
+        "PBDEV2_005": "DEPRESSED",
+        "PBDEV2_006": "OVERHEATED",
+        "PBDEV2_007": "NORMAL",
+        "PBDEV2_008": "DEPRESSED",
+        "PBDEV2_009": "NORMAL",
+        "PBDEV2_010": "NORMAL",
+        "PBDEV2_011": "DEPRESSED",
+        "PBDEV2_012": "DEEP_DEPRESSED",
+        "PBDEV2_013": "DEPRESSED",
+        "PBDEV2_014": "NORMAL",
+        "PBDEV2_015": "DEPRESSED",
+        "PBDEV2_016": "DEPRESSED",
+        "PBDEV2_017": "NORMAL",
+        "PBDEV2_018": "NORMAL",
+        "PBDEV2_019": "NORMAL",
+        "PBDEV2_020": "DEEP_DEPRESSED",
+        "PBDEV2_021": "OVERHEATED",
+        "PBDEV2_022": "OVERHEATED",
+        "PBDEV2_023": "DEPRESSED",
+        "PBDEV2_024": "DEPRESSED",
+        "PBDEV2_025": "DEPRESSED",
+        "PBDEV2_026": "DEPRESSED",
+        "PBDEV2_027": "DEPRESSED",
+        "PBDEV2_028": "NORMAL",
+        "PBDEV2_029": "DEPRESSED",
+        "PBDEV2_030": "DEPRESSED",
+        "PBDEV2_031": "OVERHEATED",
+        "PBDEV2_032": "NORMAL",
+        "PBDEV2_033": "DEPRESSED",
+        "PBDEV2_034": "NORMAL",
+        "PBDEV2_035": "DEPRESSED",
+        "PBDEV2_036": "NORMAL"
+      },
+      "exact": 17,
+      "within_1": 35,
+      "mae": 0.5556,
+      "error_ge_2": 1,
+      "error_ge_3": 0,
+      "signed_error_counts": {
+        "-4": 0,
+        "-3": 0,
+        "-2": 0,
+        "-1": 5,
+        "0": 17,
+        "1": 13,
+        "2": 1,
+        "3": 0,
+        "4": 0
+      },
+      "per_state": {
+        "DEEP_DEPRESSED": {
+          "n": 11,
+          "exact": 3,
+          "within_1": 10
+        },
+        "DEPRESSED": {
+          "n": 12,
+          "exact": 7,
+          "within_1": 12
+        },
+        "NORMAL": {
+          "n": 8,
+          "exact": 5,
+          "within_1": 8
+        },
+        "OVERHEATED": {
+          "n": 4,
+          "exact": 2,
+          "within_1": 4
+        },
+        "EXTREME_OVERHEATED": {
+          "n": 1,
+          "exact": 0,
+          "within_1": 1
+        }
+      },
+      "transitions": {
+        "DEEP_DEPRESSED->DEPRESSED": 7,
+        "DEPRESSED->NORMAL": 5,
+        "NORMAL->DEPRESSED": 2,
+        "NORMAL->OVERHEATED": 1,
+        "OVERHEATED->NORMAL": 2
+      },
+      "new_errors_vs_v01": [
+        "PBDEV2_023"
+      ],
+      "fixed_errors_vs_v01": [
+        "PBDEV2_008"
+      ],
+      "changed_predictions_vs_v01": [
+        "PBDEV2_008",
+        "PBDEV2_023"
+      ]
+    },
+    "A0/B2": {
+      "deep_mode": "A0",
+      "boundary_36m_normal": 0.35,
+      "predictions": {
+        "PBDEV2_001": "NORMAL",
+        "PBDEV2_002": "DEEP_DEPRESSED",
+        "PBDEV2_003": "NORMAL",
+        "PBDEV2_004": "DEPRESSED",
+        "PBDEV2_005": "DEPRESSED",
+        "PBDEV2_006": "OVERHEATED",
+        "PBDEV2_007": "NORMAL",
+        "PBDEV2_008": "DEPRESSED",
+        "PBDEV2_009": "NORMAL",
+        "PBDEV2_010": "NORMAL",
+        "PBDEV2_011": "DEPRESSED",
+        "PBDEV2_012": "DEEP_DEPRESSED",
+        "PBDEV2_013": "DEPRESSED",
+        "PBDEV2_014": "NORMAL",
+        "PBDEV2_015": "DEPRESSED",
+        "PBDEV2_016": "DEPRESSED",
+        "PBDEV2_017": "DEPRESSED",
+        "PBDEV2_018": "NORMAL",
+        "PBDEV2_019": "NORMAL",
+        "PBDEV2_020": "DEEP_DEPRESSED",
+        "PBDEV2_021": "OVERHEATED",
+        "PBDEV2_022": "OVERHEATED",
+        "PBDEV2_023": "DEPRESSED",
+        "PBDEV2_024": "DEPRESSED",
+        "PBDEV2_025": "DEPRESSED",
+        "PBDEV2_026": "DEPRESSED",
+        "PBDEV2_027": "DEPRESSED",
+        "PBDEV2_028": "NORMAL",
+        "PBDEV2_029": "DEPRESSED",
+        "PBDEV2_030": "DEPRESSED",
+        "PBDEV2_031": "OVERHEATED",
+        "PBDEV2_032": "NORMAL",
+        "PBDEV2_033": "DEPRESSED",
+        "PBDEV2_034": "NORMAL",
+        "PBDEV2_035": "DEPRESSED",
+        "PBDEV2_036": "DEPRESSED"
+      },
+      "exact": 17,
+      "within_1": 35,
+      "mae": 0.5556,
+      "error_ge_2": 1,
+      "error_ge_3": 0,
+      "signed_error_counts": {
+        "-4": 0,
+        "-3": 0,
+        "-2": 0,
+        "-1": 6,
+        "0": 17,
+        "1": 12,
+        "2": 1,
+        "3": 0,
+        "4": 0
+      },
+      "per_state": {
+        "DEEP_DEPRESSED": {
+          "n": 11,
+          "exact": 3,
+          "within_1": 10
+        },
+        "DEPRESSED": {
+          "n": 12,
+          "exact": 8,
+          "within_1": 12
+        },
+        "NORMAL": {
+          "n": 8,
+          "exact": 4,
+          "within_1": 8
+        },
+        "OVERHEATED": {
+          "n": 4,
+          "exact": 2,
+          "within_1": 4
+        },
+        "EXTREME_OVERHEATED": {
+          "n": 1,
+          "exact": 0,
+          "within_1": 1
+        }
+      },
+      "transitions": {
+        "DEEP_DEPRESSED->DEPRESSED": 7,
+        "DEPRESSED->NORMAL": 4,
+        "NORMAL->DEPRESSED": 3,
+        "NORMAL->OVERHEATED": 1,
+        "OVERHEATED->NORMAL": 2
+      },
+      "new_errors_vs_v01": [
+        "PBDEV2_023",
+        "PBDEV2_036"
+      ],
+      "fixed_errors_vs_v01": [
+        "PBDEV2_008",
+        "PBDEV2_017"
+      ],
+      "changed_predictions_vs_v01": [
+        "PBDEV2_008",
+        "PBDEV2_017",
+        "PBDEV2_023",
+        "PBDEV2_036"
+      ]
+    },
+    "A1/B0": {
+      "deep_mode": "A1",
+      "boundary_36m_normal": 0.25,
+      "predictions": {
+        "PBDEV2_001": "NORMAL",
+        "PBDEV2_002": "DEEP_DEPRESSED",
+        "PBDEV2_003": "NORMAL",
+        "PBDEV2_004": "DEPRESSED",
+        "PBDEV2_005": "DEEP_DEPRESSED",
+        "PBDEV2_006": "OVERHEATED",
+        "PBDEV2_007": "NORMAL",
+        "PBDEV2_008": "NORMAL",
+        "PBDEV2_009": "NORMAL",
+        "PBDEV2_010": "NORMAL",
+        "PBDEV2_011": "DEEP_DEPRESSED",
+        "PBDEV2_012": "DEEP_DEPRESSED",
+        "PBDEV2_013": "DEPRESSED",
+        "PBDEV2_014": "NORMAL",
+        "PBDEV2_015": "DEPRESSED",
+        "PBDEV2_016": "DEPRESSED",
+        "PBDEV2_017": "NORMAL",
+        "PBDEV2_018": "NORMAL",
+        "PBDEV2_019": "NORMAL",
+        "PBDEV2_020": "DEEP_DEPRESSED",
+        "PBDEV2_021": "OVERHEATED",
+        "PBDEV2_022": "OVERHEATED",
+        "PBDEV2_023": "NORMAL",
+        "PBDEV2_024": "DEEP_DEPRESSED",
+        "PBDEV2_025": "DEEP_DEPRESSED",
+        "PBDEV2_026": "DEEP_DEPRESSED",
+        "PBDEV2_027": "DEPRESSED",
+        "PBDEV2_028": "NORMAL",
+        "PBDEV2_029": "DEPRESSED",
+        "PBDEV2_030": "DEEP_DEPRESSED",
+        "PBDEV2_031": "OVERHEATED",
+        "PBDEV2_032": "NORMAL",
+        "PBDEV2_033": "DEEP_DEPRESSED",
+        "PBDEV2_034": "NORMAL",
+        "PBDEV2_035": "DEPRESSED",
+        "PBDEV2_036": "NORMAL"
+      },
+      "exact": 22,
+      "within_1": 35,
+      "mae": 0.4167,
+      "error_ge_2": 1,
+      "error_ge_3": 0,
+      "signed_error_counts": {
+        "-4": 0,
+        "-3": 0,
+        "-2": 0,
+        "-1": 5,
+        "0": 22,
+        "1": 8,
+        "2": 1,
+        "3": 0,
+        "4": 0
+      },
+      "per_state": {
+        "DEEP_DEPRESSED": {
+          "n": 11,
+          "exact": 9,
+          "within_1": 10
+        },
+        "DEPRESSED": {
+          "n": 12,
+          "exact": 5,
+          "within_1": 12
+        },
+        "NORMAL": {
+          "n": 8,
+          "exact": 6,
+          "within_1": 8
+        },
+        "OVERHEATED": {
+          "n": 4,
+          "exact": 2,
+          "within_1": 4
+        },
+        "EXTREME_OVERHEATED": {
+          "n": 1,
+          "exact": 0,
+          "within_1": 1
+        }
+      },
+      "transitions": {
+        "DEEP_DEPRESSED->DEPRESSED": 1,
+        "DEPRESSED->NORMAL": 6,
+        "NORMAL->DEPRESSED": 1,
+        "NORMAL->OVERHEATED": 1,
+        "OVERHEATED->NORMAL": 2
+      },
+      "new_errors_vs_v01": [
+        "PBDEV2_025"
+      ],
+      "fixed_errors_vs_v01": [
+        "PBDEV2_005",
+        "PBDEV2_011",
+        "PBDEV2_024",
+        "PBDEV2_026",
+        "PBDEV2_030",
+        "PBDEV2_033"
+      ],
+      "changed_predictions_vs_v01": [
+        "PBDEV2_005",
+        "PBDEV2_011",
+        "PBDEV2_024",
+        "PBDEV2_025",
+        "PBDEV2_026",
+        "PBDEV2_030",
+        "PBDEV2_033"
+      ]
+    },
+    "A1/B1": {
+      "deep_mode": "A1",
+      "boundary_36m_normal": 0.3,
+      "predictions": {
+        "PBDEV2_001": "NORMAL",
+        "PBDEV2_002": "DEEP_DEPRESSED",
+        "PBDEV2_003": "NORMAL",
+        "PBDEV2_004": "DEPRESSED",
+        "PBDEV2_005": "DEEP_DEPRESSED",
+        "PBDEV2_006": "OVERHEATED",
+        "PBDEV2_007": "NORMAL",
+        "PBDEV2_008": "DEPRESSED",
+        "PBDEV2_009": "NORMAL",
+        "PBDEV2_010": "NORMAL",
+        "PBDEV2_011": "DEEP_DEPRESSED",
+        "PBDEV2_012": "DEEP_DEPRESSED",
+        "PBDEV2_013": "DEPRESSED",
+        "PBDEV2_014": "NORMAL",
+        "PBDEV2_015": "DEPRESSED",
+        "PBDEV2_016": "DEPRESSED",
+        "PBDEV2_017": "NORMAL",
+        "PBDEV2_018": "NORMAL",
+        "PBDEV2_019": "NORMAL",
+        "PBDEV2_020": "DEEP_DEPRESSED",
+        "PBDEV2_021": "OVERHEATED",
+        "PBDEV2_022": "OVERHEATED",
+        "PBDEV2_023": "DEPRESSED",
+        "PBDEV2_024": "DEEP_DEPRESSED",
+        "PBDEV2_025": "DEEP_DEPRESSED",
+        "PBDEV2_026": "DEEP_DEPRESSED",
+        "PBDEV2_027": "DEPRESSED",
+        "PBDEV2_028": "NORMAL",
+        "PBDEV2_029": "DEPRESSED",
+        "PBDEV2_030": "DEEP_DEPRESSED",
+        "PBDEV2_031": "OVERHEATED",
+        "PBDEV2_032": "NORMAL",
+        "PBDEV2_033": "DEEP_DEPRESSED",
+        "PBDEV2_034": "NORMAL",
+        "PBDEV2_035": "DEPRESSED",
+        "PBDEV2_036": "NORMAL"
+      },
+      "exact": 22,
+      "within_1": 35,
+      "mae": 0.4167,
+      "error_ge_2": 1,
+      "error_ge_3": 0,
+      "signed_error_counts": {
+        "-4": 0,
+        "-3": 0,
+        "-2": 0,
+        "-1": 6,
+        "0": 22,
+        "1": 7,
+        "2": 1,
+        "3": 0,
+        "4": 0
+      },
+      "per_state": {
+        "DEEP_DEPRESSED": {
+          "n": 11,
+          "exact": 9,
+          "within_1": 10
+        },
+        "DEPRESSED": {
+          "n": 12,
+          "exact": 6,
+          "within_1": 12
+        },
+        "NORMAL": {
+          "n": 8,
+          "exact": 5,
+          "within_1": 8
+        },
+        "OVERHEATED": {
+          "n": 4,
+          "exact": 2,
+          "within_1": 4
+        },
+        "EXTREME_OVERHEATED": {
+          "n": 1,
+          "exact": 0,
+          "within_1": 1
+        }
+      },
+      "transitions": {
+        "DEEP_DEPRESSED->DEPRESSED": 1,
+        "DEPRESSED->NORMAL": 5,
+        "NORMAL->DEPRESSED": 2,
+        "NORMAL->OVERHEATED": 1,
+        "OVERHEATED->NORMAL": 2
+      },
+      "new_errors_vs_v01": [
+        "PBDEV2_023",
+        "PBDEV2_025"
+      ],
+      "fixed_errors_vs_v01": [
+        "PBDEV2_005",
+        "PBDEV2_008",
+        "PBDEV2_011",
+        "PBDEV2_024",
+        "PBDEV2_026",
+        "PBDEV2_030",
+        "PBDEV2_033"
+      ],
+      "changed_predictions_vs_v01": [
+        "PBDEV2_005",
+        "PBDEV2_008",
+        "PBDEV2_011",
+        "PBDEV2_023",
+        "PBDEV2_024",
+        "PBDEV2_025",
+        "PBDEV2_026",
+        "PBDEV2_030",
+        "PBDEV2_033"
+      ]
+    },
+    "A1/B2": {
+      "deep_mode": "A1",
+      "boundary_36m_normal": 0.35,
+      "predictions": {
+        "PBDEV2_001": "NORMAL",
+        "PBDEV2_002": "DEEP_DEPRESSED",
+        "PBDEV2_003": "NORMAL",
+        "PBDEV2_004": "DEPRESSED",
+        "PBDEV2_005": "DEEP_DEPRESSED",
+        "PBDEV2_006": "OVERHEATED",
+        "PBDEV2_007": "NORMAL",
+        "PBDEV2_008": "DEPRESSED",
+        "PBDEV2_009": "NORMAL",
+        "PBDEV2_010": "NORMAL",
+        "PBDEV2_011": "DEEP_DEPRESSED",
+        "PBDEV2_012": "DEEP_DEPRESSED",
+        "PBDEV2_013": "DEPRESSED",
+        "PBDEV2_014": "NORMAL",
+        "PBDEV2_015": "DEPRESSED",
+        "PBDEV2_016": "DEPRESSED",
+        "PBDEV2_017": "DEPRESSED",
+        "PBDEV2_018": "NORMAL",
+        "PBDEV2_019": "NORMAL",
+        "PBDEV2_020": "DEEP_DEPRESSED",
+        "PBDEV2_021": "OVERHEATED",
+        "PBDEV2_022": "OVERHEATED",
+        "PBDEV2_023": "DEPRESSED",
+        "PBDEV2_024": "DEEP_DEPRESSED",
+        "PBDEV2_025": "DEEP_DEPRESSED",
+        "PBDEV2_026": "DEEP_DEPRESSED",
+        "PBDEV2_027": "DEPRESSED",
+        "PBDEV2_028": "NORMAL",
+        "PBDEV2_029": "DEPRESSED",
+        "PBDEV2_030": "DEEP_DEPRESSED",
+        "PBDEV2_031": "OVERHEATED",
+        "PBDEV2_032": "NORMAL",
+        "PBDEV2_033": "DEEP_DEPRESSED",
+        "PBDEV2_034": "NORMAL",
+        "PBDEV2_035": "DEPRESSED",
+        "PBDEV2_036": "DEPRESSED"
+      },
+      "exact": 22,
+      "within_1": 35,
+      "mae": 0.4167,
+      "error_ge_2": 1,
+      "error_ge_3": 0,
+      "signed_error_counts": {
+        "-4": 0,
+        "-3": 0,
+        "-2": 0,
+        "-1": 7,
+        "0": 22,
+        "1": 6,
+        "2": 1,
+        "3": 0,
+        "4": 0
+      },
+      "per_state": {
+        "DEEP_DEPRESSED": {
+          "n": 11,
+          "exact": 9,
+          "within_1": 10
+        },
+        "DEPRESSED": {
+          "n": 12,
+          "exact": 7,
+          "within_1": 12
+        },
+        "NORMAL": {
+          "n": 8,
+          "exact": 4,
+          "within_1": 8
+        },
+        "OVERHEATED": {
+          "n": 4,
+          "exact": 2,
+          "within_1": 4
+        },
+        "EXTREME_OVERHEATED": {
+          "n": 1,
+          "exact": 0,
+          "within_1": 1
+        }
+      },
+      "transitions": {
+        "DEEP_DEPRESSED->DEPRESSED": 1,
+        "DEPRESSED->NORMAL": 4,
+        "NORMAL->DEPRESSED": 3,
+        "NORMAL->OVERHEATED": 1,
+        "OVERHEATED->NORMAL": 2
+      },
+      "new_errors_vs_v01": [
+        "PBDEV2_023",
+        "PBDEV2_025",
+        "PBDEV2_036"
+      ],
+      "fixed_errors_vs_v01": [
+        "PBDEV2_005",
+        "PBDEV2_008",
+        "PBDEV2_011",
+        "PBDEV2_017",
+        "PBDEV2_024",
+        "PBDEV2_026",
+        "PBDEV2_030",
+        "PBDEV2_033"
+      ],
+      "changed_predictions_vs_v01": [
+        "PBDEV2_005",
+        "PBDEV2_008",
+        "PBDEV2_011",
+        "PBDEV2_017",
+        "PBDEV2_023",
+        "PBDEV2_024",
+        "PBDEV2_025",
+        "PBDEV2_026",
+        "PBDEV2_030",
+        "PBDEV2_033",
+        "PBDEV2_036"
+      ]
+    },
+    "A2/B0": {
+      "deep_mode": "A2",
+      "boundary_36m_normal": 0.25,
+      "predictions": {
+        "PBDEV2_001": "NORMAL",
+        "PBDEV2_002": "DEEP_DEPRESSED",
+        "PBDEV2_003": "NORMAL",
+        "PBDEV2_004": "DEPRESSED",
+        "PBDEV2_005": "DEEP_DEPRESSED",
+        "PBDEV2_006": "OVERHEATED",
+        "PBDEV2_007": "NORMAL",
+        "PBDEV2_008": "NORMAL",
+        "PBDEV2_009": "NORMAL",
+        "PBDEV2_010": "NORMAL",
+        "PBDEV2_011": "DEEP_DEPRESSED",
+        "PBDEV2_012": "DEEP_DEPRESSED",
+        "PBDEV2_013": "DEPRESSED",
+        "PBDEV2_014": "NORMAL",
+        "PBDEV2_015": "DEPRESSED",
+        "PBDEV2_016": "DEPRESSED",
+        "PBDEV2_017": "NORMAL",
+        "PBDEV2_018": "NORMAL",
+        "PBDEV2_019": "NORMAL",
+        "PBDEV2_020": "DEEP_DEPRESSED",
+        "PBDEV2_021": "OVERHEATED",
+        "PBDEV2_022": "OVERHEATED",
+        "PBDEV2_023": "NORMAL",
+        "PBDEV2_024": "DEEP_DEPRESSED",
+        "PBDEV2_025": "DEEP_DEPRESSED",
+        "PBDEV2_026": "DEEP_DEPRESSED",
+        "PBDEV2_027": "DEPRESSED",
+        "PBDEV2_028": "NORMAL",
+        "PBDEV2_029": "DEPRESSED",
+        "PBDEV2_030": "DEEP_DEPRESSED",
+        "PBDEV2_031": "OVERHEATED",
+        "PBDEV2_032": "NORMAL",
+        "PBDEV2_033": "DEEP_DEPRESSED",
+        "PBDEV2_034": "NORMAL",
+        "PBDEV2_035": "DEPRESSED",
+        "PBDEV2_036": "NORMAL"
+      },
+      "exact": 22,
+      "within_1": 35,
+      "mae": 0.4167,
+      "error_ge_2": 1,
+      "error_ge_3": 0,
+      "signed_error_counts": {
+        "-4": 0,
+        "-3": 0,
+        "-2": 0,
+        "-1": 5,
+        "0": 22,
+        "1": 8,
+        "2": 1,
+        "3": 0,
+        "4": 0
+      },
+      "per_state": {
+        "DEEP_DEPRESSED": {
+          "n": 11,
+          "exact": 9,
+          "within_1": 10
+        },
+        "DEPRESSED": {
+          "n": 12,
+          "exact": 5,
+          "within_1": 12
+        },
+        "NORMAL": {
+          "n": 8,
+          "exact": 6,
+          "within_1": 8
+        },
+        "OVERHEATED": {
+          "n": 4,
+          "exact": 2,
+          "within_1": 4
+        },
+        "EXTREME_OVERHEATED": {
+          "n": 1,
+          "exact": 0,
+          "within_1": 1
+        }
+      },
+      "transitions": {
+        "DEEP_DEPRESSED->DEPRESSED": 1,
+        "DEPRESSED->NORMAL": 6,
+        "NORMAL->DEPRESSED": 1,
+        "NORMAL->OVERHEATED": 1,
+        "OVERHEATED->NORMAL": 2
+      },
+      "new_errors_vs_v01": [
+        "PBDEV2_025"
+      ],
+      "fixed_errors_vs_v01": [
+        "PBDEV2_005",
+        "PBDEV2_011",
+        "PBDEV2_024",
+        "PBDEV2_026",
+        "PBDEV2_030",
+        "PBDEV2_033"
+      ],
+      "changed_predictions_vs_v01": [
+        "PBDEV2_005",
+        "PBDEV2_011",
+        "PBDEV2_024",
+        "PBDEV2_025",
+        "PBDEV2_026",
+        "PBDEV2_030",
+        "PBDEV2_033"
+      ]
+    },
+    "A2/B1": {
+      "deep_mode": "A2",
+      "boundary_36m_normal": 0.3,
+      "predictions": {
+        "PBDEV2_001": "NORMAL",
+        "PBDEV2_002": "DEEP_DEPRESSED",
+        "PBDEV2_003": "NORMAL",
+        "PBDEV2_004": "DEPRESSED",
+        "PBDEV2_005": "DEEP_DEPRESSED",
+        "PBDEV2_006": "OVERHEATED",
+        "PBDEV2_007": "NORMAL",
+        "PBDEV2_008": "DEPRESSED",
+        "PBDEV2_009": "NORMAL",
+        "PBDEV2_010": "NORMAL",
+        "PBDEV2_011": "DEEP_DEPRESSED",
+        "PBDEV2_012": "DEEP_DEPRESSED",
+        "PBDEV2_013": "DEPRESSED",
+        "PBDEV2_014": "NORMAL",
+        "PBDEV2_015": "DEPRESSED",
+        "PBDEV2_016": "DEPRESSED",
+        "PBDEV2_017": "NORMAL",
+        "PBDEV2_018": "NORMAL",
+        "PBDEV2_019": "NORMAL",
+        "PBDEV2_020": "DEEP_DEPRESSED",
+        "PBDEV2_021": "OVERHEATED",
+        "PBDEV2_022": "OVERHEATED",
+        "PBDEV2_023": "DEPRESSED",
+        "PBDEV2_024": "DEEP_DEPRESSED",
+        "PBDEV2_025": "DEEP_DEPRESSED",
+        "PBDEV2_026": "DEEP_DEPRESSED",
+        "PBDEV2_027": "DEPRESSED",
+        "PBDEV2_028": "NORMAL",
+        "PBDEV2_029": "DEPRESSED",
+        "PBDEV2_030": "DEEP_DEPRESSED",
+        "PBDEV2_031": "OVERHEATED",
+        "PBDEV2_032": "NORMAL",
+        "PBDEV2_033": "DEEP_DEPRESSED",
+        "PBDEV2_034": "NORMAL",
+        "PBDEV2_035": "DEPRESSED",
+        "PBDEV2_036": "NORMAL"
+      },
+      "exact": 22,
+      "within_1": 35,
+      "mae": 0.4167,
+      "error_ge_2": 1,
+      "error_ge_3": 0,
+      "signed_error_counts": {
+        "-4": 0,
+        "-3": 0,
+        "-2": 0,
+        "-1": 6,
+        "0": 22,
+        "1": 7,
+        "2": 1,
+        "3": 0,
+        "4": 0
+      },
+      "per_state": {
+        "DEEP_DEPRESSED": {
+          "n": 11,
+          "exact": 9,
+          "within_1": 10
+        },
+        "DEPRESSED": {
+          "n": 12,
+          "exact": 6,
+          "within_1": 12
+        },
+        "NORMAL": {
+          "n": 8,
+          "exact": 5,
+          "within_1": 8
+        },
+        "OVERHEATED": {
+          "n": 4,
+          "exact": 2,
+          "within_1": 4
+        },
+        "EXTREME_OVERHEATED": {
+          "n": 1,
+          "exact": 0,
+          "within_1": 1
+        }
+      },
+      "transitions": {
+        "DEEP_DEPRESSED->DEPRESSED": 1,
+        "DEPRESSED->NORMAL": 5,
+        "NORMAL->DEPRESSED": 2,
+        "NORMAL->OVERHEATED": 1,
+        "OVERHEATED->NORMAL": 2
+      },
+      "new_errors_vs_v01": [
+        "PBDEV2_023",
+        "PBDEV2_025"
+      ],
+      "fixed_errors_vs_v01": [
+        "PBDEV2_005",
+        "PBDEV2_008",
+        "PBDEV2_011",
+        "PBDEV2_024",
+        "PBDEV2_026",
+        "PBDEV2_030",
+        "PBDEV2_033"
+      ],
+      "changed_predictions_vs_v01": [
+        "PBDEV2_005",
+        "PBDEV2_008",
+        "PBDEV2_011",
+        "PBDEV2_023",
+        "PBDEV2_024",
+        "PBDEV2_025",
+        "PBDEV2_026",
+        "PBDEV2_030",
+        "PBDEV2_033"
+      ]
+    },
+    "A2/B2": {
+      "deep_mode": "A2",
+      "boundary_36m_normal": 0.35,
+      "predictions": {
+        "PBDEV2_001": "NORMAL",
+        "PBDEV2_002": "DEEP_DEPRESSED",
+        "PBDEV2_003": "NORMAL",
+        "PBDEV2_004": "DEPRESSED",
+        "PBDEV2_005": "DEEP_DEPRESSED",
+        "PBDEV2_006": "OVERHEATED",
+        "PBDEV2_007": "NORMAL",
+        "PBDEV2_008": "DEPRESSED",
+        "PBDEV2_009": "NORMAL",
+        "PBDEV2_010": "NORMAL",
+        "PBDEV2_011": "DEEP_DEPRESSED",
+        "PBDEV2_012": "DEEP_DEPRESSED",
+        "PBDEV2_013": "DEPRESSED",
+        "PBDEV2_014": "NORMAL",
+        "PBDEV2_015": "DEPRESSED",
+        "PBDEV2_016": "DEPRESSED",
+        "PBDEV2_017": "DEPRESSED",
+        "PBDEV2_018": "NORMAL",
+        "PBDEV2_019": "NORMAL",
+        "PBDEV2_020": "DEEP_DEPRESSED",
+        "PBDEV2_021": "OVERHEATED",
+        "PBDEV2_022": "OVERHEATED",
+        "PBDEV2_023": "DEPRESSED",
+        "PBDEV2_024": "DEEP_DEPRESSED",
+        "PBDEV2_025": "DEEP_DEPRESSED",
+        "PBDEV2_026": "DEEP_DEPRESSED",
+        "PBDEV2_027": "DEPRESSED",
+        "PBDEV2_028": "NORMAL",
+        "PBDEV2_029": "DEPRESSED",
+        "PBDEV2_030": "DEEP_DEPRESSED",
+        "PBDEV2_031": "OVERHEATED",
+        "PBDEV2_032": "NORMAL",
+        "PBDEV2_033": "DEEP_DEPRESSED",
+        "PBDEV2_034": "NORMAL",
+        "PBDEV2_035": "DEPRESSED",
+        "PBDEV2_036": "DEPRESSED"
+      },
+      "exact": 22,
+      "within_1": 35,
+      "mae": 0.4167,
+      "error_ge_2": 1,
+      "error_ge_3": 0,
+      "signed_error_counts": {
+        "-4": 0,
+        "-3": 0,
+        "-2": 0,
+        "-1": 7,
+        "0": 22,
+        "1": 6,
+        "2": 1,
+        "3": 0,
+        "4": 0
+      },
+      "per_state": {
+        "DEEP_DEPRESSED": {
+          "n": 11,
+          "exact": 9,
+          "within_1": 10
+        },
+        "DEPRESSED": {
+          "n": 12,
+          "exact": 7,
+          "within_1": 12
+        },
+        "NORMAL": {
+          "n": 8,
+          "exact": 4,
+          "within_1": 8
+        },
+        "OVERHEATED": {
+          "n": 4,
+          "exact": 2,
+          "within_1": 4
+        },
+        "EXTREME_OVERHEATED": {
+          "n": 1,
+          "exact": 0,
+          "within_1": 1
+        }
+      },
+      "transitions": {
+        "DEEP_DEPRESSED->DEPRESSED": 1,
+        "DEPRESSED->NORMAL": 4,
+        "NORMAL->DEPRESSED": 3,
+        "NORMAL->OVERHEATED": 1,
+        "OVERHEATED->NORMAL": 2
+      },
+      "new_errors_vs_v01": [
+        "PBDEV2_023",
+        "PBDEV2_025",
+        "PBDEV2_036"
+      ],
+      "fixed_errors_vs_v01": [
+        "PBDEV2_005",
+        "PBDEV2_008",
+        "PBDEV2_011",
+        "PBDEV2_017",
+        "PBDEV2_024",
+        "PBDEV2_026",
+        "PBDEV2_030",
+        "PBDEV2_033"
+      ],
+      "changed_predictions_vs_v01": [
+        "PBDEV2_005",
+        "PBDEV2_008",
+        "PBDEV2_011",
+        "PBDEV2_017",
+        "PBDEV2_023",
+        "PBDEV2_024",
+        "PBDEV2_025",
+        "PBDEV2_026",
+        "PBDEV2_030",
+        "PBDEV2_033",
+        "PBDEV2_036"
+      ]
+    }
+  }
+}

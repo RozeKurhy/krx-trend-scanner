@@ -1,0 +1,43 @@
+{
+  "version": "PATTERN_B_HOLDOUT_V02_POSTHOC_ADJUDICATION_V01",
+  "official_holdout_unchanged": true,
+  "posthoc_only": true,
+  "automatic_prediction_blind": false,
+  "judge": "user",
+  "sample_count": 7,
+  "sample_ids": [
+    "PBHOLD_012",
+    "PBHOLD_017",
+    "PBHOLD_018",
+    "PBHOLD_019",
+    "PBHOLD_024",
+    "PBHOLD_026",
+    "PBHOLD_028"
+  ],
+  "subset_diagnostic": {
+    "sample_count": 7,
+    "exact_match_count": 5,
+    "within_1_count": 6,
+    "absolute_error_sum": 3,
+    "ordinal_mae": 0.4286,
+    "error_ge_2_count": 1,
+    "error_ge_3_count": 0
+  },
+  "full_counterfactual_diagnostic": {
+    "sample_count": 36,
+    "exact_match_count": 17,
+    "within_1_count": 35,
+    "absolute_error_sum": 20,
+    "ordinal_mae": 0.5556,
+    "error_ge_2_count": 1,
+    "error_ge_3_count": 0
+  },
+  "remaining_error_ge_2": [
+    "PBHOLD_028"
+  ],
+  "official_evaluation_seal_sha256": "f39d5360ab886bd7e9712736e4a5c424b1d59b79862cbc0328e453df3c20b76d",
+  "official_predictions_sha256": "86163eaad28916e0c53ddb111d570b97147f4ff9e6c4689975236e76c6ad81a4",
+  "official_hgt_labels_sha256": "cbbc8785e20d03e4937317d9de11f79529ad4d8abea23763a490763c3e23e5c8",
+  "posthoc_csv_sha256": "b4bae186f90af60530683ca4d839359cc9285336973a7e4d0b56dd64bb9906c2",
+  "posthoc_record_sha256": "b2345b3cc1f1a9a4431b8e41b8e8a707e970c3d825a6716a4799d21d6f5115ea"
+}
