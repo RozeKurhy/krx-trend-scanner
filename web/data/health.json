@@ -1,75 +1,75 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-09-22T05:13:05.252357Z",
-  "requested_as_of": "2026-09-21",
-  "reference_market_date": "2026-09-21",
+  "generated_at": "2026-09-26T23:11:47.842565Z",
+  "requested_as_of": "2026-09-22",
+  "reference_market_date": "2026-09-22",
   "overall_status": "NORMAL",
   "market_data": {
     "status": "NORMAL",
-    "latest_trading_date": "2026-09-21",
-    "certified_through": "2026-09-21",
+    "latest_trading_date": "2026-09-22",
+    "certified_through": "2026-09-22",
     "authority_version": "ROLLING_MARKET_DATA_V01",
     "source": {
       "path": "data/market/rolling_authority/manifest.json",
-      "as_of": "2026-09-21",
+      "as_of": "2026-09-22",
       "generated_at": "2026-09-14T01:20:32.586563+00:00"
     }
   },
   "universe": {
     "status": "NORMAL",
-    "count": 4302,
-    "snapshot_date": "2026-09-21",
+    "count": 4304,
+    "snapshot_date": "2026-09-22",
     "asset_type_counts": {
       "COMMON": 2544,
       "ETF": 1167,
       "ETN": 375,
       "PREFERRED": 101,
       "REIT": 23,
-      "SPAC": 65,
+      "SPAC": 67,
       "UNKNOWN": 27
     },
     "source": {
       "path": "data/reference/krx_instrument_metadata.parquet",
-      "as_of": "2026-09-21"
+      "as_of": "2026-09-22"
     }
   },
   "fundamentals": {
     "status": "NORMAL",
     "run_status": "COMPLETE",
-    "requested_as_of": "2026-09-21",
-    "completed": 4302,
-    "total": 4302,
+    "requested_as_of": "2026-09-22",
+    "completed": 4304,
+    "total": 4304,
     "remaining": 0,
     "percentage": 100.0,
     "terminal_status_counts": {
-      "DATA_UNAVAILABLE": 307,
-      "FILTERED_ANNUAL_REVENUE": 562,
+      "DATA_UNAVAILABLE": 306,
+      "FILTERED_ANNUAL_REVENUE": 555,
       "FILTERED_NET_LOSS": 162,
       "FILTERED_OPERATING_LOSS": 350,
       "FILTERED_QUARTERLY_REVENUE": 7,
-      "NOT_APPLICABLE": 1816,
-      "PASS": 1098
+      "NOT_APPLICABLE": 1827,
+      "PASS": 1097
     },
     "data_status_counts": {
-      "DATA_UNAVAILABLE": 307,
-      "NOT_APPLICABLE": 1816,
-      "PARTIAL": 2179
+      "DATA_UNAVAILABLE": 306,
+      "NOT_APPLICABLE": 1827,
+      "PARTIAL": 2171
     },
     "output_integrity": {
-      "valid_output_count": 4302,
+      "valid_output_count": 4304,
       "invalid_output_count": 0,
       "outside_universe_count": 0,
       "duplicate_payload_count": 0
     },
     "source": {
-      "production_directory": "artifacts/fundamentals/production/20260921",
+      "production_directory": "artifacts/fundamentals/production/20260922",
       "manifest": {
-        "path": "artifacts/fundamentals/production/20260921/manifest.json",
-        "as_of": "2026-09-21"
+        "path": "artifacts/fundamentals/production/20260922/manifest.json",
+        "as_of": "2026-09-22"
       },
       "outputs": {
-        "path": "artifacts/fundamentals/production/20260921/tickers",
-        "as_of": "2026-09-21"
+        "path": "artifacts/fundamentals/production/20260922/tickers",
+        "as_of": "2026-09-22"
       }
     }
   },
@@ -77,13 +77,13 @@
     "status": "NORMAL",
     "reason": "Stock Report v0.5 and Web Fundamentals artifacts are complete.",
     "source": {
-      "path": "artifacts/fundamentals/production/20260921/manifest.json",
-      "as_of": "2026-09-21"
+      "path": "artifacts/fundamentals/production/20260922/manifest.json",
+      "as_of": "2026-09-22"
     },
     "existing_artifact_count": 1451,
     "artifact_source": {
-      "path": "artifacts/reporting/stock_reports/20260921",
-      "as_of": "2026-09-21"
+      "path": "artifacts/reporting/stock_reports/20260922",
+      "as_of": "2026-09-22"
     },
     "report_version": "0.5",
     "ready": true,
