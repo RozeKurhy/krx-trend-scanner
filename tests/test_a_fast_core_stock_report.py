@@ -119,15 +119,15 @@ def _validate_single_report_schema(d: dict) -> list[str]:
 
 
 def test_human_contract_requires_metadata_provenance_mode():
-    """human contract(docs/reporting/stock_report/contract_v02.md)와 machine schema
-    (docs/reporting/stock_report/schema_v02.json)가 a_fast_core.required에 동일하게
+    """human contract(docs/reporting/contract_v02.md)와 machine schema
+    (docs/reporting/schema_v02.json)가 a_fast_core.required에 동일하게
     metadata_provenance_mode를 포함하는지 검증 (Fix Round 07 Minor 1)."""
-    schema = json.loads((REPO_ROOT / "docs/reporting/stock_report/schema_v02.json").read_text(encoding="utf-8"))
+    schema = json.loads((REPO_ROOT / "docs/reporting/schema_v02.json").read_text(encoding="utf-8"))
     assert "metadata_provenance_mode" in schema["properties"]["a_fast_core"]["required"], (
         "machine schema의 a_fast_core.required에 metadata_provenance_mode가 없음"
     )
 
-    contract_text = (REPO_ROOT / "docs/reporting/stock_report/contract_v02.md").read_text(encoding="utf-8")
+    contract_text = (REPO_ROOT / "docs/reporting/contract_v02.md").read_text(encoding="utf-8")
     # a_fast_core 블록의 "required" 배열 안에서 metadata_provenance_mode를 찾는다
     # (properties 안에 필드 정의만 있는 것으로는 부족 — required 배열 원소여야 한다).
     a_fast_core_start = contract_text.index('"a_fast_core": {')
@@ -168,7 +168,7 @@ def test_stock_report_v02_archive_all_json_match_schema():
     """archive/v0.2/20260814/의 보존된 54개 JSON이 v0.2 스키마를 통과하는지 검증."""
     from jsonschema import Draft7Validator
 
-    schema_file = REPO_ROOT / "docs/reporting/stock_report/schema_v02.json"
+    schema_file = REPO_ROOT / "docs/reporting/schema_v02.json"
     assert schema_file.exists(), f"Schema file missing: {schema_file}"
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
@@ -431,7 +431,7 @@ def test_stock_report_v02_schema_rejects_invalid_trade_history_type():
     from jsonschema import Draft7Validator
     import copy
 
-    schema_file = REPO_ROOT / "docs/reporting/stock_report/schema_v02.json"
+    schema_file = REPO_ROOT / "docs/reporting/schema_v02.json"
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 
@@ -456,7 +456,7 @@ def test_stock_report_v02_schema_rejects_invalid_entry_condition_type():
     from jsonschema import Draft7Validator
     import copy
 
-    schema_file = REPO_ROOT / "docs/reporting/stock_report/schema_v02.json"
+    schema_file = REPO_ROOT / "docs/reporting/schema_v02.json"
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 
@@ -482,7 +482,7 @@ def test_stock_report_v02_schema_rejects_missing_a_fast_core_canonical_fields():
     from jsonschema import Draft7Validator
     import copy
 
-    schema_file = REPO_ROOT / "docs/reporting/stock_report/schema_v02.json"
+    schema_file = REPO_ROOT / "docs/reporting/schema_v02.json"
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 
@@ -500,7 +500,7 @@ def test_stock_report_v02_schema_rejects_incomplete_entry_conditions():
     from jsonschema import Draft7Validator
     import copy
 
-    schema_file = REPO_ROOT / "docs/reporting/stock_report/schema_v02.json"
+    schema_file = REPO_ROOT / "docs/reporting/schema_v02.json"
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 
@@ -525,7 +525,7 @@ def test_stock_report_v02_schema_requires_market_cap_provenance():
     from jsonschema import Draft7Validator
     import copy
 
-    schema_file = REPO_ROOT / "docs/reporting/stock_report/schema_v02.json"
+    schema_file = REPO_ROOT / "docs/reporting/schema_v02.json"
     schema = json.loads(schema_file.read_text(encoding="utf-8"))
     validator = Draft7Validator(schema)
 

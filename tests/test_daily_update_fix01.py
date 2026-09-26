@@ -174,9 +174,21 @@ def test_rolling_pit_extension_uses_bounded_authority(monkeypatch, tmp_path):
             ]
         }
 
+    supplemental_authority = {
+        ("000002", "KR7000000002"): {
+            "decision": "COMMON",
+            "decision_reason_code": "TEST_EXACT_IDENTITY_SUPPLEMENT",
+        }
+    }
+    seen_supplemental: dict[str, object] = {}
+
+    def classify_with_supplemental(_snapshots, *, expected_dates, supplemental_authority=None):
+        seen_supplemental["value"] = supplemental_authority
+        return classify(_snapshots, expected_dates=expected_dates)
+
     monkeypatch.setattr(
         "trend_scanner.data.rolling_market_data_refresh.classify_full_universe",
-        classify,
+        classify_with_supplemental,
     )
     result = build_rolling_pit_extension(
         extension_calendar_dates=["2026-08-24"],
@@ -184,9 +196,11 @@ def test_rolling_pit_extension_uses_bounded_authority(monkeypatch, tmp_path):
         historical_calendar_path=frozen_calendar,
         basic_info_raw_root=root,
         acquisition_checkpoint_path=checkpoint,
+        supplemental_authority=supplemental_authority,
     )
     assert result.new_ticker_count == 1
     assert {interval["ticker"] for interval in result.merged_intervals} == {"000001", "000002"}
+    assert seen_supplemental["value"] == supplemental_authority
 
 
 def test_legacy_authority_migration_is_explicit_idempotent_and_boundary_safe(tmp_path):

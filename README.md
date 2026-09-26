@@ -70,7 +70,7 @@ Stock Report는 한 종목의 가격 패턴, 투자 적합성, 전략 규칙, �
 리포트 내용을 읽을 수 있다. 웹 화면은 생성된 공식 산출물을 조회하는 읽기 전용
 기능이다.
 
-리포트의 역할과 계약은 [Stock Report 안내](docs/reporting/stock_report/README.md)와
+리포트의 역할과 계약은 [Stock Report 안내](docs/reporting/README.md)와
 해당 영역의 기준 문서에서 확인한다.
 
 ## 프로젝트 구조
@@ -96,7 +96,7 @@ Stock Report는 한 종목의 가격 패턴, 투자 적합성, 전략 규칙, �
 - [패턴 안내](docs/patterns/README.md)
 - [전략 문서](docs/strategies/README.md)
 - [Fundamentals 안내](docs/fundamentals/README.md)
-- [Stock Report 안내](docs/reporting/stock_report/README.md)
+- [Stock Report 안내](docs/reporting/README.md)
 
 README는 프로젝트 목적과 구조를 안내한다. 세부 산식, 임계값, 데이터 계약,
 검증 결과는 각 영역의 권위 문서에서 관리한다.

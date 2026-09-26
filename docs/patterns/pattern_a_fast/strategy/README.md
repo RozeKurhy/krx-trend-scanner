@@ -31,6 +31,10 @@
 - [A FAST Core V3](../archive/strategy/version_03/README.md): 종료된 후보 전략의 규칙과 판단을 보존하는 기록
 - [A FAST Core V4](../archive/strategy/version_04/README.md): 종료된 후보 전략의 규칙과 판단을 보존하는 기록
 
+## 후보 검증 기록
+
+- [A FAST Core V2 + NEG40 / WEAK Protect 5-window synthesis V01](./FAST_CORE_V2_NEG40_WEAK_PROTECT_5_WINDOW_SYNTHESIS_V01.md): P1/P2-1/P2-2/P3-1/P3-2 비교 기록이며, 기본 전략 변경이나 V2.1 승격을 승인하지 않는다.
+
 ## 공통 절차
 
 후보 전략의 검증, 공식 전략 채택과 기본 전략 승격은 프로젝트 공통 [전략

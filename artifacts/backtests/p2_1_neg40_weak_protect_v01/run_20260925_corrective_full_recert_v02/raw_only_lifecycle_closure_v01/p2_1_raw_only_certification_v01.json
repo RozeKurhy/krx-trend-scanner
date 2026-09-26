@@ -1,0 +1,316 @@
+{
+  "status": "PASS",
+  "verdict": "P2_1_CERTIFIED_PASS_WITH_AUTHORITATIVE_EXCLUSIONS",
+  "window_id": "P2-1",
+  "source_run_id": "run_20260925_corrective_full_recert_v02",
+  "source_head": "4536d2bf80681141ad2e43ab6a2f8082ec4df6e3",
+  "evaluation_head": "6f2b4bba5e83d91782656e6bff984ff2832738e5",
+  "population": {
+    "actual_window": [
+      "2021-01-04",
+      "2025-05-30",
+      "2025-06-02"
+    ],
+    "calendar_certified_through": "2026-09-21",
+    "calendar_manifest_sha256": null,
+    "source_segment_count": 2657,
+    "source_ticker_count": 2648,
+    "registry_excluded_segment_count": 31,
+    "registry_excluded_identity_count": 31,
+    "closure_excluded_segment_count": 7,
+    "closure_excluded_identity_count": 7,
+    "final_segment_count": 2619,
+    "final_ticker_count": 2610,
+    "final_identity_count": 2610
+  },
+  "raw_integrity": {
+    "source_pair_count": 1834,
+    "source_identity_count": 1192,
+    "source_pair_symmetry": true,
+    "source_pair_id_uniqueness": true,
+    "source_trade_id_alignment": true,
+    "source_paired_exact_pair_set": true,
+    "registry_identity_count_in_raw": 16,
+    "registry_excluded_pair_count": 25,
+    "registry_excluded_pair_ids": [
+      "002270|KR7002270007|KOSPI|2010-01-04|2022-07-19|002270_01",
+      "005390|KR7005390000|KOSPI|2010-01-04|2025-09-29|005390_01",
+      "005390|KR7005390000|KOSPI|2010-01-04|2025-09-29|005390_02",
+      "005950|KR7005950001|KOSPI|2010-01-04|2026-08-21|005950_01",
+      "005950|KR7005950001|KOSPI|2010-01-04|2026-08-21|005950_02",
+      "006390|KR7006390009|KOSPI|2010-01-04|2025-11-20|006390_01",
+      "010420|KR7010420008|KOSPI|2010-01-04|2025-09-24|010420_01",
+      "010420|KR7010420008|KOSPI|2010-01-04|2025-09-24|010420_02",
+      "031440|KR7031440001|KOSPI|2010-04-29|2026-08-10|031440_01",
+      "032980|KR7032980005|KOSDAQ|2010-01-04|2026-06-30|032980_01",
+      "036620|KR7036620003|KOSDAQ|2010-01-04|2026-08-21|036620_01",
+      "036620|KR7036620003|KOSDAQ|2010-01-04|2026-08-21|036620_02",
+      "036620|KR7036620003|KOSDAQ|2010-01-04|2026-08-21|036620_03",
+      "043220|KR7043220003|KOSDAQ|2010-01-04|2026-08-21|043220_01",
+      "044060|KR7044060002|KOSDAQ|2010-01-04|2025-08-20|044060_01",
+      "049770|KR7049770001|KOSPI|2010-01-04|2025-07-30|049770_01",
+      "049770|KR7049770001|KOSPI|2010-01-04|2025-07-30|049770_02",
+      "049770|KR7049770001|KOSPI|2010-01-04|2025-07-30|049770_03",
+      "057050|KR7057050007|KOSPI|2010-09-13|2026-07-16|057050_01",
+      "057050|KR7057050007|KOSPI|2010-09-13|2026-07-16|057050_02",
+      "057050|KR7057050007|KOSPI|2010-09-13|2026-07-16|057050_03",
+      "069460|KR7069460004|KOSPI|2010-01-04|2026-08-21|069460_01",
+      "138490|KR7138490008|KOSPI|2011-06-15|2026-04-15|138490_01",
+      "335890|KR7335890000|KOSDAQ|2020-11-26|2025-12-09|335890_01",
+      "950110|KR8392070007|KOSDAQ|2012-12-17|2025-07-23|950110_01"
+    ],
+    "closure_identity_count": 7,
+    "closure_excluded_pair_count": 8,
+    "closure_excluded_pair_ids": [
+      "008560|KR7008560005|KOSPI|2010-01-04|2023-04-24|008560_01",
+      "008560|KR7008560005|KOSPI|2010-01-04|2023-04-24|008560_02",
+      "023890|KR7023890007|KOSDAQ|2010-01-04|2021-04-16|023890_01",
+      "043290|KR7043290006|KOSDAQ|2011-10-25|2021-07-19|043290_01",
+      "046140|KR7046140000|KOSDAQ|2010-01-04|2023-12-15|046140_01",
+      "213090|KR7213090004|KOSDAQ|2015-12-01|2021-10-01|213090_01",
+      "225330|KR7225330000|KOSDAQ|2016-04-07|2022-03-16|225330_01",
+      "282690|KR7282690007|KOSPI|2017-11-29|2024-10-07|282690_01"
+    ],
+    "excluded_pair_count": 33,
+    "filtered_pair_count": 1801,
+    "filtered_identity_count": 1169,
+    "filtered_exact_exclusions_absent": true,
+    "filtered_control_candidate_pair_symmetry": true
+  },
+  "exclusions": {
+    "registry_identities": [
+      {
+        "ticker": "002270",
+        "isu_cd": "KR7002270007",
+        "reason": "user-approved permanent exclusion after a P1 lifecycle remediable-unresolved gate finding",
+        "approval_scope": "P1 final exclusion closure V02",
+        "failure_class": "P1_LIFECYCLE_REMEDIABLE_UNRESOLVED",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "005390",
+        "isu_cd": "KR7005390000",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "005950",
+        "isu_cd": "KR7005950001",
+        "reason": "user-approved permanent exclusion after a P1 soft-exit next-session execution contract mismatch",
+        "approval_scope": "P1 final exclusion closure V02",
+        "failure_class": "P1_EXECUTION_ANOMALY",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "006390",
+        "isu_cd": "KR7006390009",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "010420",
+        "isu_cd": "KR7010420008",
+        "reason": "user-approved permanent exclusion for the 2025-09-25 delisting / wholly owned subsidiary lifecycle",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "031440",
+        "isu_cd": "KR7031440001",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "032980",
+        "isu_cd": "KR7032980005",
+        "reason": "user-approved permanent exclusion after a P1 lifecycle remediable-unresolved gate finding",
+        "approval_scope": "P1 final exclusion closure V02",
+        "failure_class": "P1_LIFECYCLE_REMEDIABLE_UNRESOLVED",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "036620",
+        "isu_cd": "KR7036620003",
+        "reason": "user-approved permanent exclusion for P1 Pattern A stage UNAVAILABLE caused by an empty resampler week bucket",
+        "approval_scope": "P1 UNAVAILABLE 12 permanent exclusion V01",
+        "failure_class": "A_PIPELINE_BUG",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "043220",
+        "isu_cd": "KR7043220003",
+        "reason": "user-approved permanent exclusion after a P1 lifecycle remediable-unresolved gate finding",
+        "approval_scope": "P1 final exclusion closure V02",
+        "failure_class": "P1_LIFECYCLE_REMEDIABLE_UNRESOLVED",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "044060",
+        "isu_cd": "KR7044060002",
+        "reason": "user-approved permanent exclusion for P1 Pattern A stage UNAVAILABLE caused by Repository V2 source gaps",
+        "approval_scope": "P1 UNAVAILABLE 12 permanent exclusion V01",
+        "failure_class": "C_SOURCE_OR_AUTHORITY_GAP",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "049770",
+        "isu_cd": "KR7049770001",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "057050",
+        "isu_cd": "KR7057050007",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "069460",
+        "isu_cd": "KR7069460004",
+        "reason": "user-approved permanent exclusion because authoritative terminal pricing is unavailable through the P3-2 cutoff",
+        "approval_scope": "P3-2 final closure V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "138490",
+        "isu_cd": "KR7138490008",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "335890",
+        "isu_cd": "KR7335890000",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "950110",
+        "isu_cd": "KR8392070007",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      }
+    ],
+    "closure_identities": [
+      {
+        "ticker": "008560",
+        "isu_cd": "KR7008560005",
+        "reason": "v02 frozen raw holds UNRESOLVED_SUCCESSOR with no terminal value; current-contract resolution would require successor re-valuation",
+        "approval_scope": "P2-1 raw-only lifecycle closure V01",
+        "policy_version": "p2_1_lifecycle_closure_exclusions_v01"
+      },
+      {
+        "ticker": "023890",
+        "isu_cd": "KR7023890007",
+        "reason": "v02 frozen raw holds UNRESOLVED_SUCCESSOR with no terminal value; current-contract resolution would require successor re-valuation",
+        "approval_scope": "P2-1 raw-only lifecycle closure V01",
+        "policy_version": "p2_1_lifecycle_closure_exclusions_v01"
+      },
+      {
+        "ticker": "043290",
+        "isu_cd": "KR7043290006",
+        "reason": "v02 frozen raw holds UNRESOLVED_SUCCESSOR with no terminal value; current-contract resolution would require successor re-valuation",
+        "approval_scope": "P2-1 raw-only lifecycle closure V01",
+        "policy_version": "p2_1_lifecycle_closure_exclusions_v01"
+      },
+      {
+        "ticker": "046140",
+        "isu_cd": "KR7046140000",
+        "reason": "v02 frozen raw holds UNRESOLVED_SUCCESSOR with no terminal value; current-contract resolution would require successor re-valuation",
+        "approval_scope": "P2-1 raw-only lifecycle closure V01",
+        "policy_version": "p2_1_lifecycle_closure_exclusions_v01"
+      },
+      {
+        "ticker": "213090",
+        "isu_cd": "KR7213090004",
+        "reason": "v02 frozen raw holds UNRESOLVED_SUCCESSOR with no terminal value; current-contract resolution would require successor re-valuation",
+        "approval_scope": "P2-1 raw-only lifecycle closure V01",
+        "policy_version": "p2_1_lifecycle_closure_exclusions_v01"
+      },
+      {
+        "ticker": "225330",
+        "isu_cd": "KR7225330000",
+        "reason": "v02 frozen raw holds UNRESOLVED_SUCCESSOR with no terminal value; current-contract resolution would require successor re-valuation",
+        "approval_scope": "P2-1 raw-only lifecycle closure V01",
+        "policy_version": "p2_1_lifecycle_closure_exclusions_v01"
+      },
+      {
+        "ticker": "282690",
+        "isu_cd": "KR7282690007",
+        "reason": "v02 frozen raw holds UNRESOLVED_SUCCESSOR with no terminal value; current-contract resolution would require successor re-valuation",
+        "approval_scope": "P2-1 raw-only lifecycle closure V01",
+        "policy_version": "p2_1_lifecycle_closure_exclusions_v01"
+      }
+    ]
+  },
+  "allowed_authoritative_final_unresolved_pair_ids": [
+    "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01"
+  ],
+  "required_checks": {
+    "control_candidate_pair_population_symmetry": true,
+    "matched_paired_exact_set": true,
+    "pair_id_unique": true,
+    "source_trade_alignment": true,
+    "entry_population_parity": true,
+    "lifecycle_gate_remediable_unresolved_zero": true,
+    "lifecycle_gate_symmetric": true,
+    "authoritative_final_allowed_class_only": true,
+    "unexecuted_signal_zero": true,
+    "execution_support_missing_zero": true,
+    "candidate_overlap_zero": true,
+    "candidate_stage_asof_future_violations_zero": true,
+    "exit_window_violations_zero": true,
+    "terminal_numeric_comparison_symmetry": true,
+    "ledger_aggregate_reconciliation_within_tolerance": true,
+    "frozen_raw_sha256_unchanged": true
+  },
+  "simulation_replay_performed": false,
+  "ticker_replay_performed": false,
+  "recovery_replay_performed": false,
+  "sample_replay_performed": false,
+  "source_raw_files_modified": false,
+  "source_sha256_before": {
+    "candidate_trades.csv": "d705b84a7462a9b121402ac0b2bab7448e9ddc12c868d0dbde13559a86b4f164",
+    "control_trades.csv": "e57ddacb2e1692e910fca7d3fce060f2aefcda3bef72df23603909999530aa1d",
+    "paired_trades.csv": "319489b0b636ceb9744d5c5e52a42531b9501b5b942ebc5a776702dc858b9aaf",
+    "run_manifest.json": "d8490fa9bf1628042519d2b8abde016f699f4f1874580b64a2691c96ea0b7a86",
+    "run_metadata.json": "c432c81aad00426f8b30b7b3fcfe42650b6626e5231a6391c6fb0f28706a4d0b",
+    "sample_benchmark.json": "ceb08fda2e346bc69a9a7b24625072b8b5f01b0d1a2dd040625727342ce35c28",
+    "summary.json": "ab3dc724153fb38c49e76191bfe7c04f5f1cada8c654ed01ae506ee6493cf45a",
+    "unresolved_inventory.json": "ce201da3b17d72f3d293c1fe39bfd4c8d44d1bc65006f1f3abe03b932a7df36b"
+  },
+  "source_sha256_after": {
+    "candidate_trades.csv": "d705b84a7462a9b121402ac0b2bab7448e9ddc12c868d0dbde13559a86b4f164",
+    "control_trades.csv": "e57ddacb2e1692e910fca7d3fce060f2aefcda3bef72df23603909999530aa1d",
+    "paired_trades.csv": "319489b0b636ceb9744d5c5e52a42531b9501b5b942ebc5a776702dc858b9aaf",
+    "run_manifest.json": "d8490fa9bf1628042519d2b8abde016f699f4f1874580b64a2691c96ea0b7a86",
+    "run_metadata.json": "c432c81aad00426f8b30b7b3fcfe42650b6626e5231a6391c6fb0f28706a4d0b",
+    "sample_benchmark.json": "ceb08fda2e346bc69a9a7b24625072b8b5f01b0d1a2dd040625727342ce35c28",
+    "summary.json": "ab3dc724153fb38c49e76191bfe7c04f5f1cada8c654ed01ae506ee6493cf45a",
+    "unresolved_inventory.json": "ce201da3b17d72f3d293c1fe39bfd4c8d44d1bc65006f1f3abe03b932a7df36b"
+  },
+  "source_sha256_preserved": true,
+  "summary_path": "raw_only_lifecycle_closure_v01/summary.json"
+}

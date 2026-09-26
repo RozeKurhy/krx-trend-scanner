@@ -24,7 +24,7 @@ PRODUCTION = ROOT / "artifacts/reporting/stock_reports/archive/dated" / DATE
 ARCHIVE_V02 = ROOT / "artifacts/reporting/stock_reports/archive/v0.2" / DATE
 ARCHIVE_V01 = ROOT / "artifacts/reporting/stock_reports/archive/v0.1" / DATE
 VALIDATION = ROOT / "artifacts/reporting/stock_reports/archive/validation/v0.3"
-SCHEMA_PATH = ROOT / "docs/reporting/stock_report/schema_v03.json"
+SCHEMA_PATH = ROOT / "docs/reporting/schema_v03.json"
 RS_PATH = ROOT / RS_ARTIFACT_TEMPLATE.format(date=DATE)
 
 PARITY_FIELDS = (

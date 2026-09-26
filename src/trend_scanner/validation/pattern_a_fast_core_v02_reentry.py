@@ -98,6 +98,12 @@ def simulate_ticker_core_v02_reentry(
     snapshot_context: PrecomputedTickerContext | None = None,
     use_precomputed_context: bool = True,
     market_calendar: MarketCalendarAuthority | None = None,
+    entry_search_start: pd.Timestamp | None = None,
+    signal_cutoff_date: pd.Timestamp | None = None,
+    execution_support_date: pd.Timestamp | None = None,
+    strict_errors: bool = False,
+    entry_execution_cutoff_date: pd.Timestamp | None = None,
+    entry_signal_cutoff_date: pd.Timestamp | None = None,
 ) -> list[V02TradeRecord]:
     """Replay one ticker's V2 trade state through ``cutoff_date``.
 
@@ -105,11 +111,36 @@ def simulate_ticker_core_v02_reentry(
     completed-period judgement in this replay.  Omitting it preserves the
     frozen canonical-calendar behavior required by historical regressions.
     """
+    valuation_cutoff = pd.Timestamp(cutoff_date).normalize()
+    signal_cutoff = pd.Timestamp(signal_cutoff_date or valuation_cutoff).normalize()
+    execution_support = pd.Timestamp(execution_support_date or valuation_cutoff).normalize()
+    entry_signal_cutoff = (
+        pd.Timestamp(entry_signal_cutoff_date).normalize()
+        if entry_signal_cutoff_date is not None
+        else signal_cutoff
+    )
+    entry_execution_cutoff = (
+        pd.Timestamp(entry_execution_cutoff_date).normalize()
+        if entry_execution_cutoff_date is not None
+        else None
+    )
+    search_start = pd.Timestamp(entry_search_start).normalize() if entry_search_start is not None else None
+    if signal_cutoff > valuation_cutoff:
+        raise ValueError("signal_cutoff_date must not exceed the valuation cutoff")
+    if entry_signal_cutoff > signal_cutoff:
+        raise ValueError("entry_signal_cutoff_date must not exceed signal_cutoff_date")
+    if execution_support < valuation_cutoff:
+        raise ValueError("execution_support_date must not precede the valuation cutoff")
+    if entry_execution_cutoff is not None and entry_execution_cutoff > execution_support:
+        raise ValueError("entry_execution_cutoff_date must not exceed execution_support_date")
+    if entry_execution_cutoff is not None and entry_execution_cutoff > valuation_cutoff:
+        raise ValueError("entry_execution_cutoff_date must not exceed the valuation cutoff")
+
     if daily is None or daily.empty:
         return []
 
     daily = daily.sort_index()
-    daily = daily[daily.index <= cutoff_date]
+    daily = daily[daily.index <= execution_support]
 
     required_cols = {"open", "high", "low", "close"}
     if not required_cols.issubset(daily.columns) or len(daily) < 60:
@@ -122,18 +153,18 @@ def simulate_ticker_core_v02_reentry(
     # evidence; production callers leave ``use_precomputed_context=True``.
     if use_precomputed_context:
         snapshot_context = snapshot_context or build_precomputed_ticker_context(ticker, name, daily)
-        weekly_bars = snapshot_context.weekly_up_to(cutoff_date)
+        weekly_bars = snapshot_context.weekly_up_to(signal_cutoff)
         valid_weeks = [
             w for w in weekly_bars.index
             if daily[daily.index <= w].index.max().normalize() == w.normalize()
         ]
-        monthly_bars = snapshot_context.monthly_up_to(cutoff_date)
+        monthly_bars = snapshot_context.monthly_up_to(signal_cutoff)
     else:
         snapshot_context = None
         weekly_bars = to_weekly(daily)
         valid_weeks = [
             w for w in weekly_bars.index
-            if daily[daily.index <= w].index.max().normalize() == w.normalize()
+            if w <= signal_cutoff and daily[daily.index <= w].index.max().normalize() == w.normalize()
         ]
         monthly_bars = to_monthly(daily)
 
@@ -142,16 +173,20 @@ def simulate_ticker_core_v02_reentry(
 
     trades: list[V02TradeRecord] = []
     trade_seq = 0
-    cur_search_date: pd.Timestamp | None = valid_weeks[0]
+    entry_weeks = [week for week in valid_weeks if week <= entry_signal_cutoff]
+    cur_search_date: pd.Timestamp | None = next(
+        (week for week in entry_weeks if search_start is None or week >= search_start),
+        None,
+    )
     prev_exit_type: str | None = None
     prev_exit_exec_date: str | None = None
 
-    while cur_search_date is not None and cur_search_date <= cutoff_date:
+    while cur_search_date is not None and cur_search_date <= entry_signal_cutoff:
         # Find next qualifying entry weekly signal on or after cur_search_date
         found_signal_w: pd.Timestamp | None = None
         found_signal_res: dict | None = None
 
-        candidate_weeks = [w for w in valid_weeks if w >= cur_search_date]
+        candidate_weeks = [w for w in entry_weeks if cur_search_date <= w]
         for w in candidate_weeks:
             try:
                 if use_precomputed_context:
@@ -193,17 +228,23 @@ def simulate_ticker_core_v02_reentry(
                 # an ineligible signal.  Do not silently turn it into FLAT.
                 raise
             except Exception:
+                if strict_errors:
+                    raise
                 continue
 
         if found_signal_w is None or found_signal_res is None:
             break
 
         # Check execution date
-        fut_daily = daily[(daily.index > found_signal_w) & (daily.index <= cutoff_date)]
+        fut_daily = daily[(daily.index > found_signal_w) & (daily.index <= execution_support)]
         if fut_daily.empty:
             break
 
         entry_exec_date = fut_daily.index[0]
+        # Support data may complete an existing exit, not create new exposure.
+        # Check before trade_seq and any position state are advanced.
+        if entry_execution_cutoff is not None and entry_exec_date.normalize() > entry_execution_cutoff:
+            break
         entry_open_price = float(fut_daily.iloc[0]["open"])
 
         trade_seq += 1
@@ -215,10 +256,11 @@ def simulate_ticker_core_v02_reentry(
         daily_risk = found_signal_res.get("fast_daily_risk_state", "UNKNOWN")
         monthly_regime = found_signal_res.get("fast_monthly_permission_state", "UNKNOWN")
 
-        # Monthly snapshots strictly for this trade lifecycle (from found_signal_w to cutoff_date)
+        # Monthly snapshots use completed observations through the signal cutoff;
+        # the separate execution-support session is never an evaluation signal.
         m_dates = [
             m for m in monthly_bars.index
-            if m >= found_signal_w and m <= cutoff_date
+            if m >= found_signal_w and m <= signal_cutoff
         ]
 
         monthly_snapshots: list[dict[str, Any]] = []
@@ -245,6 +287,8 @@ def simulate_ticker_core_v02_reentry(
                 sc = float(round(eval_res.score, 2)) if eval_res.score is not None else None
                 monthly_snapshots.append({"date": m, "stage": st, "score": sc})
             except Exception:
+                if strict_errors:
+                    raise
                 monthly_snapshots.append({"date": m, "stage": "UNAVAILABLE", "score": None})
 
         first_early_trend_d: pd.Timestamp | None = found_signal_w if pa_stage_at_entry == "EARLY_TREND" else None
@@ -307,7 +351,7 @@ def simulate_ticker_core_v02_reentry(
                 first_prog_eff_trading_d = month_daily.index.max()
             pre_prog_daily = daily[(daily.index >= entry_exec_date) & (daily.index < first_prog_eff_trading_d)]
         else:
-            pre_prog_daily = daily[(daily.index >= entry_exec_date) & (daily.index <= cutoff_date)]
+            pre_prog_daily = daily[(daily.index >= entry_exec_date) & (daily.index <= valuation_cutoff)]
 
         loss_guard_triggered = False
         loss_guard_sig_d: pd.Timestamp | None = None
@@ -319,7 +363,7 @@ def simulate_ticker_core_v02_reentry(
             if (c_price / entry_open_price - 1.0) <= -0.15:
                 loss_guard_triggered = True
                 loss_guard_sig_d = d
-                fut_after_stop = daily[(daily.index > d) & (daily.index <= cutoff_date)]
+                fut_after_stop = daily[(daily.index > d) & (daily.index <= execution_support)]
                 if not fut_after_stop.empty:
                     loss_guard_exec_d = fut_after_stop.index[0]
                     loss_guard_exec_price = float(fut_after_stop.iloc[0]["open"])
@@ -393,7 +437,14 @@ def simulate_ticker_core_v02_reentry(
             final_sig_d = e2_sig_d
             final_exit_type = e2_exit_type or "NO_EXIT"
 
-        res_outcome = _calc_trade_outcome(entry_exec_date, entry_open_price, final_sig_d, daily, cutoff_date)
+        res_outcome = _calc_trade_outcome(
+            entry_exec_date,
+            entry_open_price,
+            final_sig_d,
+            daily,
+            valuation_cutoff,
+            execution_support_date=execution_support,
+        )
 
         record = V02TradeRecord(
             ticker=ticker,
@@ -453,7 +504,9 @@ def _calc_trade_outcome(
     exit_sig_d: pd.Timestamp | None,
     daily: pd.DataFrame,
     cutoff_date: pd.Timestamp,
+    execution_support_date: pd.Timestamp | None = None,
 ) -> dict[str, Any]:
+    support_end = pd.Timestamp(execution_support_date or cutoff_date).normalize()
     exit_exec_d: pd.Timestamp | None = None
     exit_open: float | None = None
     trade_status: str = "OPEN_AT_CUTOFF"
@@ -461,7 +514,7 @@ def _calc_trade_outcome(
     mark_to_cutoff_ret: float | None = None
 
     if exit_sig_d is not None:
-        fut_after_exit = daily[(daily.index > exit_sig_d) & (daily.index <= cutoff_date)]
+        fut_after_exit = daily[(daily.index > exit_sig_d) & (daily.index <= support_end)]
         if not fut_after_exit.empty:
             exit_exec_d = fut_after_exit.index[0]
             exit_open = float(fut_after_exit.iloc[0]["open"])
