@@ -33,10 +33,10 @@ from scripts.render_corporate_action_authority_report import verify_code_equival
 
 
 def test_parent_authority_freeze_validation_positive():
-    """Section 2: Parent FIX03_CORRECTION artifacts remain frozen byte-for-byte."""
+    """The accepted V02 authority bundle is fully hash-verified and approved."""
     res = verify_parent_authority_freeze()
     assert res["all_parent_inputs_unchanged"] is True
-    assert res["parent_artifacts_verified_count"] == 8
+    assert res["parent_artifacts_verified_count"] == 23
     assert res["mismatches"] == []
 
 

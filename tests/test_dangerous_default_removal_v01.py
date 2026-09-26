@@ -31,12 +31,16 @@ def _adjusted_frame(start: str, end: str) -> pd.DataFrame:
 
 
 class _RecordingProvider:
-    def __init__(self) -> None:
+    def __init__(self, observed_dates: list[str] | None = None) -> None:
         self.calls: list[tuple[str, str, str]] = []
+        self.observed_dates = observed_dates
 
     def load_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
         self.calls.append((ticker, start, end))
-        return _adjusted_frame(start, end)
+        frame = _adjusted_frame(start, end)
+        if self.observed_dates is not None:
+            frame = frame.loc[frame.index.isin(pd.to_datetime(self.observed_dates))]
+        return frame
 
 
 def _write_pit(pit_path: Path, intervals: list[dict], calendar_path: Path, dates: list[str]) -> None:
@@ -46,7 +50,13 @@ def _write_pit(pit_path: Path, intervals: list[dict], calendar_path: Path, dates
 
 def _updater(tmp_path: Path, provider: _RecordingProvider, pit_path: Path, calendar_path: Path) -> RollingAdjustedPriceUpdater:
     store = AdjustedPriceStore(tmp_path / "adjusted")
-    return RollingAdjustedPriceUpdater(provider, store, pit_path=pit_path, historical_calendar_path=calendar_path)
+    return RollingAdjustedPriceUpdater(
+        provider,
+        store,
+        pit_path=pit_path,
+        historical_calendar_path=calendar_path,
+        stocks_dir=tmp_path / "stocks",
+    )
 
 
 def test_production_refresh_without_requested_start_resolves_per_identity(tmp_path) -> None:
@@ -62,9 +72,9 @@ def test_production_refresh_without_requested_start_resolves_per_identity(tmp_pa
              "effective_from": "2025-08-14", "effective_to": "2026-08-24"},
         ],
         calendar_path,
-        ["2026-08-20", "2026-08-21", "2026-08-24"],
+        ["2026-08-24"],
     )
-    provider = _RecordingProvider()
+    provider = _RecordingProvider(["2026-08-24"])
     updater = _updater(tmp_path, provider, pit_path, calendar_path)
 
     result = updater.refresh(["005930", "446840"], "2026-08-21", "2026-08-24")
@@ -88,9 +98,9 @@ def test_historical_explicit_requested_start_still_works_unchanged(tmp_path) -> 
              "effective_from": "2025-08-14", "effective_to": "2026-08-24"},
         ],
         calendar_path,
-        ["2026-08-20", "2026-08-21", "2026-08-24"],
+        ["2026-08-24"],
     )
-    provider = _RecordingProvider()
+    provider = _RecordingProvider(["2026-08-24"])
     updater = _updater(tmp_path, provider, pit_path, calendar_path)
 
     result = updater.refresh(["005930", "446840"], "2026-08-21", "2026-08-24", requested_start="2010-01-04")

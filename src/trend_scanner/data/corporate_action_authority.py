@@ -47,9 +47,13 @@ from trend_scanner.data.opendart_preflight import (
 )
 from trend_scanner.data.source_authority_review import NaverDateRangeAdjustedClient
 
-PARENT_FIX03_CORRECTION_DIR = Path(
-    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/v01_fix03_correction"
+CURRENT_AUTHORITY_CLOSURE_V02_DIR = Path(
+    "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/authority_closure/v02"
 )
+# Retain the exported name for historical runner callers; its value now resolves
+# to the accepted current authority bundle, not the retired FIX03_CORRECTION files.
+PARENT_FIX03_CORRECTION_DIR = CURRENT_AUTHORITY_CLOSURE_V02_DIR
+CURRENT_AUTHORITY_MANIFEST_SHA256 = "4b1fac5197bcd6bcee159164f95d6984cf3279f43d4f9e7136c1ce021cc11818"
 DEFAULT_CORP_EVIDENCE_DIR_FIX03_CORRECTION_8 = Path(
     "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/corporate_action_evidence/v01_fix03_correction_8"
 )
@@ -107,18 +111,6 @@ ALLOWED_BASELINE_FAILURE_NODEIDS = frozenset({
 C13_SAMSUNG_ISSUER_URL = "https://www.samsung.com/global/ir/reports-disclosures/public-disclosure-view.71206/"
 C13_SAMSUNG_ISSUER_RAW_SHA256 = "940b0ab6bfdfc3c179dc7f2d5c01e088af436b8c479ad4f4c0c7739dbca9a116"
 C13_TIER_B_CONTRACT_EVIDENCE_SHA256 = "13cb04f8d48450ff2c90b8108d80e05e214ae03d02b6c43ada698a33d9ca493d"
-
-
-PARENT_FROZEN_HASHES = {
-    "adjusted_price_source_authority_review_v01_fix03_correction.json": "3e38d97aeeb3fc0a2f48bfc3c0dd3f28293990dab12206d10f048309b12c5f1f",
-    "historical_only_selection_authority_fix03_correction.json": "ecb7679725f56462eed411efc369728bd842815bee420513b1d82bd2ae6c2151",
-    "source_authority_unexpected_date_reconciliation_fix03_correction.csv": "0f55214c733bf97d24da826d5636bfe76f2003c730dc7f22dc3ab886a2db2caf",
-    "source_authority_coverage_results_fix03_correction.csv": "1a2a24806e643e7df6d6fa6d3b029c5afff8df40763488d544d7d7e562f292bf",
-    "source_authority_corporate_action_controls_fix03_correction.csv": "e2fe45ccf37b0b1087f772ff2d7aba67f8f42cc370ae33db7434c566069248e7",
-    "source_authority_overlap_parity_fix03_correction.csv": "4c4ed13f224558ddbd217514208c9fd1ef5384f578d5e106af339b837fd08a83",
-    "source_authority_ohlc_semantic_validation_fix03_correction.csv": "99f29d79708cdb268b8794674044bbcdf9cd9dfd83feedbb4502a337f40b5e40",
-    "source_authority_provenance_validation_fix03_correction.json": "e78cd24b2ccf52201a0965780a739dc2d2635d20d11fbba32f4670a9b8051eb8",
-}
 
 
 class ClaimAdjudicationStatus(str, Enum):
@@ -771,31 +763,119 @@ def build_full_pytest_certification_artifact(
 
 
 def verify_parent_authority_freeze(parent_dir: Path = PARENT_FIX03_CORRECTION_DIR) -> dict[str, Any]:
-    """Verify that all parent FIX03_CORRECTION artifacts remain byte-for-byte unchanged."""
-    mismatches = []
-    observed_hashes = {}
+    """Verify the accepted V02 authority bundle and its explicitly closed gate state."""
+    root = Path(parent_dir).resolve()
+    mismatches: list[str] = []
+    observed_hashes: dict[str, str] = {}
+    gate_results: dict[str, bool] = {}
+    manifest_path = root / "artifact_manifest.json"
+    manifest_bytes: bytes | None = None
+    manifest: dict[str, Any] = {}
+    if not manifest_path.is_file():
+        mismatches.append("Accepted authority artifact_manifest.json is missing")
+    else:
+        try:
+            manifest_bytes = manifest_path.read_bytes()
+            manifest_sha = hashlib.sha256(manifest_bytes).hexdigest()
+            if manifest_sha != CURRENT_AUTHORITY_MANIFEST_SHA256:
+                mismatches.append(
+                    "Accepted authority manifest hash mismatch: "
+                    f"expected {CURRENT_AUTHORITY_MANIFEST_SHA256}, got {manifest_sha}"
+                )
+            manifest_payload = json.loads(manifest_bytes)
+            if isinstance(manifest_payload, dict):
+                manifest = manifest_payload
+            else:
+                mismatches.append("Accepted authority manifest must be a JSON object")
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            mismatches.append(f"Accepted authority manifest is unreadable: {type(exc).__name__}")
 
-    for fname, expected_h in PARENT_FROZEN_HASHES.items():
-        fp = parent_dir / fname
-        if not fp.exists():
-            mismatches.append(f"Parent artifact missing: {fname}")
+    entries = manifest.get("artifacts", [])
+    if not isinstance(entries, list) or len(entries) != 23:
+        mismatches.append("Accepted authority manifest must contain exactly 23 artifact entries")
+        entries = []
+    seen_paths: set[str] = set()
+    for entry in entries:
+        relative_value = entry.get("relative_path") if isinstance(entry, dict) else None
+        relative = Path(str(relative_value or ""))
+        if (
+            not relative_value
+            or relative.is_absolute()
+            or ".." in relative.parts
+            or str(relative) in seen_paths
+        ):
+            mismatches.append(f"Invalid or duplicate accepted-authority artifact path: {relative_value!r}")
             continue
-        actual_h = hashlib.sha256(fp.read_bytes()).hexdigest()
-        observed_hashes[fname] = actual_h
-        if actual_h != expected_h:
-            mismatches.append(f"Hash mismatch for {fname}: expected {expected_h}, got {actual_h}")
+        seen_paths.add(str(relative))
+        artifact_path = (root / relative).resolve()
+        if root not in artifact_path.parents or not artifact_path.is_file():
+            mismatches.append(f"Accepted authority artifact missing or outside bundle: {relative}")
+            continue
+        actual_hash = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+        observed_hashes[str(relative)] = actual_hash
+        if artifact_path.stat().st_size != entry.get("size_bytes"):
+            mismatches.append(f"Accepted authority artifact size mismatch: {relative}")
+        if actual_hash != entry.get("sha256"):
+            mismatches.append(f"Accepted authority artifact hash mismatch: {relative}")
 
-    all_valid = len(mismatches) == 0 and len(observed_hashes) == len(PARENT_FROZEN_HASHES)
+    decision_path = root / "authority_closure_decision_v02.json"
+    gate_summary_path = root / "closure_v02_gate_summary.json"
+    try:
+        decision_payload = json.loads(decision_path.read_text(encoding="utf-8"))
+        decision = decision_payload if isinstance(decision_payload, dict) else {}
+        if not decision:
+            mismatches.append("Accepted authority closure decision must be a non-empty JSON object")
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        decision = {}
+        mismatches.append(f"Accepted authority closure decision is unreadable: {type(exc).__name__}")
+    if not (
+        decision.get("authority_closure") == "CLOSED"
+        and decision.get("review_decision") == "APPROVED_FOR_PRODUCTION_INTEGRATION"
+        and decision.get("all_gates_passed") is True
+        and decision.get("production_integration_authorized") is True
+        and decision.get("source_integration_executed") is False
+        and decision.get("evidence_only") is True
+    ):
+        mismatches.append("Accepted authority closure decision does not match the approved evidence-only contract")
+    try:
+        gate_summary = json.loads(gate_summary_path.read_text(encoding="utf-8"))
+        reassessment = gate_summary.get("fix02_real_offline_reassessment", {})
+        candidate_gates = reassessment.get("all_15_gates", {})
+        current_closure = gate_summary.get("current_closure_v02", {})
+        if isinstance(candidate_gates, dict):
+            gate_results = {str(name): value is True for name, value in candidate_gates.items()}
+        if not (
+            len(gate_results) == 15
+            and all(gate_results.values())
+            and current_closure.get("gate06") == "PASS"
+            and current_closure.get("gate14") == "PASS"
+            and current_closure.get("gate15") == "PASS"
+            and current_closure.get("all_gates_passed") is True
+            and current_closure.get("authority_closure") == "CLOSED"
+            and current_closure.get("production_integration_authorized") is True
+        ):
+            mismatches.append("Accepted authority gate summary is incomplete or not fully passing")
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, AttributeError) as exc:
+        mismatches.append(f"Accepted authority gate summary is unreadable: {type(exc).__name__}")
+
+    all_valid = not mismatches and len(observed_hashes) == 23
     return {
-        "schema": "parent_authority_freeze_validation_v01_fix03_correction_9",
-        "directive_id": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_9",
+        "schema": "accepted_authority_closure_v02_validation_v01",
+        "directive_id": "C13_AUTHORITY_CLOSURE_REASSESSMENT_V02",
         "start_head": START_HEAD_CORP_EVIDENCE_FIX03_CORRECTION_9,
-        "parent_directive": "ADJUSTED_PRICE_SOURCE_AUTHORITY_CORPORATE_ACTION_EVIDENCE_V01_FIX03_CORRECTION_8",
+        "parent_directive": "accepted_authority_closure_v02",
         "all_parent_inputs_unchanged": all_valid,
         "parent_artifacts_verified_count": len(observed_hashes),
         "mismatches": mismatches,
         "parent_artifact_hashes": observed_hashes,
+        "parent_gate_results": gate_results,
     }
+
+
+def _accepted_parent_gate_results(parent_dir: Path) -> dict[str, bool]:
+    """Return current accepted gates; invalid bundles fail closed as no inherited gates."""
+    verification = verify_parent_authority_freeze(parent_dir)
+    return verification["parent_gate_results"] if verification["all_parent_inputs_unchanged"] else {}
 
 
 class SemanticTreeNode:
@@ -5201,9 +5281,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_9(
     gate06_path = output_dir / "gate06_corporate_action_reassessment_v01_fix03_correction_9.json"
     gate06_path.write_text(json.dumps(gate06_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    parent_decision_fp = parent_dir / "adjusted_price_source_authority_review_v01_fix03_correction.json"
-    parent_dec_json = json.loads(parent_decision_fp.read_text(encoding="utf-8"))
-    parent_gates = parent_dec_json.get("gate_results", {})
+    parent_gates = _accepted_parent_gate_results(parent_dir)
 
     inherited_gates = {}
     for g_key in [
@@ -5388,9 +5466,7 @@ def _terminate_on_readiness_or_preflight_failure(
         json.dumps(gate06_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
-    parent_decision_fp = parent_dir / "adjusted_price_source_authority_review_v01_fix03_correction.json"
-    parent_dec_json = json.loads(parent_decision_fp.read_text(encoding="utf-8"))
-    parent_gates = parent_dec_json.get("gate_results", {})
+    parent_gates = _accepted_parent_gate_results(parent_dir)
 
     inherited_gates = {}
     for g_key in [
@@ -6870,9 +6946,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_11(
     gate06_path = output_dir / "gate06_corporate_action_reassessment_v01_fix03_correction_11.json"
     gate06_path.write_text(json.dumps(gate06_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    parent_decision_fp = parent_dir / "adjusted_price_source_authority_review_v01_fix03_correction.json"
-    parent_dec_json = json.loads(parent_decision_fp.read_text(encoding="utf-8"))
-    parent_gates = parent_dec_json.get("gate_results", {})
+    parent_gates = _accepted_parent_gate_results(parent_dir)
 
     inherited_gates = {}
     for g_key in [
@@ -7069,9 +7143,7 @@ def _terminate_on_readiness_or_preflight_failure_correction_11(
         json.dumps(gate06_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
-    parent_decision_fp = parent_dir / "adjusted_price_source_authority_review_v01_fix03_correction.json"
-    parent_dec_json = json.loads(parent_decision_fp.read_text(encoding="utf-8"))
-    parent_gates = parent_dec_json.get("gate_results", {})
+    parent_gates = _accepted_parent_gate_results(parent_dir)
 
     inherited_gates = {}
     for g_key in [
@@ -8609,9 +8681,7 @@ def run_corporate_action_evidence_acquisition_fix03_correction_12(
     gate06_path = output_dir / "gate06_corporate_action_reassessment_v01_fix03_correction_12.json"
     gate06_path.write_text(json.dumps(gate06_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
-    parent_decision_fp = parent_dir / "adjusted_price_source_authority_review_v01_fix03_correction.json"
-    parent_dec_json = json.loads(parent_decision_fp.read_text(encoding="utf-8"))
-    parent_gates = parent_dec_json.get("gate_results", {})
+    parent_gates = _accepted_parent_gate_results(parent_dir)
 
     inherited_gates = {}
     for g_key in [
@@ -8860,9 +8930,7 @@ def _terminate_on_readiness_or_preflight_failure_correction_12(
         json.dumps(gate06_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
-    parent_decision_fp = parent_dir / "adjusted_price_source_authority_review_v01_fix03_correction.json"
-    parent_dec_json = json.loads(parent_decision_fp.read_text(encoding="utf-8"))
-    parent_gates = parent_dec_json.get("gate_results", {})
+    parent_gates = _accepted_parent_gate_results(parent_dir)
 
     inherited_gates = {}
     for g_key in [

@@ -205,7 +205,8 @@ def test_resume_missing_artifact_cannot_ready():
     assert resume_gate(None, "fix08-implementation-head") is False
 
 
-def test_provenance_status_independent_from_coverage():
+def test_provenance_status_independent_from_coverage(monkeypatch):
+    monkeypatch.setattr(validator, "production_runtime_compatible", lambda: True)
     coverage = _coverage(complete=False)
     result = evaluate_ready_gate(_diagnostic(), _pilot(), _samsung(), _repair(), _resume(), _idempotency(), coverage, {}, {"cross_market_ticker_conflict_count": 0}, {"invalid_short_code_count": 0}, "fix08-implementation-head")
     assert result["provenance_status"] == "PASS"
@@ -213,7 +214,8 @@ def test_provenance_status_independent_from_coverage():
     assert "BLOCKED_PROVENANCE" not in result["blockers"]
 
 
-def test_coverage_blocker_does_not_create_provenance_blocker():
+def test_coverage_blocker_does_not_create_provenance_blocker(monkeypatch):
+    monkeypatch.setattr(validator, "production_runtime_compatible", lambda: True)
     coverage = _coverage(complete=False)
     result = evaluate_ready_gate(_diagnostic(), _pilot(), _samsung(), _repair(), _resume(), _idempotency(), coverage, {}, {"cross_market_ticker_conflict_count": 0}, {"invalid_short_code_count": 0}, "fix08-implementation-head")
     assert result["provenance_status"] == "PASS"

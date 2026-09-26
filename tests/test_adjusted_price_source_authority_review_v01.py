@@ -65,8 +65,26 @@ def test_network_attempt_in_offline_mode_fails():
         client.fetch_raw("005930", "2020-01-02", "2020-01-10")
 
 
-def test_historical_selection_no_target_list_behavior():
-    controls, meta = derive_historical_only_cohort_at_runtime_fix03()
+def _synthetic_fix02_coverage_dir(tmp_path: Path) -> Path:
+    """Supply local historical-only selection evidence without restoring retired artifacts."""
+    population_path = Path(
+        "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01/historical_common_population_v01.json"
+    )
+    population = json.loads(population_path.read_text(encoding="utf-8"))
+    coverage_dir = tmp_path / "fix02_review_evidence"
+    coverage_dir.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(
+        {
+            "ticker": [str(record["ticker"]) for record in population["records"]],
+            "candidate_count": [1] * len(population["records"]),
+        }
+    ).to_csv(coverage_dir / "source_authority_coverage_results_fix02.csv", index=False)
+    return coverage_dir
+
+
+def test_historical_selection_no_target_list_behavior(tmp_path):
+    fix02_dir = _synthetic_fix02_coverage_dir(tmp_path)
+    controls, meta = derive_historical_only_cohort_at_runtime_fix03(fix02_dir=fix02_dir)
     assert len(controls) == 10
     assert meta["mandatory_ticker"] == "064420"
     assert "064420" in meta["selected_tickers"]
@@ -74,6 +92,7 @@ def test_historical_selection_no_target_list_behavior():
 
 
 def test_historical_selection_invariant_to_input_ordering(tmp_path):
+    fix02_dir = _synthetic_fix02_coverage_dir(tmp_path)
     pop_orig = Path("artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/v01/historical_common_population_v01.json")
     with open(pop_orig, encoding="utf-8") as f:
         data = json.load(f)
@@ -83,8 +102,8 @@ def test_historical_selection_invariant_to_input_ordering(tmp_path):
     shuffled_pop_file = tmp_path / "pop_shuffled.json"
     shuffled_pop_file.write_text(json.dumps(data_rev), encoding="utf-8")
 
-    controls1, meta1 = derive_historical_only_cohort_at_runtime_fix03(pop_path=pop_orig)
-    controls2, meta2 = derive_historical_only_cohort_at_runtime_fix03(pop_path=shuffled_pop_file)
+    controls1, meta1 = derive_historical_only_cohort_at_runtime_fix03(pop_path=pop_orig, fix02_dir=fix02_dir)
+    controls2, meta2 = derive_historical_only_cohort_at_runtime_fix03(pop_path=shuffled_pop_file, fix02_dir=fix02_dir)
 
     assert meta1["selected_tickers"] == meta2["selected_tickers"]
 

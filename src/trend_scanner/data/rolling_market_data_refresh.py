@@ -69,6 +69,7 @@ import requests
 from trend_scanner.data.adjusted_price_pilot import (
     DEFAULT_HISTORICAL_CALENDAR_PATH,
     DEFAULT_PIT_PATH,
+    DEFAULT_STOCKS_RAW_DIR,
     DEFAULT_SUSPENSION_AUTHORITY_PATH,
     DEFAULT_SUSPENSION_ERRATA_PATH,
     resolve_expected_coverage,
@@ -2961,6 +2962,7 @@ class RollingAdjustedPriceUpdater:
         *,
         pit_path: Path,
         historical_calendar_path: Path,
+        stocks_dir: Path = DEFAULT_STOCKS_RAW_DIR,
         corporate_action_evidence_lookup: Callable[[str], Any] | None = None,
         evidence_observation_date: str | None = None,
         production_raw_store: KrxRawStockStore | None = None,
@@ -2969,6 +2971,7 @@ class RollingAdjustedPriceUpdater:
         self.store = store
         self.pit_path = Path(pit_path)
         self.historical_calendar_path = Path(historical_calendar_path)
+        self.stocks_dir = Path(stocks_dir)
         self.corporate_action_evidence_lookup = corporate_action_evidence_lookup
         self.evidence_observation_date = evidence_observation_date
         self.production_raw_store = production_raw_store
@@ -3059,6 +3062,7 @@ class RollingAdjustedPriceUpdater:
             ticker,
             ticker_requested_start,
             target_as_of,
+            stocks_dir=self.stocks_dir,
             pit_path=pit_path,
             historical_calendar_path=historical_calendar_path,
         )
@@ -3277,7 +3281,7 @@ class RollingAdjustedPriceUpdater:
             if requested_start is None or self.production_raw_store is not None:
                 identity = resolve_current_identity(ticker, target_as_of, intervals_by_ticker or {})
                 if requested_start is None and identity.status != "RESOLVED":
-                    blocked.append({"ticker": normalized, "reason": f"IDENTITY_{identity.status}"})
+                    skipped.append({"ticker": normalized, "reason": f"IDENTITY_{identity.status}"})
                     continue
                 if identity.status == "RESOLVED" and identity.interval is not None:
                     current_identity = identity.interval
@@ -3365,7 +3369,15 @@ class RollingAdjustedPriceUpdater:
                     skipped.append({"ticker": normalized, "reason": "ALREADY_COMPLETE", "missing_date_count": 0})
                     continue
                 fetched_frames = []
-                for request_start, request_end in _session_ranges(missing_dates, expected_dates):
+                if before is None or before.empty:
+                    # On first materialization, honor the resolved identity bound (or an
+                    # explicit historical override) rather than clipping the provider's
+                    # response window to the sparse expected-session calendar. The calendar
+                    # remains the independent set used to validate required observations.
+                    request_ranges = [(ticker_requested_start, target_as_of)]
+                else:
+                    request_ranges = _session_ranges(missing_dates, expected_dates)
+                for request_start, request_end in request_ranges:
                     fetched = self.provider.load_daily(normalized, request_start, request_end)
                     if fetched.empty:
                         raise RuntimeError(f"EMPTY_ADJUSTED_AUTHORITY:{request_start}:{request_end}")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 import pandas as pd
 import pytest
 
@@ -10,6 +11,7 @@ from trend_scanner.data.krx_openapi_client import KrxOpenApiAuthorizationError
 from trend_scanner.data.krx_raw_stock_provider import KrxRawStockSnapshotError, RAW_COLUMNS
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.data.krx_historical_backfill import BLOCKER_PRIORITY, KrxHistoricalBackfillRunner, candidate_dates
+from trend_scanner.data import krx_historical_backfill as backfill_module
 from scripts import validate_krx_historical_backfill_v01 as validation
 from scripts.validate_krx_historical_backfill_v01 import (
     FIX_START_HEAD,
@@ -432,7 +434,13 @@ def test_resume_skips_complete_and_no_data(tmp_path):
     assert result["aggregate"]["complete_date_count"] == 1
 
 
-def test_recent_empty_is_not_checkpointed_and_general_resume_retries(tmp_path):
+def test_recent_empty_is_not_checkpointed_and_general_resume_retries(tmp_path, monkeypatch):
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 8, 25, tzinfo=tz)
+
+    monkeypatch.setattr(backfill_module, "datetime", FrozenDateTime)
     provider = _Provider("both-empty")
     runner, _ = _runner(tmp_path, provider)
     first = runner.run("2026-08-24", "2026-08-24", max_task_attempts=2)

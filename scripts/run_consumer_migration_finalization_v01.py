@@ -68,6 +68,8 @@ PATTERN_A_TEMPORAL_FIELDS = frozenset(
         "foreign_flow_first_observation_date",
         "foreign_flow_last_observation_date",
         "market_benchmark_last_observation_date",
+        "market_anchor_date_2w",
+        "market_anchor_date_1m",
         "market_anchor_date_3m",
         "market_anchor_date_6m",
         "market_anchor_date_12m",

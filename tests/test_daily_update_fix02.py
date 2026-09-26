@@ -242,6 +242,10 @@ def test_foundation_does_not_pass_when_common_adjusted_is_blocked(tmp_path):
             }
 
     raw = KrxRawStockStore(tmp_path / "raw")
+    # The adjusted-authority assertion is downstream of the common-raw gate. Seed
+    # a valid terminal pair so this fixture reaches the blocker it intends to test.
+    raw.save_snapshot("KOSPI", "2026-08-21", _raw_frame("2026-08-21", "000001", 100), "TEST")
+    raw.save_snapshot("KOSDAQ", "2026-08-21", _raw_frame("2026-08-21", "000002", 100), "TEST")
     foundation = DailyUpdateFoundation(
         authority_dir=authority,
         raw_store=raw,
