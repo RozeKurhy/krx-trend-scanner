@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Mapping
 
 import numpy as np
 import pandas as pd
@@ -104,6 +104,7 @@ def simulate_ticker_core_v02_reentry(
     strict_errors: bool = False,
     entry_execution_cutoff_date: pd.Timestamp | None = None,
     entry_signal_cutoff_date: pd.Timestamp | None = None,
+    entry_signal_filter: Callable[[pd.Timestamp, Mapping[str, Any]], bool] | None = None,
 ) -> list[V02TradeRecord]:
     """Replay one ticker's V2 trade state through ``cutoff_date``.
 
@@ -234,6 +235,19 @@ def simulate_ticker_core_v02_reentry(
 
         if found_signal_w is None or found_signal_res is None:
             break
+
+        # An external point-in-time eligibility gate may reject this otherwise
+        # valid signal before it consumes strategy position/re-entry state.
+        # Keep scanning from the next completed week; the default ``None`` path
+        # preserves the frozen V02 behavior exactly.
+        if entry_signal_filter is not None and not entry_signal_filter(
+            pd.Timestamp(found_signal_w).normalize(), found_signal_res
+        ):
+            cur_search_date = next(
+                (week for week in entry_weeks if week > found_signal_w),
+                None,
+            )
+            continue
 
         # Check execution date
         fut_daily = daily[(daily.index > found_signal_w) & (daily.index <= execution_support)]

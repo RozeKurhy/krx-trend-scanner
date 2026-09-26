@@ -229,6 +229,7 @@ class RunContext:
     authority_coverage_end: str
     setup_seconds: float
     permanent_identity_exclusions: tuple[dict[str, str], ...] = ()
+    entry_signal_gate: Any | None = None
 
 
 def _sha256(path: Path) -> str:
@@ -1818,6 +1819,7 @@ def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
     control_rows: list[dict[str, Any]] = []
     candidate_rows: list[dict[str, Any]] = []
     diagnostics: list[dict[str, Any]] = []
+    market_data_by_identity: dict[str, pd.DataFrame] = {}
     segments_seen = 0
     repository_load_count = 0
 
@@ -1893,6 +1895,12 @@ def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
         )
         if entry_eligibility_cutoff > strategy_cutoff:
             raise RuntimeError("standard backtest runner entry eligibility exceeds the active strategy horizon")
+        entry_signal_gate = getattr(run, "entry_signal_gate", None)
+        entry_signal_filter = None
+        if entry_signal_gate is not None:
+            entry_signal_filter = lambda signal_date, result, active_segment=segment: (
+                entry_signal_gate.check(active_segment, signal_date, result)
+            )
         base_records = v2.simulate_ticker_core_v02_reentry(
             ticker=ticker,
             name=ticker,
@@ -1909,7 +1917,12 @@ def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
             strict_errors=True,
             entry_execution_cutoff_date=entry_eligibility_cutoff,
             entry_signal_cutoff_date=entry_eligibility_cutoff,
+            entry_signal_filter=entry_signal_filter,
         )
+        if base_records:
+            market_data_by_identity[segment.key] = strategy_daily.loc[
+                :, ["open", "high", "low", "close"]
+            ].copy()
         stage_timeline: dict[pd.Timestamp, str] = {}
         if any(record.first_progressed_effective_trading_date for record in base_records):
             stage_timeline = _stage_timeline(
@@ -1922,6 +1935,13 @@ def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
 
         for record in base_records:
             base = record.to_dict()
+            if entry_signal_gate is not None:
+                cap_resolution = entry_signal_gate.resolution(
+                    segment,
+                    pd.Timestamp(record.entry_signal_date).normalize(),
+                )
+                base["entry_market_cap"] = cap_resolution.get("market_cap")
+                base["entry_market_cap_source"] = cap_resolution.get("source")
             expected_entry = _next_local_session(
                 strategy_daily,
                 pd.Timestamp(record.entry_signal_date).normalize(),
@@ -2074,6 +2094,7 @@ def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
         "control_rows": control_rows,
         "candidate_rows": candidate_rows,
         "diagnostics": diagnostics,
+        "market_data_by_identity": market_data_by_identity,
         "elapsed_seconds": time.perf_counter() - started,
     }
 

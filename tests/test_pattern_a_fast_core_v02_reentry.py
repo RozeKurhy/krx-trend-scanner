@@ -376,6 +376,69 @@ def test_entry_execution_cutoff_blocks_support_entry_before_trade_state_creation
     assert after_cutoff == []
 
 
+def test_rejected_entry_signal_does_not_consume_reentry_trade_sequence(monkeypatch):
+    effective_end = pd.Timestamp("2025-05-30")
+    support = pd.Timestamp("2025-06-02")
+    daily = pd.DataFrame(
+        {
+            "open": 100.0,
+            "high": 101.0,
+            "low": 99.0,
+            "close": 100.0,
+        },
+        index=pd.bdate_range("2025-01-06", support),
+    )
+
+    class FakeContext:
+        def weekly_up_to(self, _cutoff):
+            return pd.DataFrame(index=pd.to_datetime(["2025-05-16", "2025-05-23"]))
+
+        def monthly_up_to(self, _cutoff):
+            return pd.DataFrame(index=pd.DatetimeIndex([]))
+
+    monkeypatch.setattr(
+        v2,
+        "evaluate_pattern_a_fast",
+        lambda *args, **kwargs: {
+            "fast_machine_stage": "TRIGGER",
+            "fast_machine_stage_status": "READY",
+            "fast_monthly_permission_state": "PERMITTED_REGIME",
+            "fast_daily_risk_state": "NORMAL",
+            "fast_score_status": "READY",
+            "pattern_a_stage": "TRANSITION",
+            "fast_score": 50.0,
+        },
+    )
+    rejected_dates = []
+
+    def gate(signal_date, _evaluation):
+        rejected_dates.append(signal_date.strftime("%Y-%m-%d"))
+        return signal_date.strftime("%Y-%m-%d") != "2025-05-16"
+
+    trades = simulate_ticker_core_v02_reentry(
+        ticker="000001",
+        name="000001",
+        market="KOSPI",
+        daily=daily,
+        score_contract={},
+        stage_contract={},
+        cutoff_date=effective_end,
+        signal_cutoff_date=effective_end,
+        execution_support_date=support,
+        entry_search_start=pd.Timestamp("2025-05-16"),
+        entry_execution_cutoff_date=effective_end,
+        entry_signal_cutoff_date=effective_end,
+        snapshot_context=FakeContext(),
+        entry_signal_filter=gate,
+        strict_errors=True,
+    )
+
+    assert rejected_dates == ["2025-05-16", "2025-05-23"]
+    assert len(trades) == 1
+    assert trades[0].trade_id == "000001_01"
+    assert trades[0].entry_signal_date == "2025-05-23"
+
+
 def test_entry_execution_cutoff_cannot_exceed_window_effective_end():
     with pytest.raises(ValueError, match="must not exceed the valuation cutoff"):
         simulate_ticker_core_v02_reentry(
