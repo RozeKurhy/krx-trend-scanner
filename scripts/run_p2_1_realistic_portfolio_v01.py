@@ -69,6 +69,12 @@ EXPECTED_OUTPUTS = (
     "summary.csv",
     "comparison_report.md",
 )
+PORTFOLIO_AUDIT_OUTPUTS = (
+    "valuation_gap_closure_audit.csv",
+    "valuation_gap_source_diagnosis.csv",
+    "hidden_position_cap_audit.json",
+    "mcap365_to_trade355_reason_audit.csv",
+)
 
 
 def _sha256(path: Path) -> str:
@@ -414,6 +420,58 @@ def _price(record: Mapping[str, Any], frames: Mapping[Any, pd.DataFrame], day: p
     return None if pd.isna(value) or not math.isfinite(float(value)) else float(value)
 
 
+def _valuation_close_with_carry(
+    record: Mapping[str, Any],
+    frames: Mapping[Any, pd.DataFrame],
+    day: pd.Timestamp,
+    trading_session_positions: Mapping[pd.Timestamp, int],
+    gap_classifications: Mapping[tuple[str, str], str],
+    *,
+    strategy_id: str,
+    pair_id: str,
+) -> tuple[float | None, dict[str, Any] | None]:
+    """Use exact valid adjusted close, or prior close only for daily portfolio MTM."""
+    valuation_day = pd.Timestamp(day).normalize()
+    exact = _price(record, frames, valuation_day, "close")
+    if exact is not None:
+        return exact, None
+
+    frame = _frame_for_record(record, frames)
+    if frame is None or "close" not in frame.columns:
+        return None, None
+    prior = pd.to_numeric(frame.loc[frame.index < valuation_day, "close"], errors="coerce")
+    prior = prior[prior.map(lambda value: pd.notna(value) and math.isfinite(float(value)) and float(value) > 0)]
+    if prior.empty:
+        return None, None
+
+    last_valid_date = pd.Timestamp(prior.index[-1]).normalize()
+    if last_valid_date >= valuation_day:
+        raise RuntimeError("P2_1_VALUATION_CARRY_NOT_STRICTLY_PRIOR")
+    if valuation_day not in trading_session_positions or last_valid_date not in trading_session_positions:
+        return None, None
+    ticker = str(record.get("ticker", "")).zfill(6)
+    close = float(prior.iloc[-1])
+    audit = {
+        "strategy_id": strategy_id,
+        "pair_id": pair_id,
+        "trade_id": record.get("trade_id"),
+        "ticker": ticker,
+        "identity": record.get("isu_cd"),
+        "market": record.get("market"),
+        "valuation_date": valuation_day.strftime("%Y-%m-%d"),
+        "last_valid_adjusted_close_date": last_valid_date.strftime("%Y-%m-%d"),
+        "carried_adjusted_close": close,
+        "stale_age_trading_days": trading_session_positions[valuation_day] - trading_session_positions[last_valid_date],
+        "stale_age_calendar_days": int((valuation_day - last_valid_date).days),
+        "gap_classification": gap_classifications.get((ticker, valuation_day.strftime("%Y-%m-%d")), "NEW_UNCLASSIFIED_GAP"),
+        "valuation_only": True,
+        "used_for_execution": False,
+        "used_for_strategy_or_features": False,
+        "carry_rule": "MOST_RECENT_EARLIER_VALID_ADJUSTED_CLOSE",
+    }
+    return close, audit
+
+
 def _tax_rate(day: pd.Timestamp, market: str) -> float:
     normalized = pd.Timestamp(day).normalize()
     if str(market).upper() not in {"KOSPI", "KOSDAQ"}:
@@ -466,6 +524,7 @@ def _portfolio_replay(
     effective_start: pd.Timestamp,
     effective_end: pd.Timestamp,
     execution_support: pd.Timestamp,
+    gap_classifications: Mapping[tuple[str, str], str] | None = None,
 ) -> dict[str, Any]:
     dates = tuple(
         pd.Timestamp(day).normalize()
@@ -475,6 +534,8 @@ def _portfolio_replay(
     if not dates or dates[-1] != execution_support:
         raise RuntimeError("P2_1_EXECUTION_SUPPORT_NOT_IN_TRADING_CALENDAR")
     next_day = {day: dates[index + 1] for index, day in enumerate(dates[:-1])}
+    trading_session_positions = {day: index for index, day in enumerate(dates)}
+    gap_classifications = gap_classifications or {}
     entries: dict[pd.Timestamp, list[dict[str, Any]]] = {}
     exits: dict[pd.Timestamp, list[dict[str, Any]]] = {}
     skipped: list[dict[str, Any]] = []
@@ -502,6 +563,8 @@ def _portfolio_replay(
     terminal_locked: dict[str, dict[str, Any]] = {}
     events: list[dict[str, Any]] = []
     equity_rows: list[dict[str, Any]] = []
+    entry_candidate_audit: list[dict[str, Any]] = []
+    valuation_gap_audit: list[dict[str, Any]] = []
     closed_returns: list[float] = []
     holding_periods: list[int] = []
     total_buy_notional = 0.0
@@ -632,13 +695,32 @@ def _portfolio_replay(
                 str(record.get("market", "")),
             )
             event = event_row(record, day, "ENTRY")
+            candidate_audit = {
+                "strategy_id": strategy_id,
+                "pair_id": record.get("pair_id"),
+                "trade_id": record.get("trade_id"),
+                "ticker": ticker,
+                "identity": record.get("isu_cd"),
+                "entry_date": day.strftime("%Y-%m-%d"),
+                "concurrent_positions_before_candidate": len(positions) + len(terminal_locked),
+                "position_cap_configured": None,
+                "slot_cap_would_block": False,
+                "cash_before": cash,
+                "required_total_buy_cost": None,
+                "cash_sufficient": None,
+                "decision": None,
+            }
             if ticker in exited_tickers:
                 event.update(event_status="SKIPPED_SAME_OPEN_EXIT_REENTRY", reason="SAME_OPEN_REENTRY_FORBIDDEN")
+                candidate_audit["decision"] = "SAME_OPEN_EXIT_REENTRY"
+                entry_candidate_audit.append(candidate_audit)
                 events.append(event)
                 skipped.append({**event, "skip_reason": "SAME_OPEN_EXIT_REENTRY_FORBIDDEN"})
                 continue
             if identity_key in identity_active_keys:
                 event.update(event_status="SKIPPED_DUPLICATE_ACTIVE_IDENTITY", reason="DUPLICATE_ACTIVE_IDENTITY_FORBIDDEN")
+                candidate_audit["decision"] = "DUPLICATE_ACTIVE_IDENTITY"
+                entry_candidate_audit.append(candidate_audit)
                 events.append(event)
                 skipped.append({**event, "skip_reason": "DUPLICATE_ACTIVE_IDENTITY_FORBIDDEN"})
                 continue
@@ -646,6 +728,8 @@ def _portfolio_replay(
             if ref is None or ref <= 0:
                 unresolved_count += 1
                 event.update(event_status="UNRESOLVED", reason="MISSING_EXACT_ENTRY_OPEN")
+                candidate_audit["decision"] = "UNRESOLVED_MISSING_EXACT_ENTRY_OPEN"
+                entry_candidate_audit.append(candidate_audit)
                 events.append(event)
                 continue
             fill = ref * (1.0 + SLIPPAGE_RATE)
@@ -653,14 +737,20 @@ def _portfolio_replay(
             notional = fill * shares
             commission = notional * COMMISSION_RATE
             total_cost = notional + commission
+            candidate_audit["required_total_buy_cost"] = total_cost
+            candidate_audit["cash_sufficient"] = bool(total_cost <= cash + 1e-6)
             if shares <= 0:
                 event.update(event_status="SKIPPED_ZERO_SHARES", reason="MAX_INTEGER_SHARES_ZERO")
+                candidate_audit["decision"] = "ZERO_SHARES"
+                entry_candidate_audit.append(candidate_audit)
                 events.append(event)
                 skipped.append({**event, "skip_reason": "MAX_INTEGER_SHARES_ZERO"})
                 continue
             if total_cost > cash + 1e-6:
                 cash_shortage += 1
                 event.update(event_status="SKIPPED_CASH_UNAVAILABLE", reason="INSUFFICIENT_AVAILABLE_CASH")
+                candidate_audit["decision"] = "CASH_INSUFFICIENT"
+                entry_candidate_audit.append(candidate_audit)
                 events.append(event)
                 skipped.append({**event, "skip_reason": "INSUFFICIENT_AVAILABLE_CASH"})
                 continue
@@ -695,6 +785,8 @@ def _portfolio_replay(
                 open_at_effective_cutoff=str(record.get("trade_status", "")).startswith("OPEN"),
             )
             events.append(event)
+            candidate_audit["decision"] = "EXECUTED"
+            entry_candidate_audit.append(candidate_audit)
 
         # An identity interval that ends before the overall effective cutoff is
         # valued at its exact terminal close and carried locked, never sold or
@@ -733,13 +825,24 @@ def _portfolio_replay(
                 valuation_day = min(last_date, effective_end)
             else:
                 valuation_day = mark_date
-            close = _price(record, frames, valuation_day, "close")
+            close, stale_audit = _valuation_close_with_carry(
+                record,
+                frames,
+                valuation_day,
+                trading_session_positions,
+                gap_classifications,
+                strategy_id=strategy_id,
+                pair_id=str(record.get("pair_id", "")),
+            )
             if close is None:
                 valuation_missing = True
                 unresolved_count += 1
                 skipped.append({"strategy_id": strategy_id, "pair_id": record.get("pair_id"), "ticker": record.get("ticker"), "date": valuation_day.strftime("%Y-%m-%d"), "skip_reason": "MISSING_EXACT_DAILY_MARK"})
             else:
                 invested_value += int(position["shares"]) * close
+                if stale_audit is not None:
+                    stale_audit["mark_observed_on"] = day.strftime("%Y-%m-%d")
+                    valuation_gap_audit.append(stale_audit)
         pending_total = sum(pending_by_date.values()) + terminal_pending
         equity = None if valuation_missing else cash + pending_total + invested_value
         if equity is not None:
@@ -831,7 +934,14 @@ def _portfolio_replay(
         "cash_conservation_pass": cash_conservation_pass,
         "position_cap": None,
     }
-    return {"events": events, "daily_equity": equity_rows, "skipped": skipped, "metrics": metrics}
+    return {
+        "events": events,
+        "daily_equity": equity_rows,
+        "skipped": skipped,
+        "metrics": metrics,
+        "entry_candidate_audit": entry_candidate_audit,
+        "valuation_gap_audit": valuation_gap_audit,
+    }
 
 
 def _comparison(control: Mapping[str, Any], candidate: Mapping[str, Any]) -> dict[str, Any]:
@@ -891,6 +1001,14 @@ Universe: 최신 Daily Update {summary['universe']['latest_daily_update_as_of']}
 | 회전율 배수 | {control['turnover_multiple']:.3f}x | {candidate['turnover_multiple']:.3f}x | {delta['turnover_multiple']:.3f}x |
 | `<= -40%` 실현 거래 | {control['realized_return_le_neg_40_count']} | {candidate['realized_return_le_neg_40_count']} | {delta['realized_return_le_neg_40_count']} |
 | `>= +50%` 실현 거래 | {control['realized_return_ge_pos_50_count']} | {candidate['realized_return_ge_pos_50_count']} | {delta['realized_return_ge_pos_50_count']} |
+
+## 감사 요약
+
+- 기존 전략 trade ledger 355행씩을 그대로 재사용했고 전략·entry 신호 재계산은 하지 않았어.
+- 40개 동시 보유 시 실제 후보/현금 부족/슬롯 cap 차단은 [hidden_position_cap_audit.json](hidden_position_cap_audit.json)에 기록했어. 설정 포지션 한도는 없음.
+- exact PIT 시총 PASS 365건 중 ledger 미포함 10건은 모두 유효기간 마지막 신호일의 다음 로컬 실행일이 entry cutoff를 넘은 사유야. [mcap365_to_trade355_reason_audit.csv](mcap365_to_trade355_reason_audit.csv)에서 전체 365건을 확인할 수 있어.
+- 기존 valuation gap 96 ticker-date는 raw non-trading placeholder 74건과 adjusted source OHLC 관계 위반 22건으로 원천 행을 다시 대조했어. 직전 valid adjusted close는 daily portfolio MTM에만 사용했고, 각 stale mark의 날짜·가격·stale age 및 source 근거는 [valuation_gap_closure_audit.csv](valuation_gap_closure_audit.csv)에 있어.
+- 체결과 전략 feature에는 carry를 사용하지 않았어. 기준 가격은 effective cutoff exact close이며 execution-support 이후 close는 사용하지 않았어.
 
 ## 경계와 해석
 
@@ -1117,6 +1235,549 @@ def _full_run(workers: int) -> dict[str, Any]:
     return summary
 
 
+def _gap_classification_audit(
+    skipped_entries: pd.DataFrame,
+    existing_baseline_path: Path | None = None,
+) -> tuple[pd.DataFrame, dict[tuple[str, str], str]]:
+    missing = skipped_entries.loc[
+        skipped_entries.get("skip_reason", pd.Series(dtype=str)).astype(str).eq("MISSING_EXACT_DAILY_MARK")
+    ].copy()
+    if not missing.empty:
+        identity_rows = pd.concat(
+            [
+                pd.read_csv(OUT_DIR / "control_strategy_trades.csv")[
+                    ["pair_id", "ticker", "isu_cd", "market"]
+                ],
+                pd.read_csv(OUT_DIR / "candidate_strategy_trades.csv")[
+                    ["pair_id", "ticker", "isu_cd", "market"]
+                ],
+            ],
+            ignore_index=True,
+        ).drop_duplicates("pair_id")
+        missing = missing.merge(
+            identity_rows,
+            on="pair_id",
+            how="left",
+            suffixes=("", "_ledger"),
+            validate="many_to_one",
+        )
+        for field in ("ticker", "isu_cd", "market"):
+            ledger_field = f"{field}_ledger"
+            if ledger_field in missing.columns:
+                if field not in missing.columns:
+                    missing[field] = missing[ledger_field]
+                else:
+                    missing[field] = missing[field].where(missing[field].notna(), missing[ledger_field])
+        missing["ticker"] = missing["ticker"].astype(str).str.zfill(6)
+        missing["valuation_date"] = pd.to_datetime(missing["date"], errors="raise").dt.strftime("%Y-%m-%d")
+        key_columns = ["ticker", "valuation_date"]
+        unique = missing.drop_duplicates(key_columns).sort_values(key_columns, kind="mergesort")
+        if "identity" not in unique.columns:
+            unique["identity"] = unique.get("isu_cd")
+    elif existing_baseline_path is not None and existing_baseline_path.is_file():
+        prior_audit = pd.read_csv(existing_baseline_path)
+        required = {"ticker", "valuation_date", "identity", "market"}
+        if not required.issubset(prior_audit.columns):
+            raise RuntimeError("P2_1_PERSISTED_GAP_BASELINE_SCHEMA_MISMATCH")
+        unique = prior_audit.loc[:, ["ticker", "valuation_date", "identity", "market"]].copy()
+        unique["ticker"] = unique["ticker"].astype(str).str.zfill(6)
+        unique["valuation_date"] = pd.to_datetime(unique["valuation_date"], errors="raise").dt.strftime("%Y-%m-%d")
+        unique = unique.drop_duplicates(["ticker", "valuation_date"]).sort_values(
+            ["ticker", "valuation_date"], kind="mergesort"
+        )
+    else:
+        raise RuntimeError("P2_1_EXISTING_VALUATION_GAP_BASELINE_EMPTY")
+    if len(unique) != 96:
+        raise RuntimeError(f"P2_1_EXISTING_GAP_BASELINE_COUNT_MISMATCH:{len(unique)}")
+
+    from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
+    from trend_scanner.data.repository_v2 import NON_TRADING_PLACEHOLDER_PREDICATE_NAME
+    from trend_scanner.data.repository_v2_session_authority import (
+        ADJUSTED_ANALYTICALLY_NONUSABLE_DATES,
+        SOURCE_CLOSURE_CHECKPOINT_SHA256,
+    )
+
+    raw_store = KrxRawStockStore(ROOT / "data/market/raw/krx_stocks/v01")
+    adjusted_store = AdjustedPriceStore(ROOT / "data/market/adjusted/stocks")
+    partition_cache: dict[tuple[str, str], tuple[dict[str, Any], pd.DataFrame]] = {}
+    adjusted_cache: dict[str, tuple[pd.DataFrame, dict[str, Any], str]] = {}
+    audit: list[dict[str, Any]] = []
+    classes: dict[tuple[str, str], str] = {}
+    for row in unique.itertuples(index=False):
+        ticker = str(row.ticker).zfill(6)
+        day = str(row.valuation_date)
+        market = str(getattr(row, "market", "")).upper()
+        if not market or market == "NAN":
+            raise RuntimeError(f"P2_1_GAP_MARKET_MISSING:{ticker}:{day}")
+        cache_key = (market, day)
+        if cache_key not in partition_cache:
+            manifest = raw_store.get_manifest(market, day)
+            if manifest is None or manifest.get("status") != "COMPLETE":
+                raise RuntimeError(f"P2_1_GAP_RAW_PARTITION_NOT_COMPLETE:{market}:{day}")
+            partition = raw_store.load_snapshot(market, day)
+            partition_cache[cache_key] = (manifest, partition)
+        manifest, partition = partition_cache[cache_key]
+        ticker_rows = partition.loc[partition["ticker"].astype(str).str.zfill(6).eq(ticker)]
+        if len(ticker_rows) != 1:
+            raise RuntimeError(f"P2_1_GAP_RAW_TICKER_ROW_COUNT:{ticker}:{day}:{len(ticker_rows)}")
+        raw_row = ticker_rows.iloc[0]
+        placeholder = bool(
+            int(raw_row["open"]) == 0
+            and int(raw_row["high"]) == 0
+            and int(raw_row["low"]) == 0
+            and int(raw_row["close"]) > 0
+            and int(raw_row["volume"]) == 0
+            and int(raw_row["trading_value"]) == 0
+        )
+        if ticker not in adjusted_cache:
+            source = adjusted_store.load_daily_source(ticker)
+            metadata = adjusted_store.load_metadata(ticker)
+            adjusted_cache[ticker] = (
+                source,
+                metadata,
+                _sha256(ROOT / "data/market/adjusted/stocks" / f"{ticker}.parquet"),
+            )
+        adjusted_source, adjusted_metadata, adjusted_file_sha = adjusted_cache[ticker]
+        adjusted_row: pd.Series | None = adjusted_source.loc[pd.Timestamp(day)] if pd.Timestamp(day) in adjusted_source.index else None
+        invalid_relations: list[str] = []
+        if adjusted_row is not None:
+            for field, violated in (
+                ("high_below_low", adjusted_row["high"] < adjusted_row["low"]),
+                ("high_below_open", adjusted_row["high"] < adjusted_row["open"]),
+                ("high_below_close", adjusted_row["high"] < adjusted_row["close"]),
+                ("low_above_open", adjusted_row["low"] > adjusted_row["open"]),
+                ("low_above_close", adjusted_row["low"] > adjusted_row["close"]),
+            ):
+                if bool(violated):
+                    invalid_relations.append(field)
+        analytic_invalid = bool(invalid_relations)
+        analytic_authority_member = (ticker, day) in ADJUSTED_ANALYTICALLY_NONUSABLE_DATES
+        if placeholder == analytic_invalid:
+            raise RuntimeError(f"P2_1_GAP_CLASSIFICATION_AMBIGUOUS_OR_UNKNOWN:{ticker}:{day}")
+        classification = "NON_TRADING_PLACEHOLDER" if placeholder else "ADJUSTED_ANALYTICALLY_NONUSABLE"
+        classes[(ticker, day)] = classification
+        audit.append(
+            {
+                "ticker": ticker,
+                "identity": getattr(row, "isu_cd", None),
+                "market": market,
+                "valuation_date": day,
+                "gap_classification": classification,
+                "adjusted_close_exact_valid_missing": True,
+                "raw_row_present": True,
+                "raw_open": int(raw_row["open"]),
+                "raw_high": int(raw_row["high"]),
+                "raw_low": int(raw_row["low"]),
+                "raw_close": int(raw_row["close"]),
+                "raw_volume": int(raw_row["volume"]),
+                "raw_trading_value": int(raw_row["trading_value"]),
+                "placeholder_predicate": NON_TRADING_PLACEHOLDER_PREDICATE_NAME,
+                "adjusted_source_nonusable_authority_member": analytic_authority_member,
+                "adjusted_source_closure_checkpoint_sha256": SOURCE_CLOSURE_CHECKPOINT_SHA256,
+                "adjusted_source_row_present": adjusted_row is not None,
+                "adjusted_open": float(adjusted_row["open"]) if adjusted_row is not None else None,
+                "adjusted_high": float(adjusted_row["high"]) if adjusted_row is not None else None,
+                "adjusted_low": float(adjusted_row["low"]) if adjusted_row is not None else None,
+                "adjusted_close": float(adjusted_row["close"]) if adjusted_row is not None else None,
+                "adjusted_invalid_relation_fields": ";".join(invalid_relations),
+                "adjusted_store_authority_id": adjusted_metadata.get("source_authority_id"),
+                "adjusted_store_content_sha256": adjusted_metadata.get("content_sha256"),
+                "adjusted_store_parquet_sha256": adjusted_file_sha,
+                "raw_partition_status": manifest.get("status"),
+                "raw_partition_file_sha256": manifest.get("file_sha256"),
+                "raw_partition_content_sha256": manifest.get("content_sha256"),
+            }
+        )
+    result = pd.DataFrame(audit)
+    counts = result["gap_classification"].value_counts().to_dict()
+    if counts != {"NON_TRADING_PLACEHOLDER": 74, "ADJUSTED_ANALYTICALLY_NONUSABLE": 22}:
+        raise RuntimeError(f"P2_1_EXISTING_GAP_CLASSIFICATION_MISMATCH:{counts}")
+    return result, classes
+
+
+def _mcap_to_trade_reason_audit(
+    pit_audit: pd.DataFrame,
+    control: pd.DataFrame,
+    trading_dates: Sequence[pd.Timestamp],
+    effective_end: pd.Timestamp,
+) -> pd.DataFrame:
+    passed = pit_audit.loc[pit_audit["status"].astype(str).eq("PASS")].copy()
+    passed["ticker"] = passed["ticker"].astype(str).str.zfill(6)
+    passed["identity"] = passed["identity"].astype(str).str.upper()
+    passed["signal_date"] = pd.to_datetime(passed["signal_date"], errors="raise").dt.strftime("%Y-%m-%d")
+    control = control.copy()
+    control["ticker"] = control["ticker"].astype(str).str.zfill(6)
+    control["isu_cd"] = control["isu_cd"].astype(str).str.upper()
+    control["entry_signal_date"] = pd.to_datetime(control["entry_signal_date"], errors="raise").dt.strftime("%Y-%m-%d")
+    ledger_keys: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for row in control.to_dict(orient="records"):
+        key = (row["ticker"], row["isu_cd"], row["entry_signal_date"])
+        if key in ledger_keys:
+            raise RuntimeError(f"P2_1_DUPLICATE_LEDGER_SIGNAL_KEY:{key}")
+        ledger_keys[key] = row
+    calendar = tuple(pd.Timestamp(value).normalize() for value in trading_dates)
+    signal_keys = set()
+    result: list[dict[str, Any]] = []
+    for row in passed.to_dict(orient="records"):
+        key = (row["ticker"], row["identity"], row["signal_date"])
+        if key in signal_keys:
+            raise RuntimeError(f"P2_1_DUPLICATE_PASS_SIGNAL_KEY:{key}")
+        signal_keys.add(key)
+        trade = ledger_keys.get(key)
+        signal_day = pd.Timestamp(row["signal_date"]).normalize()
+        next_sessions = [day for day in calendar if day > signal_day]
+        next_session = next_sessions[0] if next_sessions else None
+        within_entry_cutoff = bool(next_session is not None and next_session <= effective_end)
+        reason = "MATERIALIZED_STRATEGY_TRADE" if trade else (
+            "NEXT_LOCAL_EXECUTION_AFTER_EFFECTIVE_ENTRY_CUTOFF"
+            if next_session is not None and next_session > effective_end
+            else "NO_NEXT_LOCAL_EXECUTION_SESSION_IN_SUPPORT"
+            if next_session is None
+            else "OTHER_FROZEN_STRATEGY_STATE_OR_ENTRY_GATE"
+        )
+        result.append(
+            {
+                "ticker": row["ticker"],
+                "identity": row["identity"],
+                "market": row["market"],
+                "signal_date": row["signal_date"],
+                "exact_pit_market_cap_krw": int(row["market_cap"]),
+                "pit_gate_status": row["status"],
+                "ledger_materialized": trade is not None,
+                "pair_id": trade.get("pair_id") if trade else None,
+                "trade_id": trade.get("trade_id") if trade else None,
+                "next_local_session": next_session.strftime("%Y-%m-%d") if next_session is not None else None,
+                "effective_entry_cutoff": effective_end.strftime("%Y-%m-%d"),
+                "next_session_within_entry_cutoff": within_entry_cutoff,
+                "reason": reason,
+                "raw_partition_path": row.get("partition_path"),
+                "raw_partition_file_sha256": row.get("partition_file_sha256"),
+            }
+        )
+    if len(passed) != 365 or len(control) != 355 or len(result) != 365:
+        raise RuntimeError(f"P2_1_MCAP_TO_LEDGER_POPULATION_MISMATCH:{len(passed)}:{len(control)}")
+    missing = [row for row in result if not row["ledger_materialized"]]
+    reasons = pd.Series([row["reason"] for row in missing], dtype=str).value_counts().to_dict()
+    if len(missing) != 10 or reasons != {"NEXT_LOCAL_EXECUTION_AFTER_EFFECTIVE_ENTRY_CUTOFF": 10}:
+        raise RuntimeError(f"P2_1_MCAP_TO_LEDGER_REASON_CLOSURE_FAILED:{len(missing)}:{reasons}")
+    return pd.DataFrame(result).sort_values(["signal_date", "ticker", "identity"], kind="mergesort").reset_index(drop=True)
+
+
+def _portfolio_only_replay() -> dict[str, Any]:
+    """Rebuild only deterministic portfolio cash/equity from frozen strategy ledgers."""
+    started = time.perf_counter()
+    summary_path = OUT_DIR / "summary.json"
+    if not summary_path.is_file():
+        raise RuntimeError("P2_1_PORTFOLIO_ONLY_REQUIRES_EXISTING_FULL_RUN_ARTIFACTS")
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    if summary.get("window_id") != "P2-1" or summary.get("run_id") != RUN_ID:
+        raise RuntimeError("P2_1_PORTFOLIO_ONLY_SOURCE_RUN_MISMATCH")
+    strategy_source_head = summary.get("portfolio_replay", {}).get("strategy_source_head", summary.get("head"))
+    required = (
+        "control_strategy_trades.csv",
+        "candidate_strategy_trades.csv",
+        "pit_mcap_audit.csv",
+    )
+    source_hashes = {name: _sha256(OUT_DIR / name) for name in required}
+    control_frame = pd.read_csv(OUT_DIR / "control_strategy_trades.csv")
+    candidate_frame = pd.read_csv(OUT_DIR / "candidate_strategy_trades.csv")
+    entry_parity = _validate_entry_pairing(control_frame, candidate_frame)
+    if len(control_frame) != 355:
+        raise RuntimeError(f"P2_1_PORTFOLIO_ONLY_EXPECTS_355_STRATEGY_ROWS:{len(control_frame)}")
+
+    setup_started = time.perf_counter()
+    print("P2-1 portfolio-only: validating frozen authority and reading existing trade ledgers", flush=True)
+    run = p2._load_context("P2-1")
+    effective_start = pd.Timestamp(run.window.effective_start).normalize()
+    effective_end = pd.Timestamp(run.window.effective_end).normalize()
+    support = pd.Timestamp(run.window.execution_support).normalize()
+    authority_sha = _sha256(run.authority.pit_path)
+    if authority_sha != summary.get("data_authority", {}).get("effective_pit_file_sha256"):
+        raise RuntimeError("P2_1_PORTFOLIO_ONLY_EFFECTIVE_PIT_AUTHORITY_CHANGED")
+
+    segments = {
+        segment.key: segment
+        for grouped in run.segments_by_ticker.values()
+        for segment in grouped
+    }
+    records_by_strategy = {
+        "CONTROL": control_frame.to_dict(orient="records"),
+        "CANDIDATE": candidate_frame.to_dict(orient="records"),
+    }
+    required_segment_keys: set[str] = set()
+    for records in records_by_strategy.values():
+        for record in records:
+            key = "|".join(
+                (
+                    str(record.get("ticker", "")).zfill(6),
+                    str(record.get("isu_cd", "")),
+                    str(record.get("market", "")),
+                    str(record.get("identity_effective_from", "")),
+                    str(record.get("identity_effective_to", "")),
+                )
+            )
+            if key not in segments:
+                raise RuntimeError(f"P2_1_PORTFOLIO_ONLY_IDENTITY_NOT_IN_FROZEN_AUTHORITY:{key}")
+            required_segment_keys.add(key)
+
+    loader = p2.RepositoryV2DailyLoader(
+        run.loader.repository,
+        start=effective_start,
+        end=support,
+    )
+    ticker_frames: dict[str, pd.DataFrame] = {}
+    ticker_keys = sorted({segments[key].ticker for key in required_segment_keys})
+    for completed, ticker in enumerate(ticker_keys, start=1):
+        if ticker not in ticker_frames:
+            daily = loader.load(ticker)
+            if daily is None or daily.empty:
+                raise RuntimeError(f"P2_1_PORTFOLIO_ONLY_MISSING_REPOSITORY_V2_FRAME:{ticker}")
+            ticker_frames[ticker] = daily
+        if completed % 25 == 0 or completed == len(ticker_keys):
+            print(
+                f"P2-1 portfolio-only Repository V2 frames {completed}/{len(ticker_keys)}; "
+                f"elapsed={time.perf_counter() - setup_started:.1f}s",
+                flush=True,
+            )
+
+    frames: dict[str, pd.DataFrame] = {}
+    for key in sorted(required_segment_keys):
+        segment = segments[key]
+        daily = ticker_frames[segment.ticker]
+        lower = max(effective_start, segment.effective_from)
+        upper = min(support, segment.effective_to)
+        scoped = daily.loc[(daily.index >= lower) & (daily.index <= upper)].sort_index()
+        typed_event = p2._confirmed_lifecycle_event_for_segment(
+            segment,
+            tuple(getattr(run, "lifecycle_settlements", ())),
+            effective_end,
+            run.segments_by_ticker,
+        )
+        if typed_event is not None:
+            event_effective = p2._event_effective_date(typed_event)
+            scoped = scoped.loc[scoped.index < event_effective]
+        scoped = scoped.loc[:, ["open", "high", "low", "close"]].copy()
+        frames[key] = scoped
+    if len(frames) != int(summary.get("population", {}).get("market_data_identity_frames", -1)):
+        raise RuntimeError(
+            "P2_1_PORTFOLIO_ONLY_IDENTITY_FRAME_COUNT_MISMATCH:"
+            f"{len(frames)}:{summary.get('population', {}).get('market_data_identity_frames')}"
+        )
+    setup_seconds = time.perf_counter() - setup_started
+
+    old_skipped = pd.read_csv(OUT_DIR / "skipped_entries.csv")
+    gap_baseline, gap_classifications = _gap_classification_audit(
+        old_skipped,
+        OUT_DIR / "valuation_gap_source_diagnosis.csv",
+    )
+    pit_audit = pd.read_csv(OUT_DIR / "pit_mcap_audit.csv")
+    reason_audit = _mcap_to_trade_reason_audit(
+        pit_audit,
+        control_frame,
+        tuple(pd.to_datetime(run.calendar.trading_dates).normalize()),
+        effective_end,
+    )
+    trading_dates = tuple(pd.to_datetime(run.calendar.trading_dates).normalize())
+    replay_started = time.perf_counter()
+    results: dict[str, dict[str, Any]] = {}
+    for strategy, strategy_id in (
+        ("CONTROL", p2.V2_STRATEGY_ID),
+        ("CANDIDATE", p2.CANDIDATE_STRATEGY_ID),
+    ):
+        results[strategy] = _portfolio_replay(
+            records_by_strategy[strategy],
+            frames,
+            trading_dates,
+            strategy_id=strategy_id,
+            effective_start=effective_start,
+            effective_end=effective_end,
+            execution_support=support,
+            gap_classifications=gap_classifications,
+        )
+    replay_wall = time.perf_counter() - replay_started
+
+    entry_audits = {
+        name: pd.DataFrame(results[name]["entry_candidate_audit"])
+        for name in ("CONTROL", "CANDIDATE")
+    }
+    hidden_counts: dict[str, Any] = {}
+    for name, frame in entry_audits.items():
+        at_40 = frame.loc[frame["concurrent_positions_before_candidate"].eq(40)]
+
+        def json_row(row: Mapping[str, Any]) -> dict[str, Any]:
+            normalized: dict[str, Any] = {}
+            for key, value in row.items():
+                if pd.isna(value):
+                    normalized[str(key)] = None
+                elif hasattr(value, "item"):
+                    normalized[str(key)] = value.item()
+                else:
+                    normalized[str(key)] = value
+            return normalized
+
+        hidden_counts[name] = {
+            "entry_candidates_when_40_positions_active": int(len(at_40)),
+            "cash_sufficient_candidates_when_40_active": int(at_40["cash_sufficient"].fillna(False).astype(bool).sum()),
+            "cash_insufficient_skips_when_40_active": int(at_40["decision"].eq("CASH_INSUFFICIENT").sum()),
+            "slot_cap_skips_when_40_active": int(at_40["decision"].eq("SLOT_CAP").sum()),
+            "decisions_when_40_active": {
+                str(key): int(value) for key, value in at_40["decision"].value_counts(dropna=False).to_dict().items()
+            },
+            "entry_candidates": [json_row(row) for row in at_40.to_dict(orient="records")],
+            "maximum_concurrent_positions": int(results[name]["metrics"]["maximum_concurrent_positions"]),
+        }
+    total_slot_skips = sum(value["slot_cap_skips_when_40_active"] for value in hidden_counts.values())
+    hidden_audit = {
+        "position_cap_configured": None,
+        "position_cap_applied": False,
+        "position_cap_source": "_portfolio_replay has no max-position guard; entry is gated only by duplicate identity, same-open, share count, and available-cash checks",
+        "portfolio_engine_has_slot_cap_branch": False,
+        "cash_limit_krw": INITIAL_CAPITAL,
+        "per_position_budget_krw": POSITION_BUDGET,
+        "hidden_slot_cap_skip_count": total_slot_skips,
+        "cash_sufficient_slot_cap_skip_count": total_slot_skips,
+        "classification": "NO_HIDDEN_N40_CAP" if total_slot_skips == 0 else "HIDDEN_N40_CAP_DETECTED",
+        "by_strategy": hidden_counts,
+        "source": "per-candidate portfolio replay audit; counts include every strategy ledger entry candidate evaluated at exactly 40 active positions",
+    }
+
+    all_valuation_audit = pd.DataFrame(
+        [row for name in ("CONTROL", "CANDIDATE") for row in results[name]["valuation_gap_audit"]]
+    )
+    if not all_valuation_audit.empty:
+        all_valuation_audit = all_valuation_audit.sort_values(
+            ["strategy_id", "valuation_date", "ticker", "pair_id"], kind="mergesort"
+        ).reset_index(drop=True)
+        gap_evidence_columns = [
+            "ticker", "valuation_date", "raw_open", "raw_high", "raw_low", "raw_close",
+            "raw_volume", "raw_trading_value", "adjusted_source_closure_checkpoint_sha256",
+            "adjusted_source_row_present", "adjusted_open", "adjusted_high", "adjusted_low",
+            "adjusted_close", "adjusted_invalid_relation_fields", "adjusted_store_authority_id",
+            "adjusted_store_content_sha256", "adjusted_store_parquet_sha256",
+            "raw_partition_file_sha256", "raw_partition_content_sha256",
+        ]
+        all_valuation_audit = all_valuation_audit.merge(
+            gap_baseline[gap_evidence_columns],
+            on=["ticker", "valuation_date"],
+            how="left",
+            validate="many_to_one",
+        )
+    new_gap_count = int(all_valuation_audit["gap_classification"].eq("NEW_UNCLASSIFIED_GAP").sum()) if not all_valuation_audit.empty else 0
+    comparison = _comparison(results["CONTROL"]["metrics"], results["CANDIDATE"]["metrics"])
+    unresolved_count = int(
+        results["CONTROL"]["metrics"]["unresolved_count"]
+        + results["CANDIDATE"]["metrics"]["unresolved_count"]
+    )
+    daily_equity_complete = all(
+        pd.DataFrame(results[name]["daily_equity"])["equity"].notna().all()
+        for name in ("CONTROL", "CANDIDATE")
+    )
+    cash_conservation = all(
+        results[name]["metrics"]["cash_conservation_pass"]
+        for name in ("CONTROL", "CANDIDATE")
+    )
+    mcap_reason_counts = reason_audit.loc[~reason_audit["ledger_materialized"], "reason"].value_counts().to_dict()
+    mcap_closure_pass = len(reason_audit) == 365 and int((~reason_audit["ledger_materialized"]).sum()) == 10 and mcap_reason_counts == {
+        "NEXT_LOCAL_EXECUTION_AFTER_EFFECTIVE_ENTRY_CUTOFF": 10
+    }
+    gap_baseline_counts = {
+        str(key): int(value)
+        for key, value in gap_baseline["gap_classification"].value_counts().to_dict().items()
+    }
+    gap_baseline_pass = gap_baseline_counts == {
+        "NON_TRADING_PLACEHOLDER": 74,
+        "ADJUSTED_ANALYTICALLY_NONUSABLE": 22,
+    }
+    validation = {
+        **summary.get("validation", {}),
+        **entry_parity,
+        "mcap_unresolved_count": int(pit_audit["status"].astype(str).eq("UNRESOLVED").sum()),
+        "portfolio_unresolved_count": unresolved_count,
+        "control_cash_conservation": bool(results["CONTROL"]["metrics"]["cash_conservation_pass"]),
+        "candidate_cash_conservation": bool(results["CANDIDATE"]["metrics"]["cash_conservation_pass"]),
+        "position_cap_applied": False,
+        "hidden_slot_cap_skip_count": total_slot_skips,
+        "mcap_365_to_355_reason_closure_pass": bool(mcap_closure_pass),
+        "existing_96_gap_classification_pass": bool(gap_baseline_pass),
+        "existing_gap_unique_ticker_date_count": int(len(gap_baseline)),
+        "existing_gap_classification_counts": gap_baseline_counts,
+        "stale_mark_audit_rows": int(len(all_valuation_audit)),
+        "new_unclassified_stale_mark_count": new_gap_count,
+        "daily_equity_complete": bool(daily_equity_complete),
+        "cash_conservation_pass": bool(cash_conservation),
+        "network_calls": 0,
+    }
+    certified = (
+        validation["mcap_unresolved_count"] == 0
+        and unresolved_count == 0
+        and total_slot_skips == 0
+        and mcap_closure_pass
+        and gap_baseline_pass
+        and new_gap_count == 0
+        and daily_equity_complete
+        and cash_conservation
+    )
+    summary.update(
+        {
+            "status": "P2_1_REALISTIC_PORTFOLIO_BACKTEST_CERTIFIED" if certified else "P2_1_REALISTIC_PORTFOLIO_BACKTEST_REVIEW_REQUIRED",
+            "head": p2.subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+            "portfolio": comparison,
+            "validation": validation,
+            "portfolio_replay": {
+                "mode": "EXISTING_STRATEGY_LEDGER_PORTFOLIO_ONLY",
+                "strategy_source_head": strategy_source_head,
+                "strategy_ledgers_reused_without_modification": True,
+                "strategy_evaluation_rerun": False,
+                "entry_signal_regeneration": False,
+                "market_data_frames_loaded_from_repository_v2": len(frames),
+                "market_data_tickers_loaded": len(ticker_frames),
+                "repository_v2_load_calls": loader.load_count,
+                "setup_and_frame_load_wall_seconds": round(setup_seconds, 3),
+                "portfolio_event_replay_wall_seconds": round(replay_wall, 3),
+                "baseline_gap_ticker_dates": int(len(gap_baseline)),
+                "baseline_gap_classifications": gap_baseline_counts,
+                "stale_valuation_mark_count": int(len(all_valuation_audit)),
+                "portfolio_only_run_wall_seconds": round(time.perf_counter() - started, 3),
+                "network_calls": 0,
+            },
+        }
+    )
+    for name in PORTFOLIO_AUDIT_OUTPUTS:
+        summary.setdefault("artifacts", {})[name] = f"artifacts/backtests/p2_1_neg40_weak_protect_v01/{RUN_ID}/{name}"
+    summary["artifacts"].update(
+        {
+            "control_daily_equity.csv": f"artifacts/backtests/p2_1_neg40_weak_protect_v01/{RUN_ID}/control_daily_equity.csv",
+            "candidate_daily_equity.csv": f"artifacts/backtests/p2_1_neg40_weak_protect_v01/{RUN_ID}/candidate_daily_equity.csv",
+            "control_portfolio_events.csv": f"artifacts/backtests/p2_1_neg40_weak_protect_v01/{RUN_ID}/control_portfolio_events.csv",
+            "candidate_portfolio_events.csv": f"artifacts/backtests/p2_1_neg40_weak_protect_v01/{RUN_ID}/candidate_portfolio_events.csv",
+        }
+    )
+
+    all_valuation_audit.to_csv(OUT_DIR / "valuation_gap_closure_audit.csv", index=False)
+    gap_baseline.to_csv(OUT_DIR / "valuation_gap_source_diagnosis.csv", index=False)
+    _json_write(OUT_DIR / "hidden_position_cap_audit.json", hidden_audit)
+    reason_audit.to_csv(OUT_DIR / "mcap365_to_trade355_reason_audit.csv", index=False)
+    pd.DataFrame(results["CONTROL"]["events"]).to_csv(OUT_DIR / "control_portfolio_events.csv", index=False)
+    pd.DataFrame(results["CANDIDATE"]["events"]).to_csv(OUT_DIR / "candidate_portfolio_events.csv", index=False)
+    pd.DataFrame(results["CONTROL"]["daily_equity"]).to_csv(OUT_DIR / "control_daily_equity.csv", index=False)
+    pd.DataFrame(results["CANDIDATE"]["daily_equity"]).to_csv(OUT_DIR / "candidate_daily_equity.csv", index=False)
+    pd.DataFrame(results["CONTROL"]["skipped"] + results["CANDIDATE"]["skipped"]).to_csv(OUT_DIR / "skipped_entries.csv", index=False)
+    _json_write(OUT_DIR / "summary.json", summary)
+    _write_summary_csv(summary, OUT_DIR / "summary.csv")
+    (OUT_DIR / "comparison_report.md").write_text(_comparison_report(summary), encoding="utf-8")
+
+    after_hashes = {name: _sha256(OUT_DIR / name) for name in required}
+    for name in ("control_strategy_trades.csv", "candidate_strategy_trades.csv", "pit_mcap_audit.csv"):
+        if source_hashes[name] != after_hashes[name]:
+            raise RuntimeError(f"P2_1_PORTFOLIO_ONLY_MODIFIED_FROZEN_SOURCE:{name}")
+    summary["portfolio_replay"]["frozen_source_hashes_sha256"] = source_hashes
+    _json_write(OUT_DIR / "summary.json", summary)
+    _write_summary_csv(summary, OUT_DIR / "summary.csv")
+    (OUT_DIR / "comparison_report.md").write_text(_comparison_report(summary), encoding="utf-8")
+    print(json.dumps(summary, ensure_ascii=False, indent=2, default=str), flush=True)
+    return summary
+
+
 def _sample(workers: int, sample_tickers: int) -> dict[str, Any]:
     if workers != 10:
         raise RuntimeError("P2_1_SAMPLE_WORKER_COUNT_MUST_BE_10")
@@ -1159,14 +1820,18 @@ def _sample(workers: int, sample_tickers: int) -> dict[str, Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--mode", choices=("sample", "full"), required=True)
+    parser.add_argument("--mode", choices=("sample", "full", "portfolio-only"), required=True)
     parser.add_argument("--workers", type=int, default=10)
     parser.add_argument("--sample-tickers", type=int, default=40)
     args = parser.parse_args()
     if args.mode == "sample":
         _sample(args.workers, args.sample_tickers)
-    else:
+    elif args.mode == "full":
         _full_run(args.workers)
+    else:
+        if args.workers != 10:
+            raise RuntimeError("P2_1_PORTFOLIO_ONLY_WORKER_ARGUMENT_MUST_REMAIN_10_NO_STRATEGY_WORKERS_ARE_USED")
+        _portfolio_only_replay()
 
 
 if __name__ == "__main__":
