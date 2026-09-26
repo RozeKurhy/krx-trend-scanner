@@ -53,6 +53,7 @@ def _labels() -> dict[str, dict]:
         return {r["sample_id"]: r for r in csv.DictReader(fh)}
 
 
+@pytest.mark.skipif(not dev.MANIFEST.exists(), reason="private development manifest is local only")
 def test_seals_and_sample_set():
     ev.verify_seals(dev)
     assert sorted(_features()) == ev.SAMPLE_IDS and sorted(_labels()) == ev.SAMPLE_IDS
