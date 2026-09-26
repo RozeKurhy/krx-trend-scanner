@@ -17,8 +17,8 @@ from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, bui
 ROOT = Path(__file__).resolve().parents[1]
 EXPORTER_PATH = ROOT / "scripts/export_sector_rs_ranking_web.py"
 PAYLOAD_PATH = ROOT / "web/data/sector-rs-ranking.json"
-TARGET = "2026-09-17"
-RANKING_PATH = ROOT / "data/analytics/sector_rs_ranking/v01/sector_rs_ranking_20260917.parquet"
+TARGET = "2026-09-21"
+RANKING_PATH = ROOT / "data/analytics/sector_rs_ranking/v01/sector_rs_ranking_20260921.parquet"
 HORIZONS = ("2w", "1m", "3m", "6m", "12m")
 PARITY_FIELDS = (
     *(f"sector_rs_{horizon}" for horizon in HORIZONS),
@@ -64,7 +64,7 @@ def _scalar(value):
 
 def _basic_info() -> dict[str, dict[str, str]]:
     result = {}
-    base = ROOT / "data/reference/source/history/krx_instrument_master/v01/rolling/basic_info/2026/20260911"
+    base = ROOT / "data/reference/source/history/krx_instrument_master/v01/basic_info/2026/20260921"
     for market in ("KOSPI", "KOSDAQ"):
         rows = json.loads((base / f"{market}.json").read_text(encoding="utf-8"))["OutBlock_1"]
         for row in rows:
@@ -100,8 +100,8 @@ def test_payload_equals_deterministic_exporter_projection():
     exporter = _load_exporter()
     assert _load_payload() == exporter.build_sector_rs_web_payload(
         ranking_path=RANKING_PATH,
-        meta_path=RANKING_PATH.with_name("sector_rs_ranking_20260917_meta.json"),
-        basic_info_dir=ROOT / "data/reference/source/history/krx_instrument_master/v01/rolling/basic_info/2026/20260911",
+        meta_path=RANKING_PATH.with_name("sector_rs_ranking_20260921_meta.json"),
+        basic_info_dir=ROOT / "data/reference/source/history/krx_instrument_master/v01/basic_info/2026/20260921",
         stocks_dir=ROOT / "web/data/stocks",
         requested_as_of=TARGET,
         reference_market_date=TARGET,
@@ -115,10 +115,10 @@ def test_population_scope_and_horizon_counts_are_conserved():
     assert payload["horizons"] == ["2w", "1m", "3m", "6m", "12m"]
     assert payload["scope"] == {
         "type": "EXACT_SECTOR_MEMBERSHIP_POPULATION",
-        "population_count": 2559,
-        "mapped_count": 2438,
+        "population_count": 2558,
+        "mapped_count": 2435,
         "aggregate_only_count": 88,
-        "unmapped_count": 33,
+        "unmapped_count": 35,
         "sector_group_count": 45,
     }
     assert payload["metric_scope"] == {
@@ -151,7 +151,7 @@ def test_exact_name_authority_resolves_every_item_without_stock_index_fallback()
     assert payload["source"] == {
         "ranking_schema": "SECTOR_RS_RANKING_V01",
         "ranking_as_of": TARGET,
-        "name_source_date": "2026-09-11",
+        "name_source_date": "2026-09-21",
     }
 
 
@@ -209,8 +209,8 @@ def test_unmapped_and_report_availability_preserve_separate_concerns():
 
 def test_price_and_sector_return_fields_are_exact_or_fail_closed():
     payload = _load_payload()
-    assert sum(item["latest_close"] is not None for item in payload["items"]) == 2443
-    assert sum(item["latest_close"] is None for item in payload["items"]) == payload["scope"]["population_count"] - 2443
+    assert sum(item["latest_close"] is not None for item in payload["items"]) == 2448
+    assert sum(item["latest_close"] is None for item in payload["items"]) == payload["scope"]["population_count"] - 2448
     for item in payload["items"]:
         if item["latest_close"] is None:
             assert item["latest_close_as_of"] is None
