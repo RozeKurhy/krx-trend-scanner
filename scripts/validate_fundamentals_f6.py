@@ -45,7 +45,7 @@ from trend_scanner.reporting.stock_report import generate_stock_report, render_m
 
 
 ARTIFACT_DIR = ROOT / "artifacts/fundamentals/validation/f6_representative_validation"
-SCHEMA_PATH = ROOT / "docs/reporting/stock_report/schema_v05.json"
+SCHEMA_PATH = ROOT / "docs/reporting/schema_v05.json"
 AS_OF = "2026-06-30"
 
 

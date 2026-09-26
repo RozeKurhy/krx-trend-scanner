@@ -79,9 +79,13 @@ artifacts/patterns/pattern_a/production/scanner/
 
 `generate_stock_report()`와 `build_a_fast_core_section()`은
 `requested_as_of` 이하의 입력을 사용한다. 리포트는 외국인 수급, 펀더멘털,
-시장 RS, 업종 RS와 A FAST Core V2를 기존 섹션으로 소비하며, v0.5의
+시장 RS와 A FAST Core V2를 기존 섹션으로 소비하며, v0.5의
 펀더멘털 섹션은 이미 생성된 F2/F3/F4 결과를 주입받을 뿐 OpenDART를
-호출하거나 필터를 다시 계산하지 않는다.
+호출하거나 필터를 다시 계산하지 않는다. 업종 RS는 3단계 업종 RS 순위
+산출물을 소비하지 않는다. 리포트 생성기가 3단계에서 갱신한 업종 지수
+캐시와 `requested_as_of`와 날짜가 정확히 같은 섹터 구성 스냅샷으로 직접
+계산하며, 그 스냅샷이 없으면 업종 RS 섹션만 산출 불가(`DATA_UNAVAILABLE`)로
+두고 리포트 생성은 계속한다.
 
 리포트 공식 버전은 Stock Report v0.5뿐이며 출력 위치는 다음과 같다.
 
@@ -165,7 +169,8 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
 
 ### 4B. A FAST Core V2 및 Stock Report v0.5
 
-- 입력: 4A scanner 결과와 3단계의 외국인 수급·펀더멘털·시장 RS·업종 RS.
+- 입력: 4A scanner 결과, 3단계의 외국인 수급·펀더멘털·시장 RS, 업종 RS
+  직접 계산용 업종 지수 캐시와 기준일 섹터 구성 스냅샷.
 - 처리: 후보를 scanner 결과에서만 받아 A FAST Core V2 상태와 Stock Report v0.5를
   생성한다. 스캐너 재실행, 전략 재정의, 펀더멘털 수집·주입 또는 새 산식은 하지 않는다.
 - 출력: `artifacts/reporting/stock_reports/{YYYYMMDD}/`의 Markdown/JSON.
@@ -248,6 +253,6 @@ web/data/
 - [데일리 업데이트 기준 V01](daily_update_contract_v01.md)
 - [분석 입력 갱신 기준 V01](daily_update_phase3_analysis_inputs_contract_v01.md)
 - [A FAST Core V2 현재 기본 전략](../patterns/pattern_a_fast/strategy/version_02/README.md)
-- [Stock Report v0.5 안내](../reporting/stock_report/README.md)
-- [Stock Report v0.5 계약](../reporting/stock_report/contract_v05.md)
+- [Stock Report v0.5 안내](../reporting/README.md)
+- [Stock Report v0.5 계약](../reporting/contract_v05.md)
 - [웹 영역 안내](../web/README.md)

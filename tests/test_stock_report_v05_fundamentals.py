@@ -231,7 +231,7 @@ def test_v05_generator_explicit_none_is_safe_and_schema_valid():
     assert report.report_version == "0.5"
     assert payload["fundamentals"]["data_status"] == DATA_UNAVAILABLE
     assert payload["fundamentals"]["reason"] == "FUNDAMENTALS_INPUT_NOT_PROVIDED"
-    schema = json.loads((ROOT / "docs/reporting/stock_report/schema_v05.json").read_text(encoding="utf-8"))
+    schema = json.loads((ROOT / "docs/reporting/schema_v05.json").read_text(encoding="utf-8"))
     assert list(Draft7Validator(schema).iter_errors(payload)) == []
     markdown = render_markdown_report(report)
     assert "## 1.5. 펀더멘털 (Fundamentals)" in markdown

@@ -29,11 +29,11 @@
 | [architecture/](architecture/README.md) | 프로젝트 공통 구조, 데이터 처리 방식, 공용 기술 문서 |
 | [fundamentals/](fundamentals/README.md) | OpenDART/XBRL 기반 기업 실적·재무 데이터와 검증 문서 |
 | [patterns/](patterns/README.md) | 종목·시장 상태를 판단하는 패턴의 정의와 연구·검증 기록 |
-| [relative_strength/](relative_strength/) | 시장·업종 상대강도 계산과 제공 계약 |
+| [relative_strength/](relative_strength/sector_rs_ranking_v01.md) | 업종 내 상대강도 순위 계산과 산출물 계약 |
 | [reporting/](reporting/README.md) | 패턴·전략·펀더멘털 결과를 모은 종목 보고서 문서 |
 | [strategies/](strategies/README.md) | 패턴 결과를 매매 규칙으로 연결하는 전략과 독립 전략 |
 | [validation/](validation/) | 이전 문서 경로 호환 안내와 영역 공통 현재 기준 문서 |
-| [web/](web/) | 웹 화면에 제공하는 정적 데이터·전달 계약 |
+| [web/](web/README.md) | 웹 화면에 제공하는 정적 데이터·전달 계약 |
 
 `patterns/`에는 Pattern A와 Pattern A FAST가 있다. A FAST Core 전략 문서는
 Pattern A FAST와 강하게 결합되어 있으므로 해당 패턴 아래에서 관리한다.
@@ -45,7 +45,7 @@ Pattern A FAST와 강하게 결합되어 있으므로 해당 패턴 아래에서
 - **Pattern A FAST** — 의미와 생애주기는 [FAST 명세](patterns/pattern_a_fast/spec/README.md)를 따른다.
 - **A FAST Core V2** — 일반 종목 전략 규칙은 [V2 계약](patterns/pattern_a_fast/strategy/version_02/README.md)의 `PATTERN_A_FAST_FINAL_STRATEGY_V02`다.
 - **Fundamentals V1** — 기준은 [Fundamentals 안내](fundamentals/README.md)와 해당 영역의 기준 문서에서 확인한다.
-- **Stock Report v0.5** — 보고서 계약은 [Stock Report 안내](reporting/stock_report/README.md)와 [v0.5 계약](reporting/stock_report/contract_v05.md)을 따른다.
+- **Stock Report v0.5** — 보고서 계약은 v0.2 기반 계약 위에 버전별 추가분을 쌓은 구조다. [Stock Report 안내](reporting/README.md)의 읽는 순서를 따른다.
 - **전략 채택 절차** — 기본 전략 변경과 후보 전략의 공식 채택은 [전략 생애주기와 채택 절차](strategies/strategy_lifecycle.md)를 따른다.
 
 ## 현재 문서와 역사 기록의 구분
