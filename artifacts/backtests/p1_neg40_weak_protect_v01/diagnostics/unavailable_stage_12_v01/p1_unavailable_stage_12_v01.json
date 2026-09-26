@@ -1,0 +1,2756 @@
+{
+  "status": "P1_UNAVAILABLE_12_DIAGNOSTIC_COMPLETE",
+  "window": "P1",
+  "scope": "12 logged failing ticker/pair_id/EOD cases only",
+  "failure_count": 12,
+  "cause_class_distribution": {
+    "A_PIPELINE_BUG": 3,
+    "B_LEGITIMATE_INSUFFICIENT_HISTORY": 0,
+    "C_SOURCE_OR_AUTHORITY_GAP": 9,
+    "D_TICKER_SPECIFIC_EXCEPTION": 0,
+    "E_OTHER": 0
+  },
+  "repeated_cause_counts": {
+    "same_cause_class": {
+      "A_PIPELINE_BUG": 3,
+      "C_SOURCE_OR_AUTHORITY_GAP": 9
+    },
+    "same_pipeline_artifact": 3,
+    "source_or_authority_gap_cases": 9
+  },
+  "repeated_cause_details": {
+    "A_PIPELINE_BUG": "009730/036620/052300 all include the 2017-10-06 W-FRI bucket with 0 KRX sessions, 0 V2 rows, NaN OHLC, and volume=0.",
+    "C_SOURCE_OR_AUTHORITY_GAP": "9 cases have one or more KRX trading sessions in rolling-window buckets but 0 Repository V2 daily rows.",
+    "pipeline_code_path": "src/trend_scanner/data/resampler.py::_resample: OHLCV resample volume sum yields 0 for empty bins; dropna(how='all') retains the bin."
+  },
+  "classifier_reason_distribution": {
+    "insufficient_data": 12
+  },
+  "replay_performed": false,
+  "production_code_modified": false,
+  "diagnostic_helper_added": true,
+  "strategy_or_threshold_modified": false,
+  "partial_raw_files_modified": false,
+  "canonical_files_modified": false,
+  "recommendation": "B. UNAVAILABLE semantics 설계 필요",
+  "rows": [
+    {
+      "ticker": "001140",
+      "isu": "KR7001140003",
+      "isu_cd": "KR7001140003",
+      "identity_key": "001140|KR7001140003|KOSPI|2010-01-04|2026-01-26",
+      "pair_id": "001140|KR7001140003|KOSPI|2010-01-04|2026-01-26|001140_01",
+      "error_eod": "2023-05-31",
+      "failure_eod": "2023-05-31",
+      "stage_timeline_effective_date": "2023-05-31",
+      "snapshot_requested_month_end": "2023-05-31",
+      "snapshot_effective_as_of": "2023-05-31",
+      "snapshot_monthly_as_of": "2023-05-31",
+      "daily_rows": 3181,
+      "weekly_rows": 699,
+      "monthly_rows": 161,
+      "repository_v2_first_daily_date": "2010-01-04",
+      "repository_v2_last_daily_date": "2026-01-26",
+      "missing_features": [
+        "weekly_ma12_slope"
+      ],
+      "feature_values": {
+        "ma24_slope": -0.12475575915800541,
+        "weekly_ma12_slope": NaN,
+        "ma24_slope_acceleration": -0.025865445486669802,
+        "avg_price_change_12m": -0.44046225863077826,
+        "ma_spread": 0.6547089141384561,
+        "range_position": 0.09650312759062477,
+        "distance_to_resistance": 0.7374361813372701
+      },
+      "classifier_stage": null,
+      "classifier_reason": "insufficient_data",
+      "classifier_reason_codes": [
+        "insufficient_data"
+      ],
+      "classifier_insufficient_data": true,
+      "upstream_cause_by_feature": {
+        "weekly_ma12_slope": "3 empty weekly bucket(s) (2023-05-05..2023-05-19): 13 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN"
+      },
+      "missing_bucket_evidence_by_feature": {
+        "weekly_ma12_slope": [
+          {
+            "frequency": "weekly",
+            "bucket_label": "2023-05-05",
+            "bucket_start": "2023-04-29",
+            "expected_krx_sessions": 3,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2023-05-12",
+            "bucket_start": "2023-05-06",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2023-05-19",
+            "bucket_start": "2023-05-13",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ]
+      },
+      "legacy_snapshot_required_feature_mismatches": [],
+      "previous_usable_snapshot": {
+        "effective_date": "2023-04-28",
+        "snapshot_month_end": "2023-04-30",
+        "snapshot_effective_as_of": "2023-04-28",
+        "stage": "WEAK"
+      },
+      "next_usable_snapshot": {
+        "effective_date": "2023-09-27",
+        "snapshot_month_end": "2023-09-30",
+        "snapshot_effective_as_of": "2023-09-27",
+        "stage": "WEAK"
+      },
+      "previous_stage": "WEAK",
+      "previous_stage_date": "2023-04-28",
+      "next_stage": "WEAK",
+      "next_stage_date": "2023-09-27",
+      "cause_class": "C_SOURCE_OR_AUTHORITY_GAP",
+      "upstream_cause": "weekly_ma12_slope: 3 empty weekly bucket(s) (2023-05-05..2023-05-19): 13 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+      "notes": "snapshot=2023-05-31/effective=2023-05-31; legacy_required_feature_mismatches=[]",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 470,
+        "explicit_exclusion_count": 585,
+        "silent_inner_drop_count": 0
+      },
+      "lifecycle_event_applied": null
+    },
+    {
+      "ticker": "009730",
+      "isu": "KR7009730003",
+      "isu_cd": "KR7009730003",
+      "identity_key": "009730|KR7009730003|KOSDAQ|2010-01-04|2026-09-01",
+      "pair_id": "009730|KR7009730003|KOSDAQ|2010-01-04|2026-09-01|009730_04",
+      "error_eod": "2017-12-21",
+      "failure_eod": "2017-12-21",
+      "stage_timeline_effective_date": "2017-11-30",
+      "snapshot_requested_month_end": "2017-11-30",
+      "snapshot_effective_as_of": "2017-11-30",
+      "snapshot_monthly_as_of": "2017-11-30",
+      "daily_rows": 1956,
+      "weekly_rows": 412,
+      "monthly_rows": 95,
+      "repository_v2_first_daily_date": "2010-01-04",
+      "repository_v2_last_daily_date": "2026-09-01",
+      "missing_features": [
+        "weekly_ma12_slope"
+      ],
+      "feature_values": {
+        "ma24_slope": -0.01523962657013156,
+        "weekly_ma12_slope": NaN,
+        "ma24_slope_acceleration": -0.006155521106786188,
+        "avg_price_change_12m": -0.20870015119028806,
+        "ma_spread": 0.248636057118383,
+        "range_position": 0.11486291165417714,
+        "distance_to_resistance": 0.5663199977236513
+      },
+      "classifier_stage": null,
+      "classifier_reason": "insufficient_data",
+      "classifier_reason_codes": [
+        "insufficient_data"
+      ],
+      "classifier_insufficient_data": true,
+      "upstream_cause_by_feature": {
+        "weekly_ma12_slope": "2017-10-06 empty weekly bin: 0 KRX sessions and 0 Repository V2 rows; resampler's volume sum leaves an all-price-NaN/volume-0 bucket in the rolling window"
+      },
+      "missing_bucket_evidence_by_feature": {
+        "weekly_ma12_slope": [
+          {
+            "frequency": "weekly",
+            "bucket_label": "2017-10-06",
+            "bucket_start": "2017-09-30",
+            "expected_krx_sessions": 0,
+            "repository_v2_daily_rows": 0,
+            "kind": "EMPTY_CALENDAR_BUCKET_RESAMPLER_ARTIFACT"
+          }
+        ]
+      },
+      "legacy_snapshot_required_feature_mismatches": [],
+      "previous_usable_snapshot": {
+        "effective_date": "2017-09-29",
+        "snapshot_month_end": "2017-09-30",
+        "snapshot_effective_as_of": "2017-09-29",
+        "stage": "WEAK"
+      },
+      "next_usable_snapshot": {
+        "effective_date": "2018-01-31",
+        "snapshot_month_end": "2018-01-31",
+        "snapshot_effective_as_of": "2018-01-31",
+        "stage": "WEAK"
+      },
+      "previous_stage": "WEAK",
+      "previous_stage_date": "2017-09-29",
+      "next_stage": "WEAK",
+      "next_stage_date": "2018-01-31",
+      "cause_class": "A_PIPELINE_BUG",
+      "upstream_cause": "weekly_ma12_slope: 2017-10-06 empty weekly bin: 0 KRX sessions and 0 Repository V2 rows; resampler's volume sum leaves an all-price-NaN/volume-0 bucket in the rolling window",
+      "notes": "snapshot=2017-11-30/effective=2017-11-30; legacy_required_feature_mismatches=[]",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 571,
+        "silent_inner_drop_count": 0
+      },
+      "lifecycle_event_applied": null
+    },
+    {
+      "ticker": "031980",
+      "isu": "KR7031980006",
+      "isu_cd": "KR7031980006",
+      "identity_key": "031980|KR7031980006|KOSDAQ|2010-01-04|2026-09-01",
+      "pair_id": "031980|KR7031980006|KOSDAQ|2010-01-04|2026-09-01|031980_01",
+      "error_eod": "2020-03-13",
+      "failure_eod": "2020-03-13",
+      "stage_timeline_effective_date": "2020-02-28",
+      "snapshot_requested_month_end": "2020-02-29",
+      "snapshot_effective_as_of": "2020-02-28",
+      "snapshot_monthly_as_of": "2020-02-29",
+      "daily_rows": 2415,
+      "weekly_rows": 530,
+      "monthly_rows": 122,
+      "repository_v2_first_daily_date": "2010-01-04",
+      "repository_v2_last_daily_date": "2026-09-01",
+      "missing_features": [
+        "ma24_slope",
+        "ma_spread"
+      ],
+      "feature_values": {
+        "ma24_slope": NaN,
+        "weekly_ma12_slope": 0.022222222222222365,
+        "ma24_slope_acceleration": 0.0,
+        "avg_price_change_12m": -0.4776370247731573,
+        "ma_spread": NaN,
+        "range_position": 0.022925024748606262,
+        "distance_to_resistance": 0.7290362710414804
+      },
+      "classifier_stage": null,
+      "classifier_reason": "insufficient_data",
+      "classifier_reason_codes": [
+        "insufficient_data"
+      ],
+      "classifier_insufficient_data": true,
+      "upstream_cause_by_feature": {
+        "ma24_slope": "1 empty monthly bucket(s) (2019-04-30..2019-04-30): 22 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+        "ma_spread": "1 empty monthly bucket(s) (2019-04-30..2019-04-30): 22 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN"
+      },
+      "missing_bucket_evidence_by_feature": {
+        "ma24_slope": [
+          {
+            "frequency": "monthly",
+            "bucket_label": "2019-04-30",
+            "bucket_start": "2019-04-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ],
+        "ma_spread": [
+          {
+            "frequency": "monthly",
+            "bucket_label": "2019-04-30",
+            "bucket_start": "2019-04-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ]
+      },
+      "legacy_snapshot_required_feature_mismatches": [],
+      "previous_usable_snapshot": {
+        "effective_date": "2019-03-27",
+        "snapshot_month_end": "2019-04-30",
+        "snapshot_effective_as_of": "2019-03-27",
+        "stage": "PROGRESSED"
+      },
+      "next_usable_snapshot": {
+        "effective_date": "2021-07-30",
+        "snapshot_month_end": "2021-07-31",
+        "snapshot_effective_as_of": "2021-07-30",
+        "stage": "PROGRESSED"
+      },
+      "previous_stage": "PROGRESSED",
+      "previous_stage_date": "2019-03-27",
+      "next_stage": "PROGRESSED",
+      "next_stage_date": "2021-07-30",
+      "cause_class": "C_SOURCE_OR_AUTHORITY_GAP",
+      "upstream_cause": "ma24_slope: 1 empty monthly bucket(s) (2019-04-30..2019-04-30): 22 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN; ma_spread: 1 empty monthly bucket(s) (2019-04-30..2019-04-30): 22 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+      "notes": "snapshot=2020-02-29/effective=2020-02-28; legacy_required_feature_mismatches=[]",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 29,
+        "explicit_exclusion_count": 91,
+        "silent_inner_drop_count": 0
+      },
+      "lifecycle_event_applied": null
+    },
+    {
+      "ticker": "035290",
+      "isu": "KR7035290006",
+      "isu_cd": "KR7035290006",
+      "identity_key": "035290|KR7035290006|KOSDAQ|2010-01-04|2026-09-01",
+      "pair_id": "035290|KR7035290006|KOSDAQ|2010-01-04|2026-09-01|035290_05",
+      "error_eod": "2022-04-29",
+      "failure_eod": "2022-04-29",
+      "stage_timeline_effective_date": "2022-04-29",
+      "snapshot_requested_month_end": "2022-04-30",
+      "snapshot_effective_as_of": "2022-04-29",
+      "snapshot_monthly_as_of": "2022-04-30",
+      "daily_rows": 2391,
+      "weekly_rows": 643,
+      "monthly_rows": 148,
+      "repository_v2_first_daily_date": "2010-01-04",
+      "repository_v2_last_daily_date": "2026-09-01",
+      "missing_features": [
+        "ma24_slope",
+        "weekly_ma12_slope",
+        "avg_price_change_12m",
+        "ma_spread"
+      ],
+      "feature_values": {
+        "ma24_slope": NaN,
+        "weekly_ma12_slope": NaN,
+        "ma24_slope_acceleration": 0.0,
+        "avg_price_change_12m": NaN,
+        "ma_spread": NaN,
+        "range_position": 0.03404613273121707,
+        "distance_to_resistance": 0.7575694444444444
+      },
+      "classifier_stage": null,
+      "classifier_reason": "insufficient_data",
+      "classifier_reason_codes": [
+        "insufficient_data"
+      ],
+      "classifier_insufficient_data": true,
+      "upstream_cause_by_feature": {
+        "ma24_slope": "26 empty monthly bucket(s) (2020-02-29..2022-03-31): 535 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+        "weekly_ma12_slope": "16 empty weekly bucket(s) (2022-01-07..2022-04-22): 75 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+        "avg_price_change_12m": "23 empty monthly bucket(s) (2020-05-31..2022-03-31): 473 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+        "ma_spread": "23 empty monthly bucket(s) (2020-05-31..2022-03-31): 473 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN"
+      },
+      "missing_bucket_evidence_by_feature": {
+        "ma24_slope": [
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-02-29",
+            "bucket_start": "2020-02-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-03-31",
+            "bucket_start": "2020-03-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-04-30",
+            "bucket_start": "2020-04-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-05-31",
+            "bucket_start": "2020-05-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-06-30",
+            "bucket_start": "2020-06-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-07-31",
+            "bucket_start": "2020-07-01",
+            "expected_krx_sessions": 23,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-08-31",
+            "bucket_start": "2020-08-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-09-30",
+            "bucket_start": "2020-09-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-10-31",
+            "bucket_start": "2020-10-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-11-30",
+            "bucket_start": "2020-11-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-12-31",
+            "bucket_start": "2020-12-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-01-31",
+            "bucket_start": "2021-01-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-02-28",
+            "bucket_start": "2021-02-01",
+            "expected_krx_sessions": 18,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-03-31",
+            "bucket_start": "2021-03-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-04-30",
+            "bucket_start": "2021-04-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-05-31",
+            "bucket_start": "2021-05-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-06-30",
+            "bucket_start": "2021-06-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-07-31",
+            "bucket_start": "2021-07-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-08-31",
+            "bucket_start": "2021-08-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-09-30",
+            "bucket_start": "2021-09-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-10-31",
+            "bucket_start": "2021-10-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-11-30",
+            "bucket_start": "2021-11-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-12-31",
+            "bucket_start": "2021-12-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2022-01-31",
+            "bucket_start": "2022-01-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2022-02-28",
+            "bucket_start": "2022-02-01",
+            "expected_krx_sessions": 18,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2022-03-31",
+            "bucket_start": "2022-03-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ],
+        "weekly_ma12_slope": [
+          {
+            "frequency": "weekly",
+            "bucket_label": "2022-01-07",
+            "bucket_start": "2022-01-01",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2022-01-14",
+            "bucket_start": "2022-01-08",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2022-01-21",
+            "bucket_start": "2022-01-15",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2022-01-28",
+            "bucket_start": "2022-01-22",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2022-02-04",
+            "bucket_start": "2022-01-29",
+            "expected_krx_sessions": 2,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2022-02-11",
+            "bucket_start": "2022-02-05",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2022-02-18",
+            "bucket_start": "2022-02-12",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2022-02-25",
+            "bucket_start": "2022-02-19",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2022-03-04",
+            "bucket_start": "2022-02-26",
+            "expected_krx_sessions": 4,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2022-03-11",
+            "bucket_start": "2022-03-05",
+            "expected_krx_sessions": 4,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2022-03-18",
+            "bucket_start": "2022-03-12",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2022-03-25",
+            "bucket_start": "2022-03-19",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2022-04-01",
+            "bucket_start": "2022-03-26",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2022-04-08",
+            "bucket_start": "2022-04-02",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2022-04-15",
+            "bucket_start": "2022-04-09",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2022-04-22",
+            "bucket_start": "2022-04-16",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ],
+        "avg_price_change_12m": [
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-05-31",
+            "bucket_start": "2020-05-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-06-30",
+            "bucket_start": "2020-06-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-07-31",
+            "bucket_start": "2020-07-01",
+            "expected_krx_sessions": 23,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-08-31",
+            "bucket_start": "2020-08-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-09-30",
+            "bucket_start": "2020-09-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-10-31",
+            "bucket_start": "2020-10-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-11-30",
+            "bucket_start": "2020-11-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-12-31",
+            "bucket_start": "2020-12-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-01-31",
+            "bucket_start": "2021-01-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-02-28",
+            "bucket_start": "2021-02-01",
+            "expected_krx_sessions": 18,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-03-31",
+            "bucket_start": "2021-03-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-04-30",
+            "bucket_start": "2021-04-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-05-31",
+            "bucket_start": "2021-05-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-06-30",
+            "bucket_start": "2021-06-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-07-31",
+            "bucket_start": "2021-07-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-08-31",
+            "bucket_start": "2021-08-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-09-30",
+            "bucket_start": "2021-09-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-10-31",
+            "bucket_start": "2021-10-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-11-30",
+            "bucket_start": "2021-11-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-12-31",
+            "bucket_start": "2021-12-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2022-01-31",
+            "bucket_start": "2022-01-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2022-02-28",
+            "bucket_start": "2022-02-01",
+            "expected_krx_sessions": 18,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2022-03-31",
+            "bucket_start": "2022-03-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ],
+        "ma_spread": [
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-05-31",
+            "bucket_start": "2020-05-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-06-30",
+            "bucket_start": "2020-06-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-07-31",
+            "bucket_start": "2020-07-01",
+            "expected_krx_sessions": 23,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-08-31",
+            "bucket_start": "2020-08-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-09-30",
+            "bucket_start": "2020-09-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-10-31",
+            "bucket_start": "2020-10-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-11-30",
+            "bucket_start": "2020-11-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-12-31",
+            "bucket_start": "2020-12-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-01-31",
+            "bucket_start": "2021-01-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-02-28",
+            "bucket_start": "2021-02-01",
+            "expected_krx_sessions": 18,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-03-31",
+            "bucket_start": "2021-03-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-04-30",
+            "bucket_start": "2021-04-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-05-31",
+            "bucket_start": "2021-05-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-06-30",
+            "bucket_start": "2021-06-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-07-31",
+            "bucket_start": "2021-07-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-08-31",
+            "bucket_start": "2021-08-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-09-30",
+            "bucket_start": "2021-09-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-10-31",
+            "bucket_start": "2021-10-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-11-30",
+            "bucket_start": "2021-11-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2021-12-31",
+            "bucket_start": "2021-12-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2022-01-31",
+            "bucket_start": "2022-01-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2022-02-28",
+            "bucket_start": "2022-02-01",
+            "expected_krx_sessions": 18,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2022-03-31",
+            "bucket_start": "2022-03-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ]
+      },
+      "legacy_snapshot_required_feature_mismatches": [],
+      "previous_usable_snapshot": {
+        "effective_date": "2019-09-23",
+        "snapshot_month_end": "2022-03-31",
+        "snapshot_effective_as_of": "2019-09-23",
+        "stage": "WEAK"
+      },
+      "next_usable_snapshot": {
+        "effective_date": "2024-06-28",
+        "snapshot_month_end": "2024-06-30",
+        "snapshot_effective_as_of": "2024-06-28",
+        "stage": "WEAK"
+      },
+      "previous_stage": "WEAK",
+      "previous_stage_date": "2019-09-23",
+      "next_stage": "WEAK",
+      "next_stage_date": "2024-06-28",
+      "cause_class": "C_SOURCE_OR_AUTHORITY_GAP",
+      "upstream_cause": "ma24_slope: 26 empty monthly bucket(s) (2020-02-29..2022-03-31): 535 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN; weekly_ma12_slope: 16 empty weekly bucket(s) (2022-01-07..2022-04-22): 75 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN; avg_price_change_12m: 23 empty monthly bucket(s) (2020-05-31..2022-03-31): 473 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN; ma_spread: 23 empty monthly bucket(s) (2020-05-31..2022-03-31): 473 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+      "notes": "snapshot=2022-04-30/effective=2022-04-29; legacy_required_feature_mismatches=[]",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 672,
+        "silent_inner_drop_count": 0
+      },
+      "lifecycle_event_applied": null
+    },
+    {
+      "ticker": "036260",
+      "isu": "KR7036260008",
+      "isu_cd": "KR7036260008",
+      "identity_key": "036260|KR7036260008|KOSDAQ|2010-01-04|2021-02-10",
+      "pair_id": "036260|KR7036260008|KOSDAQ|2010-01-04|2021-02-10|036260_01",
+      "error_eod": "2016-10-04",
+      "failure_eod": "2016-10-04",
+      "stage_timeline_effective_date": "2016-09-30",
+      "snapshot_requested_month_end": "2016-09-30",
+      "snapshot_effective_as_of": "2016-09-30",
+      "snapshot_monthly_as_of": "2016-09-30",
+      "daily_rows": 1577,
+      "weekly_rows": 352,
+      "monthly_rows": 81,
+      "repository_v2_first_daily_date": "2010-01-05",
+      "repository_v2_last_daily_date": "2021-02-10",
+      "missing_features": [
+        "weekly_ma12_slope"
+      ],
+      "feature_values": {
+        "ma24_slope": -0.010619026797426545,
+        "weekly_ma12_slope": NaN,
+        "ma24_slope_acceleration": -0.04747135840364425,
+        "avg_price_change_12m": -0.017398923519839734,
+        "ma_spread": 0.12204424103737598,
+        "range_position": 0.1557377049180328,
+        "distance_to_resistance": 0.6226252158894646
+      },
+      "classifier_stage": null,
+      "classifier_reason": "insufficient_data",
+      "classifier_reason_codes": [
+        "insufficient_data"
+      ],
+      "classifier_insufficient_data": true,
+      "upstream_cause_by_feature": {
+        "weekly_ma12_slope": "3 empty weekly bucket(s) (2016-09-09..2016-09-23): 12 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN"
+      },
+      "missing_bucket_evidence_by_feature": {
+        "weekly_ma12_slope": [
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-09-09",
+            "bucket_start": "2016-09-03",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-09-16",
+            "bucket_start": "2016-09-10",
+            "expected_krx_sessions": 2,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-09-23",
+            "bucket_start": "2016-09-17",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ]
+      },
+      "legacy_snapshot_required_feature_mismatches": [],
+      "previous_usable_snapshot": {
+        "effective_date": "2016-08-31",
+        "snapshot_month_end": "2016-08-31",
+        "snapshot_effective_as_of": "2016-08-31",
+        "stage": "PROGRESSED"
+      },
+      "next_usable_snapshot": {
+        "effective_date": "2017-01-31",
+        "snapshot_month_end": "2017-01-31",
+        "snapshot_effective_as_of": "2017-01-31",
+        "stage": "WEAK"
+      },
+      "previous_stage": "PROGRESSED",
+      "previous_stage_date": "2016-08-31",
+      "next_stage": "WEAK",
+      "next_stage_date": "2017-01-31",
+      "cause_class": "C_SOURCE_OR_AUTHORITY_GAP",
+      "upstream_cause": "weekly_ma12_slope: 3 empty weekly bucket(s) (2016-09-09..2016-09-23): 12 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+      "notes": "snapshot=2016-09-30/effective=2016-09-30; legacy_required_feature_mismatches=[]",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 488,
+        "explicit_exclusion_count": 513,
+        "silent_inner_drop_count": 0
+      },
+      "lifecycle_event_applied": null
+    },
+    {
+      "ticker": "036620",
+      "isu": "KR7036620003",
+      "isu_cd": "KR7036620003",
+      "identity_key": "036620|KR7036620003|KOSDAQ|2010-01-04|2026-09-01",
+      "pair_id": "036620|KR7036620003|KOSDAQ|2010-01-04|2026-09-01|036620_02",
+      "error_eod": "2017-10-31",
+      "failure_eod": "2017-10-31",
+      "stage_timeline_effective_date": "2017-10-31",
+      "snapshot_requested_month_end": "2017-10-31",
+      "snapshot_effective_as_of": "2017-10-31",
+      "snapshot_monthly_as_of": "2017-10-31",
+      "daily_rows": 1830,
+      "weekly_rows": 408,
+      "monthly_rows": 94,
+      "repository_v2_first_daily_date": "2010-01-04",
+      "repository_v2_last_daily_date": "2026-09-01",
+      "missing_features": [
+        "weekly_ma12_slope"
+      ],
+      "feature_values": {
+        "ma24_slope": -0.05354341450105726,
+        "weekly_ma12_slope": NaN,
+        "ma24_slope_acceleration": -0.01557233026911875,
+        "avg_price_change_12m": -0.2378190746306565,
+        "ma_spread": 0.6854485776805251,
+        "range_position": 0.022494305239179953,
+        "distance_to_resistance": 0.7897400506096158
+      },
+      "classifier_stage": null,
+      "classifier_reason": "insufficient_data",
+      "classifier_reason_codes": [
+        "insufficient_data"
+      ],
+      "classifier_insufficient_data": true,
+      "upstream_cause_by_feature": {
+        "weekly_ma12_slope": "2017-10-06 empty weekly bin: 0 KRX sessions and 0 Repository V2 rows; resampler's volume sum leaves an all-price-NaN/volume-0 bucket in the rolling window"
+      },
+      "missing_bucket_evidence_by_feature": {
+        "weekly_ma12_slope": [
+          {
+            "frequency": "weekly",
+            "bucket_label": "2017-10-06",
+            "bucket_start": "2017-09-30",
+            "expected_krx_sessions": 0,
+            "repository_v2_daily_rows": 0,
+            "kind": "EMPTY_CALENDAR_BUCKET_RESAMPLER_ARTIFACT"
+          }
+        ]
+      },
+      "legacy_snapshot_required_feature_mismatches": [],
+      "previous_usable_snapshot": {
+        "effective_date": "2017-09-29",
+        "snapshot_month_end": "2017-09-30",
+        "snapshot_effective_as_of": "2017-09-29",
+        "stage": "WEAK"
+      },
+      "next_usable_snapshot": {
+        "effective_date": "2018-01-31",
+        "snapshot_month_end": "2018-01-31",
+        "snapshot_effective_as_of": "2018-01-31",
+        "stage": "TRANSITION"
+      },
+      "previous_stage": "WEAK",
+      "previous_stage_date": "2017-09-29",
+      "next_stage": "TRANSITION",
+      "next_stage_date": "2018-01-31",
+      "cause_class": "A_PIPELINE_BUG",
+      "upstream_cause": "weekly_ma12_slope: 2017-10-06 empty weekly bin: 0 KRX sessions and 0 Repository V2 rows; resampler's volume sum leaves an all-price-NaN/volume-0 bucket in the rolling window",
+      "notes": "snapshot=2017-10-31/effective=2017-10-31; legacy_required_feature_mismatches=[]",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 110,
+        "silent_inner_drop_count": 0
+      },
+      "lifecycle_event_applied": null
+    },
+    {
+      "ticker": "043710",
+      "isu": "KR7043710003",
+      "isu_cd": "KR7043710003",
+      "identity_key": "043710|KR7043710003|KOSDAQ|2010-01-04|2026-09-01",
+      "pair_id": "043710|KR7043710003|KOSDAQ|2010-01-04|2026-09-01|043710_01",
+      "error_eod": "2017-01-18",
+      "failure_eod": "2017-01-18",
+      "stage_timeline_effective_date": "2016-12-29",
+      "snapshot_requested_month_end": "2016-12-31",
+      "snapshot_effective_as_of": "2016-12-29",
+      "snapshot_monthly_as_of": "2016-12-31",
+      "daily_rows": 1430,
+      "weekly_rows": 364,
+      "monthly_rows": 84,
+      "repository_v2_first_daily_date": "2010-01-04",
+      "repository_v2_last_daily_date": "2026-09-01",
+      "missing_features": [
+        "ma24_slope",
+        "weekly_ma12_slope",
+        "ma_spread"
+      ],
+      "feature_values": {
+        "ma24_slope": NaN,
+        "weekly_ma12_slope": NaN,
+        "ma24_slope_acceleration": 0.0,
+        "avg_price_change_12m": 0.3035984275778652,
+        "ma_spread": NaN,
+        "range_position": 0.3668402082498999,
+        "distance_to_resistance": 0.5676840215439857
+      },
+      "classifier_stage": null,
+      "classifier_reason": "insufficient_data",
+      "classifier_reason_codes": [
+        "insufficient_data"
+      ],
+      "classifier_insufficient_data": true,
+      "upstream_cause_by_feature": {
+        "ma24_slope": "5 empty monthly bucket(s) (2016-07-31..2016-11-30): 104 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+        "weekly_ma12_slope": "16 empty weekly bucket(s) (2016-09-02..2016-12-16): 76 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+        "ma_spread": "5 empty monthly bucket(s) (2016-07-31..2016-11-30): 104 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN"
+      },
+      "missing_bucket_evidence_by_feature": {
+        "ma24_slope": [
+          {
+            "frequency": "monthly",
+            "bucket_label": "2016-07-31",
+            "bucket_start": "2016-07-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2016-08-31",
+            "bucket_start": "2016-08-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2016-09-30",
+            "bucket_start": "2016-09-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2016-10-31",
+            "bucket_start": "2016-10-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2016-11-30",
+            "bucket_start": "2016-11-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ],
+        "weekly_ma12_slope": [
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-09-02",
+            "bucket_start": "2016-08-27",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-09-09",
+            "bucket_start": "2016-09-03",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-09-16",
+            "bucket_start": "2016-09-10",
+            "expected_krx_sessions": 2,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-09-23",
+            "bucket_start": "2016-09-17",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-09-30",
+            "bucket_start": "2016-09-24",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-10-07",
+            "bucket_start": "2016-10-01",
+            "expected_krx_sessions": 4,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-10-14",
+            "bucket_start": "2016-10-08",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-10-21",
+            "bucket_start": "2016-10-15",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-10-28",
+            "bucket_start": "2016-10-22",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-11-04",
+            "bucket_start": "2016-10-29",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-11-11",
+            "bucket_start": "2016-11-05",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-11-18",
+            "bucket_start": "2016-11-12",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-11-25",
+            "bucket_start": "2016-11-19",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-12-02",
+            "bucket_start": "2016-11-26",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-12-09",
+            "bucket_start": "2016-12-03",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-12-16",
+            "bucket_start": "2016-12-10",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ],
+        "ma_spread": [
+          {
+            "frequency": "monthly",
+            "bucket_label": "2016-07-31",
+            "bucket_start": "2016-07-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2016-08-31",
+            "bucket_start": "2016-08-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2016-09-30",
+            "bucket_start": "2016-09-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2016-10-31",
+            "bucket_start": "2016-10-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2016-11-30",
+            "bucket_start": "2016-11-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ]
+      },
+      "legacy_snapshot_required_feature_mismatches": [],
+      "previous_usable_snapshot": {
+        "effective_date": "2016-06-15",
+        "snapshot_month_end": "2016-11-30",
+        "snapshot_effective_as_of": "2016-06-15",
+        "stage": "PROGRESSED"
+      },
+      "next_usable_snapshot": {
+        "effective_date": "2019-02-28",
+        "snapshot_month_end": "2019-02-28",
+        "snapshot_effective_as_of": "2019-02-28",
+        "stage": "WEAK"
+      },
+      "previous_stage": "PROGRESSED",
+      "previous_stage_date": "2016-06-15",
+      "next_stage": "WEAK",
+      "next_stage_date": "2019-02-28",
+      "cause_class": "C_SOURCE_OR_AUTHORITY_GAP",
+      "upstream_cause": "ma24_slope: 5 empty monthly bucket(s) (2016-07-31..2016-11-30): 104 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN; weekly_ma12_slope: 16 empty weekly bucket(s) (2016-09-02..2016-12-16): 76 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN; ma_spread: 5 empty monthly bucket(s) (2016-07-31..2016-11-30): 104 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+      "notes": "snapshot=2016-12-31/effective=2016-12-29; legacy_required_feature_mismatches=[]",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 318,
+        "silent_inner_drop_count": 0
+      },
+      "lifecycle_event_applied": null
+    },
+    {
+      "ticker": "044060",
+      "isu": "KR7044060002",
+      "isu_cd": "KR7044060002",
+      "identity_key": "044060|KR7044060002|KOSDAQ|2010-01-04|2025-08-20",
+      "pair_id": "044060|KR7044060002|KOSDAQ|2010-01-04|2025-08-20|044060_03",
+      "error_eod": "2025-08-20",
+      "failure_eod": "2025-08-20",
+      "stage_timeline_effective_date": "2025-08-20",
+      "snapshot_requested_month_end": "2025-08-31",
+      "snapshot_effective_as_of": "2025-08-20",
+      "snapshot_monthly_as_of": "2025-08-31",
+      "daily_rows": 3209,
+      "weekly_rows": 815,
+      "monthly_rows": 188,
+      "repository_v2_first_daily_date": "2010-01-04",
+      "repository_v2_last_daily_date": "2025-08-20",
+      "missing_features": [
+        "ma24_slope",
+        "weekly_ma12_slope",
+        "avg_price_change_12m",
+        "ma_spread"
+      ],
+      "feature_values": {
+        "ma24_slope": NaN,
+        "weekly_ma12_slope": NaN,
+        "ma24_slope_acceleration": 0.0,
+        "avg_price_change_12m": NaN,
+        "ma_spread": NaN,
+        "range_position": 0.0,
+        "distance_to_resistance": 0.9798594847775176
+      },
+      "classifier_stage": null,
+      "classifier_reason": "insufficient_data",
+      "classifier_reason_codes": [
+        "insufficient_data"
+      ],
+      "classifier_insufficient_data": true,
+      "upstream_cause_by_feature": {
+        "ma24_slope": "26 empty monthly bucket(s) (2023-06-30..2025-07-31): 528 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+        "weekly_ma12_slope": "16 empty weekly bucket(s) (2025-04-25..2025-08-08): 75 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+        "avg_price_change_12m": "23 empty monthly bucket(s) (2023-09-30..2025-07-31): 464 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+        "ma_spread": "23 empty monthly bucket(s) (2023-09-30..2025-07-31): 464 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN"
+      },
+      "missing_bucket_evidence_by_feature": {
+        "ma24_slope": [
+          {
+            "frequency": "monthly",
+            "bucket_label": "2023-06-30",
+            "bucket_start": "2023-06-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2023-07-31",
+            "bucket_start": "2023-07-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2023-08-31",
+            "bucket_start": "2023-08-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2023-09-30",
+            "bucket_start": "2023-09-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2023-10-31",
+            "bucket_start": "2023-10-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2023-11-30",
+            "bucket_start": "2023-11-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2023-12-31",
+            "bucket_start": "2023-12-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-01-31",
+            "bucket_start": "2024-01-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-02-29",
+            "bucket_start": "2024-02-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-03-31",
+            "bucket_start": "2024-03-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-04-30",
+            "bucket_start": "2024-04-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-05-31",
+            "bucket_start": "2024-05-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-06-30",
+            "bucket_start": "2024-06-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-07-31",
+            "bucket_start": "2024-07-01",
+            "expected_krx_sessions": 23,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-08-31",
+            "bucket_start": "2024-08-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-09-30",
+            "bucket_start": "2024-09-01",
+            "expected_krx_sessions": 18,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-10-31",
+            "bucket_start": "2024-10-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-11-30",
+            "bucket_start": "2024-11-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-12-31",
+            "bucket_start": "2024-12-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-01-31",
+            "bucket_start": "2025-01-01",
+            "expected_krx_sessions": 18,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-02-28",
+            "bucket_start": "2025-02-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-03-31",
+            "bucket_start": "2025-03-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-04-30",
+            "bucket_start": "2025-04-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-05-31",
+            "bucket_start": "2025-05-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-06-30",
+            "bucket_start": "2025-06-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-07-31",
+            "bucket_start": "2025-07-01",
+            "expected_krx_sessions": 23,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ],
+        "weekly_ma12_slope": [
+          {
+            "frequency": "weekly",
+            "bucket_label": "2025-04-25",
+            "bucket_start": "2025-04-19",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2025-05-02",
+            "bucket_start": "2025-04-26",
+            "expected_krx_sessions": 4,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2025-05-09",
+            "bucket_start": "2025-05-03",
+            "expected_krx_sessions": 3,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2025-05-16",
+            "bucket_start": "2025-05-10",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2025-05-23",
+            "bucket_start": "2025-05-17",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2025-05-30",
+            "bucket_start": "2025-05-24",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2025-06-06",
+            "bucket_start": "2025-05-31",
+            "expected_krx_sessions": 3,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2025-06-13",
+            "bucket_start": "2025-06-07",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2025-06-20",
+            "bucket_start": "2025-06-14",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2025-06-27",
+            "bucket_start": "2025-06-21",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2025-07-04",
+            "bucket_start": "2025-06-28",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2025-07-11",
+            "bucket_start": "2025-07-05",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2025-07-18",
+            "bucket_start": "2025-07-12",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2025-07-25",
+            "bucket_start": "2025-07-19",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2025-08-01",
+            "bucket_start": "2025-07-26",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2025-08-08",
+            "bucket_start": "2025-08-02",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ],
+        "avg_price_change_12m": [
+          {
+            "frequency": "monthly",
+            "bucket_label": "2023-09-30",
+            "bucket_start": "2023-09-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2023-10-31",
+            "bucket_start": "2023-10-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2023-11-30",
+            "bucket_start": "2023-11-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2023-12-31",
+            "bucket_start": "2023-12-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-01-31",
+            "bucket_start": "2024-01-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-02-29",
+            "bucket_start": "2024-02-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-03-31",
+            "bucket_start": "2024-03-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-04-30",
+            "bucket_start": "2024-04-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-05-31",
+            "bucket_start": "2024-05-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-06-30",
+            "bucket_start": "2024-06-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-07-31",
+            "bucket_start": "2024-07-01",
+            "expected_krx_sessions": 23,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-08-31",
+            "bucket_start": "2024-08-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-09-30",
+            "bucket_start": "2024-09-01",
+            "expected_krx_sessions": 18,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-10-31",
+            "bucket_start": "2024-10-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-11-30",
+            "bucket_start": "2024-11-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-12-31",
+            "bucket_start": "2024-12-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-01-31",
+            "bucket_start": "2025-01-01",
+            "expected_krx_sessions": 18,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-02-28",
+            "bucket_start": "2025-02-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-03-31",
+            "bucket_start": "2025-03-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-04-30",
+            "bucket_start": "2025-04-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-05-31",
+            "bucket_start": "2025-05-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-06-30",
+            "bucket_start": "2025-06-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-07-31",
+            "bucket_start": "2025-07-01",
+            "expected_krx_sessions": 23,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ],
+        "ma_spread": [
+          {
+            "frequency": "monthly",
+            "bucket_label": "2023-09-30",
+            "bucket_start": "2023-09-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2023-10-31",
+            "bucket_start": "2023-10-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2023-11-30",
+            "bucket_start": "2023-11-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2023-12-31",
+            "bucket_start": "2023-12-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-01-31",
+            "bucket_start": "2024-01-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-02-29",
+            "bucket_start": "2024-02-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-03-31",
+            "bucket_start": "2024-03-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-04-30",
+            "bucket_start": "2024-04-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-05-31",
+            "bucket_start": "2024-05-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-06-30",
+            "bucket_start": "2024-06-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-07-31",
+            "bucket_start": "2024-07-01",
+            "expected_krx_sessions": 23,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-08-31",
+            "bucket_start": "2024-08-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-09-30",
+            "bucket_start": "2024-09-01",
+            "expected_krx_sessions": 18,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-10-31",
+            "bucket_start": "2024-10-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-11-30",
+            "bucket_start": "2024-11-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2024-12-31",
+            "bucket_start": "2024-12-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-01-31",
+            "bucket_start": "2025-01-01",
+            "expected_krx_sessions": 18,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-02-28",
+            "bucket_start": "2025-02-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-03-31",
+            "bucket_start": "2025-03-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-04-30",
+            "bucket_start": "2025-04-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-05-31",
+            "bucket_start": "2025-05-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-06-30",
+            "bucket_start": "2025-06-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2025-07-31",
+            "bucket_start": "2025-07-01",
+            "expected_krx_sessions": 23,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ]
+      },
+      "legacy_snapshot_required_feature_mismatches": [],
+      "previous_usable_snapshot": {
+        "effective_date": "2023-04-26",
+        "snapshot_month_end": "2025-07-31",
+        "snapshot_effective_as_of": "2023-04-26",
+        "stage": "WEAK"
+      },
+      "next_usable_snapshot": null,
+      "previous_stage": "WEAK",
+      "previous_stage_date": "2023-04-26",
+      "next_stage": null,
+      "next_stage_date": null,
+      "cause_class": "C_SOURCE_OR_AUTHORITY_GAP",
+      "upstream_cause": "ma24_slope: 26 empty monthly bucket(s) (2023-06-30..2025-07-31): 528 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN; weekly_ma12_slope: 16 empty weekly bucket(s) (2025-04-25..2025-08-08): 75 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN; avg_price_change_12m: 23 empty monthly bucket(s) (2023-09-30..2025-07-31): 464 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN; ma_spread: 23 empty monthly bucket(s) (2023-09-30..2025-07-31): 464 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+      "notes": "snapshot=2025-08-31/effective=2025-08-20; legacy_required_feature_mismatches=[]",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 551,
+        "explicit_exclusion_count": 642,
+        "silent_inner_drop_count": 0
+      },
+      "lifecycle_event_applied": null
+    },
+    {
+      "ticker": "052300",
+      "isu": "KR7052300001",
+      "isu_cd": "KR7052300001",
+      "identity_key": "052300|KR7052300001|KOSDAQ|2010-01-04|2026-09-01",
+      "pair_id": "052300|KR7052300001|KOSDAQ|2010-01-04|2026-09-01|052300_02",
+      "error_eod": "2017-12-20",
+      "failure_eod": "2017-12-20",
+      "stage_timeline_effective_date": "2017-11-30",
+      "snapshot_requested_month_end": "2017-11-30",
+      "snapshot_effective_as_of": "2017-11-30",
+      "snapshot_monthly_as_of": "2017-11-30",
+      "daily_rows": 1926,
+      "weekly_rows": 412,
+      "monthly_rows": 95,
+      "repository_v2_first_daily_date": "2010-01-04",
+      "repository_v2_last_daily_date": "2026-09-01",
+      "missing_features": [
+        "weekly_ma12_slope"
+      ],
+      "feature_values": {
+        "ma24_slope": -0.09913859014220905,
+        "weekly_ma12_slope": NaN,
+        "ma24_slope_acceleration": -0.07958917312650138,
+        "avg_price_change_12m": -0.3330706913117888,
+        "ma_spread": 0.39180869281578734,
+        "range_position": 0.0536618925511289,
+        "distance_to_resistance": 0.6492226719489695
+      },
+      "classifier_stage": null,
+      "classifier_reason": "insufficient_data",
+      "classifier_reason_codes": [
+        "insufficient_data"
+      ],
+      "classifier_insufficient_data": true,
+      "upstream_cause_by_feature": {
+        "weekly_ma12_slope": "2017-10-06 empty weekly bin: 0 KRX sessions and 0 Repository V2 rows; resampler's volume sum leaves an all-price-NaN/volume-0 bucket in the rolling window"
+      },
+      "missing_bucket_evidence_by_feature": {
+        "weekly_ma12_slope": [
+          {
+            "frequency": "weekly",
+            "bucket_label": "2017-10-06",
+            "bucket_start": "2017-09-30",
+            "expected_krx_sessions": 0,
+            "repository_v2_daily_rows": 0,
+            "kind": "EMPTY_CALENDAR_BUCKET_RESAMPLER_ARTIFACT"
+          }
+        ]
+      },
+      "legacy_snapshot_required_feature_mismatches": [],
+      "previous_usable_snapshot": {
+        "effective_date": "2017-09-29",
+        "snapshot_month_end": "2017-09-30",
+        "snapshot_effective_as_of": "2017-09-29",
+        "stage": "WEAK"
+      },
+      "next_usable_snapshot": {
+        "effective_date": "2018-01-31",
+        "snapshot_month_end": "2018-01-31",
+        "snapshot_effective_as_of": "2018-01-31",
+        "stage": "WEAK"
+      },
+      "previous_stage": "WEAK",
+      "previous_stage_date": "2017-09-29",
+      "next_stage": "WEAK",
+      "next_stage_date": "2018-01-31",
+      "cause_class": "A_PIPELINE_BUG",
+      "upstream_cause": "weekly_ma12_slope: 2017-10-06 empty weekly bin: 0 KRX sessions and 0 Repository V2 rows; resampler's volume sum leaves an all-price-NaN/volume-0 bucket in the rolling window",
+      "notes": "snapshot=2017-11-30/effective=2017-11-30; legacy_required_feature_mismatches=[]",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 90,
+        "silent_inner_drop_count": 0
+      },
+      "lifecycle_event_applied": null
+    },
+    {
+      "ticker": "052400",
+      "isu": "KR7052400009",
+      "isu_cd": "KR7052400009",
+      "identity_key": "052400|KR7052400009|KOSDAQ|2010-01-04|2026-09-01",
+      "pair_id": "052400|KR7052400009|KOSDAQ|2010-01-04|2026-09-01|052400_02",
+      "error_eod": "2022-06-13",
+      "failure_eod": "2022-06-13",
+      "stage_timeline_effective_date": "2022-05-31",
+      "snapshot_requested_month_end": "2022-05-31",
+      "snapshot_effective_as_of": "2022-05-31",
+      "snapshot_monthly_as_of": "2022-05-31",
+      "daily_rows": 2882,
+      "weekly_rows": 647,
+      "monthly_rows": 149,
+      "repository_v2_first_daily_date": "2010-01-04",
+      "repository_v2_last_daily_date": "2026-09-01",
+      "missing_features": [
+        "ma24_slope",
+        "ma_spread"
+      ],
+      "feature_values": {
+        "ma24_slope": NaN,
+        "weekly_ma12_slope": -0.023805446138037367,
+        "ma24_slope_acceleration": 0.0,
+        "avg_price_change_12m": -0.0989935956084172,
+        "ma_spread": NaN,
+        "range_position": 0.08180300500834725,
+        "distance_to_resistance": 0.5533199195171026
+      },
+      "classifier_stage": null,
+      "classifier_reason": "insufficient_data",
+      "classifier_reason_codes": [
+        "insufficient_data"
+      ],
+      "classifier_insufficient_data": true,
+      "upstream_cause_by_feature": {
+        "ma24_slope": "6 empty monthly bucket(s) (2020-04-30..2020-09-30): 125 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+        "ma_spread": "4 empty monthly bucket(s) (2020-06-30..2020-09-30): 86 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN"
+      },
+      "missing_bucket_evidence_by_feature": {
+        "ma24_slope": [
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-04-30",
+            "bucket_start": "2020-04-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-05-31",
+            "bucket_start": "2020-05-01",
+            "expected_krx_sessions": 19,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-06-30",
+            "bucket_start": "2020-06-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-07-31",
+            "bucket_start": "2020-07-01",
+            "expected_krx_sessions": 23,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-08-31",
+            "bucket_start": "2020-08-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-09-30",
+            "bucket_start": "2020-09-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ],
+        "ma_spread": [
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-06-30",
+            "bucket_start": "2020-06-01",
+            "expected_krx_sessions": 22,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-07-31",
+            "bucket_start": "2020-07-01",
+            "expected_krx_sessions": 23,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-08-31",
+            "bucket_start": "2020-08-01",
+            "expected_krx_sessions": 20,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "monthly",
+            "bucket_label": "2020-09-30",
+            "bucket_start": "2020-09-01",
+            "expected_krx_sessions": 21,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ]
+      },
+      "legacy_snapshot_required_feature_mismatches": [],
+      "previous_usable_snapshot": {
+        "effective_date": "2020-03-19",
+        "snapshot_month_end": "2020-09-30",
+        "snapshot_effective_as_of": "2020-03-19",
+        "stage": "TRANSITION"
+      },
+      "next_usable_snapshot": {
+        "effective_date": "2022-12-29",
+        "snapshot_month_end": "2022-12-31",
+        "snapshot_effective_as_of": "2022-12-29",
+        "stage": "WEAK"
+      },
+      "previous_stage": "TRANSITION",
+      "previous_stage_date": "2020-03-19",
+      "next_stage": "WEAK",
+      "next_stage_date": "2022-12-29",
+      "cause_class": "C_SOURCE_OR_AUTHORITY_GAP",
+      "upstream_cause": "ma24_slope: 6 empty monthly bucket(s) (2020-04-30..2020-09-30): 125 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN; ma_spread: 4 empty monthly bucket(s) (2020-06-30..2020-09-30): 86 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+      "notes": "snapshot=2022-05-31/effective=2022-05-31; legacy_required_feature_mismatches=[]",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 142,
+        "explicit_exclusion_count": 181,
+        "silent_inner_drop_count": 0
+      },
+      "lifecycle_event_applied": null
+    },
+    {
+      "ticker": "068150",
+      "isu": "KR7068150002",
+      "isu_cd": "KR7068150002",
+      "identity_key": "068150|KR7068150002|KOSDAQ|2010-01-04|2017-03-06",
+      "pair_id": "068150|KR7068150002|KOSDAQ|2010-01-04|2017-03-06|068150_01",
+      "error_eod": "2017-02-23",
+      "failure_eod": "2017-02-23",
+      "stage_timeline_effective_date": "2016-06-23",
+      "snapshot_requested_month_end": "2017-01-31",
+      "snapshot_effective_as_of": "2016-06-23",
+      "snapshot_monthly_as_of": "2016-06-30",
+      "daily_rows": 1161,
+      "weekly_rows": 337,
+      "monthly_rows": 78,
+      "repository_v2_first_daily_date": "2010-01-04",
+      "repository_v2_last_daily_date": "2017-03-06",
+      "missing_features": [
+        "weekly_ma12_slope"
+      ],
+      "feature_values": {
+        "ma24_slope": -0.013604018417748054,
+        "weekly_ma12_slope": NaN,
+        "ma24_slope_acceleration": -0.12623306444739957,
+        "avg_price_change_12m": 0.36537013801756585,
+        "ma_spread": 0.3448005698005699,
+        "range_position": 0.17279912782774598,
+        "distance_to_resistance": 0.7217598097502973
+      },
+      "classifier_stage": null,
+      "classifier_reason": "insufficient_data",
+      "classifier_reason_codes": [
+        "insufficient_data"
+      ],
+      "classifier_insufficient_data": true,
+      "upstream_cause_by_feature": {
+        "weekly_ma12_slope": "6 empty weekly bucket(s) (2016-04-15..2016-05-20): 27 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN"
+      },
+      "missing_bucket_evidence_by_feature": {
+        "weekly_ma12_slope": [
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-04-15",
+            "bucket_start": "2016-04-09",
+            "expected_krx_sessions": 4,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-04-22",
+            "bucket_start": "2016-04-16",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-04-29",
+            "bucket_start": "2016-04-23",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-05-06",
+            "bucket_start": "2016-04-30",
+            "expected_krx_sessions": 3,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-05-13",
+            "bucket_start": "2016-05-07",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2016-05-20",
+            "bucket_start": "2016-05-14",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ]
+      },
+      "legacy_snapshot_required_feature_mismatches": [],
+      "previous_usable_snapshot": {
+        "effective_date": "2016-04-04",
+        "snapshot_month_end": "2016-04-30",
+        "snapshot_effective_as_of": "2016-04-04",
+        "stage": "PROGRESSED"
+      },
+      "next_usable_snapshot": null,
+      "previous_stage": "PROGRESSED",
+      "previous_stage_date": "2016-04-04",
+      "next_stage": null,
+      "next_stage_date": null,
+      "cause_class": "C_SOURCE_OR_AUTHORITY_GAP",
+      "upstream_cause": "weekly_ma12_slope: 6 empty weekly bucket(s) (2016-04-15..2016-05-20): 27 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+      "notes": "snapshot=2017-01-31/effective=2016-06-23; legacy_required_feature_mismatches=[]",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 557,
+        "explicit_exclusion_count": 608,
+        "silent_inner_drop_count": 0
+      },
+      "lifecycle_event_applied": null
+    },
+    {
+      "ticker": "130660",
+      "isu": "KR7130660004",
+      "isu_cd": "KR7130660004",
+      "identity_key": "130660|KR7130660004|KOSPI|2010-12-16|2026-09-01",
+      "pair_id": "130660|KR7130660004|KOSPI|2010-12-16|2026-09-01|130660_01",
+      "error_eod": "2020-02-21",
+      "failure_eod": "2020-02-21",
+      "stage_timeline_effective_date": "2020-01-31",
+      "snapshot_requested_month_end": "2020-01-31",
+      "snapshot_effective_as_of": "2020-01-31",
+      "snapshot_monthly_as_of": "2020-01-31",
+      "daily_rows": 2232,
+      "weekly_rows": 477,
+      "monthly_rows": 110,
+      "repository_v2_first_daily_date": "2010-12-16",
+      "repository_v2_last_daily_date": "2026-09-01",
+      "missing_features": [
+        "weekly_ma12_slope"
+      ],
+      "feature_values": {
+        "ma24_slope": -0.025639574371745577,
+        "weekly_ma12_slope": NaN,
+        "ma24_slope_acceleration": 0.005932449307272214,
+        "avg_price_change_12m": -0.059188275084554674,
+        "ma_spread": 0.06534090909090909,
+        "range_position": 0.13218390804597702,
+        "distance_to_resistance": 0.31392931392931395
+      },
+      "classifier_stage": null,
+      "classifier_reason": "insufficient_data",
+      "classifier_reason_codes": [
+        "insufficient_data"
+      ],
+      "classifier_insufficient_data": true,
+      "upstream_cause_by_feature": {
+        "weekly_ma12_slope": "2 empty weekly bucket(s) (2019-10-11..2019-10-18): 9 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN"
+      },
+      "missing_bucket_evidence_by_feature": {
+        "weekly_ma12_slope": [
+          {
+            "frequency": "weekly",
+            "bucket_label": "2019-10-11",
+            "bucket_start": "2019-10-05",
+            "expected_krx_sessions": 4,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          },
+          {
+            "frequency": "weekly",
+            "bucket_label": "2019-10-18",
+            "bucket_start": "2019-10-12",
+            "expected_krx_sessions": 5,
+            "repository_v2_daily_rows": 0,
+            "kind": "EXPECTED_SESSION_SOURCE_OR_AUTHORITY_GAP"
+          }
+        ]
+      },
+      "legacy_snapshot_required_feature_mismatches": [],
+      "previous_usable_snapshot": {
+        "effective_date": "2019-09-30",
+        "snapshot_month_end": "2019-09-30",
+        "snapshot_effective_as_of": "2019-09-30",
+        "stage": "WEAK"
+      },
+      "next_usable_snapshot": {
+        "effective_date": "2020-02-28",
+        "snapshot_month_end": "2020-02-29",
+        "snapshot_effective_as_of": "2020-02-28",
+        "stage": "WEAK"
+      },
+      "previous_stage": "WEAK",
+      "previous_stage_date": "2019-09-30",
+      "next_stage": "WEAK",
+      "next_stage_date": "2020-02-28",
+      "cause_class": "C_SOURCE_OR_AUTHORITY_GAP",
+      "upstream_cause": "weekly_ma12_slope: 2 empty weekly bucket(s) (2019-10-11..2019-10-18): 9 KRX trading sessions expected, but 0 Repository V2 daily rows; rolling OHLC close becomes NaN",
+      "notes": "snapshot=2020-01-31/effective=2020-01-31; legacy_required_feature_mismatches=[]",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 14,
+        "explicit_exclusion_count": 14,
+        "silent_inner_drop_count": 0
+      },
+      "lifecycle_event_applied": null
+    }
+  ]
+}

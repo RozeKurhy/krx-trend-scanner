@@ -1,0 +1,357 @@
+{
+  "evidence_version": "P2_1_RAW_STORE_COVERAGE_EVIDENCE_V01",
+  "created_at_kst": "2026-09-26",
+  "provider": "KRX Open API Stock Daily",
+  "source_field": "MKTCAP",
+  "repository_field": "market_cap",
+  "store_api": "KrxRawStockStore.load_snapshot",
+  "raw_store_root": "data/market/raw/krx_stocks/v01",
+  "manifest_path": "data/market/raw/krx_stocks/v01/manifest.sqlite3",
+  "manifest_sha256_before_lookup": "350b27a75e2fe1fd73dc6fedde451c3970fe036f5edd6a03336fde208d1e6cf0",
+  "manifest_sha256_after_lookup": "350b27a75e2fe1fd73dc6fedde451c3970fe036f5edd6a03336fde208d1e6cf0",
+  "manifest_unchanged_during_read": true,
+  "live_manifest_extent_after_closure_target": {
+    "closure_target_end": "2026-08-21",
+    "KOSPI": {
+      "latest_date": "2026-09-21",
+      "post_target_complete_partitions": 21,
+      "post_target_no_data_partitions": 0,
+      "post_target_failed_partitions": 0,
+      "post_target_raw_rows": 19803
+    },
+    "KOSDAQ": {
+      "latest_date": "2026-09-21",
+      "post_target_complete_partitions": 21,
+      "post_target_no_data_partitions": 0,
+      "post_target_failed_partitions": 0,
+      "post_target_raw_rows": 38255
+    },
+    "interpretation": "The live SQLite manifest contains additional complete partitions beyond the FIX09 closure target; within the closure target, live counts and yearly aggregates match exactly."
+  },
+  "closure_evidence_path": "artifacts/data/krx_historical_backfill/v01/FIX09_closure_validation_summary.json",
+  "closure_evidence_sha256": "4d58d1d48630c504a66ed6bee4288d63e7d1dc81bb48d26f2bbe3d6650be5bb5",
+  "closure_claim": {
+    "coverage_status": "PASS",
+    "target_start": "2010-01-04",
+    "target_end": "2026-08-21",
+    "candidate_date_count": 4340,
+    "expected_partition_count": 8680,
+    "complete_partition_count": 8190,
+    "missing_date_count": 0,
+    "failed_date_count": 0,
+    "partial_date_count": 0,
+    "finalized_no_data_date_count": 245,
+    "current_evidence": {
+      "diagnostic": {
+        "current": true,
+        "status": "PASS"
+      },
+      "idempotency": {
+        "current": true,
+        "status": "PASS"
+      },
+      "pilot": {
+        "current": true,
+        "status": "PASS"
+      },
+      "repair_2019": {
+        "current": true,
+        "status": "PASS"
+      },
+      "repair_2023": {
+        "current": true,
+        "status": "PASS"
+      },
+      "resume": {
+        "current": true,
+        "status": "PASS"
+      },
+      "samsung": {
+        "current": true,
+        "status": "PASS"
+      }
+    }
+  },
+  "closure_criteria_checks": {
+    "target_is_2010_01_04_to_2026_08_21": true,
+    "coverage_status_pass": true,
+    "missing_date_count_zero": true,
+    "failed_date_count_zero": true,
+    "partial_date_count_zero": true,
+    "p2_1_year_missing_zero": true,
+    "yearly_live_manifest_matches_closure": true,
+    "sqlite_partition_rows_match_expected": true,
+    "sqlite_has_no_failed_partitions": true
+  },
+  "live_sqlite_manifest_target_totals": {
+    "manifest_rows": 8680,
+    "expected_manifest_rows": 8680,
+    "candidate_dates": 4340,
+    "complete_partitions": 8190,
+    "no_data_partitions": 490,
+    "failed_partitions": 0,
+    "raw_rows": 9204280
+  },
+  "live_sqlite_manifest_target_status_counts": {
+    "COMPLETE": 8190,
+    "NO_DATA": 490
+  },
+  "live_sqlite_manifest_target_rows_by_market_status": {
+    "KOSPI|COMPLETE": 4095,
+    "KOSPI|NO_DATA": 245,
+    "KOSPI|FAILED": 0,
+    "KOSDAQ|COMPLETE": 4095,
+    "KOSDAQ|NO_DATA": 245,
+    "KOSDAQ|FAILED": 0
+  },
+  "yearly_live_manifest_comparison": {
+    "2010": {
+      "candidate_dates": 260,
+      "complete_dates": 251,
+      "complete_partitions": 502,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 9,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 18,
+      "raw_rows": 489223,
+      "manifest_rows": 520,
+      "expected_manifest_rows": 520,
+      "matches_closure": true
+    },
+    "2011": {
+      "candidate_dates": 260,
+      "complete_dates": 248,
+      "complete_partitions": 496,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 12,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 24,
+      "raw_rows": 487308,
+      "manifest_rows": 520,
+      "expected_manifest_rows": 520,
+      "matches_closure": true
+    },
+    "2012": {
+      "candidate_dates": 261,
+      "complete_dates": 248,
+      "complete_partitions": 496,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 13,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 26,
+      "raw_rows": 485169,
+      "manifest_rows": 522,
+      "expected_manifest_rows": 522,
+      "matches_closure": true
+    },
+    "2013": {
+      "candidate_dates": 261,
+      "complete_dates": 247,
+      "complete_partitions": 494,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 14,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 28,
+      "raw_rows": 474866,
+      "manifest_rows": 522,
+      "expected_manifest_rows": 522,
+      "matches_closure": true
+    },
+    "2014": {
+      "candidate_dates": 261,
+      "complete_dates": 245,
+      "complete_partitions": 490,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 16,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 32,
+      "raw_rows": 470960,
+      "manifest_rows": 522,
+      "expected_manifest_rows": 522,
+      "matches_closure": true
+    },
+    "2015": {
+      "candidate_dates": 261,
+      "complete_dates": 248,
+      "complete_partitions": 496,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 13,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 26,
+      "raw_rows": 490187,
+      "manifest_rows": 522,
+      "expected_manifest_rows": 522,
+      "matches_closure": true
+    },
+    "2016": {
+      "candidate_dates": 261,
+      "complete_dates": 246,
+      "complete_partitions": 492,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 15,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 30,
+      "raw_rows": 507498,
+      "manifest_rows": 522,
+      "expected_manifest_rows": 522,
+      "matches_closure": true
+    },
+    "2017": {
+      "candidate_dates": 260,
+      "complete_dates": 243,
+      "complete_partitions": 486,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 17,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 34,
+      "raw_rows": 515693,
+      "manifest_rows": 520,
+      "expected_manifest_rows": 520,
+      "matches_closure": true
+    },
+    "2018": {
+      "candidate_dates": 261,
+      "complete_dates": 244,
+      "complete_partitions": 488,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 17,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 34,
+      "raw_rows": 530999,
+      "manifest_rows": 522,
+      "expected_manifest_rows": 522,
+      "matches_closure": true
+    },
+    "2019": {
+      "candidate_dates": 261,
+      "complete_dates": 246,
+      "complete_partitions": 492,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 15,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 30,
+      "raw_rows": 555287,
+      "manifest_rows": 522,
+      "expected_manifest_rows": 522,
+      "matches_closure": true
+    },
+    "2020": {
+      "candidate_dates": 262,
+      "complete_dates": 248,
+      "complete_partitions": 496,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 14,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 28,
+      "raw_rows": 580252,
+      "manifest_rows": 524,
+      "expected_manifest_rows": 524,
+      "matches_closure": true
+    },
+    "2021": {
+      "candidate_dates": 261,
+      "complete_dates": 248,
+      "complete_partitions": 496,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 13,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 26,
+      "raw_rows": 603794,
+      "manifest_rows": 522,
+      "expected_manifest_rows": 522,
+      "matches_closure": true
+    },
+    "2022": {
+      "candidate_dates": 260,
+      "complete_dates": 246,
+      "complete_partitions": 492,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 14,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 28,
+      "raw_rows": 617757,
+      "manifest_rows": 520,
+      "expected_manifest_rows": 520,
+      "matches_closure": true
+    },
+    "2023": {
+      "candidate_dates": 260,
+      "complete_dates": 245,
+      "complete_partitions": 490,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 15,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 30,
+      "raw_rows": 637754,
+      "manifest_rows": 520,
+      "expected_manifest_rows": 520,
+      "matches_closure": true
+    },
+    "2024": {
+      "candidate_dates": 262,
+      "complete_dates": 244,
+      "complete_partitions": 488,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 18,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 36,
+      "raw_rows": 657429,
+      "manifest_rows": 524,
+      "expected_manifest_rows": 524,
+      "matches_closure": true
+    },
+    "2025": {
+      "candidate_dates": 261,
+      "complete_dates": 242,
+      "complete_partitions": 484,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 19,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 38,
+      "raw_rows": 667913,
+      "manifest_rows": 522,
+      "expected_manifest_rows": 522,
+      "matches_closure": true
+    },
+    "2026": {
+      "candidate_dates": 167,
+      "complete_dates": 156,
+      "complete_partitions": 312,
+      "failed_dates": 0,
+      "finalized_no_data_dates": 11,
+      "missing_dates": 0,
+      "partial_dates": 0,
+      "no_data_partitions": 22,
+      "raw_rows": 432191,
+      "manifest_rows": 334,
+      "expected_manifest_rows": 334,
+      "matches_closure": true
+    }
+  },
+  "closure_manifest_consistent": true,
+  "p2_1_lookup_partitions": {
+    "unique_verified_market_date_partitions": 381,
+    "unique_partition_reads_cached": 381,
+    "all_survivor_requested_partitions_hash_verified": true,
+    "verified_partitions_by_market": {
+      "KOSPI": 181,
+      "KOSDAQ": 200
+    }
+  }
+}

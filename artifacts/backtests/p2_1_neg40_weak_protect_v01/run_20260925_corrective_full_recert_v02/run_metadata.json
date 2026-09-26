@@ -1,0 +1,145 @@
+{
+  "work_id": "P2_1_CORRECTIVE_FULL_REPLAY_AND_RECERTIFICATION_V02",
+  "run_id": "run_20260925_corrective_full_recert_v02",
+  "status": "COMPLETE_WITH_UNRESOLVED",
+  "preflight_at": "2026-09-25 10:42:43 KST",
+  "start_head": "4536d2bf80681141ad2e43ab6a2f8082ec4df6e3",
+  "origin_main_at_preflight": "4536d2bf80681141ad2e43ab6a2f8082ec4df6e3",
+  "runner_sha256": "605972271a0b53e4638cebec7e80a2419a0f3537f02aea51a2e95d7183d6f13b",
+  "strategy_labels": {
+    "control": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "candidate": "PATTERN_A_FAST_CORE_V2_NEG40_WEAK_PROTECT_SOFT_EXIT_V01"
+  },
+  "window": {
+    "calendar_start": "2021-01-01",
+    "calendar_end": "2025-05-31",
+    "effective_start": "2021-01-04",
+    "effective_end_cutoff": "2025-05-30",
+    "execution_support": "2025-06-02",
+    "post_cutoff_entries_allowed": false,
+    "execution_support_purpose": "follow-up execution only for pre-cutoff signals"
+  },
+  "pit_authority": {
+    "sha256": "a1952956427c214c21aa2fa293366d9ef092b36ae5afb3b110fd1ae556ccb3b0",
+    "interval_count": 3173
+  },
+  "trading_calendar": {
+    "first_date": "2010-01-04",
+    "last_date": "2026-09-21",
+    "certified_through": "2026-09-21",
+    "covers_execution_support": true
+  },
+  "lifecycle_catalog": {
+    "version": "v01 + v02",
+    "record_count": 23,
+    "normalized_content_sha256": "6e79a6b6325229210325dd056adcd1a955f75d461bd14b39cf776652a5ca0f7e",
+    "v01_file_sha256": "980ca61914ceb8ff454efeb1fc6a37105503edc34840ab84455e1e9c0b6732eb",
+    "v02_file_sha256": "74c366d139b6f60e6764e6053ec0a835d31b4d2435c0b82241f6f6bc5e7ee5ec"
+  },
+  "designer_audit_roster": {
+    "path": "/Users/june/.codex/attachments/d2b4e737-e943-4734-a4d9-6425d70e9b3a/붙여넣은 텍스트.txt",
+    "isu_count": 22,
+    "sha256": "214f89daee813533aa43866a14c606819b3ebb5f2b8487f4d68f1b008fee0bba"
+  },
+  "preflight_checks": {
+    "head_equals_origin_main": true,
+    "window_contract_pass": true,
+    "pit_authority_load_pass": true,
+    "trading_calendar_covers_support": true,
+    "lifecycle_v01_v02_load_pass": true,
+    "unresolved_preservation_contract_pass": true,
+    "pairwise_numeric_aggregate_exclusion_pass": true,
+    "cutoff_and_execution_support_contract_pass": true,
+    "same_path_sample": {
+      "status": "COMPLETE",
+      "processed_tickers": 40,
+      "ticker_errors": 0,
+      "matched_pairs_total": 21,
+      "matched_pairs_numeric_comparable": 20,
+      "matched_pairs_unresolved": 1,
+      "aggregate_reconciliation": {
+        "control": true,
+        "candidate": true,
+        "paired": true
+      },
+      "sample_contract_verdict": "PASS",
+      "estimated_full_minutes": 51.84
+    },
+    "focused_tests": "71 passed"
+  },
+  "full_replay": {
+    "started_at": "2026-09-25 10:43:27 KST",
+    "completed_at": "2026-09-25 11:42:56 KST",
+    "workers": 8,
+    "estimated_minutes": 51.84,
+    "actual_worker_elapsed_seconds": 3401.756,
+    "setup_seconds": 128.785,
+    "status": "COMPLETE",
+    "processed_unique_tickers": 2648,
+    "identity_segments": 2657,
+    "tickers_with_entries": 1192,
+    "ticker_errors": 0,
+    "network_calls": 0,
+    "control_trade_rows": 1834,
+    "candidate_trade_rows": 1834,
+    "matched_pairs_total": 1834,
+    "matched_pairs_numeric_comparable": 1826,
+    "matched_pairs_unresolved": 8,
+    "unresolved_pair_counts_by_lifecycle_state": {
+      "UNRESOLVED_SETTLEMENT": 1,
+      "UNRESOLVED_SUCCESSOR": 7,
+      "UNRESOLVED_POST_DELIST_VALUE": 0
+    },
+    "unresolved_trade_row_counts_by_side": {
+      "CONTROL": 8,
+      "Candidate": 8
+    },
+    "open_at_cutoff_by_side": {
+      "CONTROL": 256,
+      "Candidate": 238
+    },
+    "unexecuted_signal_by_side": {
+      "CONTROL": 0,
+      "Candidate": 0
+    },
+    "native_summary_verdict": "CHECK_REQUIRED",
+    "work_verdict": "P2_1_CORRECTIVE_REPLAY_COMPLETE_WITH_UNRESOLVED",
+    "regression_points": {
+      "090460_04": {
+        "control_exit_signal_date": "2023-08-08",
+        "control_exit_execution_date": "2023-08-09",
+        "control_exit_execution_open": 22900,
+        "candidate_exit_signal_date": "2023-08-08",
+        "candidate_exit_execution_date": "2023-08-09",
+        "candidate_exit_execution_open": 22900,
+        "trade_sequence_preserved": true
+      },
+      "178920_01": {
+        "control_exit_signal_date": "2021-08-31",
+        "control_exit_execution_date": "2021-09-01",
+        "control_exit_execution_open": 59100,
+        "candidate_exit_signal_date": "2021-08-31",
+        "candidate_exit_execution_date": "2021-09-01",
+        "candidate_exit_execution_open": 59100,
+        "trade_sequence_preserved": true
+      }
+    },
+    "historical_comparison": {
+      "reference_run_id": "run_20260924_cutoff_contract_recert_v01",
+      "old_matched_pairs": 1834,
+      "new_matched_pairs": 1834,
+      "old_only_pair_ids": 0,
+      "new_only_pair_ids": 0,
+      "old_open_at_cutoff": {
+        "CONTROL": 258,
+        "Candidate": 240
+      },
+      "new_open_at_cutoff": {
+        "CONTROL": 256,
+        "Candidate": 238
+      },
+      "old_artifact_had_lifecycle_state_columns": false,
+      "note": "The previous paired output had numeric terminal returns for the eight pairs now preserved as unresolved; it did not explicitly record lifecycle states."
+    }
+  }
+}

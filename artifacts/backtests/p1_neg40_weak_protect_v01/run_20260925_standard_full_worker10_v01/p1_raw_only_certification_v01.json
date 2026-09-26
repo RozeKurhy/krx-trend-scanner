@@ -1,0 +1,341 @@
+{
+  "status": "CHECK_REQUIRED",
+  "verdict": "CHECK_REQUIRED",
+  "window_id": "P1",
+  "reason": "raw-only summary/validation failed: RuntimeError: SOFT_EXIT execution is not the next local session: {'trade_id': '005950_01', 'pair_id': '005950|KR7005950001|KOSPI|2010-01-04|2026-09-01|005950_01', 'ticker': '005950', 'date': '2018-07-03', 'close_return': -40.05, 'pattern_a_stage': 'BASE', 'event_type': 'SOFT_EXIT_SIGNAL', 'execution_date': '2018-07-05', 'execution_open': 5005.0}",
+  "simulation_replay_performed": false,
+  "source_run_id": "run_20260925_standard_full_worker10_v01",
+  "source_manifest_sha256_before": "2b52e42eebc2c7f3eb0342faceed1a24b4ab5c8f3ad948cc3149a1d0414ba5ea",
+  "source_raw_sha256_before": {
+    "control_trades.csv": "c139a92f6379d82ac2fd3238967d1d734e9bef52616fe208ac1437bc6774c61f",
+    "candidate_trades.csv": "d21200dcf62b5c99e17b5efc7bdc183648c761e77e19175be84d2c8d22a51477",
+    "paired_trades.csv": "53274b48087ef8867cb71584eb684e031e01fa855efd5faa616b5535cb026517",
+    "p1_matched_trades.csv": "30973fa92118ab96f9a652710df70756a9c5e5955f8f460a6b985ab820e3c258",
+    "p1_soft_events.csv": "b7e04809b30acb41430bd3a7e0b690c40d68c1f334cb21fe319b5a14f652930f"
+  },
+  "raw_integrity_preflight": {
+    "control_candidate_population_symmetry": true,
+    "control_candidate_pair_set_exact": true,
+    "control_candidate_source_trade_id_equal_by_pair": true,
+    "entry_identity_and_execution_fields_aligned": true,
+    "paired_pair_id_unique_and_exact": true,
+    "matched_pair_id_unique_and_exact": true,
+    "matched_trade_id_equal_to_source_by_pair": true,
+    "soft_event_pair_references_in_matched_ledger": true,
+    "soft_event_duplicate_count": 0,
+    "soft_event_type_counts": {
+      "SOFT_EXIT_SIGNAL": 133,
+      "WEAK_PROTECT": 13561
+    },
+    "source_identity_count_with_trades": 1873,
+    "source_identity_set_subset_of_revised_target": true,
+    "excluded_identity_in_raw": [],
+    "row_counts": {
+      "control_trades.csv": 5016,
+      "candidate_trades.csv": 5016,
+      "paired_trades.csv": 5016,
+      "p1_matched_trades.csv": 5016,
+      "p1_soft_events.csv": 13694
+    }
+  },
+  "population_preflight": {
+    "status": "PASS",
+    "window_id": "P1",
+    "expected_window": [
+      "2014-01-02",
+      "2026-08-31",
+      "2026-09-01"
+    ],
+    "actual_window": [
+      "2014-01-02",
+      "2026-08-31",
+      "2026-09-01"
+    ],
+    "authority_coverage_start": "2010-01-04",
+    "authority_coverage_end": "2026-09-01",
+    "execution_support": "2026-09-01",
+    "common_identity_segment_count": 2887,
+    "common_ticker_count": 2869,
+    "population_source": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/p2_2_identity_authority_extension_v01/merged_pit_intervals.json",
+    "p2_population_reused": false,
+    "effective_pit_sha256": "9997c55526575bc2341b7ce2e056def1d0a8c3fb77d89c8fadb3716ae2f46dd4",
+    "permanent_identity_exclusions": [
+      {
+        "ticker": "009730",
+        "isu_cd": "KR7009730003",
+        "market": "KOSDAQ",
+        "effective_from": "2010-01-04",
+        "effective_to": "2026-09-01",
+        "reason": "user-approved permanent exclusion for P1 Pattern A stage UNAVAILABLE caused by an empty resampler week bucket",
+        "approval_scope": "P1 UNAVAILABLE 12 permanent exclusion V01",
+        "failure_class": "A_PIPELINE_BUG",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "031980",
+        "isu_cd": "KR7031980006",
+        "market": "KOSDAQ",
+        "effective_from": "2010-01-04",
+        "effective_to": "2026-09-01",
+        "reason": "user-approved permanent exclusion for P1 Pattern A stage UNAVAILABLE caused by Repository V2 source gaps",
+        "approval_scope": "P1 UNAVAILABLE 12 permanent exclusion V01",
+        "failure_class": "C_SOURCE_OR_AUTHORITY_GAP",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "035290",
+        "isu_cd": "KR7035290006",
+        "market": "KOSDAQ",
+        "effective_from": "2010-01-04",
+        "effective_to": "2026-09-01",
+        "reason": "user-approved permanent exclusion for P1 Pattern A stage UNAVAILABLE caused by Repository V2 source gaps",
+        "approval_scope": "P1 UNAVAILABLE 12 permanent exclusion V01",
+        "failure_class": "C_SOURCE_OR_AUTHORITY_GAP",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "036260",
+        "isu_cd": "KR7036260008",
+        "market": "KOSDAQ",
+        "effective_from": "2010-01-04",
+        "effective_to": "2021-02-10",
+        "reason": "user-approved permanent exclusion for P1 Pattern A stage UNAVAILABLE caused by Repository V2 source gaps",
+        "approval_scope": "P1 UNAVAILABLE 12 permanent exclusion V01",
+        "failure_class": "C_SOURCE_OR_AUTHORITY_GAP",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "036620",
+        "isu_cd": "KR7036620003",
+        "market": "KOSDAQ",
+        "effective_from": "2010-01-04",
+        "effective_to": "2026-09-01",
+        "reason": "user-approved permanent exclusion for P1 Pattern A stage UNAVAILABLE caused by an empty resampler week bucket",
+        "approval_scope": "P1 UNAVAILABLE 12 permanent exclusion V01",
+        "failure_class": "A_PIPELINE_BUG",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "043710",
+        "isu_cd": "KR7043710003",
+        "market": "KOSDAQ",
+        "effective_from": "2010-01-04",
+        "effective_to": "2026-09-01",
+        "reason": "user-approved permanent exclusion for P1 Pattern A stage UNAVAILABLE caused by Repository V2 source gaps",
+        "approval_scope": "P1 UNAVAILABLE 12 permanent exclusion V01",
+        "failure_class": "C_SOURCE_OR_AUTHORITY_GAP",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "044060",
+        "isu_cd": "KR7044060002",
+        "market": "KOSDAQ",
+        "effective_from": "2010-01-04",
+        "effective_to": "2025-08-20",
+        "reason": "user-approved permanent exclusion for P1 Pattern A stage UNAVAILABLE caused by Repository V2 source gaps",
+        "approval_scope": "P1 UNAVAILABLE 12 permanent exclusion V01",
+        "failure_class": "C_SOURCE_OR_AUTHORITY_GAP",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "052300",
+        "isu_cd": "KR7052300001",
+        "market": "KOSDAQ",
+        "effective_from": "2010-01-04",
+        "effective_to": "2026-09-01",
+        "reason": "user-approved permanent exclusion for P1 Pattern A stage UNAVAILABLE caused by an empty resampler week bucket",
+        "approval_scope": "P1 UNAVAILABLE 12 permanent exclusion V01",
+        "failure_class": "A_PIPELINE_BUG",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "052400",
+        "isu_cd": "KR7052400009",
+        "market": "KOSDAQ",
+        "effective_from": "2010-01-04",
+        "effective_to": "2026-09-01",
+        "reason": "user-approved permanent exclusion for P1 Pattern A stage UNAVAILABLE caused by Repository V2 source gaps",
+        "approval_scope": "P1 UNAVAILABLE 12 permanent exclusion V01",
+        "failure_class": "C_SOURCE_OR_AUTHORITY_GAP",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "068150",
+        "isu_cd": "KR7068150002",
+        "market": "KOSDAQ",
+        "effective_from": "2010-01-04",
+        "effective_to": "2017-03-06",
+        "reason": "user-approved permanent exclusion for P1 Pattern A stage UNAVAILABLE caused by Repository V2 source gaps",
+        "approval_scope": "P1 UNAVAILABLE 12 permanent exclusion V01",
+        "failure_class": "C_SOURCE_OR_AUTHORITY_GAP",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "246720",
+        "isu_cd": "KR7246720007",
+        "market": "KOSDAQ",
+        "effective_from": "2017-03-20",
+        "effective_to": "2026-09-01",
+        "reason": "user-approved permanent exclusion because authoritative terminal pricing is unavailable through the P3-2 cutoff",
+        "approval_scope": "P3-2 final closure V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "335890",
+        "isu_cd": "KR7335890000",
+        "market": "KOSDAQ",
+        "effective_from": "2020-11-26",
+        "effective_to": "2025-12-09",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "950110",
+        "isu_cd": "KR8392070007",
+        "market": "KOSDAQ",
+        "effective_from": "2012-12-17",
+        "effective_to": "2025-07-23",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "001140",
+        "isu_cd": "KR7001140003",
+        "market": "KOSPI",
+        "effective_from": "2010-01-04",
+        "effective_to": "2026-01-26",
+        "reason": "user-approved permanent exclusion for P1 Pattern A stage UNAVAILABLE caused by Repository V2 source gaps",
+        "approval_scope": "P1 UNAVAILABLE 12 permanent exclusion V01",
+        "failure_class": "C_SOURCE_OR_AUTHORITY_GAP",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "005390",
+        "isu_cd": "KR7005390000",
+        "market": "KOSPI",
+        "effective_from": "2010-01-04",
+        "effective_to": "2025-09-29",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "006390",
+        "isu_cd": "KR7006390009",
+        "market": "KOSPI",
+        "effective_from": "2010-01-04",
+        "effective_to": "2025-11-20",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "010420",
+        "isu_cd": "KR7010420008",
+        "market": "KOSPI",
+        "effective_from": "2010-01-04",
+        "effective_to": "2025-09-24",
+        "reason": "user-approved permanent exclusion for the 2025-09-25 delisting / wholly owned subsidiary lifecycle",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "031440",
+        "isu_cd": "KR7031440001",
+        "market": "KOSPI",
+        "effective_from": "2010-04-29",
+        "effective_to": "2026-08-10",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "049770",
+        "isu_cd": "KR7049770001",
+        "market": "KOSPI",
+        "effective_from": "2010-01-04",
+        "effective_to": "2025-07-30",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "057050",
+        "isu_cd": "KR7057050007",
+        "market": "KOSPI",
+        "effective_from": "2010-09-13",
+        "effective_to": "2026-07-16",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "069460",
+        "isu_cd": "KR7069460004",
+        "market": "KOSPI",
+        "effective_from": "2010-01-04",
+        "effective_to": "2026-09-01",
+        "reason": "user-approved permanent exclusion because authoritative terminal pricing is unavailable through the P3-2 cutoff",
+        "approval_scope": "P3-2 final closure V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "130660",
+        "isu_cd": "KR7130660004",
+        "market": "KOSPI",
+        "effective_from": "2010-12-16",
+        "effective_to": "2026-09-01",
+        "reason": "user-approved permanent exclusion for P1 Pattern A stage UNAVAILABLE caused by Repository V2 source gaps",
+        "approval_scope": "P1 UNAVAILABLE 12 permanent exclusion V01",
+        "failure_class": "C_SOURCE_OR_AUTHORITY_GAP",
+        "approved_date": "2026-09-26",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "138490",
+        "isu_cd": "KR7138490008",
+        "market": "KOSPI",
+        "effective_from": "2011-06-15",
+        "effective_to": "2026-04-15",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      }
+    ],
+    "permanent_excluded_identity_count": 23,
+    "permanent_excluded_segment_count": 23,
+    "checks": {
+      "window_resolve": true,
+      "authority_coverage_start": true,
+      "authority_coverage_execution_support": true,
+      "common_pit_population_nonempty": true,
+      "common_identity_segment_unique": true,
+      "identity_boundary_contract": true,
+      "p2_population_not_reused": true,
+      "permanent_identity_exclusions_absent": true
+    }
+  }
+}

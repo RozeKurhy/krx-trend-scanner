@@ -1,0 +1,935 @@
+{
+  "status": "COMPLETE",
+  "work_id": "P3_2_NEG40_WEAK_PROTECT_MATCHED_AB_V01",
+  "window_id": "P3-2",
+  "head": "60ef68ba24ac4d30ec3b160a5b151b2440e98645",
+  "recertification_code_head": "560c93d366357649795f2f38d6f801c95a510c11",
+  "runner_sha256": "446c62322bb8a27936bef1f68a61c73f2a939b621bf687439f5d13be8ec72cec",
+  "strategy_ids": {
+    "control": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "candidate": "PATTERN_A_FAST_CORE_V2_NEG40_WEAK_PROTECT_SOFT_EXIT_V01"
+  },
+  "window": {
+    "calendar_start": "2022-01-01",
+    "calendar_end": "2026-08-31",
+    "effective_start": "2022-01-03",
+    "effective_end": "2026-08-31",
+    "execution_support": "2026-09-01"
+  },
+  "population": {
+    "filter_contract": "no separate market-cap, minimum trading-value/volume, or fundamentals filter",
+    "identity_policy": "COMMON PIT identity intervals; no ticker-list broadcast; no identity stitching; no future fallback",
+    "common_identity_segments": 2706,
+    "unique_tickers_processed": 2709,
+    "assessment_universe_ticker_count": 2699,
+    "tickers_with_entries": 1172,
+    "control_entry_count": 1793,
+    "candidate_entry_count": 1793,
+    "raw_candidate_artifact_reused": false,
+    "permanent_identity_exclusion_recertification": {
+      "method": "in-memory exact (ticker, ISU) filter on saved CONTROL/Candidate trades and saved soft events; raw CSVs are unchanged",
+      "policy_version": "permanent_identity_exclusions_v01",
+      "source_control_trade_rows": 1805,
+      "source_candidate_trade_rows": 1805,
+      "source_paired_trade_rows": 1805,
+      "source_matched_ledger_rows": 1805,
+      "source_soft_event_rows": 1052,
+      "excluded_control_trade_rows": 12,
+      "excluded_candidate_trade_rows": 12,
+      "excluded_pair_count": 12,
+      "excluded_pair_ids": [
+        "005390|KR7005390000|KOSPI|2010-01-04|2025-09-29|005390_01",
+        "006390|KR7006390009|KOSPI|2010-01-04|2025-11-20|006390_01",
+        "031440|KR7031440001|KOSPI|2010-04-29|2026-08-10|031440_01",
+        "049770|KR7049770001|KOSPI|2010-01-04|2025-07-30|049770_01",
+        "049770|KR7049770001|KOSPI|2010-01-04|2025-07-30|049770_02",
+        "057050|KR7057050007|KOSPI|2010-09-13|2026-07-16|057050_01",
+        "057050|KR7057050007|KOSPI|2010-09-13|2026-07-16|057050_02",
+        "069460|KR7069460004|KOSPI|2010-01-04|2026-09-01|069460_01",
+        "138490|KR7138490008|KOSPI|2011-06-15|2026-04-15|138490_01",
+        "246720|KR7246720007|KOSDAQ|2017-03-20|2026-09-01|246720_01",
+        "335890|KR7335890000|KOSDAQ|2020-11-26|2025-12-09|335890_01",
+        "950110|KR8392070007|KOSDAQ|2012-12-17|2025-07-23|950110_01"
+      ],
+      "excluded_soft_event_rows": 1,
+      "excluded_identities": [
+        {
+          "ticker": "005390",
+          "isu_cd": "KR7005390000",
+          "pair_ids": [
+            "005390|KR7005390000|KOSPI|2010-01-04|2025-09-29|005390_01"
+          ],
+          "trade_count_per_side": 1,
+          "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+          "approval_scope": "P3-2 recertification V01",
+          "approved_date": "2026-09-25",
+          "policy_version": "permanent_identity_exclusions_v01"
+        },
+        {
+          "ticker": "006390",
+          "isu_cd": "KR7006390009",
+          "pair_ids": [
+            "006390|KR7006390009|KOSPI|2010-01-04|2025-11-20|006390_01"
+          ],
+          "trade_count_per_side": 1,
+          "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+          "approval_scope": "P3-2 recertification V01",
+          "approved_date": "2026-09-25",
+          "policy_version": "permanent_identity_exclusions_v01"
+        },
+        {
+          "ticker": "031440",
+          "isu_cd": "KR7031440001",
+          "pair_ids": [
+            "031440|KR7031440001|KOSPI|2010-04-29|2026-08-10|031440_01"
+          ],
+          "trade_count_per_side": 1,
+          "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+          "approval_scope": "P3-2 recertification V01",
+          "approved_date": "2026-09-25",
+          "policy_version": "permanent_identity_exclusions_v01"
+        },
+        {
+          "ticker": "049770",
+          "isu_cd": "KR7049770001",
+          "pair_ids": [
+            "049770|KR7049770001|KOSPI|2010-01-04|2025-07-30|049770_01",
+            "049770|KR7049770001|KOSPI|2010-01-04|2025-07-30|049770_02"
+          ],
+          "trade_count_per_side": 2,
+          "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+          "approval_scope": "P3-2 recertification V01",
+          "approved_date": "2026-09-25",
+          "policy_version": "permanent_identity_exclusions_v01"
+        },
+        {
+          "ticker": "057050",
+          "isu_cd": "KR7057050007",
+          "pair_ids": [
+            "057050|KR7057050007|KOSPI|2010-09-13|2026-07-16|057050_01",
+            "057050|KR7057050007|KOSPI|2010-09-13|2026-07-16|057050_02"
+          ],
+          "trade_count_per_side": 2,
+          "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+          "approval_scope": "P3-2 recertification V01",
+          "approved_date": "2026-09-25",
+          "policy_version": "permanent_identity_exclusions_v01"
+        },
+        {
+          "ticker": "069460",
+          "isu_cd": "KR7069460004",
+          "pair_ids": [
+            "069460|KR7069460004|KOSPI|2010-01-04|2026-09-01|069460_01"
+          ],
+          "trade_count_per_side": 1,
+          "reason": "user-approved permanent exclusion because authoritative terminal pricing is unavailable through the P3-2 cutoff",
+          "approval_scope": "P3-2 final closure V01",
+          "approved_date": "2026-09-25",
+          "policy_version": "permanent_identity_exclusions_v01"
+        },
+        {
+          "ticker": "138490",
+          "isu_cd": "KR7138490008",
+          "pair_ids": [
+            "138490|KR7138490008|KOSPI|2011-06-15|2026-04-15|138490_01"
+          ],
+          "trade_count_per_side": 1,
+          "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+          "approval_scope": "P3-2 recertification V01",
+          "approved_date": "2026-09-25",
+          "policy_version": "permanent_identity_exclusions_v01"
+        },
+        {
+          "ticker": "246720",
+          "isu_cd": "KR7246720007",
+          "pair_ids": [
+            "246720|KR7246720007|KOSDAQ|2017-03-20|2026-09-01|246720_01"
+          ],
+          "trade_count_per_side": 1,
+          "reason": "user-approved permanent exclusion because authoritative terminal pricing is unavailable through the P3-2 cutoff",
+          "approval_scope": "P3-2 final closure V01",
+          "approved_date": "2026-09-25",
+          "policy_version": "permanent_identity_exclusions_v01"
+        },
+        {
+          "ticker": "335890",
+          "isu_cd": "KR7335890000",
+          "pair_ids": [
+            "335890|KR7335890000|KOSDAQ|2020-11-26|2025-12-09|335890_01"
+          ],
+          "trade_count_per_side": 1,
+          "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+          "approval_scope": "P3-2 recertification V01",
+          "approved_date": "2026-09-25",
+          "policy_version": "permanent_identity_exclusions_v01"
+        },
+        {
+          "ticker": "950110",
+          "isu_cd": "KR8392070007",
+          "pair_ids": [
+            "950110|KR8392070007|KOSDAQ|2012-12-17|2025-07-23|950110_01"
+          ],
+          "trade_count_per_side": 1,
+          "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+          "approval_scope": "P3-2 recertification V01",
+          "approved_date": "2026-09-25",
+          "policy_version": "permanent_identity_exclusions_v01"
+        }
+      ],
+      "newly_approved_identity_keys_present_in_both_sources": [
+        [
+          "005390",
+          "KR7005390000"
+        ],
+        [
+          "006390",
+          "KR7006390009"
+        ],
+        [
+          "031440",
+          "KR7031440001"
+        ],
+        [
+          "049770",
+          "KR7049770001"
+        ],
+        [
+          "057050",
+          "KR7057050007"
+        ],
+        [
+          "069460",
+          "KR7069460004"
+        ],
+        [
+          "138490",
+          "KR7138490008"
+        ],
+        [
+          "246720",
+          "KR7246720007"
+        ],
+        [
+          "335890",
+          "KR7335890000"
+        ],
+        [
+          "950110",
+          "KR8392070007"
+        ]
+      ],
+      "policy_keys_added_since_source_full_run": [
+        [
+          "005390",
+          "KR7005390000"
+        ],
+        [
+          "006390",
+          "KR7006390009"
+        ],
+        [
+          "031440",
+          "KR7031440001"
+        ],
+        [
+          "049770",
+          "KR7049770001"
+        ],
+        [
+          "057050",
+          "KR7057050007"
+        ],
+        [
+          "069460",
+          "KR7069460004"
+        ],
+        [
+          "138490",
+          "KR7138490008"
+        ],
+        [
+          "246720",
+          "KR7246720007"
+        ],
+        [
+          "335890",
+          "KR7335890000"
+        ],
+        [
+          "950110",
+          "KR8392070007"
+        ]
+      ],
+      "source_raw_files_modified": false
+    },
+    "population_id": "P3_2_COMMON_PIT_DERIVED_FRESH_V01",
+    "source_authority": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/p2_2_identity_authority_extension_v01/merged_pit_intervals.json",
+    "p2_population_reused": false
+  },
+  "execution": {
+    "sample_wall_seconds": 51.811,
+    "estimated_full_seconds": 3639.491,
+    "actual_full_seconds": 3703.756,
+    "setup_seconds": 128.897,
+    "workers": 10,
+    "repository_v2_load_count": 2721
+  },
+  "data_authority": {
+    "repository": "Repository V2 local adjusted/raw composition",
+    "authority_sha256": "9997c55526575bc2341b7ce2e056def1d0a8c3fb77d89c8fadb3716ae2f46dd4",
+    "authority_interval_count": 3181,
+    "calendar_certified_through": "2026-09-21",
+    "market_calendar_sha256": null,
+    "network_calls": 0
+  },
+  "control": {
+    "trade_count": 1793,
+    "performance_pair_count": 1792,
+    "positive_count": 500,
+    "positive_rate_pct": 27.9018,
+    "mean_terminal_return_pct": 6.4094,
+    "median_terminal_return_pct": -15.265,
+    "open_at_cutoff_count": 183,
+    "lifecycle_state_counts": {
+      "SETTLED": 5,
+      "SUCCESSOR_POSITION": 3,
+      "UNRESOLVED_SETTLEMENT": 1
+    },
+    "holding_days_mean": 123.673,
+    "holding_days_median": 69.0,
+    "tail_counts": {
+      "le_neg_30_pct": 37,
+      "le_neg_40_pct": 22,
+      "le_neg_50_pct": 8,
+      "le_neg_60_pct": 5
+    },
+    "winner_counts": {
+      "ge_pos_30_pct": 322,
+      "ge_pos_50_pct": 249,
+      "ge_pos_100_pct": 96
+    },
+    "top_winner_concentration": {
+      "top_5": {
+        "mean_after_removal_pct": 5.0352,
+        "positive_return_contribution_pct": 7.5372,
+        "top_winner_sum_pct_points": 2487.69
+      },
+      "top_10": {
+        "mean_after_removal_pct": 4.1883,
+        "positive_return_contribution_pct": 12.1862,
+        "top_winner_sum_pct_points": 4022.08
+      }
+    }
+  },
+  "candidate": {
+    "trade_count": 1793,
+    "performance_pair_count": 1792,
+    "positive_count": 500,
+    "positive_rate_pct": 27.9018,
+    "mean_terminal_return_pct": 6.4623,
+    "median_terminal_return_pct": -15.27,
+    "open_at_cutoff_count": 173,
+    "lifecycle_state_counts": {
+      "SETTLED": 5,
+      "SUCCESSOR_POSITION": 3,
+      "UNRESOLVED_SETTLEMENT": 1
+    },
+    "holding_days_mean": 121.4939,
+    "holding_days_median": 69.0,
+    "tail_counts": {
+      "le_neg_30_pct": 41,
+      "le_neg_40_pct": 23,
+      "le_neg_50_pct": 3,
+      "le_neg_60_pct": 0
+    },
+    "winner_counts": {
+      "ge_pos_30_pct": 322,
+      "ge_pos_50_pct": 249,
+      "ge_pos_100_pct": 96
+    },
+    "top_winner_concentration": {
+      "top_5": {
+        "mean_after_removal_pct": 5.0882,
+        "positive_return_contribution_pct": 7.5372,
+        "top_winner_sum_pct_points": 2487.69
+      },
+      "top_10": {
+        "mean_after_removal_pct": 4.2415,
+        "positive_return_contribution_pct": 12.1862,
+        "top_winner_sum_pct_points": 4022.08
+      }
+    }
+  },
+  "paired": {
+    "count": 1792,
+    "mean_delta_pct_points": 0.0529,
+    "median_delta_pct_points": 0.0,
+    "improved": 13,
+    "worsened": 8,
+    "same": 1771
+  },
+  "matched_pair_counts": {
+    "matched_pairs_total": 1793,
+    "matched_pairs_numeric_comparable": 1792,
+    "matched_pairs_unresolved": 1,
+    "matched_pairs_authoritative_excluded": 1,
+    "matched_pairs_remediable_unresolved": 0
+  },
+  "candidate_diagnostics": {
+    "post_progressed_neg40_touch_trade_count": 29,
+    "post_progressed_neg40_touch_eod_event_count": 1051,
+    "weak_protect_trade_count": 14,
+    "weak_protect_eod_event_count": 1030,
+    "soft_signal_count": 21,
+    "incremental_soft_exit_count": 21,
+    "control_exit_deferred_then_resumed_count": 0,
+    "control_exit_deferred_open_at_cutoff_count": 0,
+    "control_ge_50_winner_damaged_count": 0,
+    "control_ge_100_winner_damaged_count": 0,
+    "control_deep_tail_improved_counts": {
+      "40": 2,
+      "50": 5,
+      "60": 5
+    },
+    "new_candidate_le_neg40_from_control_gt_neg40_count": 3,
+    "new_candidate_le_neg40_trades": [
+      {
+        "pair_id": "033160|KR7033160003|KOSDAQ|2010-01-04|2026-09-01|033160_01",
+        "trade_id": "033160_01",
+        "ticker": "033160",
+        "control_terminal_pct": -5.7,
+        "candidate_terminal_pct": -43.38,
+        "soft_signal_date": "2025-11-28",
+        "signal_return_pct": -43.84,
+        "execution_date": "2025-12-01",
+        "execution_open_return_pct": -43.38,
+        "paired_delta_pct_points": -37.68
+      },
+      {
+        "pair_id": "073640|KR7073640005|KOSDAQ|2010-01-04|2026-09-01|073640_01",
+        "trade_id": "073640_01",
+        "ticker": "073640",
+        "control_terminal_pct": -12.41,
+        "candidate_terminal_pct": -49.36,
+        "soft_signal_date": "2023-08-23",
+        "signal_return_pct": -46.68,
+        "execution_date": "2023-08-24",
+        "execution_open_return_pct": -49.36,
+        "paired_delta_pct_points": -36.95
+      },
+      {
+        "pair_id": "092200|KR7092200005|KOSPI|2010-01-04|2026-09-01|092200_01",
+        "trade_id": "092200_01",
+        "ticker": "092200",
+        "control_terminal_pct": -15.75,
+        "candidate_terminal_pct": -44.56,
+        "soft_signal_date": "2024-12-09",
+        "signal_return_pct": -44.14,
+        "execution_date": "2024-12-10",
+        "execution_open_return_pct": -44.56,
+        "paired_delta_pct_points": -28.810000000000002
+      }
+    ]
+  },
+  "validation": {
+    "duplicate_pair_ids": 0,
+    "entry_population_parity": true,
+    "entry_field_parity": true,
+    "matched_pairs_total": 1793,
+    "matched_pairs_numeric_comparable": 1792,
+    "matched_pairs_unresolved": 1,
+    "matched_pairs_authoritative_excluded": 1,
+    "matched_pairs_remediable_unresolved": 0,
+    "unresolved_lifecycle_trade_counts_by_side": {
+      "CONTROL": 1,
+      "Candidate": 1
+    },
+    "unresolved_lifecycle_state_counts": {
+      "UNRESOLVED_POST_DELIST_VALUE": {
+        "CONTROL": 0,
+        "Candidate": 0
+      },
+      "UNRESOLVED_SETTLEMENT": {
+        "CONTROL": 1,
+        "Candidate": 1
+      },
+      "UNRESOLVED_SUCCESSOR": {
+        "CONTROL": 0,
+        "Candidate": 0
+      }
+    },
+    "unresolved_lifecycle_state_totals": {
+      "UNRESOLVED_POST_DELIST_VALUE": 0,
+      "UNRESOLVED_SETTLEMENT": 2,
+      "UNRESOLVED_SUCCESSOR": 0
+    },
+    "unresolved_pair_ids": [
+      "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01"
+    ],
+    "entry_signal_window_violations": 0,
+    "entry_support_violations": 0,
+    "identity_entry_violations": 0,
+    "control_overlap_count": 0,
+    "candidate_overlap_count": 0,
+    "candidate_execution_support_missing_count": 0,
+    "candidate_unexecuted_signal_count": 0,
+    "candidate_lifecycle_settled_count": 0,
+    "identity_end_before_cutoff_open_count": 18,
+    "common_interval_end_before_cutoff_open_count": 18,
+    "open_terminal_valuation_unresolved_count": 12,
+    "exit_window_violations": 0,
+    "identity_signal_or_execution_violations": 0,
+    "control_preserved_rows": 173,
+    "control_exit_rows": 1599,
+    "control_unchanged_rows": 1772,
+    "control_unchanged_return_matches": 1771,
+    "candidate_stage_asof_future_violations": 0,
+    "lookahead": "completed monthly Pattern A snapshots only; no snapshot later than EOD signal",
+    "p3_2_lifecycle_gate_diagnostics_by_side": {
+      "CONTROL": {
+        "raw_identity_ended_open_count": 9,
+        "raw_terminal_valuation_unresolved_count": 6,
+        "effective_identity_ended_open_unresolved_count": 0,
+        "effective_terminal_valuation_unresolved_count": 0,
+        "effective_remediable_unresolved_count": 0,
+        "resolved_cutoff_mark_count": 3,
+        "resolved_cash_settlement_count": 5,
+        "raw_gate_affected_pair_ids": [
+          "003410|KR7003410008|KOSPI|2010-01-04|2024-07-08|003410_01",
+          "008560|KR7008560005|KOSPI|2010-01-04|2023-04-24|008560_01",
+          "019440|KR7019440007|KOSPI|2011-06-01|2026-02-11|019440_02",
+          "029960|KR7029960002|KOSDAQ|2010-01-04|2025-06-13|029960_01",
+          "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01",
+          "115390|KR7115390007|KOSPI|2010-01-28|2024-12-06|115390_01",
+          "138580|KR7138580006|KOSDAQ|2017-11-30|2024-11-21|138580_02",
+          "230360|KR7230360000|KOSDAQ|2016-08-08|2026-06-29|230360_02",
+          "282690|KR7282690007|KOSPI|2017-11-29|2024-10-07|282690_01"
+        ],
+        "authoritative_exclusion_pair_ids": [
+          "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01"
+        ],
+        "effective_unresolved_pair_ids": []
+      },
+      "Candidate": {
+        "raw_identity_ended_open_count": 9,
+        "raw_terminal_valuation_unresolved_count": 6,
+        "effective_identity_ended_open_unresolved_count": 0,
+        "effective_terminal_valuation_unresolved_count": 0,
+        "effective_remediable_unresolved_count": 0,
+        "resolved_cutoff_mark_count": 3,
+        "resolved_cash_settlement_count": 5,
+        "raw_gate_affected_pair_ids": [
+          "003410|KR7003410008|KOSPI|2010-01-04|2024-07-08|003410_01",
+          "008560|KR7008560005|KOSPI|2010-01-04|2023-04-24|008560_01",
+          "019440|KR7019440007|KOSPI|2011-06-01|2026-02-11|019440_02",
+          "029960|KR7029960002|KOSDAQ|2010-01-04|2025-06-13|029960_01",
+          "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01",
+          "115390|KR7115390007|KOSPI|2010-01-28|2024-12-06|115390_01",
+          "138580|KR7138580006|KOSDAQ|2017-11-30|2024-11-21|138580_02",
+          "230360|KR7230360000|KOSDAQ|2016-08-08|2026-06-29|230360_02",
+          "282690|KR7282690007|KOSPI|2017-11-29|2024-10-07|282690_01"
+        ],
+        "authoritative_exclusion_pair_ids": [
+          "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01"
+        ],
+        "effective_unresolved_pair_ids": []
+      }
+    },
+    "p3_2_effective_identity_ended_open_unresolved_count": 0,
+    "p3_2_effective_terminal_valuation_unresolved_count": 0,
+    "p3_2_effective_remediable_unresolved_count": 0,
+    "p3_2_authoritative_final_unresolved_pair_ids": [
+      "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01"
+    ],
+    "p3_2_effective_remediable_unresolved_pair_ids": [],
+    "p3_2_lifecycle_gate_raw_affected_pair_ids": [
+      "003410|KR7003410008|KOSPI|2010-01-04|2024-07-08|003410_01",
+      "008560|KR7008560005|KOSPI|2010-01-04|2023-04-24|008560_01",
+      "019440|KR7019440007|KOSPI|2011-06-01|2026-02-11|019440_02",
+      "029960|KR7029960002|KOSDAQ|2010-01-04|2025-06-13|029960_01",
+      "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01",
+      "115390|KR7115390007|KOSPI|2010-01-28|2024-12-06|115390_01",
+      "138580|KR7138580006|KOSDAQ|2017-11-30|2024-11-21|138580_02",
+      "230360|KR7230360000|KOSDAQ|2016-08-08|2026-06-29|230360_02",
+      "282690|KR7282690007|KOSPI|2017-11-29|2024-10-07|282690_01"
+    ],
+    "p3_2_lifecycle_gate_resolved_pair_ids": [
+      "003410|KR7003410008|KOSPI|2010-01-04|2024-07-08|003410_01",
+      "008560|KR7008560005|KOSPI|2010-01-04|2023-04-24|008560_01",
+      "019440|KR7019440007|KOSPI|2011-06-01|2026-02-11|019440_02",
+      "029960|KR7029960002|KOSDAQ|2010-01-04|2025-06-13|029960_01",
+      "115390|KR7115390007|KOSPI|2010-01-28|2024-12-06|115390_01",
+      "138580|KR7138580006|KOSDAQ|2017-11-30|2024-11-21|138580_02",
+      "230360|KR7230360000|KOSDAQ|2016-08-08|2026-06-29|230360_02",
+      "282690|KR7282690007|KOSPI|2017-11-29|2024-10-07|282690_01"
+    ],
+    "p3_2_lifecycle_gate_control_candidate_symmetry": true,
+    "p3_2_lifecycle_gate_symmetry_failures": [],
+    "p3_2_lifecycle_gate_unresolved_zero_by_side": {
+      "CONTROL": true,
+      "Candidate": true
+    },
+    "ledger_pair_id_unique": true,
+    "ledger_pair_id_set_matches_sources": true,
+    "ledger_source_trade_id_equal_by_pair": true,
+    "control_candidate_pair_id_sets_equal": true,
+    "control_candidate_source_trade_id_equal_by_pair": true,
+    "all_ledger_aggregates_match_summary": true,
+    "soft_event_duplicates": 0,
+    "soft_event_replay_consistency": true,
+    "control_candidate_lifecycle_settlement_counts_equal": true,
+    "lifecycle_settlement_provenance_complete": true,
+    "soft_exit_execution_contract_pass": true,
+    "cutoff_after_soft_event_count": 0,
+    "unexecuted_signal_count": 0,
+    "ledger_recomputation_pass": true
+  },
+  "certification_verdict": "RECERTIFIED_PASS_WITH_AUTHORITATIVE_EXCLUSION",
+  "verdict": "P3_2_REPLAY_PASS",
+  "ledger": {
+    "path": "artifacts/backtests/p3_2_neg40_weak_protect_v01/run_20260925_p3_2_worker10_corrective_v01/p3_2_matched_trades.csv",
+    "row_count": 1793,
+    "raw_source_row_count": 1805,
+    "assessment_population_rebuilt_from_filtered_source_trades": true,
+    "raw_source_csv_modified": false,
+    "pair_id_unique_count": 1793,
+    "distinct_source_trade_id_count": 1793,
+    "source_trade_id_preserved": true,
+    "control_candidate_trade_count_equal": true,
+    "control_candidate_pair_id_sets_equal": true,
+    "control_candidate_source_trade_id_equal_by_pair": true,
+    "aggregates_recomputed_from_full_ledger": {
+      "control": {
+        "trade_count": 1793,
+        "performance_pair_count": 1792,
+        "positive_count": 500,
+        "positive_rate_pct": 27.9018,
+        "mean_terminal_return_pct": 6.4094,
+        "median_terminal_return_pct": -15.265,
+        "open_at_cutoff_count": 183,
+        "lifecycle_state_counts": {
+          "SETTLED": 5,
+          "SUCCESSOR_POSITION": 3,
+          "UNRESOLVED_SETTLEMENT": 1
+        },
+        "holding_days_mean": 123.673,
+        "holding_days_median": 69.0,
+        "tail_counts": {
+          "le_neg_30_pct": 37,
+          "le_neg_40_pct": 22,
+          "le_neg_50_pct": 8,
+          "le_neg_60_pct": 5
+        },
+        "winner_counts": {
+          "ge_pos_30_pct": 322,
+          "ge_pos_50_pct": 249,
+          "ge_pos_100_pct": 96
+        },
+        "top_winner_concentration": {
+          "top_5": {
+            "mean_after_removal_pct": 5.0352,
+            "positive_return_contribution_pct": 7.5372,
+            "top_winner_sum_pct_points": 2487.69
+          },
+          "top_10": {
+            "mean_after_removal_pct": 4.1883,
+            "positive_return_contribution_pct": 12.1862,
+            "top_winner_sum_pct_points": 4022.08
+          }
+        }
+      },
+      "candidate": {
+        "trade_count": 1793,
+        "performance_pair_count": 1792,
+        "positive_count": 500,
+        "positive_rate_pct": 27.9018,
+        "mean_terminal_return_pct": 6.4623,
+        "median_terminal_return_pct": -15.27,
+        "open_at_cutoff_count": 173,
+        "lifecycle_state_counts": {
+          "SETTLED": 5,
+          "SUCCESSOR_POSITION": 3,
+          "UNRESOLVED_SETTLEMENT": 1
+        },
+        "holding_days_mean": 121.4939,
+        "holding_days_median": 69.0,
+        "tail_counts": {
+          "le_neg_30_pct": 41,
+          "le_neg_40_pct": 23,
+          "le_neg_50_pct": 3,
+          "le_neg_60_pct": 0
+        },
+        "winner_counts": {
+          "ge_pos_30_pct": 322,
+          "ge_pos_50_pct": 249,
+          "ge_pos_100_pct": 96
+        },
+        "top_winner_concentration": {
+          "top_5": {
+            "mean_after_removal_pct": 5.0882,
+            "positive_return_contribution_pct": 7.5372,
+            "top_winner_sum_pct_points": 2487.69
+          },
+          "top_10": {
+            "mean_after_removal_pct": 4.2415,
+            "positive_return_contribution_pct": 12.1862,
+            "top_winner_sum_pct_points": 4022.08
+          }
+        }
+      },
+      "paired": {
+        "count": 1792,
+        "mean_delta_pct_points": 0.0529,
+        "median_delta_pct_points": 0.0,
+        "improved": 13,
+        "worsened": 8,
+        "same": 1771
+      },
+      "pair_counts": {
+        "matched_pairs_total": 1793,
+        "matched_pairs_numeric_comparable": 1792,
+        "matched_pairs_unresolved": 1
+      }
+    },
+    "aggregate_reconciliation": {
+      "control_metrics_match_summary": true,
+      "candidate_metrics_match_summary": true,
+      "paired_metrics_match_summary": true
+    },
+    "pair_level_trade_status_and_terminal_reason_encoding": "CONTROL=<value>;CANDIDATE=<value>; side-specific columns are also included"
+  },
+  "soft_events": {
+    "path": "artifacts/backtests/p3_2_neg40_weak_protect_v01/run_20260925_p3_2_worker10_corrective_v01/p3_2_soft_events.csv",
+    "row_count": 1051,
+    "raw_source_row_count": 1052,
+    "excluded_source_event_rows": 1,
+    "raw_source_csv_modified": false,
+    "event_type_counts": {
+      "SOFT_EXIT_SIGNAL": 21,
+      "WEAK_PROTECT": 1030
+    },
+    "distinct_trade_counts_by_event_type": {
+      "SOFT_EXIT_SIGNAL": 21,
+      "WEAK_PROTECT": 14
+    },
+    "replay_matches_final_candidate_trades": true,
+    "soft_exit_execution_contract": "same matched trade; next local session; Repository V2 actual row OPEN within allowed execution support"
+  },
+  "lifecycle_settlement": {
+    "evidence_path": "docs/strategies/p2_2_lifecycle_settlement_evidence_v01.json",
+    "evidence_record_count": 23,
+    "in_window_evidence_record_count": 1,
+    "control_settled_trade_count": 0,
+    "candidate_settled_trade_count": 0,
+    "common_interval_end_before_cutoff_open_trade_count": 18,
+    "unresolved_identity_end_open_trade_count": 18,
+    "effective_identity_ended_open_unresolved_count": 0,
+    "raw_open_terminal_valuation_unresolved_count": 12,
+    "effective_terminal_valuation_unresolved_count": 0,
+    "authoritative_final_unresolved_pair_ids": [
+      "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01"
+    ],
+    "effective_remediable_unresolved_pair_ids": [],
+    "market_execution_synthesized": false
+  },
+  "p2_directional_comparison": {
+    "basis": "effect directions only; P2-2 and P2 windows are independent populations, not a shared cohort",
+    "p2_1_effects": {
+      "mean_paired_delta_pct_points": 0.0607,
+      "median_paired_delta_pct_points": 0.0,
+      "positive_count_delta": 0.0,
+      "le_neg_40_count_delta": 4.0,
+      "le_neg_50_count_delta": -8.0,
+      "le_neg_60_count_delta": -5.0,
+      "ge_pos_50_count_delta": 0.0,
+      "ge_pos_100_count_delta": 0.0,
+      "paired_improved_minus_worsened": 8.0
+    },
+    "p2_2_effects": {
+      "mean_paired_delta_pct_points": 0.0529,
+      "median_paired_delta_pct_points": 0.0,
+      "positive_count_delta": 0.0,
+      "le_neg_40_count_delta": 1.0,
+      "le_neg_50_count_delta": -5.0,
+      "le_neg_60_count_delta": -5.0,
+      "ge_pos_50_count_delta": 0.0,
+      "ge_pos_100_count_delta": 0.0,
+      "paired_improved_minus_worsened": 5.0
+    },
+    "metric_directions": {
+      "mean_paired_delta_pct_points": "P2_WINDOWS_SPLIT_OR_ZERO",
+      "median_paired_delta_pct_points": "P2_WINDOWS_SPLIT_OR_ZERO",
+      "positive_count_delta": "P2_WINDOWS_SPLIT_OR_ZERO",
+      "le_neg_40_count_delta": "AGREES_WITH_BOTH_P2_WINDOWS",
+      "le_neg_50_count_delta": "AGREES_WITH_BOTH_P2_WINDOWS",
+      "le_neg_60_count_delta": "AGREES_WITH_BOTH_P2_WINDOWS",
+      "ge_pos_50_count_delta": "P2_WINDOWS_SPLIT_OR_ZERO",
+      "ge_pos_100_count_delta": "P2_WINDOWS_SPLIT_OR_ZERO",
+      "paired_improved_minus_worsened": "AGREES_WITH_BOTH_P2_WINDOWS"
+    },
+    "metric_direction_counts": {
+      "agrees_with_both_p2_windows": 4,
+      "disagrees_with_both_p2_windows": 0,
+      "p2_windows_split_or_zero": 5
+    },
+    "overall_direction": "P2 방향성과 부분 일치"
+  },
+  "population_preflight": {
+    "status": "PASS",
+    "window_id": "P3-2",
+    "expected_window": [
+      "2022-01-03",
+      "2026-08-31",
+      "2026-09-01"
+    ],
+    "actual_window": [
+      "2022-01-03",
+      "2026-08-31",
+      "2026-09-01"
+    ],
+    "authority_coverage_start": "2010-01-04",
+    "authority_coverage_end": "2026-09-01",
+    "execution_support": "2026-09-01",
+    "common_identity_segment_count": 2706,
+    "common_ticker_count": 2699,
+    "population_source": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/p2_2_identity_authority_extension_v01/merged_pit_intervals.json",
+    "p2_population_reused": false,
+    "effective_pit_sha256": "9997c55526575bc2341b7ce2e056def1d0a8c3fb77d89c8fadb3716ae2f46dd4",
+    "permanent_identity_exclusions": [
+      {
+        "ticker": "246720",
+        "isu_cd": "KR7246720007",
+        "market": "KOSDAQ",
+        "effective_from": "2017-03-20",
+        "effective_to": "2026-09-01",
+        "reason": "user-approved permanent exclusion because authoritative terminal pricing is unavailable through the P3-2 cutoff",
+        "approval_scope": "P3-2 final closure V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "335890",
+        "isu_cd": "KR7335890000",
+        "market": "KOSDAQ",
+        "effective_from": "2020-11-26",
+        "effective_to": "2025-12-09",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "950110",
+        "isu_cd": "KR8392070007",
+        "market": "KOSDAQ",
+        "effective_from": "2012-12-17",
+        "effective_to": "2025-07-23",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "005390",
+        "isu_cd": "KR7005390000",
+        "market": "KOSPI",
+        "effective_from": "2010-01-04",
+        "effective_to": "2025-09-29",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "006390",
+        "isu_cd": "KR7006390009",
+        "market": "KOSPI",
+        "effective_from": "2010-01-04",
+        "effective_to": "2025-11-20",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "010420",
+        "isu_cd": "KR7010420008",
+        "market": "KOSPI",
+        "effective_from": "2010-01-04",
+        "effective_to": "2025-09-24",
+        "reason": "user-approved permanent exclusion for the 2025-09-25 delisting / wholly owned subsidiary lifecycle",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "031440",
+        "isu_cd": "KR7031440001",
+        "market": "KOSPI",
+        "effective_from": "2010-04-29",
+        "effective_to": "2026-08-10",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "049770",
+        "isu_cd": "KR7049770001",
+        "market": "KOSPI",
+        "effective_from": "2010-01-04",
+        "effective_to": "2025-07-30",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "057050",
+        "isu_cd": "KR7057050007",
+        "market": "KOSPI",
+        "effective_from": "2010-09-13",
+        "effective_to": "2026-07-16",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "069460",
+        "isu_cd": "KR7069460004",
+        "market": "KOSPI",
+        "effective_from": "2010-01-04",
+        "effective_to": "2026-09-01",
+        "reason": "user-approved permanent exclusion because authoritative terminal pricing is unavailable through the P3-2 cutoff",
+        "approval_scope": "P3-2 final closure V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      },
+      {
+        "ticker": "138490",
+        "isu_cd": "KR7138490008",
+        "market": "KOSPI",
+        "effective_from": "2011-06-15",
+        "effective_to": "2026-04-15",
+        "reason": "user-approved permanent exclusion for a rare lifecycle identity in the P3-2 audit roster",
+        "approval_scope": "P3-2 recertification V01",
+        "approved_date": "2026-09-25",
+        "policy_version": "permanent_identity_exclusions_v01"
+      }
+    ],
+    "permanent_excluded_identity_count": 11,
+    "permanent_excluded_segment_count": 11,
+    "checks": {
+      "window_resolve": true,
+      "authority_coverage_start": true,
+      "authority_coverage_execution_support": true,
+      "common_pit_population_nonempty": true,
+      "common_identity_segment_unique": true,
+      "identity_boundary_contract": true,
+      "p2_population_not_reused": true,
+      "permanent_identity_exclusions_absent": true
+    }
+  },
+  "strategy_assessment": "P3_2_REPLAY_PASS",
+  "p3_2_completion_verdict": "P3_2_CERTIFIED_PASS_WITH_AUTHORITATIVE_EXCLUSION"
+}

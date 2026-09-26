@@ -1,0 +1,101 @@
+{
+  "schema": "p2_1_unresolved_pair_inventory_v01",
+  "status": "COMPLETE",
+  "verdict": "P2_1_CORRECTIVE_REPLAY_COMPLETE_WITH_UNRESOLVED",
+  "matched_pairs_unresolved": 8,
+  "unique_source_isu_count": 8,
+  "unresolved_trade_rows": 16,
+  "pair_counts_by_lifecycle_state": {
+    "UNRESOLVED_SETTLEMENT": 1,
+    "UNRESOLVED_SUCCESSOR": 7,
+    "UNRESOLVED_POST_DELIST_VALUE": 0
+  },
+  "side_trade_row_counts_by_lifecycle_state": {
+    "UNRESOLVED_SETTLEMENT": {"CONTROL": 1, "Candidate": 1},
+    "UNRESOLVED_SUCCESSOR": {"CONTROL": 7, "Candidate": 7},
+    "UNRESOLVED_POST_DELIST_VALUE": {"CONTROL": 0, "Candidate": 0}
+  },
+  "additional_research_performed": false,
+  "entries": [
+    {
+      "pair_id": "008560|KR7008560005|KOSPI|2010-01-04|2023-04-24|008560_02",
+      "source_ticker": "008560",
+      "source_isu_cd": "KR7008560005",
+      "audit_roster_classification": "SETTLEMENT_CONFIRMED",
+      "runtime_catalog_terms_status": "PARTIAL",
+      "runtime_catalog_unresolved_fields": ["fractional_cash_valuation_rule"],
+      "control": {"trade_status": "OPEN_AT_CUTOFF", "lifecycle_state": "UNRESOLVED_SUCCESSOR", "event_type": "MANDATORY_SHARE_EXCHANGE", "unresolved_reason": "share-exchange event is confirmed but successor economics are incomplete", "terminal_return": null, "terminal_return_present": false},
+      "candidate": {"trade_status": "OPEN_AT_CUTOFF", "lifecycle_state": "UNRESOLVED_SUCCESSOR", "event_type": "MANDATORY_SHARE_EXCHANGE", "unresolved_reason": "share-exchange event is confirmed but successor economics are incomplete", "terminal_return": null, "terminal_return_present": false}
+    },
+    {
+      "pair_id": "023890|KR7023890007|KOSDAQ|2010-01-04|2021-04-16|023890_01",
+      "source_ticker": "023890",
+      "source_isu_cd": "KR7023890007",
+      "audit_roster_classification": "SETTLEMENT_CONFIRMED",
+      "runtime_catalog_terms_status": "PARTIAL",
+      "runtime_catalog_unresolved_fields": ["successor_available_date", "fractional_cash_valuation_rule"],
+      "control": {"trade_status": "OPEN_AT_CUTOFF", "lifecycle_state": "UNRESOLVED_SUCCESSOR", "event_type": "MANDATORY_SHARE_EXCHANGE", "unresolved_reason": "share-exchange event is confirmed but successor economics are incomplete", "terminal_return": null, "terminal_return_present": false},
+      "candidate": {"trade_status": "OPEN_AT_CUTOFF", "lifecycle_state": "UNRESOLVED_SUCCESSOR", "event_type": "MANDATORY_SHARE_EXCHANGE", "unresolved_reason": "share-exchange event is confirmed but successor economics are incomplete", "terminal_return": null, "terminal_return_present": false}
+    },
+    {
+      "pair_id": "043290|KR7043290006|KOSDAQ|2011-10-25|2021-07-19|043290_01",
+      "source_ticker": "043290",
+      "source_isu_cd": "KR7043290006",
+      "audit_roster_classification": "SETTLEMENT_CONFIRMED",
+      "runtime_catalog_terms_status": "PARTIAL",
+      "runtime_catalog_unresolved_fields": ["fractional_cash_valuation_rule"],
+      "control": {"trade_status": "OPEN_AT_CUTOFF", "lifecycle_state": "UNRESOLVED_SUCCESSOR", "event_type": "MANDATORY_SHARE_EXCHANGE", "unresolved_reason": "share-exchange event is confirmed but successor economics are incomplete", "terminal_return": null, "terminal_return_present": false},
+      "candidate": {"trade_status": "OPEN_AT_CUTOFF", "lifecycle_state": "UNRESOLVED_SUCCESSOR", "event_type": "MANDATORY_SHARE_EXCHANGE", "unresolved_reason": "share-exchange event is confirmed but successor economics are incomplete", "terminal_return": null, "terminal_return_present": false}
+    },
+    {
+      "pair_id": "046140|KR7046140000|KOSDAQ|2010-01-04|2023-12-15|046140_01",
+      "source_ticker": "046140",
+      "source_isu_cd": "KR7046140000",
+      "audit_roster_classification": "SETTLEMENT_CONFIRMED",
+      "runtime_catalog_terms_status": "PARTIAL",
+      "runtime_catalog_unresolved_fields": ["fractional_cash_valuation_rule"],
+      "control": {"trade_status": "OPEN_AT_CUTOFF", "lifecycle_state": "UNRESOLVED_SUCCESSOR", "event_type": "MANDATORY_SHARE_EXCHANGE", "unresolved_reason": "share-exchange event is confirmed but successor economics are incomplete", "terminal_return": null, "terminal_return_present": false},
+      "candidate": {"trade_status": "OPEN_AT_CUTOFF", "lifecycle_state": "UNRESOLVED_SUCCESSOR", "event_type": "MANDATORY_SHARE_EXCHANGE", "unresolved_reason": "share-exchange event is confirmed but successor economics are incomplete", "terminal_return": null, "terminal_return_present": false}
+    },
+    {
+      "pair_id": "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01",
+      "source_ticker": "096300",
+      "source_isu_cd": "KR7096300009",
+      "audit_roster_classification": "CHECK_REQUIRED",
+      "runtime_catalog_terms_status": "UNRESOLVED",
+      "runtime_catalog_unresolved_fields": ["distribution_per_share", "payment_date", "liquidation_close_date"],
+      "control": {"trade_status": "OPEN_AT_CUTOFF", "lifecycle_state": "UNRESOLVED_SETTLEMENT", "event_type": "LIQUIDATION_UNRESOLVED", "unresolved_reason": "liquidation amount/payment date is unresolved; no terminal price is imputed", "terminal_return": null, "terminal_return_present": false},
+      "candidate": {"trade_status": "OPEN_AT_CUTOFF", "lifecycle_state": "UNRESOLVED_SETTLEMENT", "event_type": "LIQUIDATION_UNRESOLVED", "unresolved_reason": "liquidation amount/payment date is unresolved; no terminal price is imputed", "terminal_return": null, "terminal_return_present": false}
+    },
+    {
+      "pair_id": "213090|KR7213090004|KOSDAQ|2015-12-01|2021-10-01|213090_01",
+      "source_ticker": "213090",
+      "source_isu_cd": "KR7213090004",
+      "audit_roster_classification": "SETTLEMENT_CONFIRMED",
+      "runtime_catalog_terms_status": "PARTIAL",
+      "runtime_catalog_unresolved_fields": ["fractional_cash_valuation_rule"],
+      "control": {"trade_status": "OPEN_AT_CUTOFF", "lifecycle_state": "UNRESOLVED_SUCCESSOR", "event_type": "MANDATORY_SHARE_EXCHANGE", "unresolved_reason": "share-exchange event is confirmed but successor economics are incomplete", "terminal_return": null, "terminal_return_present": false},
+      "candidate": {"trade_status": "OPEN_AT_CUTOFF", "lifecycle_state": "UNRESOLVED_SUCCESSOR", "event_type": "MANDATORY_SHARE_EXCHANGE", "unresolved_reason": "share-exchange event is confirmed but successor economics are incomplete", "terminal_return": null, "terminal_return_present": false}
+    },
+    {
+      "pair_id": "225330|KR7225330000|KOSDAQ|2016-04-07|2022-03-16|225330_01",
+      "source_ticker": "225330",
+      "source_isu_cd": "KR7225330000",
+      "audit_roster_classification": "SETTLEMENT_CONFIRMED",
+      "runtime_catalog_terms_status": "PARTIAL",
+      "runtime_catalog_unresolved_fields": ["fractional_cash_valuation_rule"],
+      "control": {"trade_status": "OPEN_AT_CUTOFF", "lifecycle_state": "UNRESOLVED_SUCCESSOR", "event_type": "MANDATORY_SHARE_EXCHANGE", "unresolved_reason": "share-exchange event is confirmed but successor economics are incomplete", "terminal_return": null, "terminal_return_present": false},
+      "candidate": {"trade_status": "OPEN_AT_CUTOFF", "lifecycle_state": "UNRESOLVED_SUCCESSOR", "event_type": "MANDATORY_SHARE_EXCHANGE", "unresolved_reason": "share-exchange event is confirmed but successor economics are incomplete", "terminal_return": null, "terminal_return_present": false}
+    },
+    {
+      "pair_id": "282690|KR7282690007|KOSPI|2017-11-29|2024-10-07|282690_01",
+      "source_ticker": "282690",
+      "source_isu_cd": "KR7282690007",
+      "audit_roster_classification": "SETTLEMENT_CONFIRMED",
+      "runtime_catalog_terms_status": "PARTIAL",
+      "runtime_catalog_unresolved_fields": ["successor_available_date", "fractional_cash_valuation_rule"],
+      "control": {"trade_status": "OPEN_AT_CUTOFF", "lifecycle_state": "UNRESOLVED_SUCCESSOR", "event_type": "MANDATORY_SHARE_EXCHANGE", "unresolved_reason": "share-exchange event is confirmed but successor economics are incomplete", "terminal_return": null, "terminal_return_present": false},
+      "candidate": {"trade_status": "OPEN_AT_CUTOFF", "lifecycle_state": "UNRESOLVED_SUCCESSOR", "event_type": "MANDATORY_SHARE_EXCHANGE", "unresolved_reason": "share-exchange event is confirmed but successor economics are incomplete", "terminal_return": null, "terminal_return_present": false}
+    }
+  ]
+}

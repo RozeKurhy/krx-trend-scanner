@@ -1,0 +1,98 @@
+{
+  "by_strategy": {
+    "CANDIDATE": {
+      "cash_insufficient_skips_when_40_active": 2,
+      "cash_sufficient_candidates_when_40_active": 0,
+      "decisions_when_40_active": {
+        "CASH_INSUFFICIENT": 2
+      },
+      "entry_candidates": [
+        {
+          "cash_before": 1013546.6901441407,
+          "cash_sufficient": false,
+          "concurrent_positions_before_candidate": 40,
+          "decision": "CASH_INSUFFICIENT",
+          "entry_date": "2021-06-28",
+          "identity": "KR7005830005",
+          "pair_id": "005830|KR7005830005|KOSPI|2010-01-04|2026-08-21|005830_01",
+          "position_cap_configured": null,
+          "required_total_buy_cost": 4973713.945199999,
+          "slot_cap_would_block": false,
+          "strategy_id": "PATTERN_A_FAST_CORE_V2_NEG40_WEAK_PROTECT_SOFT_EXIT_V01",
+          "ticker": "005830",
+          "trade_id": "005830_01"
+        },
+        {
+          "cash_before": 1013546.6901441407,
+          "cash_sufficient": false,
+          "concurrent_positions_before_candidate": 40,
+          "decision": "CASH_INSUFFICIENT",
+          "entry_date": "2021-06-28",
+          "identity": "KR7181710005",
+          "pair_id": "181710|KR7181710005|KOSPI|2013-08-29|2026-08-21|181710_01",
+          "position_cap_configured": null,
+          "required_total_buy_cost": 4973041.1722992,
+          "slot_cap_would_block": false,
+          "strategy_id": "PATTERN_A_FAST_CORE_V2_NEG40_WEAK_PROTECT_SOFT_EXIT_V01",
+          "ticker": "181710",
+          "trade_id": "181710_01"
+        }
+      ],
+      "entry_candidates_when_40_positions_active": 2,
+      "maximum_concurrent_positions": 40,
+      "slot_cap_skips_when_40_active": 0
+    },
+    "CONTROL": {
+      "cash_insufficient_skips_when_40_active": 2,
+      "cash_sufficient_candidates_when_40_active": 0,
+      "decisions_when_40_active": {
+        "CASH_INSUFFICIENT": 2
+      },
+      "entry_candidates": [
+        {
+          "cash_before": 1013546.6901441407,
+          "cash_sufficient": false,
+          "concurrent_positions_before_candidate": 40,
+          "decision": "CASH_INSUFFICIENT",
+          "entry_date": "2021-06-28",
+          "identity": "KR7005830005",
+          "pair_id": "005830|KR7005830005|KOSPI|2010-01-04|2026-08-21|005830_01",
+          "position_cap_configured": null,
+          "required_total_buy_cost": 4973713.945199999,
+          "slot_cap_would_block": false,
+          "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+          "ticker": "005830",
+          "trade_id": "005830_01"
+        },
+        {
+          "cash_before": 1013546.6901441407,
+          "cash_sufficient": false,
+          "concurrent_positions_before_candidate": 40,
+          "decision": "CASH_INSUFFICIENT",
+          "entry_date": "2021-06-28",
+          "identity": "KR7181710005",
+          "pair_id": "181710|KR7181710005|KOSPI|2013-08-29|2026-08-21|181710_01",
+          "position_cap_configured": null,
+          "required_total_buy_cost": 4973041.1722992,
+          "slot_cap_would_block": false,
+          "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+          "ticker": "181710",
+          "trade_id": "181710_01"
+        }
+      ],
+      "entry_candidates_when_40_positions_active": 2,
+      "maximum_concurrent_positions": 40,
+      "slot_cap_skips_when_40_active": 0
+    }
+  },
+  "cash_limit_krw": 200000000.0,
+  "cash_sufficient_slot_cap_skip_count": 0,
+  "classification": "NO_HIDDEN_N40_CAP",
+  "hidden_slot_cap_skip_count": 0,
+  "per_position_budget_krw": 5000000.0,
+  "portfolio_engine_has_slot_cap_branch": false,
+  "position_cap_applied": false,
+  "position_cap_configured": null,
+  "position_cap_source": "_portfolio_replay has no max-position guard; entry is gated only by duplicate identity, same-open, share count, and available-cash checks",
+  "source": "per-candidate portfolio replay audit; counts include every strategy ledger entry candidate evaluated at exactly 40 active positions"
+}

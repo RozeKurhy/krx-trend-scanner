@@ -1,0 +1,44 @@
+{
+  "run_id": "run_20260925_worker10_replay_v01",
+  "window_id": "P3-1",
+  "start_head": "4a77596c954ecef77e7db58832df4fd06130cf39",
+  "p2_1_only": false,
+  "p2_2_only": false,
+  "p3_1_only": true,
+  "raw_candidate_artifact_reused": false,
+  "effective_pit_sha256": "a1952956427c214c21aa2fa293366d9ef092b36ae5afb3b110fd1ae556ccb3b0",
+  "score_contract_sha256": "be0dc21c3764aeb147a3565e65850fc179ecc91e5700e8221932f12ce28ae501",
+  "stage_contract_sha256": "231cb43e2830017a72a9e8ba8d29296749f8a323e211266035d80cf841b70cf7",
+  "sample_benchmark": "artifacts/backtests/p3_1_neg40_weak_protect_v01/run_20260925_worker10_replay_v01/sample_benchmark_p3_1_common_pit_v01.json",
+  "simulation_status": "SIMULATION_COMPLETE",
+  "raw_artifacts_status": "COMPLETE",
+  "postprocess_status": "COMPLETE",
+  "execution": {
+    "workers": 10,
+    "processed_tickers": 2619,
+    "target_tickers": 2619,
+    "total_segments": 2626,
+    "elapsed_seconds": 2689.235,
+    "setup_seconds": 128.962,
+    "repository_load_count": 2630
+  },
+  "raw_artifacts": {
+    "control": "artifacts/backtests/p3_1_neg40_weak_protect_v01/run_20260925_worker10_replay_v01/control_trades.csv",
+    "candidate": "artifacts/backtests/p3_1_neg40_weak_protect_v01/run_20260925_worker10_replay_v01/candidate_trades.csv",
+    "paired": "artifacts/backtests/p3_1_neg40_weak_protect_v01/run_20260925_worker10_replay_v01/paired_trades.csv",
+    "matched_ledger": "artifacts/backtests/p3_1_neg40_weak_protect_v01/run_20260925_worker10_replay_v01/p3_1_matched_trades.csv",
+    "soft_events": "artifacts/backtests/p3_1_neg40_weak_protect_v01/run_20260925_worker10_replay_v01/p3_1_soft_events.csv"
+  },
+  "outputs": [
+    "artifacts/backtests/p3_1_neg40_weak_protect_v01/run_20260925_worker10_replay_v01/control_trades.csv",
+    "artifacts/backtests/p3_1_neg40_weak_protect_v01/run_20260925_worker10_replay_v01/candidate_trades.csv",
+    "artifacts/backtests/p3_1_neg40_weak_protect_v01/run_20260925_worker10_replay_v01/paired_trades.csv",
+    "artifacts/backtests/p3_1_neg40_weak_protect_v01/run_20260925_worker10_replay_v01/p3_1_soft_events.csv",
+    "artifacts/backtests/p3_1_neg40_weak_protect_v01/run_20260925_worker10_replay_v01/p3_1_matched_trades.csv",
+    "artifacts/backtests/p3_1_neg40_weak_protect_v01/run_20260925_worker10_replay_v01/summary.json",
+    "artifacts/backtests/p3_1_neg40_weak_protect_v01/run_20260925_worker10_replay_v01/p3_1_summary.json"
+  ],
+  "postprocess_stage": "COMPLETE",
+  "summary_status": "COMPLETE",
+  "summarized_from_raw_artifacts": true
+}

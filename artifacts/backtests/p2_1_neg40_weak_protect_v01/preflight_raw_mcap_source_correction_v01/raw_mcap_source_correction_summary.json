@@ -1,0 +1,63 @@
+{
+  "status": "P2_1_RAW_DAILY_MCAP_PREFLIGHT_PASS",
+  "source_correction_version": "P2_1_RAW_DAILY_MCAP_SOURCE_CORRECTION_V01",
+  "created_at_kst": "2026-09-26",
+  "scope": "P2-1 PIT market-cap preflight only; full portfolio replay not run",
+  "input": {
+    "raw_pair_count": 1801,
+    "survivor_pair_count": 1743,
+    "lifecycle_excluded_pair_count": 58,
+    "survivor_identity_count": 1129,
+    "source_file": "artifacts/backtests/p2_1_neg40_weak_protect_v01/run_20260925_corrective_full_recert_v02/raw_only_lifecycle_closure_v01/p2_1_matched_trades.csv"
+  },
+  "source": {
+    "provider": "KRX Open API Stock Daily",
+    "store_api": "KrxRawStockStore.load_snapshot",
+    "raw_store_root": "data/market/raw/krx_stocks/v01",
+    "source_field": "MKTCAP",
+    "repository_field": "market_cap",
+    "exact_signal_date_only": true,
+    "julia_legacy_snapshot_source_used": false,
+    "proxy_current_future_neighbor_fill_used": false,
+    "network_calls_made": false
+  },
+  "counts": {
+    "input_pair_count": 1743,
+    "exact_raw_mcap_resolved_count": 1743,
+    "market_cap_ge_1t_count": 330,
+    "market_cap_lt_1t_count": 1413,
+    "unresolved_count": 0,
+    "unresolved_reason_breakdown": {},
+    "unique_signal_dates": 211,
+    "exact_raw_partition_covered_signal_dates": 211,
+    "fully_exact_mcap_resolved_signal_dates": 211,
+    "signal_dates_not_fully_exact_mcap_resolved": 0
+  },
+  "legacy_date_coverage_comparison_only": {
+    "purpose": "date-count/source attribution only; legacy cap values not loaded or used for classification",
+    "available_manifest_dates": 117,
+    "quarter_grid_dates": 22,
+    "manifest_grid_union_dates": 127,
+    "survivor_signal_dates": 211,
+    "signal_dates_in_legacy_available_manifest": 111,
+    "additional_signal_dates_in_grid_only": 6,
+    "signal_dates_in_legacy_manifest_grid_union": 117,
+    "signal_dates_missing_from_legacy_manifest_grid_union": 94,
+    "grid_only_signal_dates": [
+      "2021-03-26",
+      "2021-06-25",
+      "2021-09-24",
+      "2021-12-24",
+      "2022-09-30",
+      "2024-06-28"
+    ],
+    "previous_211_minus_94_equals_117_reproduced": true,
+    "conclusion": "The previous 94 missing dates are explained by the union of legacy manifest dates and the quarterly grid; the manifest alone intersects 111 survivor signal dates. Neither legacy source was used for this raw-daily PIT classification."
+  },
+  "closure_vs_live_manifest_consistent": true,
+  "all_relevant_partition_hashes_verified": true,
+  "verified_market_date_partitions": 381,
+  "full_portfolio_replay_run": false,
+  "worker_count": 0,
+  "next_step_full_p2_1_10_workers_eligible": true
+}

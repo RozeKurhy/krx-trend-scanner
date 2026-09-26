@@ -1,0 +1,112 @@
+{
+  "authority": {
+    "effective_pit_file_sha256": "6747f26368369bc2ff5d20d695daed702c577bab34dd79640d41fbc862950bd1",
+    "latest_daily_update_as_of": "2026-09-21",
+    "latest_daily_update_source_frontier": "2026-09-21",
+    "merged_pit_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
+    "merged_pit_file_sha256": "ff783168c56a4772a681e34b97b17d8855f28d1c13df25094bd65cedbc80cd26",
+    "network_calls": 0,
+    "p2_2_identity_authority_preflight": {
+      "common_identity_segment_count": 2717,
+      "effective_end": "2026-08-31",
+      "effective_start": "2021-01-04",
+      "execution_support": "2026-09-01",
+      "pit_common_authority_global_coverage_end": "2026-09-01",
+      "pit_common_authority_global_coverage_start": "2010-01-04",
+      "reason": null,
+      "status": "PASS",
+      "window_id": "P2-2"
+    },
+    "raw_market_cap_store": "data/market/raw/krx_stocks/v01",
+    "raw_market_cap_threshold_krw": 1000000000000,
+    "rolling_manifest_certified_through": "2026-09-21",
+    "rolling_manifest_sha256": "25e2b2487af724439ce27959c514391e2a45f3fbacf412859efbc52d2ef760f1",
+    "survivor_filter": "latest_daily_update COMMON by exact ticker + ISU + market identity",
+    "worker_count": 10
+  },
+  "frozen_before_result_review": true,
+  "head_at_start": "bedc870cab7909d0dc1cb2de661127235036e7c2",
+  "market_cap_filter": {
+    "exact_entry_signal_date_only": true,
+    "exact_raw_partitions_used": 550,
+    "no_proxy_nearest_date_or_fill": true,
+    "qualified_fast_signal_attempt_count": 8262,
+    "rejected_signals_do_not_consume_reentry_state": true,
+    "same_date_raw_rows_verified_by_store_manifest_hash": true,
+    "source": "KRX Open API Stock Daily MKTCAP in exact-date immutable raw store",
+    "status_counts": {
+      "PASS": 485,
+      "REJECT_BELOW_THRESHOLD": 7777
+    },
+    "threshold_krw": 1000000000000,
+    "unresolved_count": 0
+  },
+  "network_calls": 0,
+  "portfolio": {
+    "buy_commission_rate": 0.00015,
+    "buy_slippage_rate": 0.001,
+    "cash_release": "next certified local trading session after sale execution; execution-support proceeds remain pending",
+    "cash_shortage_policy": "SKIP_FULL_TARGET_ORDER",
+    "cutoff_valuation": "effective-end exact close; no support-date close is used for open positions",
+    "duplicate_active_identity_forbidden": true,
+    "initial_capital_krw": 200000000.0,
+    "partial_fill": false,
+    "per_ticker_total_buy_cash_budget_krw": 5000000.0,
+    "position_cap": null,
+    "pyramiding": false,
+    "same_open_entry_priority": [
+      "PIT market_cap descending",
+      "ticker ascending"
+    ],
+    "same_open_exit_proceeds_reusable": false,
+    "sell_commission_rate": 0.00015,
+    "sell_slippage_rate": 0.001,
+    "sell_tax_schedule": [
+      {
+        "KOSDAQ": 0.0023,
+        "KOSPI": 0.0023,
+        "end": "2022-12-31",
+        "start": "2021-01-01"
+      },
+      {
+        "KOSDAQ": 0.002,
+        "KOSPI": 0.002,
+        "end": "2023-12-31",
+        "start": "2023-01-01"
+      },
+      {
+        "KOSDAQ": 0.0018,
+        "KOSPI": 0.0018,
+        "end": "2024-12-31",
+        "start": "2024-01-01"
+      },
+      {
+        "KOSDAQ": 0.0015,
+        "KOSPI": 0.0015,
+        "end": "2025-12-31",
+        "start": "2025-01-01"
+      },
+      {
+        "KOSDAQ": 0.002,
+        "KOSPI": 0.002,
+        "end": "2026-12-31",
+        "start": "2026-01-01"
+      }
+    ],
+    "valuation_carry": "most recent earlier valid adjusted close for portfolio MTM only"
+  },
+  "schema": "p2_2_realistic_portfolio_execution_contract_v01",
+  "scope": "P2-2 only",
+  "strategy_entry_contract": "V2 and Candidate share the same entry signal path after pre-evaluation survivor and exact raw PIT mcap gates; frozen Candidate exit overlay only",
+  "strategy_ids": {
+    "candidate": "PATTERN_A_FAST_CORE_V2_NEG40_WEAK_PROTECT_SOFT_EXIT_V01",
+    "control": "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+  },
+  "window": {
+    "calendar_end": "2026-08-31",
+    "calendar_start": "2021-01-01",
+    "effective_end": "2026-08-31",
+    "effective_start": "2021-01-04",
+    "execution_support": "2026-09-01"
+  }
+}

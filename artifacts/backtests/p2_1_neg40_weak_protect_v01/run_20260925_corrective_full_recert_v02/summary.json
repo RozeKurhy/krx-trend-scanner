@@ -1,0 +1,291 @@
+{
+  "status": "COMPLETE",
+  "work_id": "P2_1_NEG40_WEAK_PROTECT_MATCHED_AB_V01",
+  "window_id": "P2-1",
+  "head": "4536d2bf80681141ad2e43ab6a2f8082ec4df6e3",
+  "runner_sha256": "605972271a0b53e4638cebec7e80a2419a0f3537f02aea51a2e95d7183d6f13b",
+  "strategy_ids": {
+    "control": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "candidate": "PATTERN_A_FAST_CORE_V2_NEG40_WEAK_PROTECT_SOFT_EXIT_V01"
+  },
+  "window": {
+    "calendar_start": "2021-01-01",
+    "calendar_end": "2025-05-31",
+    "effective_start": "2021-01-04",
+    "effective_end": "2025-05-30",
+    "execution_support": "2025-06-02"
+  },
+  "population": {
+    "filter_contract": "no separate market-cap, minimum trading-value/volume, or fundamentals filter",
+    "identity_policy": "COMMON PIT identity intervals; no ticker-list broadcast; no identity stitching; no future fallback",
+    "common_identity_segments": 2657,
+    "unique_tickers_processed": 2648,
+    "tickers_with_entries": 1192,
+    "control_entry_count": 1834,
+    "candidate_entry_count": 1834,
+    "raw_candidate_artifact_reused": false,
+    "raw_candidate_artifact": "artifacts/backtests/fastcore_fundamentals_simple_v01/raw_candidates/fastcore_raw_candidates.csv"
+  },
+  "execution": {
+    "sample_wall_seconds": 45.03,
+    "estimated_full_seconds": 3110.319,
+    "actual_full_seconds": 3401.756,
+    "setup_seconds": 128.785,
+    "workers": 8,
+    "repository_v2_load_count": 2662
+  },
+  "data_authority": {
+    "repository": "Repository V2 local adjusted/raw composition",
+    "authority_sha256": "a1952956427c214c21aa2fa293366d9ef092b36ae5afb3b110fd1ae556ccb3b0",
+    "authority_interval_count": 3173,
+    "calendar_certified_through": "2026-09-21",
+    "market_calendar_sha256": null,
+    "network_calls": 0
+  },
+  "control": {
+    "trade_count": 1834,
+    "performance_pair_count": 1826,
+    "positive_count": 593,
+    "positive_rate_pct": 32.4754,
+    "mean_terminal_return_pct": 4.0143,
+    "median_terminal_return_pct": -15.16,
+    "open_at_cutoff_count": 256,
+    "lifecycle_state_counts": {
+      "SETTLED": 3,
+      "SETTLEMENT_PENDING": 1,
+      "UNRESOLVED_SETTLEMENT": 1,
+      "UNRESOLVED_SUCCESSOR": 7
+    },
+    "holding_days_mean": 130.0586,
+    "holding_days_median": 74.0,
+    "tail_counts": {
+      "le_neg_30_pct": 39,
+      "le_neg_40_pct": 26,
+      "le_neg_50_pct": 13,
+      "le_neg_60_pct": 8
+    },
+    "winner_counts": {
+      "ge_pos_30_pct": 301,
+      "ge_pos_50_pct": 190,
+      "ge_pos_100_pct": 66
+    },
+    "top_winner_concentration": {
+      "top_5": {
+        "mean_after_removal_pct": 2.8865,
+        "positive_return_contribution_pct": 7.3747,
+        "top_winner_sum_pct_points": 2073.9
+      },
+      "top_10": {
+        "mean_after_removal_pct": 2.2722,
+        "positive_return_contribution_pct": 11.3925,
+        "top_winner_sum_pct_points": 3203.78
+      }
+    }
+  },
+  "candidate": {
+    "trade_count": 1834,
+    "performance_pair_count": 1826,
+    "positive_count": 593,
+    "positive_rate_pct": 32.4754,
+    "mean_terminal_return_pct": 4.0763,
+    "median_terminal_return_pct": -15.175,
+    "open_at_cutoff_count": 238,
+    "lifecycle_state_counts": {
+      "SETTLED": 3,
+      "SETTLEMENT_PENDING": 1,
+      "UNRESOLVED_SETTLEMENT": 1,
+      "UNRESOLVED_SUCCESSOR": 7
+    },
+    "holding_days_mean": 125.6199,
+    "holding_days_median": 74.0,
+    "tail_counts": {
+      "le_neg_30_pct": 43,
+      "le_neg_40_pct": 30,
+      "le_neg_50_pct": 5,
+      "le_neg_60_pct": 3
+    },
+    "winner_counts": {
+      "ge_pos_30_pct": 301,
+      "ge_pos_50_pct": 190,
+      "ge_pos_100_pct": 66
+    },
+    "top_winner_concentration": {
+      "top_5": {
+        "mean_after_removal_pct": 2.9486,
+        "positive_return_contribution_pct": 7.3747,
+        "top_winner_sum_pct_points": 2073.9
+      },
+      "top_10": {
+        "mean_after_removal_pct": 2.3345,
+        "positive_return_contribution_pct": 11.3925,
+        "top_winner_sum_pct_points": 3203.78
+      }
+    }
+  },
+  "paired": {
+    "count": 1826,
+    "mean_delta_pct_points": 0.062,
+    "median_delta_pct_points": 0.0,
+    "improved": 17,
+    "worsened": 9,
+    "same": 1800
+  },
+  "matched_pair_counts": {
+    "matched_pairs_total": 1834,
+    "matched_pairs_numeric_comparable": 1826,
+    "matched_pairs_unresolved": 8
+  },
+  "candidate_diagnostics": {
+    "post_progressed_neg40_touch_trade_count": 36,
+    "post_progressed_neg40_touch_eod_event_count": 2620,
+    "weak_protect_trade_count": 17,
+    "weak_protect_eod_event_count": 2594,
+    "soft_signal_count": 26,
+    "incremental_soft_exit_count": 26,
+    "control_exit_deferred_then_resumed_count": 0,
+    "control_exit_deferred_open_at_cutoff_count": 0,
+    "control_ge_50_winner_damaged_count": 0,
+    "control_ge_100_winner_damaged_count": 0,
+    "control_deep_tail_improved_counts": {
+      "40": 2,
+      "50": 9,
+      "60": 6
+    },
+    "new_candidate_le_neg40_from_control_gt_neg40_count": 6,
+    "new_candidate_le_neg40_trades": [
+      {
+        "pair_id": "010950|KR7010950004|KOSPI|2010-01-04|2026-08-21|010950_01",
+        "trade_id": "010950_01",
+        "ticker": "010950",
+        "control_terminal_pct": -39.56,
+        "candidate_terminal_pct": -42.67,
+        "soft_signal_date": "2025-04-07",
+        "signal_return_pct": -43.22,
+        "execution_date": "2025-04-08",
+        "execution_open_return_pct": -42.67,
+        "paired_delta_pct_points": -3.1099999999999994
+      },
+      {
+        "pair_id": "025980|KR7025980004|KOSDAQ|2010-01-04|2026-08-21|025980_01",
+        "trade_id": "025980_01",
+        "ticker": "025980",
+        "control_terminal_pct": -33.75,
+        "candidate_terminal_pct": -40.18,
+        "soft_signal_date": "2022-06-20",
+        "signal_return_pct": -40.36,
+        "execution_date": "2022-06-21",
+        "execution_open_return_pct": -40.18,
+        "paired_delta_pct_points": -6.43
+      },
+      {
+        "pair_id": "073640|KR7073640005|KOSDAQ|2010-01-04|2026-08-21|073640_01",
+        "trade_id": "073640_01",
+        "ticker": "073640",
+        "control_terminal_pct": -12.41,
+        "candidate_terminal_pct": -49.36,
+        "soft_signal_date": "2023-08-23",
+        "signal_return_pct": -46.68,
+        "execution_date": "2023-08-24",
+        "execution_open_return_pct": -49.36,
+        "paired_delta_pct_points": -36.95
+      },
+      {
+        "pair_id": "092200|KR7092200005|KOSPI|2010-01-04|2026-08-21|092200_01",
+        "trade_id": "092200_01",
+        "ticker": "092200",
+        "control_terminal_pct": -23.2,
+        "candidate_terminal_pct": -44.56,
+        "soft_signal_date": "2024-12-09",
+        "signal_return_pct": -44.14,
+        "execution_date": "2024-12-10",
+        "execution_open_return_pct": -44.56,
+        "paired_delta_pct_points": -21.360000000000003
+      },
+      {
+        "pair_id": "105550|KR7105550008|KOSDAQ|2014-07-11|2026-08-21|105550_01",
+        "trade_id": "105550_01",
+        "ticker": "105550",
+        "control_terminal_pct": -13.74,
+        "candidate_terminal_pct": -40.0,
+        "soft_signal_date": "2022-12-21",
+        "signal_return_pct": -40.0,
+        "execution_date": "2022-12-22",
+        "execution_open_return_pct": -40.0,
+        "paired_delta_pct_points": -26.259999999999998
+      },
+      {
+        "pair_id": "192820|KR7192820009|KOSPI|2014-04-07|2026-08-21|192820_01",
+        "trade_id": "192820_01",
+        "ticker": "192820",
+        "control_terminal_pct": -14.03,
+        "candidate_terminal_pct": -42.06,
+        "soft_signal_date": "2022-01-18",
+        "signal_return_pct": -41.59,
+        "execution_date": "2022-01-19",
+        "execution_open_return_pct": -42.06,
+        "paired_delta_pct_points": -28.03
+      }
+    ]
+  },
+  "validation": {
+    "duplicate_pair_ids": 0,
+    "entry_population_parity": true,
+    "entry_field_parity": true,
+    "matched_pairs_total": 1834,
+    "matched_pairs_numeric_comparable": 1826,
+    "matched_pairs_unresolved": 8,
+    "unresolved_lifecycle_trade_counts_by_side": {
+      "CONTROL": 8,
+      "Candidate": 8
+    },
+    "unresolved_lifecycle_state_counts": {
+      "UNRESOLVED_POST_DELIST_VALUE": {
+        "CONTROL": 0,
+        "Candidate": 0
+      },
+      "UNRESOLVED_SETTLEMENT": {
+        "CONTROL": 1,
+        "Candidate": 1
+      },
+      "UNRESOLVED_SUCCESSOR": {
+        "CONTROL": 7,
+        "Candidate": 7
+      }
+    },
+    "unresolved_lifecycle_state_totals": {
+      "UNRESOLVED_POST_DELIST_VALUE": 0,
+      "UNRESOLVED_SETTLEMENT": 2,
+      "UNRESOLVED_SUCCESSOR": 14
+    },
+    "unresolved_pair_ids": [
+      "008560|KR7008560005|KOSPI|2010-01-04|2023-04-24|008560_02",
+      "023890|KR7023890007|KOSDAQ|2010-01-04|2021-04-16|023890_01",
+      "043290|KR7043290006|KOSDAQ|2011-10-25|2021-07-19|043290_01",
+      "046140|KR7046140000|KOSDAQ|2010-01-04|2023-12-15|046140_01",
+      "096300|KR7096300009|KOSPI|2010-01-04|2023-02-01|096300_01",
+      "213090|KR7213090004|KOSDAQ|2015-12-01|2021-10-01|213090_01",
+      "225330|KR7225330000|KOSDAQ|2016-04-07|2022-03-16|225330_01",
+      "282690|KR7282690007|KOSPI|2017-11-29|2024-10-07|282690_01"
+    ],
+    "entry_signal_window_violations": 0,
+    "entry_support_violations": 0,
+    "identity_entry_violations": 0,
+    "control_overlap_count": 0,
+    "candidate_overlap_count": 0,
+    "candidate_execution_support_missing_count": 0,
+    "candidate_unexecuted_signal_count": 0,
+    "candidate_lifecycle_settled_count": 0,
+    "common_interval_end_before_cutoff_open_count": 22,
+    "identity_end_before_cutoff_open_count": 22,
+    "open_terminal_valuation_unresolved_count": 24,
+    "exit_window_violations": 0,
+    "identity_signal_or_execution_violations": 0,
+    "control_preserved_rows": 238,
+    "control_exit_rows": 1570,
+    "control_unchanged_rows": 1808,
+    "control_unchanged_return_matches": 1800,
+    "candidate_stage_asof_future_violations": 0,
+    "lookahead": "completed monthly Pattern A snapshots only; no snapshot later than EOD signal"
+  },
+  "verdict": "CHECK_REQUIRED"
+}

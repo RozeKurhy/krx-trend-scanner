@@ -130,6 +130,10 @@ artifacts/
 ### G. Shared Infrastructure (`shared/`)
 - 특정 Pattern이나 전략에 종속되지 않는 공용 인프라 산출물 (`shared/cache_population/`).
 
+### H. Backtest Runs (`backtests/`)
+- `.gitignore` 대상이며 보관이 필요한 인증 run만 경로를 지정해 추적한다.
+- A FAST Core V2 NEG40 인증 백테스트 8회(단순 P1·P2-1·P2-2·P3-1·P3-2, 현실적 P2-1·P2-2·P3-2)의 위치·상태·무결성은 `backtests/BACKTEST_ARCHIVE_INVENTORY_V01.md`에 정리되어 있다.
+
 ---
 
 ## 3. Integrity & Preservation Policy
