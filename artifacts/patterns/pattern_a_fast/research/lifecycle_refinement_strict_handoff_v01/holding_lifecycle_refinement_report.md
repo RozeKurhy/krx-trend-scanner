@@ -117,6 +117,9 @@
 
 - **진입 stage와의 관계:** TRANSITION 진입 거래는 origin이 거의 기계적으로 TRANSITION이 된다(1,228 / 1,322). 그래서 같은 진입 stage 안에서 비교했다.
 - **TRANSITION 진입 안:** 순수 TRANSITION origin이 BASE origin보다 낮다. 평균 -24.4pp, AUC 0.41이며 P1·P2-2·pooled가 판정용이다.
+  - BASE origin은 B(장기 생존 선택 그룹) 비중이 34%로 TRANSITION origin(16%)보다 높다.
+  - 그래서 A 안에서만 다시 비교했다. TRANSITION 진입은 1,018건 vs 37건, 평균 +55.3% vs +73.0%, AUC 0.40이다. EARLY_TREND 진입은 216건 vs 21건, AUC 0.46이다.
+  - BASE 쪽이 높은 방향은 A 안에서도 남는다. 다만 BASE 표본이 작고 인과로 해석하지 않는다.
 - **EARLY_TREND 진입 안:** 차이가 섞인다(pooled AUC 0.49, P3-1·P3-2는 반대 방향이지만 건수만).
 - **결론:** 순수 `TRANSITION → EARLY_TREND → PROGRESSED`가 특별히 우수하다는 근거는 없다. 현실적 패널은 TRANSITION 외 origin이 1~5건이라 건수만 본다.
 
