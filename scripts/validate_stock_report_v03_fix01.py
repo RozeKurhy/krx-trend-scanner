@@ -94,7 +94,7 @@ def main() -> None:
         "readme_changed": False,
         "roadmap_changed": False,
         "a_fast_core_default_path": AFastCoreProvenance().strategy_contract_path,
-        "a_fast_core_runtime_artifact_path": "docs/validation/pattern_a_fast_final_strategy_v02.md",
+        "a_fast_core_runtime_artifact_path": AFastCoreProvenance().strategy_contract_path,
         "a_fast_core_generated_parity_mismatch_count": current["a_fast_core_mismatch_count"],
         "report_count": len(json_files),
         "markdown_count": len(md_files),

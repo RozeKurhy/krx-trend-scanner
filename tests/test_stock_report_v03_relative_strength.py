@@ -162,8 +162,9 @@ def test_celltrion_markdown_uses_percentage_points_for_changes():
         ticker="068270", as_of="2026-08-14", repo_root=REPO_ROOT, save_artifacts=False
     )
     md = render_markdown_report(report)
-    assert AFastCoreProvenance().strategy_contract_path == "docs/patterns/pattern_a_fast/strategy/final_v02.md"
-    assert report.a_fast_core.provenance.strategy_contract_path == "docs/validation/pattern_a_fast_final_strategy_v02.md"
+    expected_strategy_path = "docs/patterns/pattern_a_fast/strategy/version_02/README.md"
+    assert AFastCoreProvenance().strategy_contract_path == expected_strategy_path
+    assert report.a_fast_core.provenance.strategy_contract_path == expected_strategy_path
     assert "+53.72%p" in md
     assert "+14.88%p" in md
     assert "+38.85%p" in md

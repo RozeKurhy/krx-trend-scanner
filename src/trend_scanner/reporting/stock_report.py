@@ -73,8 +73,6 @@ from trend_scanner.backtest.snapshot_context import (
 )
 
 
-LEGACY_A_FAST_CORE_PROVENANCE_PATH = "docs/validation/pattern_a_fast_final_strategy_v02.md"
-
 logger = logging.getLogger(__name__)
 
 # Preserve the v0.4 API for callers that omit the new injection argument while
@@ -1305,10 +1303,6 @@ def generate_stock_report(
         metadata_provenance_mode=metadata_provenance_mode,
         market_calendar=production_market_calendar,
     )
-    # Preserve the frozen report-artifact provenance while keeping the model's
-    # default pointed at the canonical strategy document.
-    a_fast_core_section.provenance.strategy_contract_path = LEGACY_A_FAST_CORE_PROVENANCE_PATH
-
     # 9. Header & Summary
     if (
         cur_score is not None

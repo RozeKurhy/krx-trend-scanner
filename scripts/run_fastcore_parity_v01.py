@@ -502,7 +502,7 @@ def main() -> int:
 
     frozen_files = {
         "pattern_a_fast_final_strategy_v02.json": "artifacts/patterns/pattern_a_fast/production/strategy_v02/pattern_a_fast_final_strategy_v02.json",
-        "final_v02.md": "docs/patterns/pattern_a_fast/strategy/final_v02.md",
+        "version_02_README.md": "docs/patterns/pattern_a_fast/strategy/version_02/README.md",
         "trades.csv": "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/trades.csv",
         "pattern_a_fast_core_v02_reentry.py": "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py",
         "pattern_a_fast_evaluator.py": "src/trend_scanner/patterns/pattern_a_fast_evaluator.py",
