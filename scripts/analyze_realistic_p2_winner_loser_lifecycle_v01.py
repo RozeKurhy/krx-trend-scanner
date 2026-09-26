@@ -15,7 +15,8 @@
 `winner_loser_profile_v01`의 PIT 복원 캐시를 (ticker, isu_cd, entry_signal_date)로 재사용한다.
 
 사용법:
-    python scripts/analyze_realistic_p2_winner_loser_lifecycle_v01.py
+    python scripts/analyze_realistic_p2_winner_loser_lifecycle_v01.py                # 기본 profile
+    python scripts/analyze_realistic_p2_winner_loser_lifecycle_v01.py market-split   # KOSPI/KOSDAQ 분리 follow-up
 """
 
 from __future__ import annotations
@@ -593,10 +594,292 @@ def run(network_audit: dict[str, int]) -> None:
     print(json.dumps({"verdict": label, "panels": {k: {kk: vv for kk, vv in v.items() if kk != "classifications"} for k, v in detail["panels"].items()}}, ensure_ascii=False, indent=2, default=str))
 
 
+# ---------------------------------------------------------------------------
+# Follow-up: KOSPI / KOSDAQ 분리 lifecycle 비교 (market-split)
+# ---------------------------------------------------------------------------
+
+MARKET_OUTPUT_DIR = ROOT / "artifacts/patterns/pattern_a_fast/research/realistic_p2_market_split_lifecycle_v01"
+MARKETS = ["KOSPI", "KOSDAQ"]
+MARKET_PRIMARY_METRICS = ["mean_return", "ge_50_rate_pct", "ge_100_rate_pct", "return_auc_effect"]
+# 판정 규칙(결과 확인 전에 고정). 표본 수만 보고 정했다.
+MARKET_RULES = {
+    "comparison": "NORMAL_vs_COVERAGE_COMBINED on ledger terminal_return, ALL trades",
+    "tier_a_min_n": 20,
+    "tier_b_min_n": 10,
+    "deep_loss_generalize_min": {"LOSS_30": 10, "LOSS_50": 5},
+    "panel_favorable": ">= 3 of (mean, +50%, +100%, AUC-0.5) favorable and mean difference > 0",
+    "market_status": {
+        "HOLDS": ">= 1 tier-A ELIGIBLE panel, every tier-A ELIGIBLE panel favorable, and every tier-A FILLED panel has mean difference > 0",
+        "NOT_HOLDS": "some tier-A ELIGIBLE panel is not favorable",
+        "DESCRIPTIVE_ONLY": "no tier-A ELIGIBLE panel but >= 1 tier-B ELIGIBLE panel (direction reported, not judged)",
+        "INSUFFICIENT": "no tier-B ELIGIBLE panel",
+    },
+    "verdict": {
+        "INSUFFICIENT_EVIDENCE": "either market is DESCRIPTIVE_ONLY or INSUFFICIENT",
+        "REALISTIC_P2_LIFECYCLE_EFFECT_MARKET_DEPENDENT": "one market HOLDS and the other NOT_HOLDS, or both NOT_HOLDS",
+        "REALISTIC_P2_LIFECYCLE_ADVANTAGE_STRONGER_IN_KOSPI": "both HOLD and KOSPI / KOSDAQ mean-difference ratio >= 1.5 (tier-A ELIGIBLE average)",
+        "REALISTIC_P2_LIFECYCLE_ADVANTAGE_STRONGER_IN_KOSDAQ": "both HOLD and the ratio <= 1 / 1.5",
+        "REALISTIC_P2_LIFECYCLE_ADVANTAGE_HOLDS_IN_BOTH_MARKETS": "both HOLD otherwise",
+    },
+    "strength_ratio": 1.5,
+    "composition_check": "market-stratified difference = sum over markets of w_m * (NORMAL_m - COVERAGE_m), w_m = market share of the panel's NORMAL + COVERAGE trades; compared with the raw difference",
+}
+
+
+def market_overall_rows(data: pd.DataFrame, window: str, layer: str) -> list[dict[str, Any]]:
+    rows = []
+    for market in ["ALL", *MARKETS]:
+        scoped = data if market == "ALL" else data[data["market"] == market]
+        row = {"window": window, "layer": layer, "market": market, **wl.lifecycle_metrics(scoped)}
+        row["market_share_pct"] = wl._round(len(scoped) / len(data) * 100.0) if len(data) else None
+        for group in (wl.NORMAL, wl.COVERAGE, wl.NEVER):
+            row[f"share_{group}_pct"] = wl._round(scoped["lifecycle_class"].isin(wl.LIFECYCLE_GROUPS[group]).mean() * 100.0) if len(scoped) else None
+        atr = pd.to_numeric(scoped["atr_14_pct"], errors="coerce").dropna()
+        row["median_atr_14_pct_joined"] = wl._round(atr.median(), 6) if len(atr) else None
+        row["atr_joined_n"] = int(len(atr))
+        rows.append(row)
+    if sum(r["trades"] for r in rows if r["market"] != "ALL") != len(data):
+        raise RuntimeError(f"MARKET_SPLIT_COUNT_MISMATCH:{window}:{layer}")
+    return rows
+
+
+def market_lifecycle_rows(data: pd.DataFrame, window: str, layer: str) -> list[dict[str, Any]]:
+    rows = []
+    for market in MARKETS:
+        scoped = data[data["market"] == market]
+        total = 0
+        for version in ("ALL", "CLOSED_ONLY"):
+            version_data = scoped if version == "ALL" else scoped[scoped["trade_status"].isin(wl.CLOSED_STATUSES)]
+            for group in wl.LIFECYCLE_GROUPS:
+                metrics = wl.lifecycle_metrics(wl.lifecycle_group_frame(version_data, group))
+                if version == "ALL" and group in (wl.NORMAL, wl.SKIPPED, wl.WITHOUT_DIRECT, wl.NEVER):
+                    total += metrics["trades"]
+                rows.append({"window": window, "layer": layer, "market": market, "version": version, "lifecycle_group": group,
+                             "role": "REFERENCE_ONLY" if group == wl.NEVER else "PRIMARY", **metrics})
+        if total != len(scoped):
+            raise RuntimeError(f"LIFECYCLE_SPLIT_COUNT_MISMATCH:{window}:{layer}:{market}:{total}:{len(scoped)}")
+    return rows
+
+
+def market_tier(first_n: int, second_n: int) -> str:
+    n = min(first_n, second_n)
+    if n >= MARKET_RULES["tier_a_min_n"]:
+        return "A_EVALUABLE"
+    if n >= MARKET_RULES["tier_b_min_n"]:
+        return "B_DESCRIPTIVE"
+    return "C_TOO_SMALL"
+
+
+def market_panel_favorable(row: dict[str, Any]) -> bool | None:
+    if row.get("favorable") is None:
+        return None
+    favorable = 0
+    for metric in MARKET_PRIMARY_METRICS:
+        value = row.get(metric if metric == "return_auc_effect" else f"{metric}_diff")
+        favorable += value is not None and not (isinstance(value, float) and math.isnan(value)) and value > 0
+    return bool(favorable >= 3 and row["mean_return_diff"] > 0)
+
+
+def market_auc_rows(data: pd.DataFrame, window: str, layer: str) -> list[dict[str, Any]]:
+    rows = []
+    for market in MARKETS:
+        scoped = data[data["market"] == market]
+        for version in ("ALL", "CLOSED_ONLY"):
+            version_data = scoped if version == "ALL" else scoped[scoped["trade_status"].isin(wl.CLOSED_STATUSES)]
+            groups = wl.assign_groups(version_data["terminal_return"].astype(float))
+            for comparison, first, second in wl.LIFECYCLE_COMPARISONS:
+                row = wl.lifecycle_compare(wl.lifecycle_group_frame(version_data, first), wl.lifecycle_group_frame(version_data, second))
+                row["tier"] = market_tier(row["first_n"], row["second_n"])
+                row["panel_favorable"] = market_panel_favorable(row)
+                row["loss_30_count"] = int(groups["LOSS_30"].sum())
+                row["loss_50_count"] = int(groups["LOSS_50"].sum())
+                row["deep_loss_generalizable"] = bool(
+                    row["loss_30_count"] >= MARKET_RULES["deep_loss_generalize_min"]["LOSS_30"]
+                    and row["loss_50_count"] >= MARKET_RULES["deep_loss_generalize_min"]["LOSS_50"]
+                )
+                rows.append({"window": window, "layer": layer, "market": market, "version": version,
+                             "comparison": comparison, "first": first, "second": second, **row})
+    return rows
+
+
+def stratified_rows(data: pd.DataFrame, window: str, layer: str) -> list[dict[str, Any]]:
+    """시장 구성을 고정한 NORMAL-coverage 차이. raw 차이와 비교해 구성 효과를 본다."""
+    normal = wl.lifecycle_group_frame(data, wl.NORMAL)
+    coverage = wl.lifecycle_group_frame(data, wl.COVERAGE)
+    raw = wl.lifecycle_compare(normal, coverage)
+    both = pd.concat([normal, coverage])
+    weights = both["market"].value_counts(normalize=True)
+    row: dict[str, Any] = {
+        "window": window, "layer": layer,
+        "normal_n": raw["first_n"], "coverage_n": raw["second_n"],
+        "normal_kospi_share_pct": wl._round((normal["market"] == "KOSPI").mean() * 100.0),
+        "coverage_kospi_share_pct": wl._round((coverage["market"] == "KOSPI").mean() * 100.0),
+    }
+    for metric in ("mean_return", "ge_50_rate_pct", "ge_100_rate_pct", "le_neg_30_rate_pct"):
+        stratified, usable = 0.0, True
+        for market, weight in weights.items():
+            n_m = normal[normal["market"] == market]
+            c_m = coverage[coverage["market"] == market]
+            if n_m.empty or c_m.empty:
+                usable = False
+                break
+            stratified += weight * (wl.lifecycle_metrics(n_m)[metric] - wl.lifecycle_metrics(c_m)[metric])
+        row[f"{metric}_raw_diff"] = raw[f"{metric}_diff"]
+        row[f"{metric}_market_stratified_diff"] = wl._round(stratified) if usable else None
+        row[f"{metric}_stratified_to_raw_ratio"] = (
+            wl._round(stratified / raw[f"{metric}_diff"]) if usable and raw[f"{metric}_diff"] else None
+        )
+    return [row]
+
+
+def market_status(auc: pd.DataFrame, market: str) -> tuple[str, dict[str, Any]]:
+    rows = auc[(auc["market"] == market) & (auc["version"] == "ALL") & (auc["comparison"] == "NORMAL_vs_COVERAGE_COMBINED")]
+    eligible_a = rows[(rows["layer"] == "ELIGIBLE") & (rows["tier"] == "A_EVALUABLE")]
+    filled_a = rows[(rows["layer"] == "FILLED") & (rows["tier"] == "A_EVALUABLE")]
+    eligible_b = rows[(rows["layer"] == "ELIGIBLE") & (rows["tier"] == "B_DESCRIPTIVE")]
+    detail = {
+        "panels": {f"{r['window']}|{r['layer']}": {"tier": r["tier"], "n": [int(r["first_n"]), int(r["second_n"])],
+                                                    "favorable": r["panel_favorable"], "mean_diff": r["mean_return_diff"],
+                                                    "auc_effect": r["return_auc_effect"]} for _, r in rows.iterrows()},
+        "tier_a_eligible_mean_diff_avg": wl._round(eligible_a["mean_return_diff"].mean()) if len(eligible_a) else None,
+        "tier_a_eligible_auc_effect_avg": wl._round(eligible_a["return_auc_effect"].mean()) if len(eligible_a) else None,
+        "tier_b_eligible_directions": {r["window"]: bool(r["panel_favorable"]) for _, r in eligible_b.iterrows()},
+    }
+    if len(eligible_a):
+        if eligible_a["panel_favorable"].all() and (filled_a["mean_return_diff"] > 0).all():
+            return "HOLDS", detail
+        return "NOT_HOLDS", detail
+    if len(eligible_b):
+        return "DESCRIPTIVE_ONLY", detail
+    return "INSUFFICIENT", detail
+
+
+def market_verdict(auc: pd.DataFrame) -> tuple[str, str, dict[str, Any]]:
+    statuses = {m: market_status(auc, m) for m in MARKETS}
+    detail = {m: {"status": s, **d} for m, (s, d) in statuses.items()}
+    kospi, kosdaq = statuses["KOSPI"][0], statuses["KOSDAQ"][0]
+    if {kospi, kosdaq} & {"DESCRIPTIVE_ONLY", "INSUFFICIENT"}:
+        return "INSUFFICIENT_EVIDENCE", "INSUFFICIENT_EVIDENCE", detail
+    if kospi == "HOLDS" and kosdaq == "HOLDS":
+        ratio = detail["KOSPI"]["tier_a_eligible_mean_diff_avg"] / detail["KOSDAQ"]["tier_a_eligible_mean_diff_avg"]
+        detail["kospi_to_kosdaq_mean_diff_ratio"] = wl._round(ratio)
+        if ratio >= MARKET_RULES["strength_ratio"]:
+            return "REALISTIC_P2_LIFECYCLE_ADVANTAGE_STRONGER_IN_KOSPI", "LIFECYCLE_EFFECT_STRONGER_IN_KOSPI", detail
+        if ratio <= 1 / MARKET_RULES["strength_ratio"]:
+            return "REALISTIC_P2_LIFECYCLE_ADVANTAGE_STRONGER_IN_KOSDAQ", "LIFECYCLE_EFFECT_STRONGER_IN_KOSDAQ", detail
+        return "REALISTIC_P2_LIFECYCLE_ADVANTAGE_HOLDS_IN_BOTH_MARKETS", "LIFECYCLE_EFFECT_MARKET_INDEPENDENT", detail
+    return "REALISTIC_P2_LIFECYCLE_EFFECT_MARKET_DEPENDENT", "LIFECYCLE_EFFECT_MARKET_DEPENDENT", detail
+
+
+def broad_market_reference(window: str) -> list[dict[str, Any]]:
+    broad = wl.load_window_ledger(window)
+    broad = broad[broad["terminal_return"].notna()]
+    rows = []
+    for market in MARKETS:
+        scoped = broad[broad["market"] == market]
+        row = wl.lifecycle_compare(wl.lifecycle_group_frame(scoped, wl.NORMAL), wl.lifecycle_group_frame(scoped, wl.COVERAGE))
+        overall = wl.lifecycle_metrics(scoped)
+        rows.append({"window": window, "layer": "BROAD_SAME_WINDOW", "market": market,
+                     "market_trades": overall["trades"], "market_mean_return": overall["mean_return"],
+                     "market_le_neg_30_rate_pct": overall["le_neg_30_rate_pct"],
+                     "normal_n": row["first_n"], "coverage_n": row["second_n"],
+                     "mean_return_diff": row["mean_return_diff"], "ge_50_rate_pct_diff": row["ge_50_rate_pct_diff"],
+                     "ge_100_rate_pct_diff": row["ge_100_rate_pct_diff"], "le_neg_30_rate_pct_diff": row["le_neg_30_rate_pct_diff"],
+                     "return_auc": row["return_auc"]})
+    return rows
+
+
+def run_market_split(network_audit: dict[str, int]) -> None:
+    MARKET_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    enrichment = load_enrichment()
+    overall, lifecycle, auc, stratified, broad_ref, gates = [], [], [], [], [], {}
+    frames: dict[str, pd.DataFrame] = {}
+    for window in WINDOWS:
+        run_data = load_run(window)
+        gates[window] = {"eligible": headline_gate(window, run_data)["eligible_trades"], "filled": EXPECTED_FILLED[window]}
+        frame, _ = build_panel_frame(run_data, enrichment)
+        if set(frame["market"].unique()) - set(MARKETS):
+            raise RuntimeError(f"UNEXPECTED_MARKET:{window}")
+        frames[window] = frame
+        for layer in LAYERS:
+            data = layer_frame(frame, layer)
+            overall += market_overall_rows(data, window, layer)
+            lifecycle += market_lifecycle_rows(data, window, layer)
+            auc += market_auc_rows(data, window, layer)
+            stratified += stratified_rows(data, window, layer)
+        broad_ref += broad_market_reference(window)
+
+    overall_df, lifecycle_df, auc_df = pd.DataFrame(overall), pd.DataFrame(lifecycle), pd.DataFrame(auc)
+    overall_df.to_csv(MARKET_OUTPUT_DIR / "market_overall_profile.csv", index=False)
+    lifecycle_df.to_csv(MARKET_OUTPUT_DIR / "market_lifecycle_profile.csv", index=False)
+    auc_df.to_csv(MARKET_OUTPUT_DIR / "market_lifecycle_auc.csv", index=False)
+    pd.DataFrame(stratified).to_csv(MARKET_OUTPUT_DIR / "market_stratified_lifecycle_effect.csv", index=False)
+    pd.DataFrame(broad_ref).to_csv(MARKET_OUTPUT_DIR / "broad_same_window_market_reference.csv", index=False)
+
+    primary = auc_df[(auc_df["version"] == "ALL") & (auc_df["comparison"] == "NORMAL_vs_COVERAGE_COMBINED")]
+    split_columns = ["layer", "market", "tier", "first_n", "second_n", "mean_return_first", "mean_return_second", "mean_return_diff",
+                     "median_return_first", "median_return_second", "ge_50_rate_pct_first", "ge_50_rate_pct_second",
+                     "ge_100_rate_pct_first", "ge_100_rate_pct_second", "le_neg_30_rate_pct_first", "le_neg_30_rate_pct_second",
+                     "le_neg_50_rate_pct_first", "le_neg_50_rate_pct_second", "return_auc", "panel_favorable",
+                     "loss_30_count", "loss_50_count", "deep_loss_generalizable"]
+    for window in WINDOWS:
+        primary[primary["window"] == window][split_columns].to_csv(
+            MARKET_OUTPUT_DIR / f"{window.lower().replace('-', '_')}_market_split.csv", index=False
+        )
+
+    effect_rows = []
+    for window in WINDOWS:
+        for market in MARKETS:
+            row: dict[str, Any] = {"window": window, "market": market}
+            for layer in LAYERS:
+                o = overall_df[(overall_df["window"] == window) & (overall_df["layer"] == layer) & (overall_df["market"] == market)].iloc[0]
+                p = primary[(primary["window"] == window) & (primary["layer"] == layer) & (primary["market"] == market)].iloc[0]
+                prefix = layer.lower()
+                row.update({
+                    f"{prefix}_trades": int(o["trades"]), f"{prefix}_market_share_pct": o["market_share_pct"],
+                    f"{prefix}_mean_return": o["mean_return"], f"{prefix}_normal_share_pct": o[f"share_{wl.NORMAL}_pct"],
+                    f"{prefix}_coverage_share_pct": o[f"share_{wl.COVERAGE}_pct"],
+                    f"{prefix}_lifecycle_mean_diff": p["mean_return_diff"], f"{prefix}_lifecycle_auc": p["return_auc"],
+                    f"{prefix}_tier": p["tier"],
+                })
+            row["lifecycle_direction_same"] = bool(wl._sign(row["eligible_lifecycle_mean_diff"]) == wl._sign(row["filled_lifecycle_mean_diff"]))
+            effect_rows.append(row)
+    pd.DataFrame(effect_rows).to_csv(MARKET_OUTPUT_DIR / "eligible_vs_filled_market_effect.csv", index=False)
+
+    verdict_label, interaction, detail = market_verdict(auc_df)
+    summary = {
+        "work_id": "PATTERN_A_FAST_CORE_V2_REALISTIC_P2_MARKET_SPLIT_LIFECYCLE_V01",
+        "parent_work": "PATTERN_A_FAST_CORE_V2_REALISTIC_P2_WINNER_LOSER_LIFECYCLE_V01",
+        "strategy_id": STRATEGY_ID,
+        "scope": "CONTROL only; same certified realistic P2-1/P2-2 artifacts, eligible/filled sets and ledger terminal_return as the parent; no backtest, re-evaluation, enrich, new feature, threshold change, Candidate, or network",
+        "count_gate": gates,
+        "count_checks": "certified headline gate re-run; market counts sum to panel counts; lifecycle counts sum to market counts; pair_id unique",
+        "future_leakage": "only ledger fields and the parent PIT enrichment cache (ATR descriptive) are used",
+        "rules": MARKET_RULES,
+        "verdict": verdict_label,
+        "interaction_character": interaction,
+        "verdict_detail": detail,
+        "market_stratified_effect": stratified,
+        "broad_same_window_market_reference": broad_ref,
+        "network_requests": network_audit["count"],
+    }
+    (MARKET_OUTPUT_DIR / "market_split_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2, default=str) + "\n", encoding="utf-8")
+    print(json.dumps({"verdict": verdict_label, "interaction": interaction,
+                      "status": {m: detail[m]["status"] for m in MARKETS}}, ensure_ascii=False, indent=2, default=str))
+
+
 def main() -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("step", nargs="?", default="profile", choices=["profile", "market-split"])
+    args = parser.parse_args()
     audit = {"count": 0}
     with wl.network_guard(audit):
-        run(audit)
+        if args.step == "profile":
+            run(audit)
+        else:
+            run_market_split(audit)
     if audit["count"]:
         raise RuntimeError(f"NETWORK_REQUESTS_ATTEMPTED:{audit['count']}")
 

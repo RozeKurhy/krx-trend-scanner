@@ -1,0 +1,291 @@
+{
+  "work_id": "PATTERN_A_FAST_CORE_V2_REALISTIC_P2_MARKET_SPLIT_LIFECYCLE_V01",
+  "parent_work": "PATTERN_A_FAST_CORE_V2_REALISTIC_P2_WINNER_LOSER_LIFECYCLE_V01",
+  "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "scope": "CONTROL only; same certified realistic P2-1/P2-2 artifacts, eligible/filled sets and ledger terminal_return as the parent; no backtest, re-evaluation, enrich, new feature, threshold change, Candidate, or network",
+  "count_gate": {
+    "P2-1": {
+      "eligible": 355,
+      "filled": 199
+    },
+    "P2-2": {
+      "eligible": 485,
+      "filled": 242
+    }
+  },
+  "count_checks": "certified headline gate re-run; market counts sum to panel counts; lifecycle counts sum to market counts; pair_id unique",
+  "future_leakage": "only ledger fields and the parent PIT enrichment cache (ATR descriptive) are used",
+  "rules": {
+    "comparison": "NORMAL_vs_COVERAGE_COMBINED on ledger terminal_return, ALL trades",
+    "tier_a_min_n": 20,
+    "tier_b_min_n": 10,
+    "deep_loss_generalize_min": {
+      "LOSS_30": 10,
+      "LOSS_50": 5
+    },
+    "panel_favorable": ">= 3 of (mean, +50%, +100%, AUC-0.5) favorable and mean difference > 0",
+    "market_status": {
+      "HOLDS": ">= 1 tier-A ELIGIBLE panel, every tier-A ELIGIBLE panel favorable, and every tier-A FILLED panel has mean difference > 0",
+      "NOT_HOLDS": "some tier-A ELIGIBLE panel is not favorable",
+      "DESCRIPTIVE_ONLY": "no tier-A ELIGIBLE panel but >= 1 tier-B ELIGIBLE panel (direction reported, not judged)",
+      "INSUFFICIENT": "no tier-B ELIGIBLE panel"
+    },
+    "verdict": {
+      "INSUFFICIENT_EVIDENCE": "either market is DESCRIPTIVE_ONLY or INSUFFICIENT",
+      "REALISTIC_P2_LIFECYCLE_EFFECT_MARKET_DEPENDENT": "one market HOLDS and the other NOT_HOLDS, or both NOT_HOLDS",
+      "REALISTIC_P2_LIFECYCLE_ADVANTAGE_STRONGER_IN_KOSPI": "both HOLD and KOSPI / KOSDAQ mean-difference ratio >= 1.5 (tier-A ELIGIBLE average)",
+      "REALISTIC_P2_LIFECYCLE_ADVANTAGE_STRONGER_IN_KOSDAQ": "both HOLD and the ratio <= 1 / 1.5",
+      "REALISTIC_P2_LIFECYCLE_ADVANTAGE_HOLDS_IN_BOTH_MARKETS": "both HOLD otherwise"
+    },
+    "strength_ratio": 1.5,
+    "composition_check": "market-stratified difference = sum over markets of w_m * (NORMAL_m - COVERAGE_m), w_m = market share of the panel's NORMAL + COVERAGE trades; compared with the raw difference"
+  },
+  "verdict": "INSUFFICIENT_EVIDENCE",
+  "interaction_character": "INSUFFICIENT_EVIDENCE",
+  "verdict_detail": {
+    "KOSPI": {
+      "status": "HOLDS",
+      "panels": {
+        "P2-1|ELIGIBLE": {
+          "tier": "A_EVALUABLE",
+          "n": [
+            81,
+            56
+          ],
+          "favorable": true,
+          "mean_diff": 13.4535,
+          "auc_effect": 0.0743
+        },
+        "P2-1|FILLED": {
+          "tier": "A_EVALUABLE",
+          "n": [
+            48,
+            28
+          ],
+          "favorable": true,
+          "mean_diff": 21.3056,
+          "auc_effect": 0.1287
+        },
+        "P2-2|ELIGIBLE": {
+          "tier": "A_EVALUABLE",
+          "n": [
+            213,
+            74
+          ],
+          "favorable": true,
+          "mean_diff": 24.5039,
+          "auc_effect": 0.1056
+        },
+        "P2-2|FILLED": {
+          "tier": "A_EVALUABLE",
+          "n": [
+            113,
+            32
+          ],
+          "favorable": true,
+          "mean_diff": 30.4557,
+          "auc_effect": 0.1121
+        }
+      },
+      "tier_a_eligible_mean_diff_avg": 18.9787,
+      "tier_a_eligible_auc_effect_avg": 0.09,
+      "tier_b_eligible_directions": {}
+    },
+    "KOSDAQ": {
+      "status": "DESCRIPTIVE_ONLY",
+      "panels": {
+        "P2-1|ELIGIBLE": {
+          "tier": "B_DESCRIPTIVE",
+          "n": [
+            17,
+            13
+          ],
+          "favorable": true,
+          "mean_diff": 48.4636,
+          "auc_effect": 0.3462
+        },
+        "P2-1|FILLED": {
+          "tier": "C_TOO_SMALL",
+          "n": [
+            7,
+            5
+          ],
+          "favorable": true,
+          "mean_diff": 39.5171,
+          "auc_effect": 0.3286
+        },
+        "P2-2|ELIGIBLE": {
+          "tier": "B_DESCRIPTIVE",
+          "n": [
+            60,
+            15
+          ],
+          "favorable": true,
+          "mean_diff": 9.3901,
+          "auc_effect": 0.06
+        },
+        "P2-2|FILLED": {
+          "tier": "C_TOO_SMALL",
+          "n": [
+            25,
+            5
+          ],
+          "favorable": false,
+          "mean_diff": -0.7052,
+          "auc_effect": 0.092
+        }
+      },
+      "tier_a_eligible_mean_diff_avg": null,
+      "tier_a_eligible_auc_effect_avg": null,
+      "tier_b_eligible_directions": {
+        "P2-1": true,
+        "P2-2": true
+      }
+    }
+  },
+  "market_stratified_effect": [
+    {
+      "window": "P2-1",
+      "layer": "ELIGIBLE",
+      "normal_n": 98,
+      "coverage_n": 69,
+      "normal_kospi_share_pct": 82.6531,
+      "coverage_kospi_share_pct": 81.1594,
+      "mean_return_raw_diff": 19.9829,
+      "mean_return_market_stratified_diff": 19.7427,
+      "mean_return_stratified_to_raw_ratio": 0.988,
+      "ge_50_rate_pct_raw_diff": 9.4055,
+      "ge_50_rate_pct_market_stratified_diff": 9.3167,
+      "ge_50_rate_pct_stratified_to_raw_ratio": 0.9906,
+      "ge_100_rate_pct_raw_diff": 6.2851,
+      "ge_100_rate_pct_market_stratified_diff": 6.2292,
+      "ge_100_rate_pct_stratified_to_raw_ratio": 0.9911,
+      "le_neg_30_rate_pct_raw_diff": -10.1449,
+      "le_neg_30_rate_pct_market_stratified_diff": -9.9221,
+      "le_neg_30_rate_pct_stratified_to_raw_ratio": 0.978
+    },
+    {
+      "window": "P2-1",
+      "layer": "FILLED",
+      "normal_n": 55,
+      "coverage_n": 33,
+      "normal_kospi_share_pct": 87.2727,
+      "coverage_kospi_share_pct": 84.8485,
+      "mean_return_raw_diff": 24.2807,
+      "mean_return_market_stratified_diff": 23.789,
+      "mean_return_stratified_to_raw_ratio": 0.9797,
+      "ge_50_rate_pct_raw_diff": 9.0909,
+      "ge_50_rate_pct_market_stratified_diff": 8.888,
+      "ge_50_rate_pct_stratified_to_raw_ratio": 0.9777,
+      "ge_100_rate_pct_raw_diff": 4.8485,
+      "ge_100_rate_pct_market_stratified_diff": 4.6266,
+      "ge_100_rate_pct_stratified_to_raw_ratio": 0.9542,
+      "le_neg_30_rate_pct_raw_diff": -12.1212,
+      "le_neg_30_rate_pct_market_stratified_diff": -11.6234,
+      "le_neg_30_rate_pct_stratified_to_raw_ratio": 0.9589
+    },
+    {
+      "window": "P2-2",
+      "layer": "ELIGIBLE",
+      "normal_n": 273,
+      "coverage_n": 89,
+      "normal_kospi_share_pct": 78.022,
+      "coverage_kospi_share_pct": 83.1461,
+      "mean_return_raw_diff": 20.781,
+      "mean_return_market_stratified_diff": 21.3726,
+      "mean_return_stratified_to_raw_ratio": 1.0285,
+      "ge_50_rate_pct_raw_diff": 11.3265,
+      "ge_50_rate_pct_market_stratified_diff": 11.6657,
+      "ge_50_rate_pct_stratified_to_raw_ratio": 1.0299,
+      "ge_100_rate_pct_raw_diff": 6.4452,
+      "ge_100_rate_pct_market_stratified_diff": 6.554,
+      "ge_100_rate_pct_stratified_to_raw_ratio": 1.0169,
+      "le_neg_30_rate_pct_raw_diff": -1.9056,
+      "le_neg_30_rate_pct_market_stratified_diff": -2.0889,
+      "le_neg_30_rate_pct_stratified_to_raw_ratio": 1.0962
+    },
+    {
+      "window": "P2-2",
+      "layer": "FILLED",
+      "normal_n": 138,
+      "coverage_n": 37,
+      "normal_kospi_share_pct": 81.8841,
+      "coverage_kospi_share_pct": 86.4865,
+      "mean_return_raw_diff": 24.8297,
+      "mean_return_market_stratified_diff": 25.1138,
+      "mean_return_stratified_to_raw_ratio": 1.0114,
+      "ge_50_rate_pct_raw_diff": 12.5735,
+      "ge_50_rate_pct_market_stratified_diff": 12.4211,
+      "ge_50_rate_pct_stratified_to_raw_ratio": 0.9879,
+      "ge_100_rate_pct_raw_diff": 5.66,
+      "ge_100_rate_pct_market_stratified_diff": 6.1639,
+      "ge_100_rate_pct_stratified_to_raw_ratio": 1.089,
+      "le_neg_30_rate_pct_raw_diff": 0.1959,
+      "le_neg_30_rate_pct_market_stratified_diff": 0.2486,
+      "le_neg_30_rate_pct_stratified_to_raw_ratio": 1.2692
+    }
+  ],
+  "broad_same_window_market_reference": [
+    {
+      "window": "P2-1",
+      "layer": "BROAD_SAME_WINDOW",
+      "market": "KOSPI",
+      "market_trades": 854,
+      "market_mean_return": 4.68,
+      "market_le_neg_30_rate_pct": 1.4052,
+      "normal_n": 281,
+      "coverage_n": 166,
+      "mean_return_diff": 15.6613,
+      "ge_50_rate_pct_diff": 6.9224,
+      "ge_100_rate_pct_diff": 4.5706,
+      "le_neg_30_rate_pct_diff": -5.0658,
+      "return_auc": 0.6028
+    },
+    {
+      "window": "P2-1",
+      "layer": "BROAD_SAME_WINDOW",
+      "market": "KOSDAQ",
+      "market_trades": 946,
+      "market_mean_return": 3.1259,
+      "market_le_neg_30_rate_pct": 2.6427,
+      "normal_n": 332,
+      "coverage_n": 157,
+      "mean_return_diff": 23.1097,
+      "ge_50_rate_pct_diff": 16.6852,
+      "ge_100_rate_pct_diff": 5.8514,
+      "le_neg_30_rate_pct_diff": -7.7124,
+      "return_auc": 0.6712
+    },
+    {
+      "window": "P2-2",
+      "layer": "BROAD_SAME_WINDOW",
+      "market": "KOSPI",
+      "market_trades": 1142,
+      "market_mean_return": 8.5106,
+      "market_le_neg_30_rate_pct": 1.4011,
+      "normal_n": 496,
+      "coverage_n": 233,
+      "mean_return_diff": 24.2228,
+      "ge_50_rate_pct_diff": 13.5617,
+      "ge_100_rate_pct_diff": 6.9985,
+      "le_neg_30_rate_pct_diff": -3.4853,
+      "return_auc": 0.6191
+    },
+    {
+      "window": "P2-2",
+      "layer": "BROAD_SAME_WINDOW",
+      "market": "KOSDAQ",
+      "market_trades": 1282,
+      "market_mean_return": 7.4169,
+      "market_le_neg_30_rate_pct": 3.1981,
+      "normal_n": 573,
+      "coverage_n": 241,
+      "mean_return_diff": 20.0206,
+      "ge_50_rate_pct_diff": 13.0977,
+      "ge_100_rate_pct_diff": 5.3833,
+      "le_neg_30_rate_pct_diff": -6.6195,
+      "return_auc": 0.6325
+    }
+  ],
+  "network_requests": 0
+}

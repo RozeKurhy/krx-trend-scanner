@@ -66,3 +66,48 @@ def test_verdict_order_and_rules():
     assert realistic.verdict(_panel_rows(auc=0.02), _broad_rows(classification="WEAKENED"))[0] == "REALISTIC_P2_LIFECYCLE_EFFECT_WEAK"
     assert realistic.verdict(_panel_rows(eligible_fav=(2, 5), mean_diff=-1.0), _broad_rows())[0] == "REALISTIC_P2_LIFECYCLE_EFFECT_MIXED"
     assert realistic.verdict(_panel_rows(coverage_n=5), _broad_rows())[0] == "INSUFFICIENT_EVIDENCE"
+
+
+def test_market_tier_and_panel_favorable():
+    assert realistic.market_tier(30, 20) == "A_EVALUABLE"
+    assert realistic.market_tier(30, 19) == "B_DESCRIPTIVE"
+    assert realistic.market_tier(9, 50) == "C_TOO_SMALL"
+    row = {"favorable": 5, "mean_return_diff": 10.0, "ge_50_rate_pct_diff": 2.0, "ge_100_rate_pct_diff": -1.0, "return_auc_effect": 0.1}
+    assert realistic.market_panel_favorable(row) is True
+    assert realistic.market_panel_favorable({**row, "ge_50_rate_pct_diff": -2.0}) is False
+    assert realistic.market_panel_favorable({**row, "mean_return_diff": -1.0, "ge_100_rate_pct_diff": 1.0}) is False
+
+
+def _market_auc(kospi=(50, 40, True, 20.0), kosdaq=(50, 40, True, 20.0)):
+    rows = []
+    for market, (n1, n2, fav, diff) in (("KOSPI", kospi), ("KOSDAQ", kosdaq)):
+        for window in realistic.WINDOWS:
+            for layer in realistic.LAYERS:
+                rows.append({"market": market, "window": window, "layer": layer, "version": "ALL",
+                             "comparison": "NORMAL_vs_COVERAGE_COMBINED", "first_n": n1, "second_n": n2,
+                             "tier": realistic.market_tier(n1, n2), "panel_favorable": fav,
+                             "mean_return_diff": diff if fav else -abs(diff), "return_auc_effect": 0.1})
+    return pd.DataFrame(rows)
+
+
+def test_market_verdict_rules():
+    assert realistic.market_verdict(_market_auc())[0] == "REALISTIC_P2_LIFECYCLE_ADVANTAGE_HOLDS_IN_BOTH_MARKETS"
+    assert realistic.market_verdict(_market_auc(kospi=(50, 40, True, 30.0), kosdaq=(50, 40, True, 10.0)))[0] == \
+        "REALISTIC_P2_LIFECYCLE_ADVANTAGE_STRONGER_IN_KOSPI"
+    assert realistic.market_verdict(_market_auc(kospi=(50, 40, True, 10.0), kosdaq=(50, 40, True, 30.0)))[0] == \
+        "REALISTIC_P2_LIFECYCLE_ADVANTAGE_STRONGER_IN_KOSDAQ"
+    assert realistic.market_verdict(_market_auc(kosdaq=(50, 40, False, 5.0)))[0] == "REALISTIC_P2_LIFECYCLE_EFFECT_MARKET_DEPENDENT"
+    label, interaction, detail = realistic.market_verdict(_market_auc(kosdaq=(50, 15, True, 20.0)))
+    assert label == "INSUFFICIENT_EVIDENCE" and detail["KOSDAQ"]["status"] == "DESCRIPTIVE_ONLY"
+
+
+def test_stratified_rows_removes_pure_composition_effect():
+    # 시장 안에서는 NORMAL과 coverage 수익률이 같고, 시장 구성만 다르면 층화 차이는 0이다.
+    rows = []
+    for market, ret, n_normal, n_cov in (("KOSPI", 30.0, 9, 1), ("KOSDAQ", -10.0, 1, 9)):
+        rows += [{"market": market, "lifecycle_class": realistic.wl.NORMAL, "terminal_return": ret}] * n_normal
+        rows += [{"market": market, "lifecycle_class": realistic.wl.SKIPPED, "terminal_return": ret}] * n_cov
+    frame = pd.DataFrame(rows).assign(trade_status="REALIZED", holding_days=1, mfe=0.0, mae=0.0, peak_giveback=0.0)
+    row = realistic.stratified_rows(frame, "P2-2", "ELIGIBLE")[0]
+    assert row["mean_return_raw_diff"] == pytest.approx(32.0)
+    assert row["mean_return_market_stratified_diff"] == pytest.approx(0.0)
