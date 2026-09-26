@@ -1,0 +1,353 @@
+{
+  "work_id": "PATTERN_A_FAST_CORE_V2_EXIT4_EFFECTIVENESS_V01",
+  "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "scope": "CONTROL only; archived certified ledgers; trade-level counterfactual only; no backtest, strategy or exit-rule change, threshold sweep, or network",
+  "exit4_definition_source": "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py simulate_ticker_core_v02_reentry (called by the certified runners)",
+  "exit4_definition": {
+    "normal_path": "active from the first direct EARLY_TREND->PROGRESSED handoff label; HWM initialised to the handoff label score; on each later PROGRESSED label HWM = max(HWM, score) and EXIT4 when HWM - score >= 15.0; a later WEAK/BASE/TRANSITION/EARLY_TREND label is EXIT3; UNAVAILABLE labels are ignored",
+    "coverage_path": "SKIPPED / WITHOUT_DIRECT: active from the first PROGRESSED label; HWM initialised to its score; EXIT4 on PROGRESSED labels only; any non-PROGRESSED label (including UNAVAILABLE) ends monitoring without an exit (OPEN_AT_CUTOFF)",
+    "priority": "the -15% Loss Guard is only active before the first PROGRESSED effective date and takes precedence when triggered; within one monthly label EXIT3 and EXIT4 are mutually exclusive (EXIT4 needs a PROGRESSED label)",
+    "execution": "next trading session open after the signal label (execution support day allowed)",
+    "stage_at_exit4": "always PROGRESSED by construction"
+  },
+  "counterfactual": "CF_NO_EXIT4_UNTIL_PROGRESSED_DEPARTURE: ignore EXIT4, exit at the next session open after the first valid non-PROGRESSED label after the EXIT4 label; if none before the window cutoff, mark at the window-cutoff close. Loss Guard is already inactive after the first PROGRESSED, so no other forced exit applies. Uses prices and stages after the actual exit by construction, bounded by the window cutoff.",
+  "classification_rule": {
+    "threshold_pp": 10.0,
+    "EXIT4_CLEARLY_HELPFUL": "CF - CONTROL <= -10pp",
+    "EXIT4_ROUGHLY_REDUNDANT": "|CF - CONTROL| < 10pp",
+    "EXIT4_POTENTIALLY_HARMFUL": "CF - CONTROL >= +10pp",
+    "INSUFFICIENT_EVIDENCE": "counterfactual not computable"
+  },
+  "gates": {
+    "count_gates": {
+      "dedup": {
+        "dedup_trade_count": 5380,
+        "duplicate_rows_removed": 6714,
+        "representative_window_counts": {
+          "P1": 4968,
+          "P3-2": 208,
+          "P2-2": 201,
+          "P2-1": 3
+        }
+      },
+      "REALISTIC_P2-1_count_gate": {
+        "observed": {
+          "eligible": 355,
+          "filled": 199,
+          "realized": 161,
+          "cash_skipped": 156
+        },
+        "certified": {
+          "filled": 199,
+          "realized": 161,
+          "cash_skipped": 156,
+          "eligible": 355
+        },
+        "match": true
+      },
+      "REALISTIC_P2-2_count_gate": {
+        "observed": {
+          "eligible": 485,
+          "filled": 242,
+          "realized": 218,
+          "cash_skipped": 243
+        },
+        "certified": {
+          "filled": 242,
+          "realized": 218,
+          "cash_skipped": 243,
+          "eligible": 485
+        },
+        "match": true
+      },
+      "REALISTIC_P3-2_count_gate": {
+        "observed": {
+          "eligible": 405,
+          "filled": 228,
+          "realized": 207,
+          "cash_skipped": 177
+        },
+        "certified": {
+          "filled": 228,
+          "realized": 207,
+          "cash_skipped": 177,
+          "eligible": 405
+        },
+        "match": true
+      }
+    },
+    "replication_gate": [
+      {
+        "panel": "SIMPLE_P1",
+        "rows": 4982,
+        "cache_missing": 0,
+        "replication_match": 4982,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_P2-1",
+        "rows": 1800,
+        "cache_missing": 0,
+        "replication_match": 1800,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_P2-2",
+        "rows": 2424,
+        "cache_missing": 0,
+        "replication_match": 2417,
+        "mismatch": 7,
+        "mismatch_pct": 0.2888,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_P3-1",
+        "rows": 1173,
+        "cache_missing": 0,
+        "replication_match": 1173,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_P3-2",
+        "rows": 1792,
+        "cache_missing": 0,
+        "replication_match": 1792,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_POOLED_DEDUP",
+        "rows": 5380,
+        "cache_missing": 0,
+        "replication_match": 5376,
+        "mismatch": 4,
+        "mismatch_pct": 0.0743,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P2-1_ELIGIBLE",
+        "rows": 355,
+        "cache_missing": 0,
+        "replication_match": 355,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P2-1_FILLED",
+        "rows": 199,
+        "cache_missing": 0,
+        "replication_match": 199,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P2-2_ELIGIBLE",
+        "rows": 485,
+        "cache_missing": 0,
+        "replication_match": 485,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P2-2_FILLED",
+        "rows": 242,
+        "cache_missing": 0,
+        "replication_match": 242,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P3-2_ELIGIBLE",
+        "rows": 405,
+        "cache_missing": 0,
+        "replication_match": 405,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P3-2_FILLED",
+        "rows": 228,
+        "cache_missing": 0,
+        "replication_match": 228,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      }
+    ],
+    "exit_rule_parity": [
+      {
+        "panel": "SIMPLE_P1",
+        "rows": 4982,
+        "e2_rows_checked": 1861,
+        "e2_type_match": 1861,
+        "e2_signal_match": 1861,
+        "exit4_ledger": 1313,
+        "exit4_replicated_match": 1313,
+        "exit4_price_match": 1313,
+        "e2_type_match_pct": 100.0,
+        "e2_signal_match_pct": 100.0,
+        "exit4_price_match_pct": 100.0
+      },
+      {
+        "panel": "SIMPLE_P2-1",
+        "rows": 1800,
+        "e2_rows_checked": 760,
+        "e2_type_match": 760,
+        "e2_signal_match": 760,
+        "exit4_ledger": 458,
+        "exit4_replicated_match": 458,
+        "exit4_price_match": 458,
+        "e2_type_match_pct": 100.0,
+        "e2_signal_match_pct": 100.0,
+        "exit4_price_match_pct": 100.0
+      },
+      {
+        "panel": "SIMPLE_P2-2",
+        "rows": 2417,
+        "e2_rows_checked": 982,
+        "e2_type_match": 981,
+        "e2_signal_match": 981,
+        "exit4_ledger": 664,
+        "exit4_replicated_match": 664,
+        "exit4_price_match": 664,
+        "e2_type_match_pct": 99.898,
+        "e2_signal_match_pct": 99.898,
+        "exit4_price_match_pct": 100.0
+      },
+      {
+        "panel": "SIMPLE_P3-1",
+        "rows": 1173,
+        "e2_rows_checked": 419,
+        "e2_type_match": 419,
+        "e2_signal_match": 419,
+        "exit4_ledger": 171,
+        "exit4_replicated_match": 171,
+        "exit4_price_match": 171,
+        "e2_type_match_pct": 100.0,
+        "e2_signal_match_pct": 100.0,
+        "exit4_price_match_pct": 100.0
+      },
+      {
+        "panel": "SIMPLE_P3-2",
+        "rows": 1792,
+        "e2_rows_checked": 625,
+        "e2_type_match": 625,
+        "e2_signal_match": 625,
+        "exit4_ledger": 385,
+        "exit4_replicated_match": 385,
+        "exit4_price_match": 385,
+        "e2_type_match_pct": 100.0,
+        "e2_signal_match_pct": 100.0,
+        "exit4_price_match_pct": 100.0
+      },
+      {
+        "panel": "SIMPLE_POOLED_DEDUP",
+        "rows": 5376,
+        "e2_rows_checked": 2070,
+        "e2_type_match": 2069,
+        "e2_signal_match": 2069,
+        "exit4_ledger": 1471,
+        "exit4_replicated_match": 1471,
+        "exit4_price_match": 1471,
+        "e2_type_match_pct": 99.952,
+        "e2_signal_match_pct": 99.952,
+        "exit4_price_match_pct": 100.0
+      },
+      {
+        "panel": "REALISTIC_P2-1_ELIGIBLE",
+        "rows": 355,
+        "e2_rows_checked": 158,
+        "e2_type_match": 158,
+        "e2_signal_match": 158,
+        "exit4_ledger": 86,
+        "exit4_replicated_match": 86,
+        "exit4_price_match": 86,
+        "e2_type_match_pct": 100.0,
+        "e2_signal_match_pct": 100.0,
+        "exit4_price_match_pct": 100.0
+      },
+      {
+        "panel": "REALISTIC_P2-1_FILLED",
+        "rows": 199,
+        "e2_rows_checked": 82,
+        "e2_type_match": 82,
+        "e2_signal_match": 82,
+        "exit4_ledger": 40,
+        "exit4_replicated_match": 40,
+        "exit4_price_match": 40,
+        "e2_type_match_pct": 100.0,
+        "e2_signal_match_pct": 100.0,
+        "exit4_price_match_pct": 100.0
+      },
+      {
+        "panel": "REALISTIC_P2-2_ELIGIBLE",
+        "rows": 485,
+        "e2_rows_checked": 217,
+        "e2_type_match": 217,
+        "e2_signal_match": 217,
+        "exit4_ledger": 162,
+        "exit4_replicated_match": 162,
+        "exit4_price_match": 162,
+        "e2_type_match_pct": 100.0,
+        "e2_signal_match_pct": 100.0,
+        "exit4_price_match_pct": 100.0
+      },
+      {
+        "panel": "REALISTIC_P2-2_FILLED",
+        "rows": 242,
+        "e2_rows_checked": 105,
+        "e2_type_match": 105,
+        "e2_signal_match": 105,
+        "exit4_ledger": 73,
+        "exit4_replicated_match": 73,
+        "exit4_price_match": 73,
+        "e2_type_match_pct": 100.0,
+        "e2_signal_match_pct": 100.0,
+        "exit4_price_match_pct": 100.0
+      },
+      {
+        "panel": "REALISTIC_P3-2_ELIGIBLE",
+        "rows": 405,
+        "e2_rows_checked": 174,
+        "e2_type_match": 174,
+        "e2_signal_match": 174,
+        "exit4_ledger": 126,
+        "exit4_replicated_match": 126,
+        "exit4_price_match": 126,
+        "e2_type_match_pct": 100.0,
+        "e2_signal_match_pct": 100.0,
+        "exit4_price_match_pct": 100.0
+      },
+      {
+        "panel": "REALISTIC_P3-2_FILLED",
+        "rows": 228,
+        "e2_rows_checked": 95,
+        "e2_type_match": 95,
+        "e2_signal_match": 95,
+        "exit4_ledger": 65,
+        "exit4_replicated_match": 65,
+        "exit4_price_match": 65,
+        "e2_type_match_pct": 100.0,
+        "e2_signal_match_pct": 100.0,
+        "exit4_price_match_pct": 100.0
+      }
+    ]
+  },
+  "tiers": {
+    "evaluable_min_n": 20,
+    "descriptive_min_n": 10
+  },
+  "elapsed_seconds": 291.9
+}
