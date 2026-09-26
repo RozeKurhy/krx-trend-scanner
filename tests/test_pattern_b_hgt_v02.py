@@ -12,7 +12,6 @@ _V = Path(__file__).resolve().parents[1] / "docs/patterns/pattern_b/validation"
 LABELS = _V / "human_ground_truth_labels_v02.csv"
 RECORD = _V / "human_ground_truth_v02.md"
 SEAL = _V / "human_ground_truth_v02_seal.json"
-README = _V.parent / "README.md"
 STATES = {"DEEP_DEPRESSED", "DEPRESSED", "NORMAL", "OVERHEATED", "EXTREME_OVERHEATED"}
 
 
@@ -73,8 +72,11 @@ def test_judge_and_blind_scope_are_recorded():
 def test_no_automatic_evaluation_is_recorded_yet():
     record = RECORD.read_text(encoding="utf-8")
     assert "자동 상태 판정, 사람 판정과\n> 자동 판정의 비교는 아직 하지 않았다" in record
-    readme = README.read_text(encoding="utf-8")
-    assert "별도 검증 표본 V02 사람 판정 완료·봉인" in readme
+    seal = _seal()
+    assert seal["version"] == "PATTERN_B_HGT_V02"
+    assert seal["sample_count"] == 36
+    assert seal["automatic_prediction_blind"] is True
+    assert hashlib.sha256(RECORD.read_bytes()).hexdigest() == seal["record_file_sha256"]
 
 
 SEALED_LABELS_SHA256 = "cbbc8785e20d03e4937317d9de11f79529ad4d8abea23763a490763c3e23e5c8"
