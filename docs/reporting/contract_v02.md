@@ -84,7 +84,7 @@ v0.2에서 정한 사항은 다음과 같다.
     "asset_type": { "type": "string", "enum": ["COMMON", "PREFERRED", "SPAC", "REIT", "ETF", "ETN", "OTHER", "UNKNOWN"] },
     "requested_as_of": { "type": "string", "format": "date" },
     "reference_market_date": { "type": "string", "format": "date" },
-    
+
     "header": {
       "type": "object",
       "required": ["ticker", "name", "market", "asset_type", "requested_as_of", "reference_market_date", "cache_present", "report_status"],
@@ -101,7 +101,7 @@ v0.2에서 정한 사항은 다음과 같다.
         "report_status": { "type": "string", "enum": ["READY", "PARTIAL", "DATA_UNAVAILABLE"] }
       }
     },
-    
+
     "summary": {
       "type": "object",
       "properties": {
@@ -111,7 +111,7 @@ v0.2에서 정한 사항은 다음과 같다.
         "combined_narrative": { "type": "string" }
       }
     },
-    
+
     "current_snapshot": {
       "type": "object",
       "required": ["official_stage", "candidate_state", "is_candidate", "investability_status", "investability_reason", "is_investable"],
@@ -129,7 +129,7 @@ v0.2에서 정한 사항은 다음과 같다.
         "market_cap_source": { "type": ["string", "null"] }
       }
     },
-    
+
     "a_fast_core": {
       "type": "object",
       "required": [
@@ -173,7 +173,7 @@ v0.2에서 정한 사항은 다음과 같다.
         "provenance": { "type": "object" }
       }
     },
-    
+
     "pattern_a_fast": { "type": "object" },
     "monthly_history": { "type": "object" },
     "foreign_flow": { "type": "object" },
