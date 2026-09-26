@@ -12,6 +12,7 @@
 사용법:
     python scripts/analyze_fastcore_v2_winner_loser_profile_v01.py enrich   # 진입 feature 복원(수십 분)
     python scripts/analyze_fastcore_v2_winner_loser_profile_v01.py analyze  # 캐시를 읽어 산출물 생성
+    python scripts/analyze_fastcore_v2_winner_loser_profile_v01.py lifecycle  # lifecycle 경로별 수익률 follow-up
 """
 
 from __future__ import annotations
@@ -953,9 +954,272 @@ def run_analyze(network_audit: dict[str, int] | None = None) -> None:
     print(json.dumps({"dedup_trade_count": dedup_audit["dedup_trade_count"], "grade_counts": grade_counts}, ensure_ascii=False, indent=2))
 
 
+# ---------------------------------------------------------------------------
+# Follow-up: lifecycle handoff 경로별 수익률 분포 (lifecycle)
+# ---------------------------------------------------------------------------
+
+LIFECYCLE_OUTPUT_DIR = OUTPUT_DIR / "lifecycle_return_profile_v01"
+NORMAL = "NORMAL_EARLY_TREND_HANDOFF"
+SKIPPED = "SKIPPED_EARLY_TREND_HANDOFF"
+WITHOUT_DIRECT = "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
+COVERAGE = "COVERAGE_PATH_COMBINED"
+NEVER = "NEVER_PROGRESSED"
+LIFECYCLE_GROUPS: dict[str, set[str]] = {
+    NORMAL: {NORMAL},
+    SKIPPED: {SKIPPED},
+    WITHOUT_DIRECT: {WITHOUT_DIRECT},
+    COVERAGE: {SKIPPED, WITHOUT_DIRECT},
+    NEVER: {NEVER},  # primary 비교에서 제외, 참고용
+}
+LIFECYCLE_COMPARISONS = [
+    ("NORMAL_vs_COVERAGE_COMBINED", NORMAL, COVERAGE),
+    ("NORMAL_vs_SKIPPED", NORMAL, SKIPPED),
+    ("NORMAL_vs_WITHOUT_DIRECT", NORMAL, WITHOUT_DIRECT),
+    ("SKIPPED_vs_WITHOUT_DIRECT", SKIPPED, WITHOUT_DIRECT),
+]
+# 방향 점검 지표 7개: (지표, 첫 그룹이 유리한 방향). +1은 클수록, -1은 작을수록 유리.
+LIFECYCLE_KEY_METRICS = [
+    ("mean_return", 1), ("median_return", 1), ("ge_50_rate_pct", 1), ("ge_100_rate_pct", 1),
+    ("le_neg_30_rate_pct", -1), ("le_neg_50_rate_pct", -1), ("le_neg_60_rate_pct", -1),
+]
+# 판정 기준(결과 확인 전에 고정). 대상 비교는 NORMAL_vs_COVERAGE_COMBINED.
+LIFECYCLE_VERDICT_RULES = {
+    "primary_comparison": "NORMAL_vs_COVERAGE_COMBINED",
+    "min_scope_group_n": 10,
+    "min_pooled_group_n": 30,
+    "min_evaluable_windows": 3,
+    "strong_min_auc_effect": 0.10,
+    "definition": {
+        "INSUFFICIENT_EVIDENCE": "pooled NORMAL or COVERAGE n < 30, or fewer than 3 windows where both groups have n >= 10",
+        "STRONG": "pooled ALL and CLOSED_ONLY: 0 unfavorable of 7 key metrics and >= 6 favorable; every evaluable ALL scope (5 windows + 2 disjoint periods) has <= 1 unfavorable; >= 80% of evaluable CLOSED_ONLY scopes have favorable > unfavorable; pooled ALL |AUC-0.5| >= 0.10",
+        "MODERATE": "pooled ALL and CLOSED_ONLY have favorable > unfavorable, and >= 80% of evaluable ALL scopes have favorable > unfavorable",
+        "MIXED": "otherwise",
+        "favorable_rule": "strict difference in the favorable direction; a tie (including both rates 0) counts as neither",
+    },
+}
+
+
+def lifecycle_group_frame(frame: pd.DataFrame, group: str) -> pd.DataFrame:
+    return frame[frame["lifecycle_class"].isin(LIFECYCLE_GROUPS[group])]
+
+
+def lifecycle_metrics(frame: pd.DataFrame) -> dict[str, Any]:
+    returns = frame["terminal_return"].astype(float)
+    n = int(len(returns))
+    row: dict[str, Any] = {"trades": n}
+    if n == 0:
+        return row
+
+    def rate(mask: pd.Series) -> float | None:
+        return _round(mask.sum() / n * 100.0)
+
+    row.update({
+        "mean_return": _round(returns.mean()),
+        "median_return": _round(returns.median()),
+        "q25_return": _round(returns.quantile(0.25)),
+        "q75_return": _round(returns.quantile(0.75)),
+        "positive_rate_pct": rate(returns > 0),
+    })
+    for threshold in (30, 50, 100):
+        row[f"ge_{threshold}_count"] = int((returns >= threshold).sum())
+        row[f"ge_{threshold}_rate_pct"] = rate(returns >= threshold)
+    for threshold in (15, 30, 40, 50, 60):
+        row[f"le_neg_{threshold}_count"] = int((returns <= -threshold).sum())
+        row[f"le_neg_{threshold}_rate_pct"] = rate(returns <= -threshold)
+    status = frame["trade_status"]
+    row["open_at_cutoff_rate_pct"] = rate(status == "OPEN_AT_CUTOFF")
+    row["closed_rate_pct"] = rate(status.isin(CLOSED_STATUSES))
+    for column in ("holding_days", "mfe", "mae", "peak_giveback"):
+        values = pd.to_numeric(frame[column], errors="coerce")
+        row[f"{column}_mean"] = _round(values.mean())
+        row[f"{column}_median"] = _round(values.median())
+    return row
+
+
+def lifecycle_compare(first: pd.DataFrame, second: pd.DataFrame) -> dict[str, Any]:
+    a, b = lifecycle_metrics(first), lifecycle_metrics(second)
+    row: dict[str, Any] = {"first_n": a["trades"], "second_n": b["trades"]}
+    if not a["trades"] or not b["trades"]:
+        row.update({"favorable": None, "unfavorable": None})
+        return row
+    favorable = unfavorable = 0
+    for metric, direction in LIFECYCLE_KEY_METRICS:
+        diff = a[metric] - b[metric]
+        row[f"{metric}_first"] = a[metric]
+        row[f"{metric}_second"] = b[metric]
+        row[f"{metric}_diff"] = _round(diff)
+        signed = _sign(diff) * direction
+        row[f"{metric}_favorable"] = {1: "FAVORABLE", -1: "UNFAVORABLE", 0: "TIE"}[signed]
+        favorable += signed == 1
+        unfavorable += signed == -1
+    for metric in ("positive_rate_pct", "ge_30_rate_pct", "le_neg_15_rate_pct", "le_neg_40_rate_pct"):
+        row[f"{metric}_diff"] = _round(a[metric] - b[metric])
+    auc = rank_auc(first["terminal_return"].astype(float), second["terminal_return"].astype(float))
+    row["return_auc"] = _round(auc)
+    row["return_auc_effect"] = _round(auc - 0.5) if auc is not None else None
+    row["favorable"] = int(favorable)
+    row["unfavorable"] = int(unfavorable)
+    return row
+
+
+def lifecycle_scopes(pooled: pd.DataFrame, ledgers: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    early = pooled["entry_signal_date"] < DISJOINT_SPLIT_DATE
+    scopes = {"POOLED_DEDUP": pooled}
+    scopes.update({f"WINDOW_{w}": ledgers[w] for w in WINDOW_ORDER})
+    scopes["ENTRY_BEFORE_2021"] = pooled[early]
+    scopes["ENTRY_FROM_2021"] = pooled[~early]
+    return scopes
+
+
+def lifecycle_verdict(consistency: pd.DataFrame) -> tuple[str, dict[str, Any]]:
+    rules = LIFECYCLE_VERDICT_RULES
+    rows = consistency[consistency["comparison"] == rules["primary_comparison"]]
+    n_min = rules["min_scope_group_n"]
+
+    def pick(scope: str, version: str) -> pd.Series:
+        return rows[(rows["scope"] == scope) & (rows["version"] == version)].iloc[0]
+
+    pooled_all, pooled_closed = pick("POOLED_DEDUP", "ALL"), pick("POOLED_DEDUP", "CLOSED_ONLY")
+    sub = rows[rows["scope"] != "POOLED_DEDUP"]
+    evaluable = sub[(sub["first_n"] >= n_min) & (sub["second_n"] >= n_min)]
+    ev_all = evaluable[evaluable["version"] == "ALL"]
+    ev_closed = evaluable[evaluable["version"] == "CLOSED_ONLY"]
+    evaluable_windows = int(ev_all["scope"].str.startswith("WINDOW_").sum())
+    majority_all = float((ev_all["favorable"] > ev_all["unfavorable"]).mean()) if len(ev_all) else 0.0
+    majority_closed = float((ev_closed["favorable"] > ev_closed["unfavorable"]).mean()) if len(ev_closed) else 0.0
+    detail = {
+        "pooled_all_favorable_unfavorable": [int(pooled_all["favorable"]), int(pooled_all["unfavorable"])],
+        "pooled_closed_favorable_unfavorable": [int(pooled_closed["favorable"]), int(pooled_closed["unfavorable"])],
+        "pooled_all_return_auc": pooled_all["return_auc"],
+        "evaluable_windows_all": evaluable_windows,
+        "evaluable_scopes_all": int(len(ev_all)),
+        "evaluable_scopes_closed_only": int(len(ev_closed)),
+        "all_scopes_majority_favorable_share": round(majority_all, 4),
+        "closed_scopes_majority_favorable_share": round(majority_closed, 4),
+        "all_scopes_max_unfavorable": int(ev_all["unfavorable"].max()) if len(ev_all) else None,
+    }
+    if min(pooled_all["first_n"], pooled_all["second_n"]) < rules["min_pooled_group_n"] or evaluable_windows < rules["min_evaluable_windows"]:
+        return "INSUFFICIENT_EVIDENCE", detail
+    strong = (
+        pooled_all["unfavorable"] == 0 and pooled_all["favorable"] >= 6
+        and pooled_closed["unfavorable"] == 0 and pooled_closed["favorable"] >= 6
+        and detail["all_scopes_max_unfavorable"] is not None and detail["all_scopes_max_unfavorable"] <= 1
+        and majority_closed >= 0.8
+        and abs(float(pooled_all["return_auc_effect"])) >= rules["strong_min_auc_effect"]
+    )
+    if strong:
+        return "NORMAL_HANDOFF_STRONGLY_ASSOCIATED_WITH_BETTER_RETURN_DISTRIBUTION", detail
+    moderate = (
+        pooled_all["favorable"] > pooled_all["unfavorable"]
+        and pooled_closed["favorable"] > pooled_closed["unfavorable"]
+        and majority_all >= 0.8
+    )
+    if moderate:
+        return "NORMAL_HANDOFF_MODERATELY_ASSOCIATED_WITH_BETTER_RETURN_DISTRIBUTION", detail
+    return "LIFECYCLE_RETURN_DIFFERENCE_MIXED", detail
+
+
+def lifecycle_tail_concentration(pooled: pd.DataFrame, version: str) -> list[dict[str, Any]]:
+    returns = pooled["terminal_return"].astype(float)
+    tails = {
+        "ge_50": returns >= 50, "ge_100": returns >= 100,
+        "le_neg_30": returns <= -30, "le_neg_40": returns <= -40, "le_neg_50": returns <= -50, "le_neg_60": returns <= -60,
+    }
+    rows = []
+    total = len(pooled)
+    for group in (NORMAL, SKIPPED, WITHOUT_DIRECT, COVERAGE, NEVER):
+        mask = pooled["lifecycle_class"].isin(LIFECYCLE_GROUPS[group])
+        trade_share = mask.sum() / total * 100.0
+        for tail, tail_mask in tails.items():
+            tail_total = int(tail_mask.sum())
+            count = int((mask & tail_mask).sum())
+            share = count / tail_total * 100.0 if tail_total else None
+            rows.append({
+                "version": version, "lifecycle_group": group, "tail": tail,
+                "group_trades": int(mask.sum()), "group_trade_share_pct": _round(trade_share),
+                "tail_count_in_group": count, "tail_total": tail_total,
+                "tail_share_in_group_pct": _round(share),
+                "concentration_ratio": _round(share / trade_share) if share is not None and trade_share else None,
+                "tail_open_at_cutoff_count": int((mask & tail_mask & (pooled["trade_status"] == "OPEN_AT_CUTOFF")).sum()),
+            })
+    return rows
+
+
+def run_lifecycle(network_audit: dict[str, int]) -> None:
+    LIFECYCLE_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    ledgers_raw = {w: load_window_ledger(w) for w in WINDOW_ORDER}
+    gate = input_gate(ledgers_raw)
+    pooled, dedup_audit = deduplicate(ledgers_raw, certification_exclusion_identities())
+    index = pd.read_csv(OUTPUT_DIR / "dedup_trade_index.csv", dtype={"ticker": str, "isu_cd": str})
+    index["ticker"] = index["ticker"].str.zfill(6)
+    check = pooled[IDENTITY_KEY + ["terminal_return"]].merge(index[IDENTITY_KEY + ["terminal_return"]], on=IDENTITY_KEY, how="outer", indicator=True)
+    if len(pooled) != len(index) or (check["_merge"] != "both").any() or (check["terminal_return_x"] - check["terminal_return_y"]).abs().max() > 1e-9:
+        raise RuntimeError("LIFECYCLE_POOLED_DOES_NOT_MATCH_DEDUP_TRADE_INDEX")
+    ledgers = {w: f[f["terminal_return"].notna()] for w, f in ledgers_raw.items()}
+
+    profile_rows, closed_rows, consistency_rows = [], [], []
+    for scope, frame in lifecycle_scopes(pooled, ledgers).items():
+        for version in ("ALL", "CLOSED_ONLY"):
+            data = frame if version == "ALL" else frame[frame["trade_status"].isin(CLOSED_STATUSES)]
+            if scope == "POOLED_DEDUP":
+                for group in LIFECYCLE_GROUPS:
+                    row = {"scope": scope, "version": version, "lifecycle_group": group,
+                           "role": "REFERENCE_ONLY" if group == NEVER else "PRIMARY",
+                           **lifecycle_metrics(lifecycle_group_frame(data, group))}
+                    (profile_rows if version == "ALL" else closed_rows).append(row)
+            for comparison, first, second in LIFECYCLE_COMPARISONS:
+                consistency_rows.append({
+                    "scope": scope, "version": version, "comparison": comparison, "first": first, "second": second,
+                    **lifecycle_compare(lifecycle_group_frame(data, first), lifecycle_group_frame(data, second)),
+                })
+    profile = pd.DataFrame(profile_rows)
+    closed = pd.DataFrame(closed_rows)
+    consistency = pd.DataFrame(consistency_rows)
+    tails = pd.DataFrame(
+        lifecycle_tail_concentration(pooled, "ALL")
+        + lifecycle_tail_concentration(pooled[pooled["trade_status"].isin(CLOSED_STATUSES)], "CLOSED_ONLY")
+    )
+    profile.to_csv(LIFECYCLE_OUTPUT_DIR / "lifecycle_return_profile.csv", index=False)
+    closed.to_csv(LIFECYCLE_OUTPUT_DIR / "lifecycle_return_profile_closed_only.csv", index=False)
+    consistency.to_csv(LIFECYCLE_OUTPUT_DIR / "lifecycle_window_consistency.csv", index=False)
+    tails.to_csv(LIFECYCLE_OUTPUT_DIR / "lifecycle_extreme_tail_comparison.csv", index=False)
+
+    verdict, detail = lifecycle_verdict(consistency)
+    signs = {}
+    for comparison, _, _ in LIFECYCLE_COMPARISONS:
+        for version in ("ALL", "CLOSED_ONLY"):
+            sub = consistency[(consistency["comparison"] == comparison) & (consistency["version"] == version)]
+            signs[f"{comparison}|{version}"] = {
+                r["scope"]: (f"{r['favorable']}F/{r['unfavorable']}U n={r['first_n']}/{r['second_n']}" if r["favorable"] is not None else "NA")
+                for _, r in sub.iterrows()
+            }
+    summary = {
+        "work_id": "PATTERN_A_FAST_CORE_V2_LIFECYCLE_HANDOFF_RETURN_PROFILE_V01",
+        "parent_work": "PATTERN_A_FAST_CORE_V2_WINNER_LOSER_PROFILE_V01",
+        "strategy_id": STRATEGY_ID,
+        "scope": "CONTROL only; same certified ledgers, pooled dedup and exclusion rules as the parent; lifecycle_class is a post-entry state, not an entry feature; no backtest, enrich, threshold change, or network",
+        "input_gate_synthesis_reproduction_match": {w: v["match"] for w, v in gate.items()},
+        "pooled_matches_parent_dedup_trade_index": True,
+        "dedup_trade_count": dedup_audit["dedup_trade_count"],
+        "return_contract": "terminal_return as recorded (OPEN_AT_CUTOFF marked to window cutoff); CLOSED_ONLY = REALIZED + LIFECYCLE_SETTLED",
+        "window_scope_population": "each window's own certified population (no pooled exclusion union), as in the parent window_consistency",
+        "lifecycle_groups": {k: sorted(v) for k, v in LIFECYCLE_GROUPS.items()},
+        "key_metrics_favorable_direction": dict(LIFECYCLE_KEY_METRICS),
+        "verdict_rules": LIFECYCLE_VERDICT_RULES,
+        "verdict": verdict,
+        "verdict_detail": detail,
+        "favorable_unfavorable_by_scope": signs,
+        "network_requests": network_audit["count"],
+    }
+    (LIFECYCLE_OUTPUT_DIR / "lifecycle_return_profile_summary.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2, default=str) + "\n", encoding="utf-8"
+    )
+    print(json.dumps({"verdict": verdict, **detail}, ensure_ascii=False, indent=2, default=str))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("step", choices=["enrich", "analyze"])
+    parser.add_argument("step", choices=["enrich", "analyze", "lifecycle"])
     parser.add_argument("--workers", type=int, default=8)
     args = parser.parse_args()
     if args.step == "enrich":
@@ -963,7 +1227,10 @@ def main() -> None:
     else:
         audit = {"count": 0}
         with network_guard(audit):
-            run_analyze(audit)
+            if args.step == "analyze":
+                run_analyze(audit)
+            else:
+                run_lifecycle(audit)
 
 
 if __name__ == "__main__":

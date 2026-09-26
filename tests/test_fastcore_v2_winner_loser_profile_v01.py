@@ -110,3 +110,73 @@ def test_frozen_feature_lists_exclude_post_entry_fields():
     assert not entry & post_entry
     assert {"mfe", "mae", "holding_days", "exit_type"} <= post_entry
     assert not any(math.isnan(x) for x in [profile.GRADE_RULES["weak_auc_abs"], profile.GRADE_RULES["weak_share_pp"]])
+
+
+def _lifecycle_frame(rows: list[tuple[str, float, str]]) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {"lifecycle_class": cls, "terminal_return": ret, "trade_status": status,
+             "holding_days": 10, "mfe": 1.0, "mae": -1.0, "peak_giveback": 0.5}
+            for cls, ret, status in rows
+        ]
+    )
+
+
+def test_lifecycle_metrics_counts_inclusive_tails_and_status_rates():
+    frame = _lifecycle_frame([
+        ("X", 100.0, "REALIZED"), ("X", 50.0, "REALIZED"), ("X", -15.0, "REALIZED"),
+        ("X", -60.0, "OPEN_AT_CUTOFF"),
+    ])
+    row = profile.lifecycle_metrics(frame)
+    assert row["trades"] == 4
+    assert row["ge_100_count"] == 1 and row["ge_50_count"] == 2
+    assert row["le_neg_15_count"] == 2 and row["le_neg_60_count"] == 1
+    assert row["open_at_cutoff_rate_pct"] == 25.0 and row["closed_rate_pct"] == 75.0
+    assert row["positive_rate_pct"] == 50.0
+
+
+def test_lifecycle_group_combines_coverage_paths():
+    frame = _lifecycle_frame([
+        (profile.NORMAL, 10.0, "REALIZED"), (profile.SKIPPED, 0.0, "REALIZED"),
+        (profile.WITHOUT_DIRECT, 0.0, "REALIZED"), (profile.NEVER, 0.0, "REALIZED"),
+    ])
+    assert len(profile.lifecycle_group_frame(frame, profile.COVERAGE)) == 2
+    assert len(profile.lifecycle_group_frame(frame, profile.NORMAL)) == 1
+
+
+def test_lifecycle_compare_counts_ties_as_neither():
+    first = _lifecycle_frame([("A", 60.0, "REALIZED"), ("A", 10.0, "REALIZED")])
+    second = _lifecycle_frame([("B", 5.0, "REALIZED"), ("B", -10.0, "REALIZED")])
+    row = profile.lifecycle_compare(first, second)
+    # 평균·중앙값·+50% 유리, +100%와 -30/-50/-60은 양쪽 0이라 TIE
+    assert row["favorable"] == 3 and row["unfavorable"] == 0
+    assert row["le_neg_60_rate_pct_favorable"] == "TIE"
+    assert row["return_auc"] == 1.0
+
+
+def _consistency_rows(pooled_closed: tuple[int, int], scope_unfavorable: int = 0) -> pd.DataFrame:
+    rows = []
+    scopes = ["POOLED_DEDUP"] + [f"WINDOW_{w}" for w in profile.WINDOW_ORDER] + ["ENTRY_BEFORE_2021", "ENTRY_FROM_2021"]
+    for scope in scopes:
+        for version in ("ALL", "CLOSED_ONLY"):
+            fav, unfav = (7, 0) if version == "ALL" else (7, 0)
+            if scope == "POOLED_DEDUP" and version == "CLOSED_ONLY":
+                fav, unfav = pooled_closed
+            elif scope != "POOLED_DEDUP" and version == "ALL":
+                fav, unfav = 7 - scope_unfavorable, scope_unfavorable
+            rows.append({"scope": scope, "version": version, "comparison": "NORMAL_vs_COVERAGE_COMBINED",
+                         "first_n": 100, "second_n": 50, "favorable": fav, "unfavorable": unfav,
+                         "return_auc": 0.62, "return_auc_effect": 0.12})
+    return pd.DataFrame(rows)
+
+
+def test_lifecycle_verdict_rules():
+    strong = profile.lifecycle_verdict(_consistency_rows((7, 0)))[0]
+    assert strong == "NORMAL_HANDOFF_STRONGLY_ASSOCIATED_WITH_BETTER_RETURN_DISTRIBUTION"
+    moderate = profile.lifecycle_verdict(_consistency_rows((4, 3)))[0]
+    assert moderate == "NORMAL_HANDOFF_MODERATELY_ASSOCIATED_WITH_BETTER_RETURN_DISTRIBUTION"
+    mixed = profile.lifecycle_verdict(_consistency_rows((3, 4)))[0]
+    assert mixed == "LIFECYCLE_RETURN_DIFFERENCE_MIXED"
+    small = _consistency_rows((7, 0))
+    small.loc[small["scope"].str.startswith("WINDOW_"), "second_n"] = 5
+    assert profile.lifecycle_verdict(small)[0] == "INSUFFICIENT_EVIDENCE"

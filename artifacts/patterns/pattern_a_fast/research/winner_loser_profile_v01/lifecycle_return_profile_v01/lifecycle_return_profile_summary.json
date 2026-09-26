@@ -1,0 +1,159 @@
+{
+  "work_id": "PATTERN_A_FAST_CORE_V2_LIFECYCLE_HANDOFF_RETURN_PROFILE_V01",
+  "parent_work": "PATTERN_A_FAST_CORE_V2_WINNER_LOSER_PROFILE_V01",
+  "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "scope": "CONTROL only; same certified ledgers, pooled dedup and exclusion rules as the parent; lifecycle_class is a post-entry state, not an entry feature; no backtest, enrich, threshold change, or network",
+  "input_gate_synthesis_reproduction_match": {
+    "P1": true,
+    "P2-1": true,
+    "P2-2": true,
+    "P3-1": true,
+    "P3-2": true
+  },
+  "pooled_matches_parent_dedup_trade_index": true,
+  "dedup_trade_count": 5380,
+  "return_contract": "terminal_return as recorded (OPEN_AT_CUTOFF marked to window cutoff); CLOSED_ONLY = REALIZED + LIFECYCLE_SETTLED",
+  "window_scope_population": "each window's own certified population (no pooled exclusion union), as in the parent window_consistency",
+  "lifecycle_groups": {
+    "NORMAL_EARLY_TREND_HANDOFF": [
+      "NORMAL_EARLY_TREND_HANDOFF"
+    ],
+    "SKIPPED_EARLY_TREND_HANDOFF": [
+      "SKIPPED_EARLY_TREND_HANDOFF"
+    ],
+    "PROGRESSED_WITHOUT_DIRECT_HANDOFF": [
+      "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
+    ],
+    "COVERAGE_PATH_COMBINED": [
+      "PROGRESSED_WITHOUT_DIRECT_HANDOFF",
+      "SKIPPED_EARLY_TREND_HANDOFF"
+    ],
+    "NEVER_PROGRESSED": [
+      "NEVER_PROGRESSED"
+    ]
+  },
+  "key_metrics_favorable_direction": {
+    "mean_return": 1,
+    "median_return": 1,
+    "ge_50_rate_pct": 1,
+    "ge_100_rate_pct": 1,
+    "le_neg_30_rate_pct": -1,
+    "le_neg_50_rate_pct": -1,
+    "le_neg_60_rate_pct": -1
+  },
+  "verdict_rules": {
+    "primary_comparison": "NORMAL_vs_COVERAGE_COMBINED",
+    "min_scope_group_n": 10,
+    "min_pooled_group_n": 30,
+    "min_evaluable_windows": 3,
+    "strong_min_auc_effect": 0.1,
+    "definition": {
+      "INSUFFICIENT_EVIDENCE": "pooled NORMAL or COVERAGE n < 30, or fewer than 3 windows where both groups have n >= 10",
+      "STRONG": "pooled ALL and CLOSED_ONLY: 0 unfavorable of 7 key metrics and >= 6 favorable; every evaluable ALL scope (5 windows + 2 disjoint periods) has <= 1 unfavorable; >= 80% of evaluable CLOSED_ONLY scopes have favorable > unfavorable; pooled ALL |AUC-0.5| >= 0.10",
+      "MODERATE": "pooled ALL and CLOSED_ONLY have favorable > unfavorable, and >= 80% of evaluable ALL scopes have favorable > unfavorable",
+      "MIXED": "otherwise",
+      "favorable_rule": "strict difference in the favorable direction; a tie (including both rates 0) counts as neither"
+    }
+  },
+  "verdict": "NORMAL_HANDOFF_MODERATELY_ASSOCIATED_WITH_BETTER_RETURN_DISTRIBUTION",
+  "verdict_detail": {
+    "pooled_all_favorable_unfavorable": [
+      7,
+      0
+    ],
+    "pooled_closed_favorable_unfavorable": [
+      4,
+      3
+    ],
+    "pooled_all_return_auc": 0.6142,
+    "evaluable_windows_all": 5,
+    "evaluable_scopes_all": 7,
+    "evaluable_scopes_closed_only": 7,
+    "all_scopes_majority_favorable_share": 1.0,
+    "closed_scopes_majority_favorable_share": 1.0,
+    "all_scopes_max_unfavorable": 0
+  },
+  "favorable_unfavorable_by_scope": {
+    "NORMAL_vs_COVERAGE_COMBINED|ALL": {
+      "POOLED_DEDUP": "7F/0U n=3276/1026",
+      "WINDOW_P1": "7F/0U n=3035/967",
+      "WINDOW_P2-1": "7F/0U n=613/323",
+      "WINDOW_P2-2": "7F/0U n=1069/474",
+      "WINDOW_P3-1": "7F/0U n=272/167",
+      "WINDOW_P3-2": "7F/0U n=703/323",
+      "ENTRY_BEFORE_2021": "7F/0U n=2156/548",
+      "ENTRY_FROM_2021": "7F/0U n=1120/478"
+    },
+    "NORMAL_vs_COVERAGE_COMBINED|CLOSED_ONLY": {
+      "POOLED_DEDUP": "4F/3U n=3244/871",
+      "WINDOW_P1": "4F/3U n=3007/823",
+      "WINDOW_P2-1": "5F/2U n=604/250",
+      "WINDOW_P2-2": "4F/3U n=1038/377",
+      "WINDOW_P3-1": "4F/1U n=264/123",
+      "WINDOW_P3-2": "4F/1U n=678/258",
+      "ENTRY_BEFORE_2021": "4F/3U n=2152/484",
+      "ENTRY_FROM_2021": "4F/3U n=1092/387"
+    },
+    "NORMAL_vs_SKIPPED|ALL": {
+      "POOLED_DEDUP": "7F/0U n=3276/284",
+      "WINDOW_P1": "7F/0U n=3035/265",
+      "WINDOW_P2-1": "7F/0U n=613/138",
+      "WINDOW_P2-2": "7F/0U n=1069/155",
+      "WINDOW_P3-1": "7F/0U n=272/68",
+      "WINDOW_P3-2": "7F/0U n=703/95",
+      "ENTRY_BEFORE_2021": "7F/0U n=2156/133",
+      "ENTRY_FROM_2021": "7F/0U n=1120/151"
+    },
+    "NORMAL_vs_SKIPPED|CLOSED_ONLY": {
+      "POOLED_DEDUP": "5F/2U n=3244/230",
+      "WINDOW_P1": "5F/2U n=3007/218",
+      "WINDOW_P2-1": "5F/2U n=604/104",
+      "WINDOW_P2-2": "5F/2U n=1038/118",
+      "WINDOW_P3-1": "5F/0U n=264/49",
+      "WINDOW_P3-2": "5F/0U n=678/74",
+      "ENTRY_BEFORE_2021": "4F/3U n=2152/112",
+      "ENTRY_FROM_2021": "5F/2U n=1092/118"
+    },
+    "NORMAL_vs_WITHOUT_DIRECT|ALL": {
+      "POOLED_DEDUP": "7F/0U n=3276/742",
+      "WINDOW_P1": "7F/0U n=3035/702",
+      "WINDOW_P2-1": "7F/0U n=613/185",
+      "WINDOW_P2-2": "7F/0U n=1069/319",
+      "WINDOW_P3-1": "7F/0U n=272/99",
+      "WINDOW_P3-2": "7F/0U n=703/228",
+      "ENTRY_BEFORE_2021": "7F/0U n=2156/415",
+      "ENTRY_FROM_2021": "7F/0U n=1120/327"
+    },
+    "NORMAL_vs_WITHOUT_DIRECT|CLOSED_ONLY": {
+      "POOLED_DEDUP": "4F/3U n=3244/641",
+      "WINDOW_P1": "4F/3U n=3007/605",
+      "WINDOW_P2-1": "4F/3U n=604/146",
+      "WINDOW_P2-2": "4F/3U n=1038/259",
+      "WINDOW_P3-1": "4F/1U n=264/74",
+      "WINDOW_P3-2": "4F/1U n=678/184",
+      "ENTRY_BEFORE_2021": "4F/3U n=2152/372",
+      "ENTRY_FROM_2021": "4F/3U n=1092/269"
+    },
+    "SKIPPED_vs_WITHOUT_DIRECT|ALL": {
+      "POOLED_DEDUP": "4F/3U n=284/742",
+      "WINDOW_P1": "4F/3U n=265/702",
+      "WINDOW_P2-1": "4F/3U n=138/185",
+      "WINDOW_P2-2": "4F/3U n=155/319",
+      "WINDOW_P3-1": "1F/6U n=68/99",
+      "WINDOW_P3-2": "1F/6U n=95/228",
+      "ENTRY_BEFORE_2021": "3F/4U n=133/415",
+      "ENTRY_FROM_2021": "4F/3U n=151/327"
+    },
+    "SKIPPED_vs_WITHOUT_DIRECT|CLOSED_ONLY": {
+      "POOLED_DEDUP": "4F/1U n=230/641",
+      "WINDOW_P1": "4F/1U n=218/605",
+      "WINDOW_P2-1": "1F/4U n=104/146",
+      "WINDOW_P2-2": "4F/1U n=118/259",
+      "WINDOW_P3-1": "1F/4U n=49/74",
+      "WINDOW_P3-2": "2F/3U n=74/184",
+      "ENTRY_BEFORE_2021": "4F/1U n=112/372",
+      "ENTRY_FROM_2021": "4F/1U n=118/269"
+    }
+  },
+  "network_requests": 0
+}
