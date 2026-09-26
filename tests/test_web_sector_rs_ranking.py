@@ -12,13 +12,13 @@ import pandas as pd
 import pytest
 
 from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2
+from trend_scanner.universe.instrument_metadata import resolve_basic_info_snapshot_dir
 
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPORTER_PATH = ROOT / "scripts/export_sector_rs_ranking_web.py"
 PAYLOAD_PATH = ROOT / "web/data/sector-rs-ranking.json"
-TARGET = "2026-09-21"
-RANKING_PATH = ROOT / "data/analytics/sector_rs_ranking/v01/sector_rs_ranking_20260921.parquet"
+RANKING_DIR = ROOT / "data/analytics/sector_rs_ranking/v01"
 HORIZONS = ("2w", "1m", "3m", "6m", "12m")
 PARITY_FIELDS = (
     *(f"sector_rs_{horizon}" for horizon in HORIZONS),
@@ -45,6 +45,31 @@ def _load_payload() -> dict:
     return json.loads(PAYLOAD_PATH.read_text(encoding="utf-8"))
 
 
+def _target() -> str:
+    """The tracked payload's as-of date; every authority below is selected from it."""
+    target = _load_payload()["as_of"]
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", target), target
+    return target
+
+
+def _ranking_paths(target: str) -> tuple[Path, Path]:
+    compact = target.replace("-", "")
+    ranking_path = RANKING_DIR / f"sector_rs_ranking_{compact}.parquet"
+    meta_path = RANKING_DIR / f"sector_rs_ranking_{compact}_meta.json"
+    assert ranking_path.is_file(), f"authoritative Sector RS ranking is missing for {target}: {ranking_path}"
+    assert meta_path.is_file(), f"authoritative Sector RS ranking meta is missing for {target}: {meta_path}"
+    return ranking_path, meta_path
+
+
+def _load_ranking(target: str) -> pd.DataFrame:
+    return pd.read_parquet(_ranking_paths(target)[0])
+
+
+def _sector_group_count(ranking: pd.DataFrame) -> int:
+    grouped = ranking.loc[ranking["sector_code"].notna(), ["market", "sector_code"]]
+    return int(len(grouped.drop_duplicates()))
+
+
 def _scalar(value):
     if value is None or value is pd.NA or value is pd.NaT:
         return None
@@ -64,7 +89,7 @@ def _scalar(value):
 
 def _basic_info() -> dict[str, dict[str, str]]:
     result = {}
-    base = ROOT / "data/reference/source/history/krx_instrument_master/v01/basic_info/2026/20260921"
+    base, _name_date = resolve_basic_info_snapshot_dir(ROOT, _target())
     for market in ("KOSPI", "KOSDAQ"):
         rows = json.loads((base / f"{market}.json").read_text(encoding="utf-8"))["OutBlock_1"]
         for row in rows:
@@ -98,29 +123,40 @@ def test_sector_rs_missing_expected_and_reference_dates_fail_closed():
 
 def test_payload_equals_deterministic_exporter_projection():
     exporter = _load_exporter()
+    target = _target()
+    ranking_path, meta_path = _ranking_paths(target)
+    basic_info_dir, _name_date = resolve_basic_info_snapshot_dir(ROOT, target)
     assert _load_payload() == exporter.build_sector_rs_web_payload(
-        ranking_path=RANKING_PATH,
-        meta_path=RANKING_PATH.with_name("sector_rs_ranking_20260921_meta.json"),
-        basic_info_dir=ROOT / "data/reference/source/history/krx_instrument_master/v01/basic_info/2026/20260921",
+        ranking_path=ranking_path,
+        meta_path=meta_path,
+        basic_info_dir=basic_info_dir,
         stocks_dir=ROOT / "web/data/stocks",
-        requested_as_of=TARGET,
-        reference_market_date=TARGET,
+        requested_as_of=target,
+        reference_market_date=target,
     )
 
 
 def test_population_scope_and_horizon_counts_are_conserved():
     payload = _load_payload()
+    target = _target()
+    ranking_path, meta_path = _ranking_paths(target)
+    ranking = pd.read_parquet(ranking_path)
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    status = ranking["membership_status"]
+    sector_group_count = _sector_group_count(ranking)
     assert payload["schema_version"] == 1
-    assert payload["as_of"] == TARGET
+    assert payload["as_of"] == meta["as_of"] == target
+    assert set(ranking["as_of"].astype(str)) == {target}
     assert payload["horizons"] == ["2w", "1m", "3m", "6m", "12m"]
     assert payload["scope"] == {
         "type": "EXACT_SECTOR_MEMBERSHIP_POPULATION",
-        "population_count": 2558,
-        "mapped_count": 2435,
-        "aggregate_only_count": 88,
-        "unmapped_count": 35,
-        "sector_group_count": 45,
+        "population_count": len(ranking),
+        "mapped_count": int((status == "MAPPED").sum()),
+        "aggregate_only_count": int((status == "AGGREGATE_ONLY").sum()),
+        "unmapped_count": int((status == "UNMAPPED").sum()),
+        "sector_group_count": sector_group_count,
     }
+    assert set(status) <= {"MAPPED", "AGGREGATE_ONLY", "UNMAPPED"}
     assert payload["metric_scope"] == {
         "type": "WITHIN_SECTOR",
         "group_key": ["market", "sector_code"],
@@ -131,9 +167,12 @@ def test_population_scope_and_horizon_counts_are_conserved():
         for horizon in HORIZONS
     }
     assert len(payload["items"]) == payload["scope"]["population_count"]
-    assert len(payload["sectors"]) == 45
+    assert len(payload["sectors"]) == sector_group_count
     assert sum(item["membership_status"] == "MAPPED" for item in payload["items"]) == payload["scope"]["mapped_count"]
-    assert sum(item["membership_status"] == "AGGREGATE_ONLY" for item in payload["items"]) == 88
+    assert (
+        sum(item["membership_status"] == "AGGREGATE_ONLY" for item in payload["items"])
+        == payload["scope"]["aggregate_only_count"]
+    )
     assert sum(item["membership_status"] == "UNMAPPED" for item in payload["items"]) == payload["scope"]["unmapped_count"]
     assert sum(sector["member_count"] for sector in payload["sectors"]) == (
         payload["scope"]["mapped_count"] + payload["scope"]["aggregate_only_count"]
@@ -142,22 +181,25 @@ def test_population_scope_and_horizon_counts_are_conserved():
 
 def test_exact_name_authority_resolves_every_item_without_stock_index_fallback():
     payload = _load_payload()
+    target = _target()
+    _basic_info_dir, name_date = resolve_basic_info_snapshot_dir(ROOT, target)
     names = _basic_info()
     assert all(item["ticker"] in names for item in payload["items"])
     assert all(
         (item["name"], item["market"]) == (names[item["ticker"]]["name"], names[item["ticker"]]["market"])
         for item in payload["items"]
     )
+    assert name_date <= target
     assert payload["source"] == {
         "ranking_schema": "SECTOR_RS_RANKING_V01",
-        "ranking_as_of": TARGET,
-        "name_source_date": "2026-09-21",
+        "ranking_as_of": target,
+        "name_source_date": name_date,
     }
 
 
 def test_all_ranking_values_have_exact_authority_parity():
     payload = _load_payload()
-    authority = pd.read_parquet(RANKING_PATH)
+    authority = _load_ranking(_target())
     authority["ticker"] = authority["ticker"].astype(str).str.strip().str.upper()
     source_by_ticker = authority.set_index("ticker").to_dict(orient="index")
     assert {item["ticker"] for item in payload["items"]} == set(source_by_ticker)
@@ -209,14 +251,20 @@ def test_unmapped_and_report_availability_preserve_separate_concerns():
 
 def test_price_and_sector_return_fields_are_exact_or_fail_closed():
     payload = _load_payload()
-    assert sum(item["latest_close"] is not None for item in payload["items"]) == 2448
-    assert sum(item["latest_close"] is None for item in payload["items"]) == payload["scope"]["population_count"] - 2448
+    target = _target()
+    expected_close_count = int(_load_ranking(target)["latest_close"].notna().sum())
+    assert expected_close_count > 0
+    assert sum(item["latest_close"] is not None for item in payload["items"]) == expected_close_count
+    assert (
+        sum(item["latest_close"] is None for item in payload["items"])
+        == payload["scope"]["population_count"] - expected_close_count
+    )
     for item in payload["items"]:
         if item["latest_close"] is None:
             assert item["latest_close_as_of"] is None
         else:
             assert item["latest_close"] > 0
-            assert item["latest_close_as_of"] == TARGET
+            assert item["latest_close_as_of"] == target
         for horizon in HORIZONS:
             anchor = item[f"sector_anchor_date_{horizon}"]
             stock_return = item[f"sector_stock_return_{horizon}"]
@@ -224,7 +272,7 @@ def test_price_and_sector_return_fields_are_exact_or_fail_closed():
                 assert anchor is not None
                 assert math.isfinite(stock_return)
             if anchor is not None:
-                assert anchor <= TARGET
+                assert anchor <= target
 
     assert all(
         sum(item[f"sector_stock_return_{horizon}"] is not None for item in payload["items"])
@@ -236,15 +284,16 @@ def test_price_and_sector_return_fields_are_exact_or_fail_closed():
 def test_representative_sector_returns_match_repository_v2_anchor_closes():
     payload = _load_payload()
     by_ticker = {item["ticker"]: item for item in payload["items"]}
-    repo = build_repository_v2(ROOT, end=TARGET)
-    loader = RepositoryV2DailyLoader(repo, start="2025-01-01", end=TARGET)
+    target = _target()
+    repo = build_repository_v2(ROOT, end=target)
+    loader = RepositoryV2DailyLoader(repo, start="2025-01-01", end=target)
 
     for ticker in ("005930", "000660", "035420", "025980", "0007J0"):
         item = by_ticker[ticker]
         frame = loader.load(ticker)
         assert frame is not None and not frame.empty
         close_by_date = {index.strftime("%Y-%m-%d"): float(value) for index, value in frame["close"].items()}
-        end_close = close_by_date[TARGET]
+        end_close = close_by_date[target]
         for horizon in HORIZONS:
             anchor = item[f"sector_anchor_date_{horizon}"]
             expected = None if anchor is None or anchor not in close_by_date else (end_close / close_by_date[anchor]) - 1.0
