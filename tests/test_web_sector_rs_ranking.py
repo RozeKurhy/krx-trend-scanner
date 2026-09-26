@@ -100,10 +100,12 @@ def _basic_info() -> dict[str, dict[str, str]]:
 
 def test_standalone_source_resolver_uses_latest_basic_info_snapshot_on_or_before_target():
     exporter = _load_exporter()
+    target = _target()
     _ranking, _meta, basic_info_dir = exporter._resolve_source_paths(
-        "2026-09-19", ranking_path=None, meta_path=None, basic_info_dir=None
+        target, ranking_path=None, meta_path=None, basic_info_dir=None
     )
-    assert basic_info_dir.name == "20260918"
+    expected_dir, _name_date = resolve_basic_info_snapshot_dir(ROOT, target)
+    assert basic_info_dir == expected_dir
 
 
 def test_sector_rs_mixed_expected_and_reference_dates_fail_closed():
@@ -288,7 +290,13 @@ def test_representative_sector_returns_match_repository_v2_anchor_closes():
     repo = build_repository_v2(ROOT, end=target)
     loader = RepositoryV2DailyLoader(repo, start="2025-01-01", end=target)
 
-    for ticker in ("005930", "000660", "035420", "025980", "0007J0"):
+    samples_by_market = {}
+    for item in sorted(payload["items"], key=lambda row: row["ticker"]):
+        if item["latest_close"] is not None:
+            samples_by_market.setdefault(item["market"], item["ticker"])
+    samples = tuple(samples_by_market.values())
+    assert samples
+    for ticker in samples:
         item = by_ticker[ticker]
         frame = loader.load(ticker)
         assert frame is not None and not frame.empty

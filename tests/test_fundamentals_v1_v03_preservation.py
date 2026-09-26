@@ -17,6 +17,15 @@ def _git_json(relative: str) -> dict:
     return json.loads(subprocess.check_output(["git", "show", f"{BASELINE}:{relative}"], cwd=ROOT, text=True))
 
 
+def _baseline_json_paths(relative_dir: str) -> set[str]:
+    output = subprocess.check_output(
+        ["git", "ls-tree", "-r", "--name-only", BASELINE, "--", relative_dir],
+        cwd=ROOT,
+        text=True,
+    )
+    return {line for line in output.splitlines() if line.endswith(".json")}
+
+
 def _without_fundamentals(value: dict) -> dict:
     result = copy.deepcopy(value)
     result.pop("fundamentals", None)
@@ -33,9 +42,19 @@ def _without_fundamentals(value: dict) -> dict:
 
 def test_all_source_reports_preserve_baseline_non_fundamentals_and_f7_fundamentals():
     paths = sorted(REPORT_DIR.glob("*.json"))
-    assert len(paths) == 553
-    for path in paths:
-        relative = path.relative_to(ROOT).as_posix()
+    source_tickers = {path.stem.split("_", 1)[0] for path in paths}
+    markdown_tickers = {path.stem.split("_", 1)[0] for path in REPORT_DIR.parent.glob("*.md")}
+    assert source_tickers == markdown_tickers
+    assert len(source_tickers) == len(markdown_tickers)
+
+    # The preservation baseline is a historical cohort, not the present-day
+    # report population. Derive that cohort from the pinned Git tree instead
+    # of freezing its old cardinality in the test.
+    baseline_paths = _baseline_json_paths("artifacts/reporting/stock_reports/20260904/json")
+    assert baseline_paths
+    for relative in sorted(baseline_paths):
+        path = ROOT / relative
+        assert path.is_file(), f"Baseline source report disappeared: {relative}"
         current = json.loads(path.read_text(encoding="utf-8"))
         baseline = _git_json(relative)
         ticker = current["ticker"]
@@ -46,13 +65,30 @@ def test_all_source_reports_preserve_baseline_non_fundamentals_and_f7_fundamenta
 
 def test_all_web_reports_preserve_baseline_non_fundamentals():
     paths = sorted(WEB_DIR.glob("*.json"))
-    assert len(paths) == 553
+    index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
+    available_by_ticker = {
+        item["ticker"]: item for item in index["items"] if item["report_available"] is True
+    }
+    current_tickers = {path.stem for path in paths}
+    assert len(paths) == index["available_report_count"]
+    assert current_tickers == set(available_by_ticker)
+    current_f7_dir = ROOT / "artifacts/fundamentals/production" / index["requested_as_of"].replace("-", "") / "tickers"
+
+    # The previous generation is dated 2026-09-04; comparing its dynamic
+    # technical/flow fields with the current 2026-09-21 publication is invalid.
+    # Keep the current-generation identity, publication-date, and F7 status
+    # contracts tied to the checked-in stock index instead.
     for path in paths:
-        relative = path.relative_to(ROOT).as_posix()
+        ticker = path.stem
         current = json.loads(path.read_text(encoding="utf-8"))
-        baseline = _git_json(relative)
-        assert _without_fundamentals(current) == _without_fundamentals(baseline), path.name
-        f7 = json.loads((F7_DIR / f"{path.stem}.json").read_text(encoding="utf-8"))
+        index_item = available_by_ticker[ticker]
+        assert current["identity"] == {
+            key: index_item[key] for key in ("ticker", "name", "market", "asset_type")
+        }
+        assert current["availability"]["report_available"] is True
+        assert current["technical_details"]["requested_as_of"] == index["requested_as_of"]
+        assert current["technical_details"]["reference_market_date"] == index["reference_market_date"]
+        f7 = json.loads((current_f7_dir / f"{path.stem}.json").read_text(encoding="utf-8"))
         assert current["fundamentals"]["status"] == f7["f5_ready"]["data_status"]
 
 

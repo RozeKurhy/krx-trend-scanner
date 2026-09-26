@@ -6,6 +6,7 @@ Offline acceptance tests for the identity-boundary correction.
 from __future__ import annotations
 
 import csv
+from collections import Counter
 import json
 from pathlib import Path
 
@@ -21,32 +22,27 @@ from trend_scanner.data.repository_v2 import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
-FIX = ROOT / "artifacts/data/end_to_end_data_parity/v01/adjusted_price_identity_boundary_correction/fix01"
-SOURCE_XML = ROOT / (
-    "artifacts/data/end_to_end_data_parity/v01/adjusted_source_gap_authority_review/v01/"
-    "live_verification/ticker_446840_naver_verification_response.xml"
-)
+FIX02 = ROOT / "artifacts/data/end_to_end_data_parity/v01/adjusted_price_identity_boundary_correction/fix02"
 
 
 def test_ticker_continuity_is_not_identity_continuity() -> None:
-    authority = json.loads((FIX / "446840/corporate_identity_authority.json").read_text())
-    assert authority["ticker_code_continuity"] is True
-    assert authority["economic_identity_continuity"] is False
-    assert authority["effective_transition_date"] == "2025-08-14"
-    assert authority["pre_boundary_identity"].startswith("Kiwoom No.8 SPAC")
-    assert authority["post_boundary_identity"].startswith("Gitsn")
+    regression = json.loads((FIX02 / "validation/446840_regression.json").read_text(encoding="utf-8"))
+    assert regression["status"] == "PASS"
+    assert regression["ticker"] == "446840"
+    assert regression["canonical_requested_start"] == regression["canonical_date_min"] == "2025-08-14"
+    assert regression["source_row_exists_pre_boundary"] is True
+    assert regression["identity_eligible_pre_boundary"] is False
+    assert regression["analytic_eligible_pre_boundary"] is False
+    assert regression["invariants_passed"] is True
 
 
 def test_source_presence_is_preserved_but_not_analytic_eligibility() -> None:
-    semantics = json.loads((FIX / "446840/source_vs_identity_semantics.json").read_text())
-    assert semantics["source_response"]["returned_rows"] == 10
-    assert semantics["source_response"]["pre_boundary_rows"] == 9
-    assert semantics["semantic_contract"] == {
-        "SOURCE_ROW_EXISTS": True,
-        "IDENTITY_ROW_ELIGIBLE": False,
-        "ANALYTIC_ROW_ELIGIBLE": False,
-        "reason": "Rows before 2025-08-14 are source-present but belong to the pre-boundary SPAC identity.",
-    }
+    regression = json.loads((FIX02 / "validation/446840_regression.json").read_text(encoding="utf-8"))
+    assert regression["source_row_exists_pre_boundary"] is True
+    assert regression["identity_eligible_pre_boundary"] is False
+    assert regression["analytic_eligible_pre_boundary"] is False
+    assert regression["known_adjusted_source_gap_dates_contains_446840"] is False
+    assert regression["network_requests"] == 0
 
 
 def test_identity_authority_excludes_exact_pre_boundary_pairs_without_gap_fallback() -> None:
@@ -93,26 +89,31 @@ def test_true_same_identity_repair_path_remains_storage_compatible(tmp_path: Pat
 
 
 def test_candidate_audit_closes_the_exact_46_without_silent_drop() -> None:
-    summary = json.loads((FIX / "blast_radius/identity_candidate_summary.json").read_text())
-    assert summary["candidate_input_count"] == summary["candidate_output_count"] == 46
+    audit_dir = FIX02 / "missing_raw"
+    summary = json.loads((audit_dir / "missing_raw_summary.json").read_text(encoding="utf-8"))
+    assert summary["input_population_count"] == summary["output_census_count"] == 660
+    assert summary["unique_identity_count"] == 660
     assert summary["silent_drop_count"] == 0
-    assert summary["unresolved_count"] == 0
-    assert summary["classification_counts"] == {
-        "IDENTITY_BOUNDARY_EXPECTED": 24,
-        "TRUE_ACQUISITION_TRUNCATION": 0,
-        "LEGITIMATE_SOURCE_GAP": 0,
-        "NO_ACTION_REQUIRED": 22,
-        "UNRESOLVED": 0,
-    }
-    with (FIX / "blast_radius/identity_candidate_audit.csv").open() as handle:
+    assert summary["raw_cache_absence_is_source_absence_proof"] is False
+    assert summary["broad_live_scan_performed"] is False
+    with (audit_dir / "missing_raw_identity_census.csv").open(encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
-    assert len(rows) == 46
-    assert {row["ticker"] for row in rows}.__len__() == 46
-    assert all(row["raw_pre_boundary_present"] == "True" for row in rows)
+    assert len(rows) == summary["output_census_count"]
+    assert len({(row["ticker"], row["first_common_date"], row["last_common_date"]) for row in rows}) == summary["unique_identity_count"]
+    observed = Counter(row["risk_classification"] for row in rows)
+    assert {key: observed.get(key, 0) for key in summary["risk_classification_counts"]} == summary["risk_classification_counts"]
 
 
 def test_previously_captured_naver_response_is_offline_and_no_fallback() -> None:
-    response = SOURCE_XML.read_text(encoding="EUC-KR")
+    # Versioned synthetic Naver protocol fixture: parser coverage without
+    # depending on a retired live-response artifact.
+    dates = [
+        "2025-08-01", "2025-08-04", "2025-08-05", "2025-08-06", "2025-08-07",
+        "2025-08-08", "2025-08-11", "2025-08-12", "2025-08-13", "2025-08-14",
+    ]
+    response = "<protocol><chartdata>" + "".join(
+        f'<item data="{date.replace("-", "")}|40|42|39|41|10"/>' for date in dates
+    ) + "</chartdata></protocol>"
 
     class _Response:
         status_code = 200
@@ -127,4 +128,6 @@ def test_previously_captured_naver_response_is_offline_and_no_fallback() -> None
     provider = NaverDirectAdjustedPriceDataProvider(session=_Session())
     frame = provider.load_daily("446840", "2025-08-01", "2025-08-14")
     assert len(frame) == 10
+    assert frame.index.min() == pd.Timestamp("2025-08-01")
+    assert frame.index.max() == pd.Timestamp("2025-08-14")
     assert provider.pykrx_fallback_call_count == 0

@@ -6,12 +6,12 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 
-V01_DOC_PATH = ROOT / "docs/patterns/pattern_a_fast/strategy/final_v01.md"
+V01_DOC_PATH = ROOT / "docs/patterns/pattern_a_fast/archive/strategy/version_01/README.md"
 V01_JSON_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/strategy_v01/pattern_a_fast_final_strategy_v01.json"
-V02_DOC_PATH = ROOT / "docs/patterns/pattern_a_fast/strategy/final_v02.md"
+V02_DOC_PATH = ROOT / "docs/patterns/pattern_a_fast/strategy/version_02/README.md"
 V02_JSON_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/strategy_v02/pattern_a_fast_final_strategy_v02.json"
-VERSIONS_INDEX_PATH = ROOT / "docs/patterns/pattern_a_fast/strategy/versions.md"
-V03_PREREG_PATH = ROOT / "docs/patterns/pattern_a_fast/prereg/fresh_oos_v03.md"
+VERSIONS_INDEX_PATH = ROOT / "docs/patterns/pattern_a_fast/strategy/README.md"
+V03_PREREG_PATH = ROOT / "docs/patterns/pattern_a_fast/archive/validation_plan/fresh_out_of_sample_v03.md"
 
 
 def test_v01_frozen_baseline_preserved():
@@ -147,10 +147,10 @@ def test_v03_prereg_superseded_banner():
 
 
 def test_strategy_versions_index():
-    """Section 25: Verify strategy versions index document exists and correctly links V01 and V02."""
+    """Verify the current strategy index points to the frozen V1 baseline and canonical V2."""
     assert VERSIONS_INDEX_PATH.exists()
     index_doc = VERSIONS_INDEX_PATH.read_text(encoding="utf-8")
-    assert "PATTERN_A_FAST_FINAL_STRATEGY_V01" in index_doc
-    assert "PATTERN_A_FAST_FINAL_STRATEGY_V02" in index_doc
-    assert "HISTORICAL_FROZEN_BASELINE" in index_doc
-    assert "MULTIPLE_INDEPENDENT_ENTRIES_PER_TICKER" in index_doc
+    assert "[V1 README](../archive/strategy/version_01/README.md)" in index_doc
+    assert "[V2 README](./version_02/README.md)" in index_doc
+    assert "V1 역할**: 공식 과거 비교 기준선" in index_doc
+    assert "V2 — `PATTERN_A_FAST_FINAL_STRATEGY_V02`" in index_doc

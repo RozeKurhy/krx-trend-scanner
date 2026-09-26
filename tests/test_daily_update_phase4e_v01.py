@@ -360,6 +360,15 @@ def _write_web_fixture(
     foreign = {**common, "as_of": ref, "items": [{"ticker": "000001", "report_available": True}]}
     health = {
         **common,
+        "overall_status": "NORMAL",
+        "fundamentals": {
+            "status": "NORMAL",
+            "output_integrity": {
+                "outside_universe_count": 0,
+                "invalid_output_count": 0,
+                "duplicate_payload_count": 0,
+            },
+        },
         "stock_reports": {
             "ready": True,
             "source_json_count": 1,

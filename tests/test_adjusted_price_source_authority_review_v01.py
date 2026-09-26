@@ -19,7 +19,6 @@ import pandas as pd
 from trend_scanner.data.adjusted_price_provider import normalize_ticker
 from trend_scanner.data.source_authority_review import (
     CANDIDATE_AUTHORITY_ID,
-    DEFAULT_REVIEW_ARTIFACTS_DIR_FIX03_CORRECTION,
     EXPECTED_PIT_PHYSICAL_SHA256,
     EXPECTED_PIT_SEMANTIC_SHA256,
     EXPECTED_POPULATION_PHYSICAL_SHA256,
@@ -47,6 +46,8 @@ from trend_scanner.data.source_authority_review import (
     validate_parser_negative_matrix,
     validate_provenance_integrity_fix03,
 )
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_ticker_identity_normalization():
@@ -239,19 +240,40 @@ def test_reconciliation_success_wiring_passes_gate_10():
     assert res["reconciliation_coverage_consistency"] is True
 
 
-def test_old_fix02_category_cannot_override_authority():
+def test_retired_fix02_category_cannot_override_current_cohort_authority(tmp_path):
     cohort_df = pd.DataFrame([{
-        "ticker": "015940",
-        "control_category": "HISTORICAL_ONLY_DELISTED",
-        "population_class": "HISTORICAL_ONLY",
+        "ticker": "999999",
+        "control_category": "CURRENT_COHORT_AUTHORITY",
+        "population_class": "CURRENT_AUTHORITY",
     }])
-    unexp_df = pd.DataFrame()
-    cov_df = derive_coverage_results_fix03_correction(cohort_df, unexp_df)
+    pd.DataFrame([{
+        "ticker": "999999",
+        "control_category": "RETIRED_FIX02_CATEGORY",
+        "population_class": "RETIRED_FIX02_CLASS",
+        "expected_count": 12,
+        "candidate_count": 12,
+        "missing_expected_count": 0,
+        "first_expected_date": "2010-01-04",
+        "last_expected_date": "2010-01-19",
+        "first_candidate_date": "2010-01-04",
+        "last_candidate_date": "2010-01-19",
+        "pre_listing_rows": 0,
+        "post_delisting_rows": 0,
+        "future_rows": 0,
+    }]).to_csv(tmp_path / "source_authority_coverage_results_fix02.csv", index=False)
+    population_path = tmp_path / "current_population_authority.json"
+    population_path.write_text('{"schema":"synthetic-current-authority"}', encoding="utf-8")
+    cov_df = derive_coverage_results_fix03_correction(
+        cohort_df,
+        pd.DataFrame(),
+        fix02_dir=tmp_path,
+        pop_path=population_path,
+    )
     assert len(cov_df) == 1
-    assert cov_df["ticker"].iloc[0] == "015940"
-    assert cov_df["control_category"].iloc[0] == "HISTORICAL_ONLY_DELISTED"
-    assert cov_df["population_class"].iloc[0] == "HISTORICAL_ONLY"
-    assert cov_df["candidate_count"].iloc[0] > 0
+    assert cov_df["ticker"].iloc[0] == "999999"
+    assert cov_df["control_category"].iloc[0] == "CURRENT_COHORT_AUTHORITY"
+    assert cov_df["population_class"].iloc[0] == "CURRENT_AUTHORITY"
+    assert cov_df["candidate_count"].iloc[0] == 12
 
 
 def test_physical_only_population_mutation_fails_gate_14(tmp_path):
@@ -343,16 +365,23 @@ def test_failure_semantics_executed_and_pass():
 
 
 def test_fix03_correction_manifest_integrity():
-    manifest_p = DEFAULT_REVIEW_ARTIFACTS_DIR_FIX03_CORRECTION / "artifact_manifest.json"
-    assert manifest_p.exists(), "artifact_manifest.json must exist in FIX03_CORRECTION dir"
+    current_correction_dir = ROOT / (
+        "artifacts/data/end_to_end_data_parity/v01/adjusted_price_source_authority_review/"
+        "corporate_action_evidence/v01_fix03_correction_12"
+    )
+    manifest_p = current_correction_dir / "artifact_manifest.json"
+    assert manifest_p.exists(), "current v01_fix03_correction_12 artifact manifest must exist"
 
     manifest_data = json.loads(manifest_p.read_text(encoding="utf-8"))
     artifacts = manifest_data.get("artifacts", {})
     assert len(artifacts) >= 15
+    assert manifest_data["review_decision"] == "CONDITIONAL_REVIEW_REQUIRED"
+    assert manifest_data["production_integration_authorized"] is False
 
     for fname, meta in artifacts.items():
-        fp = DEFAULT_REVIEW_ARTIFACTS_DIR_FIX03_CORRECTION / fname
+        fp = ROOT / meta["path"]
         assert fp.exists(), f"Artifact {fname} missing on disk"
+        assert fp.stat().st_size == meta["size_bytes"], f"Size mismatch for {fname}"
         expected_sha = meta["sha256"]
         actual_sha = hashlib.sha256(fp.read_bytes()).hexdigest()
         assert actual_sha == expected_sha, f"SHA256 mismatch for {fname}"

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import csv
 import json
 from pathlib import Path
 import re
@@ -26,7 +27,8 @@ def exporter():
 
 @pytest.fixture(scope="session")
 def payload(exporter):
-    return exporter.build_web_payload("2026-09-21")
+    summary = json.loads(exporter.SUMMARY_PATH.read_text(encoding="utf-8"))
+    return exporter.build_web_payload(summary["target_as_of"])
 
 
 def test_payload_projects_approved_authority(payload, exporter):
@@ -35,8 +37,8 @@ def test_payload_projects_approved_authority(payload, exporter):
     assert payload["model"]["study"] == summary["study"]
     assert payload["model"]["candidate"] == "downside_heavy_v01"
     assert payload["model"]["hysteresis"] is True
-    assert payload["requested_as_of"] == "2026-09-21"
-    assert payload["reference_market_date"] == "2026-09-17"
+    assert payload["requested_as_of"] == summary["target_as_of"]
+    assert payload["reference_market_date"] == summary["reference_market_date"]
     assert payload["as_of"] == payload["reference_market_date"]
     assert payload["available_from"] == payload["items"][0]["date"]
     assert payload["items"][-1]["date"] == payload["as_of"]
@@ -48,9 +50,17 @@ def test_payload_projects_approved_authority(payload, exporter):
     assert payload["current"]["trading_value"] == summary["current"]["trading_value"]
 
 
-def test_payload_rows_are_valid_ascending_and_compact(payload):
+def test_payload_rows_are_valid_ascending_and_compact(payload, exporter):
     dates = [item["date"] for item in payload["items"]]
-    assert len(dates) == 3989
+    with exporter.SOURCE_CSV.open(newline="", encoding="utf-8") as handle:
+        authority_dates = sorted(
+            item["date"]
+            for row in csv.DictReader(handle)
+            if (item := exporter._project_item(row)) is not None
+            and item["date"] <= payload["reference_market_date"]
+        )
+    assert len(dates) == len(authority_dates)
+    assert dates == authority_dates
     assert dates == sorted(dates)
     assert len(dates) == len(set(dates))
     assert all(item["regime"] in VALID_REGIMES for item in payload["items"])
@@ -75,7 +85,7 @@ def test_historical_anchor_states_are_preserved(payload):
 
 def test_exporter_writes_payload_without_manual_json(tmp_path, exporter, payload):
     output = tmp_path / "data" / "fear-index.json"
-    written = exporter.export_fear_index("2026-09-21", output)
+    written = exporter.export_fear_index(payload["requested_as_of"], output)
     assert written == payload
     assert json.loads(output.read_text(encoding="utf-8")) == payload
 

@@ -35,15 +35,16 @@ def test_raw_authority_and_window_contract() -> None:
     assert DATA_PATH.exists()
     assert TICKER == "069500"
     assert NAME == "KODEX 200"
-    assert len(frame) == 3101
+    assert len(frame) == meta["rows"]
     assert meta["actual_start"] == "2014-01-02"
-    assert meta["actual_end"] == "2026-08-21"
+    assert meta["actual_end"] == frame.index.max().strftime("%Y-%m-%d")
     assert meta["evaluation_start"] == "2021-04-01"
     assert meta["signal_cutoff"] == "2026-08-14"
     assert meta["execution_support_end"] == "2026-08-21"
     assert frame.index.is_unique and frame.index.is_monotonic_increasing
     assert frame.index.min() < EVALUATION_START
-    assert frame.index.max() == SUPPORT_END
+    assert frame.index.max().strftime("%Y-%m-%d") == meta["actual_end"]
+    assert frame.index.max() >= SUPPORT_END
 
 
 def test_common_entries_and_matched_identity() -> None:

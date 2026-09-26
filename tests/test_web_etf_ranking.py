@@ -34,9 +34,10 @@ def _load_ranking() -> dict:
 
 def test_etf_ranking_has_exact_fixed_scope_and_complete_finite_values():
     ranking = _load_ranking()
+    stock_index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
     assert ranking["schema_version"] == 1
-    assert ranking["requested_as_of"] == "2026-09-21"
-    assert ranking["reference_market_date"] == "2026-09-17"
+    assert ranking["requested_as_of"] == stock_index["requested_as_of"]
+    assert ranking["reference_market_date"] == stock_index["reference_market_date"]
     assert ranking["as_of"] == ranking["reference_market_date"]
     assert ranking["scope"] == {"type": "FIXED_ETF_UNIVERSE", "count": 24}
     assert ranking["horizons"] == HORIZONS

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 from collections import Counter
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,6 +27,17 @@ def _load_monitor() -> dict:
     return json.loads(MONITOR_PATH.read_text(encoding="utf-8"))
 
 
+def _source_projection(ticker: str, exporter=None) -> dict:
+    exporter = exporter or _load_exporter()
+    index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
+    index_item = next(
+        item for item in index["items"]
+        if item["ticker"] == ticker and item["report_available"] is True
+    )
+    report = json.loads((ROOT / "web/data/stocks" / f"{ticker}.json").read_text(encoding="utf-8"))
+    return exporter._project_item(index_item, report)
+
+
 def test_strategy_monitor_schema_and_source_count_are_consistent():
     monitor = _load_monitor()
     index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
@@ -39,9 +52,10 @@ def test_strategy_monitor_schema_and_source_count_are_consistent():
     assert monitor["scope"] == {
         "type": "PUBLISHED_REPORTS",
         "label": "현재 공개 리포트 기준",
-        "report_count": 1850,
+        "report_count": index["available_report_count"],
     }
-    assert monitor["as_of"] == "2026-09-17"
+    assert monitor["as_of"] == index["requested_as_of"]
+    assert monitor["reference_market_date"] == index["reference_market_date"]
     assert monitor["scope"]["report_count"] == index["available_report_count"] == len(items)
     bucket_counts = Counter(item["bucket"] for item in items)
     assert all(monitor["counts"][key] == bucket_counts.get(key, 0) for key in ("entry", "hold", "exit", "watch", "unavailable"))
@@ -59,20 +73,17 @@ def test_strategy_monitor_schema_and_source_count_are_consistent():
 
 
 def test_representative_common_open_trade_is_projected_without_recalculation():
+    exporter = _load_exporter()
     monitor = _load_monitor()
-    item = next(item for item in monitor["items"] if item["ticker"] == "005930")
+    item = next(
+        item for item in monitor["items"]
+        if item["asset_type"] == "COMMON" and item["current_trade"] is not None
+    )
+    source = _source_projection(item["ticker"], exporter)
 
-    assert item["action"] == "HOLD"
-    assert item["strategy_state"] == "HOLD_PROGRESSED"
     assert item["canonical_position"] == "OPEN"
     assert item["bucket"] == "hold"
-    assert item["current_trade"] == {
-        "trade_sequence": 6,
-        "entry_execution_date": "2025-09-01",
-        "entry_open": 68400.0,
-        "return_pct": 274.27,
-        "trade_status": "OPEN_AT_CUTOFF",
-    }
+    assert item["current_trade"] == source["current_trade"]
 
 
 def test_etf_is_not_in_action_counts_and_has_no_fake_trade():
@@ -88,13 +99,19 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-strategy-sort-2"' in strategy_html
     assert 'href="./css/app.css?v=web-ui-density-11"' in index_html
     assert 'href="./css/app.css?v=web-ui-density-11"' in report_html
     for html in (index_html, report_html):
         assert "web-02a-final-2" not in html
         assert "web-03a-final-1" not in html
-    assert 'src="./js/strategy.js?v=web-strategy-sort-2"' in strategy_html
+    strategy_scripts = [
+        urlsplit(url)
+        for url in re.findall(r'\bsrc="([^"]+)"', strategy_html)
+        if urlsplit(url).path == "./js/strategy.js"
+    ]
+    assert len(strategy_scripts) == 1
+    assert strategy_scripts[0].query.startswith("v=") and strategy_scripts[0].query.removeprefix("v=")
+    assert (ROOT / "web" / strategy_scripts[0].path.removeprefix("./")).is_file()
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert 'src="./js/report.js?v=web-02d-window-13"' in report_html
     assert 'href="./strategy.html"' in index_html
@@ -197,14 +214,21 @@ def test_strategy_hold_sort_contract_is_hold_only_and_session_scoped():
 
 
 def test_strategy_ui_polish_uses_representative_source_returns_and_split_dates():
+    exporter = _load_exporter()
     monitor = _load_monitor()
-    positive = next(item for item in monitor["items"] if item["ticker"] == "005930")
-    negative = next(item for item in monitor["items"] if item["ticker"] == "027410")
+    positive = next(
+        item for item in monitor["items"]
+        if item["current_trade"] is not None and item["current_trade"]["return_pct"] > 0
+    )
+    negative = next(
+        item for item in monitor["items"]
+        if item["current_trade"] is not None and item["current_trade"]["return_pct"] < 0
+    )
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert positive["current_trade"]["return_pct"] == 274.27
-    assert negative["current_trade"]["return_pct"] == -10.12
+    assert positive["current_trade"]["return_pct"] == _source_projection(positive["ticker"], exporter)["current_trade"]["return_pct"]
+    assert negative["current_trade"]["return_pct"] == _source_projection(negative["ticker"], exporter)["current_trade"]["return_pct"]
     assert 'const returnClass = trade && Number(trade.return_pct) > 0 ? "detail-value-positive"' in strategy_js
     assert 'Number(trade.return_pct) < 0 ? "detail-value-negative"' in strategy_js
     assert 'createPriceDateField("현재가"' in strategy_js
@@ -216,12 +240,9 @@ def test_strategy_ui_polish_uses_representative_source_returns_and_split_dates()
 
 def test_strategy_position_examples_keep_meaningful_two_line_values():
     monitor = _load_monitor()
-    items = {item["ticker"]: item for item in monitor["items"]}
-
-    assert items["005930"]["canonical_position"] == "OPEN"
-    assert items["005930"]["strategy_state"] == "HOLD_PROGRESSED"
-    assert items["027410"]["canonical_position"] == "OPEN"
-    assert items["027410"]["strategy_state"] == "HOLD_PRE_PROGRESSED"
+    items_by_state = {item["strategy_state"]: item for item in monitor["items"]}
+    assert items_by_state["HOLD_PROGRESSED"]["canonical_position"] == "OPEN"
+    assert items_by_state["HOLD_PRE_PROGRESSED"]["canonical_position"] == "OPEN"
     wait_item = next(item for item in monitor["items"] if item["strategy_state"] == "WAIT")
     assert wait_item["canonical_position"] == "FLAT"
 

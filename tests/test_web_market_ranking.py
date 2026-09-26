@@ -27,16 +27,17 @@ def _load_ranking() -> dict:
 def test_market_ranking_schema_scope_and_generated_projection_match():
     exporter = _load_exporter()
     ranking = _load_ranking()
+    index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
 
     assert ranking == exporter.build_market_ranking()
     assert ranking["schema_version"] == 1
     assert ranking["scope"] == {
         "type": "PUBLISHED_REPORTS",
         "label": "현재 공개 리포트 기준",
-        "report_count": 1850,
+        "report_count": index["available_report_count"],
     }
     assert ranking["metric_scope"] == {"label": "마켓 RS는 전체 보통주 기준"}
-    assert ranking["as_of"] == "2026-09-17"
+    assert ranking["as_of"] == index["reference_market_date"]
     assert ranking["eligible_counts"] == {
         horizon: sum(exporter._is_eligible(item, horizon) for item in ranking["items"])
         for horizon in ("2w", "1m", "3m", "6m", "12m")

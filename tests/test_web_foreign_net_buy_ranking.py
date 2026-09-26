@@ -12,11 +12,8 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
-TARGET_AS_OF = "2026-09-21"
 EXPORTER_PATH = ROOT / "scripts/export_foreign_net_buy_ranking_web.py"
 RANKING_PATH = ROOT / "web/data/foreign-net-buy-ranking.json"
-FLOW_PATH = ROOT / "artifacts/patterns/pattern_a/production/flow/source/foreign_flow_daily_20260921.parquet"
-COMMON_AUTHORITY_PATH = ROOT / "artifacts/patterns/pattern_a/validation/relative_strength/market_completion_v01/market_rs_universe_20260921.csv"
 
 
 def _load_exporter():
@@ -29,6 +26,18 @@ def _load_exporter():
 
 def _load_ranking() -> dict:
     return json.loads(RANKING_PATH.read_text(encoding="utf-8"))
+
+
+def _current_source_paths(ranking: dict | None = None):
+    ranking = ranking or _load_ranking()
+    return _load_exporter()._resolve_source_paths(
+        ROOT,
+        ranking["as_of"],
+        index_path=None,
+        flow_path=None,
+        sector_path=None,
+        common_authority_path=None,
+    )
 
 
 def test_standalone_source_resolver_uses_latest_approved_membership_on_or_before_target():
@@ -46,26 +55,25 @@ def test_standalone_source_resolver_uses_latest_approved_membership_on_or_before
 
 def test_payload_has_exact_as_of_common_scope_and_reconciliation():
     ranking = _load_ranking()
-    authority = pd.read_csv(COMMON_AUTHORITY_PATH, dtype=str)
+    _index_path, flow_path, _sector_path, authority_path = _current_source_paths(ranking)
+    authority = pd.read_csv(authority_path, dtype=str)
     authority = authority.loc[authority["market"].isin({"KOSPI", "KOSDAQ"})]
     authority_tickers = set(authority["ticker"])
-    source = pd.read_parquet(FLOW_PATH)
+    source = pd.read_parquet(flow_path)
     source_tickers = set(source["ticker"].astype(str))
     source_dates = pd.to_datetime(source["date"]).dt.strftime("%Y-%m-%d")
     target_market_counts = authority["market"].value_counts().to_dict()
     assert ranking["schema_version"] == 1
-    assert ranking["as_of"] == TARGET_AS_OF
+    assert ranking["as_of"] == max(source_dates)
     assert ranking["scope"]["type"] == "KRX_COMMON_STOCKS"
     assert ranking["scope"]["markets"] == ["KOSPI", "KOSDAQ"]
     assert ranking["scope"]["asset_type"] == "COMMON"
-    assert ranking["scope"]["universe_snapshot_date"] == TARGET_AS_OF
-    assert ranking["scope"]["universe_authority_path"].endswith(
-        "market_rs_universe_20260921.csv"
-    )
+    assert ranking["scope"]["universe_snapshot_date"] == ranking["as_of"]
+    assert ranking["scope"]["universe_authority_path"].endswith(authority_path.name)
     assert ranking["horizons"] == ["1d", "5d", "10d", "20d", "60d"]
-    assert ranking["source"]["as_of"] == TARGET_AS_OF
+    assert ranking["source"]["as_of"] == ranking["as_of"]
     assert ranking["source"]["date_min"] == min(source_dates)
-    assert ranking["source"]["date_max"] == max(source_dates) == TARGET_AS_OF
+    assert ranking["source"]["date_max"] == max(source_dates) == ranking["as_of"]
     assert ranking["source"]["trading_session_count"] == source_dates.nunique()
     assert ranking["source"]["ticker_count"] == len(source_tickers)
     assert ranking["source"]["field"] == "foreign_net_buy_value"
@@ -81,7 +89,8 @@ def test_payload_has_exact_as_of_common_scope_and_reconciliation():
 
 def test_payload_items_match_exact_current_common_authority():
     ranking = _load_ranking()
-    authority = pd.read_csv(COMMON_AUTHORITY_PATH, dtype=str)
+    _index_path, _flow_path, _sector_path, authority_path = _current_source_paths(ranking)
+    authority = pd.read_csv(authority_path, dtype=str)
     expected = {
         (row.ticker, row.market)
         for row in authority.itertuples(index=False)
@@ -94,15 +103,21 @@ def test_payload_items_match_exact_current_common_authority():
 
 def test_horizon_aggregation_matches_raw_source_for_kospi_and_kosdaq_samples():
     ranking = _load_ranking()
-    source = pd.read_parquet(FLOW_PATH)
+    _index_path, flow_path, _sector_path, _authority_path = _current_source_paths(ranking)
+    source = pd.read_parquet(flow_path)
     source["date"] = source["date"].astype(str)
     source["ticker"] = source["ticker"].astype(str)
-    sessions = sorted(source.loc[source["date"] <= TARGET_AS_OF, "date"].unique())
-    samples = ["005930", "000660", "035720", "247540", "000020"]
+    sessions = sorted(source.loc[source["date"] <= ranking["as_of"], "date"].unique())
+    by_market = {}
+    for item in sorted(ranking["items"], key=lambda row: row["ticker"]):
+        if item["ticker"] in set(source["ticker"]):
+            by_market.setdefault(item["market"], item["ticker"])
+    samples = tuple(by_market[market] for market in sorted(by_market))
+    assert {next(item["market"] for item in ranking["items"] if item["ticker"] == ticker) for ticker in samples} >= {"KOSPI", "KOSDAQ"}
 
     for ticker in samples:
         item = next(item for item in ranking["items"] if item["ticker"] == ticker)
-        for horizon in (1, 5, 20, 60):
+        for horizon in (1, 5, 10, 20, 60):
             dates = sessions[-horizon:]
             expected = source.loc[source["ticker"].eq(ticker) & source["date"].isin(dates), "foreign_net_buy_value"]
             if len(expected) == horizon:
@@ -113,10 +128,11 @@ def test_horizon_aggregation_matches_raw_source_for_kospi_and_kosdaq_samples():
 
 def test_each_horizon_uses_descending_flow_sort_and_keeps_reportless_rows():
     ranking = _load_ranking()
-    source = pd.read_parquet(FLOW_PATH)
+    _index_path, flow_path, _sector_path, _authority_path = _current_source_paths(ranking)
+    source = pd.read_parquet(flow_path)
     source["date"] = pd.to_datetime(source["date"]).dt.strftime("%Y-%m-%d")
     source["ticker"] = source["ticker"].astype(str)
-    sessions = sorted(source.loc[source["date"] <= TARGET_AS_OF, "date"].unique())
+    sessions = sorted(source.loc[source["date"] <= ranking["as_of"], "date"].unique())
     target_tickers = {item["ticker"] for item in ranking["items"]}
     names = {item["ticker"]: item["name"] for item in ranking["items"]}
     for horizon in ranking["horizons"]:

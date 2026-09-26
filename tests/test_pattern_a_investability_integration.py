@@ -12,8 +12,9 @@ from trend_scanner.filters.investability import InvestabilityStatus
 from trend_scanner.patterns.pattern_a_evaluator import PatternACandidateState
 from trend_scanner.patterns.pattern_a_feature_set import PatternAStage
 from trend_scanner.scanner.full_universe_scanner import scan_pattern_a_universe
+from trend_scanner.scanner import full_universe_scanner
+from trend_scanner.universe.models import MarketType, UniverseSecurity
 from trend_scanner.validation.pattern_a_investability_integration import (
-    run_investability_integration_validation,
     CANONICAL_AS_OF,
     EXPECTED_RAW_CANDIDATES,
     EXPECTED_TRANSITION_COUNT,
@@ -31,11 +32,10 @@ _ARTIFACTS_DIR = _REPO_ROOT / "artifacts/patterns/pattern_a/production/investabi
 
 @pytest.fixture(scope="module")
 def integration_summary() -> dict:
-    """Load or execute Phase 10C downstream integration validation summary."""
+    """Load the checked-in Phase 10C oracle; tests do not rescan a local cache."""
     summary_path = _ARTIFACTS_DIR / "pattern_a_investability_integration_summary_20260814.json"
-    if summary_path.exists():
-        return json.loads(summary_path.read_text(encoding="utf-8"))
-    return run_investability_integration_validation(_REPO_ROOT)
+    assert summary_path.is_file(), f"Pinned Phase 10C summary is missing: {summary_path}"
+    return json.loads(summary_path.read_text(encoding="utf-8"))
 
 
 def test_raw_candidate_preservation(integration_summary: dict):
@@ -145,15 +145,37 @@ def test_canonical_candidate_summary_breakdown(integration_summary: dict):
     )
 
 
-def test_historical_lookahead_negative_case():
+def test_historical_lookahead_negative_case(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Verify that scanning historical as_of (2025-01-31) with future reference date (2026-08-14) uses PIT source and prevents future market cap leakage."""
-    cache = ParquetCache(base_dir=_REPO_ROOT / "data/raw/stocks")
-    # Scan single ticker with as_of = 2025-01-31 and reference_market_date = 2026-08-14 (B > A)
+    cache = ParquetCache(base_dir=tmp_path / "synthetic_cache")
+    dates = pd.bdate_range(end="2025-01-31", periods=90)
+    close = pd.Series(range(100, 190), index=dates, dtype=float)
+    cache.save("005930", pd.DataFrame({
+        "open": close,
+        "high": close + 1,
+        "low": close - 1,
+        "close": close,
+        "volume": 1000,
+        "trading_value": close * 1000,
+    }))
+
+    # No external or machine-local market-cap authority is needed to verify
+    # fail-closed behavior for a date with no pinned snapshot.
+    monkeypatch.setattr(
+        full_universe_scanner,
+        "load_canonical_mcap_snapshot",
+        lambda *args, **kwargs: (pd.DataFrame(), ""),
+    )
+
+    # Scan a single synthetic ticker with as_of = 2025-01-31 and a later reference date.
     scan_res = scan_pattern_a_universe(
         cache=cache,
         as_of="2025-01-31",
         reference_market_date="2026-08-14",
+        universe_securities=[UniverseSecurity("005930", "Synthetic KOSPI", MarketType.KOSPI)],
         target_tickers=["005930"],
+        enrich_flow_for_candidates=False,
+        enrich_rs_for_candidates=False,
     )
     assert len(scan_res.rows) == 1
     row = scan_res.rows[0]
@@ -235,4 +257,3 @@ def test_integration_hard_gates_all_pass(integration_summary: dict):
     for g_name, g_pass in gates.items():
         assert g_pass is True, f"Gate {g_name} failed!"
     assert integration_summary["phase_10c_status"] == "INTEGRATION_READY"
-

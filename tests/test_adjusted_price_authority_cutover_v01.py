@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 import pytest
@@ -27,7 +29,7 @@ from trend_scanner.data.adjusted_price_full_population import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
-FIX01_OUT = ROOT / "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix01"
+FIX02_OUT = ROOT / "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/authority_cutover_fix02"
 
 
 @pytest.fixture(scope="module")
@@ -75,10 +77,6 @@ def test_production_default_resolves_corrected_authority(authority):
 
 
 def test_old_checkpoint_cannot_be_reused_with_effective_authority(authority, tmp_path):
-    old = ROOT / "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population_closure/fresh_full_population_run_v01/full_population_checkpoint.json"
-    checkpoint = json.loads(old.read_text(encoding="utf-8"))
-    path = tmp_path / "full_population_checkpoint.json"
-    path.write_text(json.dumps(checkpoint), encoding="utf-8")
     runner = FullPopulationRunner(
         population_path=authority.population_path,
         pit_path=authority.pit_path,
@@ -88,6 +86,11 @@ def test_old_checkpoint_cannot_be_reused_with_effective_authority(authority, tmp
         expected_pit_sha256=authority.pit_sha256,
         provider=object(),
     )
+    # A tiny, deliberately stale checkpoint makes this contract independent of
+    # ignored resume scratch or a historical run's local-only checkpoint.
+    checkpoint = asdict(runner.load_or_create_checkpoint(runner.load_population()))
+    checkpoint["pit_authority_sha256"] = "0" * 64
+    runner.checkpoint_path.write_text(json.dumps(checkpoint), encoding="utf-8")
     with pytest.raises(RuntimeError, match="CHECKPOINT_COMPATIBILITY_MISMATCH|CHECKPOINT_AUTHORITY_MISMATCH"):
         runner.load_or_create_checkpoint(runner.load_population())
 
@@ -145,34 +148,40 @@ def test_unknown_is_not_not_common_even_for_reused_ticker():
     assert parts["unexpected"] == ["2014-01-02"]
 
 
-def test_exact_authority_reconciles_3089_and_additional_1615(authority):
+def test_exact_authority_matches_current_accepted_closure(authority):
     assert len(authority.confirmed_non_common_dates) == 3089
     assert len(authority.confirmed_non_common_intervals) == 10
-    census = json.loads((FIX01_OUT / "outside_common_4704_reconciliation.json").read_text(encoding="utf-8"))
-    assert census["old_current_outside_total"] == 4704
-    assert census["category_counts"]["ACCEPTED_SPAC_NON_COMMON"] == 3089
-    assert census["category_counts"]["OTHER_AUTHORITY_CONFIRMED_NON_COMMON"] == 1615
-    assert census["category_counts"]["UNRESOLVED"] == 0
-    assert census["sum_check"] is True
+    summary = json.loads((FIX02_OUT / "production_zero_call_run/full_population_summary.json").read_text(encoding="utf-8"))
+    binding = json.loads((FIX02_OUT / "authority_manifest_binding.json").read_text(encoding="utf-8"))
+    assert binding["matches_fix02_code_head"] is True
+    assert binding["population_count"] == authority.population_count
+    assert summary["frozen_authority"]["population_count"] == authority.population_count
+    assert summary["frozen_authority"]["population_manifest_sha256"] == authority.population_sha256
+    assert summary["status_counts"]["closure_complete_total"] == authority.population_count
 
 
-def test_clean_room_candidates_are_measured_and_deterministic():
-    a = json.loads((FIX01_OUT / "candidate_a_integrity.json").read_text(encoding="utf-8"))
-    b = json.loads((FIX01_OUT / "candidate_b_integrity.json").read_text(encoding="utf-8"))
-    determinism = json.loads((FIX01_OUT / "candidate_determinism_comparison.json").read_text(encoding="utf-8"))
-    assert a["integrity_pass"] is True and b["integrity_pass"] is True
-    assert a["parquet_count"] == a["metadata_pair_count"] == 3145
-    assert a["zero_store_success_count"] == 4
-    assert a["unreadable_files"] == a["future_rows"] == a["source_invalid_ohlc_rows"] == 0
-    assert a["analytic_invalid_source_native_rows"] > 0
-    assert determinism["deterministic"] is True
+def test_current_accepted_artifacts_are_bound_and_deterministic():
+    manifest = json.loads((FIX02_OUT / "artifact_manifest.json").read_text(encoding="utf-8"))
+    binding = json.loads((FIX02_OUT / "authority_manifest_binding.json").read_text(encoding="utf-8"))
+    consistency = json.loads((FIX02_OUT / "operational_artifact_consistency.json").read_text(encoding="utf-8"))
+    assert binding["matches_fix02_code_head"] is True
+    assert binding["portable_paths"] is True
+    assert consistency["all_execution_ids_same"] is True
+    assert consistency["summary_closure_verdict_match"] is True
+    assert consistency["summary_closure_next_state_match"] is True
+    for relative_path, expected_sha256 in manifest["files"].items():
+        artifact_path = FIX02_OUT / relative_path
+        assert artifact_path.is_file(), relative_path
+        assert hashlib.sha256(artifact_path.read_bytes()).hexdigest() == expected_sha256, relative_path
 
 
-def test_actual_production_zero_network_passes_and_special_cases():
-    first = json.loads((FIX01_OUT / "first_production_zero_network_pass.json").read_text(encoding="utf-8"))
-    second = json.loads((FIX01_OUT / "second_production_zero_call_pass.json").read_text(encoding="utf-8"))
-    assert first["provider_calls"] == second["provider_calls"] == 0
-    assert first["result"]["summary"]["status_counts"]["closure_complete_total"] == 3149
-    assert second["result"]["summary"]["network_accounting"]["reused_without_network"] == 3149
-    assert json.loads((FIX01_OUT / "special_case_000610.json").read_text(encoding="utf-8"))["validator"] == "PASS"
-    assert json.loads((FIX01_OUT / "special_case_000360.json").read_text(encoding="utf-8"))["resolved_authority_conflict_count"] == 1
+def test_current_production_zero_network_run_closes_authority():
+    result = json.loads((FIX02_OUT / "production_zero_call_result.json").read_text(encoding="utf-8"))
+    summary = json.loads((FIX02_OUT / "production_zero_call_run/full_population_summary.json").read_text(encoding="utf-8"))
+    closure = json.loads((FIX02_OUT / "production_zero_call_run/full_population_closure_manifest.json").read_text(encoding="utf-8"))
+    assert result["final_verdict"] == "ACCEPT"
+    assert result["provider_calls"] == result["physical_attempts"] == result["network_calls_performed"] == 0
+    assert result["reused_without_network"] == result["population_total"]
+    assert summary["status_counts"]["closure_complete_total"] == result["population_total"]
+    assert closure["completed_count"] == result["population_total"]
+    assert closure["failure_count"] == closure["total_unresolved_authority_conflicts"] == 0

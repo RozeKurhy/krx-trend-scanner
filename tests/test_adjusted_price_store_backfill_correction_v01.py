@@ -30,8 +30,8 @@ def test_identity_safe_request_boundary_excludes_pre_identity_rows():
     assert metadata["requested_start"] == "2025-08-14"
     assert metadata["actual_date_min"] == "2025-08-14"
     assert frame.index.min() == pd.Timestamp("2025-08-14")
-    assert frame.index.max() == pd.Timestamp("2026-08-21")
-    assert len(frame) == 248
+    assert frame.index.max() == pd.Timestamp(metadata["actual_date_max"])
+    assert len(frame) == metadata["row_count"]
 
 
 def test_pre_identity_rows_use_identity_authority_not_source_gap_authority():

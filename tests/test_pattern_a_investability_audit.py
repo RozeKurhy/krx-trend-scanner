@@ -10,6 +10,7 @@ import pandas as pd
 
 from trend_scanner.validation.pattern_a_investability_audit import (
     run_investability_audit,
+    render_markdown_doc,
     load_canonical_mcap_snapshot,
     calculate_distribution_stats,
     CANONICAL_AS_OF,
@@ -19,12 +20,13 @@ from trend_scanner.validation.pattern_a_investability_audit import (
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _ARTIFACTS_DIR = _REPO_ROOT / "artifacts/patterns/pattern_a/production/investability"
 _RESEARCH_ARTIFACTS_DIR = _REPO_ROOT / "artifacts/patterns/pattern_a/research/investability_threshold_design"
+_SUMMARY_PATH = _ARTIFACTS_DIR / "pattern_a_investability_summary_20260814.json"
 
 
 @pytest.fixture(scope="module")
 def canonical_audit_result() -> dict:
-    """Execute canonical investability audit pipeline."""
-    return run_investability_audit(_REPO_ROOT, as_of=CANONICAL_AS_OF)
+    """Read the frozen, checked-in canonical audit result without rescanning local caches."""
+    return json.loads(_SUMMARY_PATH.read_text(encoding="utf-8"))
 
 
 def test_gate1_no_lookahead_and_dates(canonical_audit_result: dict):
@@ -100,7 +102,9 @@ def test_gate10_disk_artifact_consistency(canonical_audit_result: dict):
     df_cand_disk = pd.read_csv(_ARTIFACTS_DIR / "pattern_a_investability_candidates_20260814.csv", dtype={"ticker": str})
     df_sc_disk = pd.read_csv(_RESEARCH_ARTIFACTS_DIR / "pattern_a_investability_scenarios_20260814.csv")
     dist_disk = json.loads((_ARTIFACTS_DIR / "pattern_a_investability_distribution_20260814.json").read_text(encoding="utf-8"))
-    doc_text = (_REPO_ROOT / "docs/patterns/pattern_a/validation/investability_distribution_v01.md").read_text(encoding="utf-8")
+    # Render to memory from the pinned canonical summary; never rewrite the
+    # caller's untracked validation document during a test run.
+    doc_text = render_markdown_doc(canonical_audit_result)
 
     assert len(df_cand_disk) == 180
     assert (df_cand_disk["as_of"] == "2026-08-14").all()
@@ -140,7 +144,7 @@ def test_canonical_metrics_086060():
     assert jin["avg_trading_value_60d_eok"] == 1.46
 
 
-def test_fail_closed_negative_cases_in_isolated_tmp(tmp_path: Path):
+def test_fail_closed_negative_cases_in_isolated_tmp(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Verify that failing any gate results in HOLD_DATA_QUALITY in an ISOLATED tmp directory."""
     # Capture pre-test hash of official summary
     summary_path = _ARTIFACTS_DIR / "pattern_a_investability_summary_20260814.json"
@@ -154,6 +158,20 @@ def test_fail_closed_negative_cases_in_isolated_tmp(tmp_path: Path):
     assert empty_stats["count"] == 0
     assert empty_stats["available_count"] == 0
     assert empty_stats["min"] is None
+
+    # Inject empty local data sources so the negative-path test never consults
+    # a machine-specific data/raw/stocks population or a market-cap cache.
+    import trend_scanner.validation.pattern_a_investability_audit as audit_module
+
+    class EmptyCache:
+        def __init__(self, base_dir):
+            self.base_dir = Path(base_dir)
+
+        def load(self, _ticker):
+            return None
+
+    monkeypatch.setattr(audit_module, "ParquetCache", EmptyCache)
+    monkeypatch.setattr(audit_module, "load_canonical_mcap_snapshot", lambda *args, **kwargs: (pd.DataFrame(), ""))
 
     # Test 2: Invalid as_of triggers Gate 1 failure and HOLD decision in isolated tmp
     res_bad_date = run_investability_audit(

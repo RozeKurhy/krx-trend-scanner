@@ -6,6 +6,7 @@ constructor kwarg that no production caller uses.
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 from pathlib import Path
@@ -234,8 +235,7 @@ def test_historical_frozen_mode_unaffected_by_production_manifest(tmp_path) -> N
 
 
 def test_pykrx_zero_use_guard_on_production_wiring_changes() -> None:
-    """directive section 33: PyKRX zero-use guard, extended to every file this BLOCKER-1 wiring
-    change touched."""
+    """Reject actual PyKRX imports/dynamic imports, without matching comments or docstrings."""
     changed_files = (
         Path("src/trend_scanner/data/repository_v2_loader.py"),
         Path("src/trend_scanner/scanner/full_universe_scanner.py"),
@@ -243,5 +243,22 @@ def test_pykrx_zero_use_guard_on_production_wiring_changes() -> None:
         Path("src/trend_scanner/reporting/stock_report.py"),
     )
     for path in changed_files:
-        source = path.read_text(encoding="utf-8").lower()
-        assert "pykrx" not in source, f"{path} must not reference pykrx"
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                imported = [alias.name for alias in node.names]
+                assert not any(name == "pykrx" or name.startswith("pykrx.") for name in imported), path
+            elif isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+                assert module != "pykrx" and not module.startswith("pykrx."), path
+            elif isinstance(node, ast.Call):
+                function = node.func
+                is_dynamic_import = (
+                    isinstance(function, ast.Name) and function.id == "__import__"
+                ) or (
+                    isinstance(function, ast.Attribute) and function.attr == "import_module"
+                )
+                if is_dynamic_import and node.args and isinstance(node.args[0], ast.Constant):
+                    module = node.args[0].value
+                    if isinstance(module, str):
+                        assert module != "pykrx" and not module.startswith("pykrx."), path
