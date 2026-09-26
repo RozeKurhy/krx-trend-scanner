@@ -1,0 +1,545 @@
+{
+  "work_id": "PATTERN_A_FAST_CORE_V2_A_VS_C1_DIVERGENCE_V01",
+  "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "scope": "CONTROL only; archived certified ledgers; holding lifecycle only (stages and prices after the holding end are never used); no backtest, exit rule, threshold sweep, or network",
+  "groups": {
+    "A": "FIRST_PROGRESSED_NORMAL",
+    "C1": "C1_PROGRESSED_WITHOUT_DIRECT_HANDOFF",
+    "definition_source": "classify_holding in scripts/analyze_fastcore_v2_lifecycle_refinement_strict_handoff_v01.py"
+  },
+  "anchor": "first PROGRESSED month label while held; observed at its effective (last trading) close",
+  "price_contract": "Repository V2 adjusted daily; holding window as the runner's _refresh_outcome_metrics; thresholds use completed daily closes vs entry_open (same basis as the -15% Loss Guard)",
+  "gates": {
+    "count_gates": {
+      "dedup": {
+        "dedup_trade_count": 5380,
+        "duplicate_rows_removed": 6714,
+        "representative_window_counts": {
+          "P1": 4968,
+          "P3-2": 208,
+          "P2-2": 201,
+          "P2-1": 3
+        }
+      },
+      "REALISTIC_P2-1_count_gate": {
+        "observed": {
+          "eligible": 355,
+          "filled": 199,
+          "realized": 161,
+          "cash_skipped": 156
+        },
+        "certified": {
+          "filled": 199,
+          "realized": 161,
+          "cash_skipped": 156,
+          "eligible": 355
+        },
+        "match": true
+      },
+      "REALISTIC_P2-2_count_gate": {
+        "observed": {
+          "eligible": 485,
+          "filled": 242,
+          "realized": 218,
+          "cash_skipped": 243
+        },
+        "certified": {
+          "filled": 242,
+          "realized": 218,
+          "cash_skipped": 243,
+          "eligible": 485
+        },
+        "match": true
+      },
+      "REALISTIC_P3-2_count_gate": {
+        "observed": {
+          "eligible": 405,
+          "filled": 228,
+          "realized": 207,
+          "cash_skipped": 177
+        },
+        "certified": {
+          "filled": 228,
+          "realized": 207,
+          "cash_skipped": 177,
+          "eligible": 405
+        },
+        "match": true
+      }
+    },
+    "replication_gate": [
+      {
+        "panel": "SIMPLE_P1",
+        "rows": 4982,
+        "cache_missing": 0,
+        "replication_match": 4982,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_P2-1",
+        "rows": 1800,
+        "cache_missing": 0,
+        "replication_match": 1800,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_P2-2",
+        "rows": 2424,
+        "cache_missing": 0,
+        "replication_match": 2417,
+        "mismatch": 7,
+        "mismatch_pct": 0.2888,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_P3-1",
+        "rows": 1173,
+        "cache_missing": 0,
+        "replication_match": 1173,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_P3-2",
+        "rows": 1792,
+        "cache_missing": 0,
+        "replication_match": 1792,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_POOLED_DEDUP",
+        "rows": 5380,
+        "cache_missing": 0,
+        "replication_match": 5376,
+        "mismatch": 4,
+        "mismatch_pct": 0.0743,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P2-1_ELIGIBLE",
+        "rows": 355,
+        "cache_missing": 0,
+        "replication_match": 355,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P2-1_FILLED",
+        "rows": 199,
+        "cache_missing": 0,
+        "replication_match": 199,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P2-2_ELIGIBLE",
+        "rows": 485,
+        "cache_missing": 0,
+        "replication_match": 485,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P2-2_FILLED",
+        "rows": 242,
+        "cache_missing": 0,
+        "replication_match": 242,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P3-2_ELIGIBLE",
+        "rows": 405,
+        "cache_missing": 0,
+        "replication_match": 405,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P3-2_FILLED",
+        "rows": 228,
+        "cache_missing": 0,
+        "replication_match": 228,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      }
+    ],
+    "price_parity": [
+      {
+        "panel": "SIMPLE_P1",
+        "a_c1_trades": 1513,
+        "price_parity_mismatch": 6,
+        "mismatch_pct": 0.3966
+      },
+      {
+        "panel": "SIMPLE_P2-1",
+        "a_c1_trades": 580,
+        "price_parity_mismatch": 1,
+        "mismatch_pct": 0.1724
+      },
+      {
+        "panel": "SIMPLE_P2-2",
+        "a_c1_trades": 818,
+        "price_parity_mismatch": 2,
+        "mismatch_pct": 0.2445
+      },
+      {
+        "panel": "SIMPLE_P3-1",
+        "a_c1_trades": 243,
+        "price_parity_mismatch": 1,
+        "mismatch_pct": 0.4115
+      },
+      {
+        "panel": "SIMPLE_P3-2",
+        "a_c1_trades": 505,
+        "price_parity_mismatch": 1,
+        "mismatch_pct": 0.198
+      },
+      {
+        "panel": "SIMPLE_POOLED_DEDUP",
+        "a_c1_trades": 1687,
+        "price_parity_mismatch": 2,
+        "mismatch_pct": 0.1186
+      },
+      {
+        "panel": "REALISTIC_P2-1_ELIGIBLE",
+        "a_c1_trades": 111,
+        "price_parity_mismatch": 0,
+        "mismatch_pct": 0.0
+      },
+      {
+        "panel": "REALISTIC_P2-1_FILLED",
+        "a_c1_trades": 49,
+        "price_parity_mismatch": 0,
+        "mismatch_pct": 0.0
+      },
+      {
+        "panel": "REALISTIC_P2-2_ELIGIBLE",
+        "a_c1_trades": 176,
+        "price_parity_mismatch": 0,
+        "mismatch_pct": 0.0
+      },
+      {
+        "panel": "REALISTIC_P2-2_FILLED",
+        "a_c1_trades": 78,
+        "price_parity_mismatch": 0,
+        "mismatch_pct": 0.0
+      },
+      {
+        "panel": "REALISTIC_P3-2_ELIGIBLE",
+        "a_c1_trades": 146,
+        "price_parity_mismatch": 0,
+        "mismatch_pct": 0.0
+      },
+      {
+        "panel": "REALISTIC_P3-2_FILLED",
+        "a_c1_trades": 77,
+        "price_parity_mismatch": 0,
+        "mismatch_pct": 0.0
+      }
+    ],
+    "excluded_panels": [],
+    "price_parity_tolerance_pct_points": 0.011,
+    "panel_exclusion_mismatch_pct": 1.0,
+    "anchor_equals_ledger_first_progressed_pct": {
+      "REALISTIC_P2-1_ELIGIBLE": 100.0,
+      "REALISTIC_P2-1_FILLED": 100.0,
+      "REALISTIC_P2-2_ELIGIBLE": 100.0,
+      "REALISTIC_P2-2_FILLED": 100.0,
+      "REALISTIC_P3-2_ELIGIBLE": 100.0,
+      "REALISTIC_P3-2_FILLED": 100.0,
+      "SIMPLE_P1": 100.0,
+      "SIMPLE_P2-1": 100.0,
+      "SIMPLE_P2-2": 100.0,
+      "SIMPLE_P3-1": 100.0,
+      "SIMPLE_P3-2": 100.0,
+      "SIMPLE_POOLED_DEDUP": 100.0
+    },
+    "trade_identity_duplicates": 0,
+    "stage_after_holding_end_used": 0
+  },
+  "tiers": {
+    "evaluable_min_n": 20,
+    "descriptive_min_n": 10
+  },
+  "deep_loss_concentration_holding_basis": {
+    "SIMPLE_P1": {
+      "le_neg_30": {
+        "total": 109,
+        "c1": 57,
+        "a": 22
+      },
+      "le_neg_40": {
+        "total": 66,
+        "c1": 46,
+        "a": 10
+      },
+      "le_neg_50": {
+        "total": 42,
+        "c1": 32,
+        "a": 3
+      },
+      "le_neg_60": {
+        "total": 31,
+        "c1": 27,
+        "a": 3
+      }
+    },
+    "SIMPLE_P2-1": {
+      "le_neg_30": {
+        "total": 37,
+        "c1": 21,
+        "a": 5
+      },
+      "le_neg_40": {
+        "total": 24,
+        "c1": 17,
+        "a": 5
+      },
+      "le_neg_50": {
+        "total": 11,
+        "c1": 9,
+        "a": 1
+      },
+      "le_neg_60": {
+        "total": 6,
+        "c1": 5,
+        "a": 1
+      }
+    },
+    "SIMPLE_P2-2": {
+      "le_neg_30": {
+        "total": 57,
+        "c1": 30,
+        "a": 10
+      },
+      "le_neg_40": {
+        "total": 37,
+        "c1": 24,
+        "a": 7
+      },
+      "le_neg_50": {
+        "total": 22,
+        "c1": 17,
+        "a": 1
+      },
+      "le_neg_60": {
+        "total": 13,
+        "c1": 12,
+        "a": 1
+      }
+    },
+    "SIMPLE_P3-1": {
+      "le_neg_30": {
+        "total": 22,
+        "c1": 9,
+        "a": 3
+      },
+      "le_neg_40": {
+        "total": 14,
+        "c1": 8,
+        "a": 3
+      },
+      "le_neg_50": {
+        "total": 7,
+        "c1": 5,
+        "a": 0
+      },
+      "le_neg_60": {
+        "total": 4,
+        "c1": 3,
+        "a": 0
+      }
+    },
+    "SIMPLE_P3-2": {
+      "le_neg_30": {
+        "total": 37,
+        "c1": 17,
+        "a": 8
+      },
+      "le_neg_40": {
+        "total": 22,
+        "c1": 13,
+        "a": 5
+      },
+      "le_neg_50": {
+        "total": 8,
+        "c1": 7,
+        "a": 0
+      },
+      "le_neg_60": {
+        "total": 5,
+        "c1": 5,
+        "a": 0
+      }
+    },
+    "SIMPLE_POOLED_DEDUP": {
+      "le_neg_30": {
+        "total": 110,
+        "c1": 58,
+        "a": 22
+      },
+      "le_neg_40": {
+        "total": 67,
+        "c1": 47,
+        "a": 10
+      },
+      "le_neg_50": {
+        "total": 41,
+        "c1": 32,
+        "a": 2
+      },
+      "le_neg_60": {
+        "total": 28,
+        "c1": 25,
+        "a": 2
+      }
+    },
+    "REALISTIC_P2-1_ELIGIBLE": {
+      "le_neg_30": {
+        "total": 8,
+        "c1": 6,
+        "a": 0
+      },
+      "le_neg_40": {
+        "total": 2,
+        "c1": 2,
+        "a": 0
+      },
+      "le_neg_50": {
+        "total": 0,
+        "c1": 0,
+        "a": 0
+      },
+      "le_neg_60": {
+        "total": 0,
+        "c1": 0,
+        "a": 0
+      }
+    },
+    "REALISTIC_P2-1_FILLED": {
+      "le_neg_30": {
+        "total": 5,
+        "c1": 3,
+        "a": 0
+      },
+      "le_neg_40": {
+        "total": 1,
+        "c1": 1,
+        "a": 0
+      },
+      "le_neg_50": {
+        "total": 0,
+        "c1": 0,
+        "a": 0
+      },
+      "le_neg_60": {
+        "total": 0,
+        "c1": 0,
+        "a": 0
+      }
+    },
+    "REALISTIC_P2-2_ELIGIBLE": {
+      "le_neg_30": {
+        "total": 8,
+        "c1": 3,
+        "a": 1
+      },
+      "le_neg_40": {
+        "total": 4,
+        "c1": 2,
+        "a": 1
+      },
+      "le_neg_50": {
+        "total": 3,
+        "c1": 2,
+        "a": 0
+      },
+      "le_neg_60": {
+        "total": 1,
+        "c1": 1,
+        "a": 0
+      }
+    },
+    "REALISTIC_P2-2_FILLED": {
+      "le_neg_30": {
+        "total": 6,
+        "c1": 1,
+        "a": 1
+      },
+      "le_neg_40": {
+        "total": 3,
+        "c1": 1,
+        "a": 1
+      },
+      "le_neg_50": {
+        "total": 2,
+        "c1": 1,
+        "a": 0
+      },
+      "le_neg_60": {
+        "total": 0,
+        "c1": 0,
+        "a": 0
+      }
+    },
+    "REALISTIC_P3-2_ELIGIBLE": {
+      "le_neg_30": {
+        "total": 4,
+        "c1": 2,
+        "a": 1
+      },
+      "le_neg_40": {
+        "total": 2,
+        "c1": 1,
+        "a": 1
+      },
+      "le_neg_50": {
+        "total": 0,
+        "c1": 0,
+        "a": 0
+      },
+      "le_neg_60": {
+        "total": 0,
+        "c1": 0,
+        "a": 0
+      }
+    },
+    "REALISTIC_P3-2_FILLED": {
+      "le_neg_30": {
+        "total": 3,
+        "c1": 1,
+        "a": 1
+      },
+      "le_neg_40": {
+        "total": 2,
+        "c1": 1,
+        "a": 1
+      },
+      "le_neg_50": {
+        "total": 0,
+        "c1": 0,
+        "a": 0
+      },
+      "le_neg_60": {
+        "total": 0,
+        "c1": 0,
+        "a": 0
+      }
+    }
+  },
+  "elapsed_seconds": 643.2
+}

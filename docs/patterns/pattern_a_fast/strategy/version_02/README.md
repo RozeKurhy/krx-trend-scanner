@@ -99,6 +99,12 @@
 - **Coverage 경로 (SKIPPED / WITHOUT DIRECT)**:
   - 최초 관측 PROGRESSED 스냅샷부터 Exit 4만 활성화, Exit 3는 미적용 (`OPEN_AT_CUTOFF` 유지).
 
+### 4) 원장 `lifecycle_class` 해석 주의
+- 거래 원장의 `lifecycle_class`는 **윈도우 lifecycle(window lifecycle)**이다. 진입 신호 주간부터 윈도우 cutoff까지의 월간 stage로 판정하므로 청산 이후 관찰이 섞인다.
+- 실제 보유 구간(진입 ~ 청산 신호일, 미청산은 cutoff)의 lifecycle은 **보유 lifecycle(holding lifecycle)**로 따로 복원해야 한다.
+- 두 값을 같은 의미로 쓰지 않는다. 분석 코드에서는 `window_lifecycle_class` / `holding_lifecycle_class`(`scripts/analyze_fastcore_v2_lifecycle_refinement_strict_handoff_v01.py`)로 구분한다.
+- 보유 기준 복원 결과는 `artifacts/patterns/pattern_a_fast/research/lifecycle_refinement_strict_handoff_v01/`에 있다.
+
 ## 회고적 검증 결과
 *본 수치는 공식 확정 아티팩트(`artifacts/patterns/pattern_a_fast/production/core_v02_reentry/trades.csv`)에 근거합니다.*
 

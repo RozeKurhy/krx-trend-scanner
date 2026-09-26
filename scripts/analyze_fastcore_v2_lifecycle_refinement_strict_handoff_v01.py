@@ -240,6 +240,18 @@ ORIGIN_GROUPS = ["TRANSITION", "BASE", "WEAK", "PROGRESSED"]
 TIER_RULES = {"evaluable_min_n": 20, "descriptive_min_n": 10, "deep_loss_min": {"LOSS_30": 10, "LOSS_50": 5}}
 
 
+def window_lifecycle_class(row: pd.Series) -> str:
+    """원장 `lifecycle_class`를 그대로 돌려준다. 윈도우 cutoff까지(청산 이후 포함) 관찰한 라벨이다.
+
+    보유 lifecycle이 필요하면 이 값을 쓰지 말고 `holding_lifecycle_class`를 쓴다."""
+    return str(row["lifecycle_class"])
+
+
+def holding_lifecycle_class(entry_stage: str, held: list[tuple[pd.Timestamp, str]]) -> str:
+    """진입 ~ 청산 신호일(미청산은 cutoff)의 월간 stage만으로 정한 보유 lifecycle 세부 그룹."""
+    return classify_holding(entry_stage, held)["subgroup"]
+
+
 def replicate_ledger_lifecycle(entry_stage: str, post: list[tuple[pd.Timestamp, str]]) -> tuple[str, pd.Timestamp | None]:
     """reentry 시뮬레이터의 lifecycle 판정을 그대로 옮긴 것. post는 신호 주간 이후 cutoff까지의 (라벨, stage)."""
     direct = skipped = progressed = False
