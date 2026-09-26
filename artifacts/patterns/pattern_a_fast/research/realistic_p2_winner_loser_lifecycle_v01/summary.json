@@ -1,0 +1,438 @@
+{
+  "work_id": "PATTERN_A_FAST_CORE_V2_REALISTIC_P2_WINNER_LOSER_LIFECYCLE_V01",
+  "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "scope": "CONTROL only; certified realistic P2-1/P2-2 run artifacts; no backtest, strategy re-evaluation, Candidate, threshold/survivor change, feature recomputation, or network",
+  "runs": {
+    "P2-1": {
+      "run_dir": "artifacts/backtests/p2_1_neg40_weak_protect_v01/run_20260926_realistic_mcap1t_worker10_v01",
+      "status": "P2_1_REALISTIC_PORTFOLIO_BACKTEST_CERTIFIED",
+      "source_sha256": {
+        "control_strategy_trades.csv": "1b88f763394e93ad0db5ce16f95bccff4c434eb7c01b9a4d57bd5229a9de4864",
+        "control_portfolio_events.csv": "d5e8e9a0ea81e7bea7af45f4d1679fe92e1b2a0c5457fdde2bda769960fbdf54",
+        "control_daily_equity.csv": "51cc82aed2107e295a5e88e2b6c5615ce8c922c4bf4b7531fe2a4dba7f366ea1",
+        "summary.csv": "8e30b56b79fb0330ba7409ddca4b6b8ca24ee4cf162a276c0b204f1b321b72cf",
+        "summary.json": "a996e716944b5b51939d579548398d5269a76bf96dd6a5158173c61e159dd1ac"
+      }
+    },
+    "P2-2": {
+      "run_dir": "artifacts/backtests/p2_2_neg40_weak_protect_v01/run_20260926_realistic_mcap1t_worker10_v01",
+      "status": "P2_2_REALISTIC_PORTFOLIO_BACKTEST_CERTIFIED",
+      "source_sha256": {
+        "control_strategy_trades.csv": "3bb3f0a9efad255a49c1cb3f0e3f8138da04deb6642b472cb2517c7412591d81",
+        "control_portfolio_events.csv": "2eb7a813d2546f2c04d3053c94c6100c7c2e266e226af814169ba2a1dc9cea66",
+        "control_daily_equity.csv": "99c5f2a3989bc379c5e5e7990e0af8b97891ccdc9bfd1e11bd83843715126860",
+        "summary.csv": "faabc1fbeeba862586da221a32ec715cb8b6f6e3b446621b820d85e14b00f706",
+        "summary.json": "b01cff6b5bff5af77e78495c1254712e51e13061baf8661c9d5c7a0a22bef912"
+      }
+    }
+  },
+  "headline_gate": {
+    "P2-1": {
+      "eligible_trades": 355,
+      "checks": {
+        "trade_count": {
+          "observed": 199,
+          "certified": 199.0,
+          "match": true
+        },
+        "realized_trade_count": {
+          "observed": 161,
+          "certified": 161.0,
+          "match": true
+        },
+        "cash_shortage_skipped_entries": {
+          "observed": 156,
+          "certified": 156.0,
+          "match": true
+        },
+        "win_rate_pct": {
+          "observed": 22.981366459627328,
+          "certified": 22.981366459627328,
+          "match": true
+        },
+        "realized_return_le_neg_30_count": {
+          "observed": 2,
+          "certified": 2.0,
+          "match": true
+        },
+        "realized_return_le_neg_40_count": {
+          "observed": 0,
+          "certified": 0.0,
+          "match": true
+        },
+        "realized_return_le_neg_50_count": {
+          "observed": 0,
+          "certified": 0.0,
+          "match": true
+        },
+        "realized_return_le_neg_60_count": {
+          "observed": 0,
+          "certified": 0.0,
+          "match": true
+        },
+        "realized_return_ge_pos_50_count": {
+          "observed": 11,
+          "certified": 11.0,
+          "match": true
+        },
+        "realized_return_ge_pos_100_count": {
+          "observed": 7,
+          "certified": 7.0,
+          "match": true
+        },
+        "final_equity_at_effective_close": {
+          "observed": 230372653.50166008,
+          "certified": 230372653.50166008,
+          "match": true
+        },
+        "mdd_pct": {
+          "observed": -30.192885290102424,
+          "certified": -30.192885,
+          "match": true
+        }
+      },
+      "all_match": true
+    },
+    "P2-2": {
+      "eligible_trades": 485,
+      "checks": {
+        "trade_count": {
+          "observed": 242,
+          "certified": 242.0,
+          "match": true
+        },
+        "realized_trade_count": {
+          "observed": 218,
+          "certified": 218.0,
+          "match": true
+        },
+        "cash_shortage_skipped_entries": {
+          "observed": 243,
+          "certified": 243.0,
+          "match": true
+        },
+        "win_rate_pct": {
+          "observed": 30.275229357798167,
+          "certified": 30.275229357798164,
+          "match": true
+        },
+        "realized_return_le_neg_30_count": {
+          "observed": 5,
+          "certified": 5.0,
+          "match": true
+        },
+        "realized_return_le_neg_40_count": {
+          "observed": 2,
+          "certified": 2.0,
+          "match": true
+        },
+        "realized_return_le_neg_50_count": {
+          "observed": 1,
+          "certified": 1.0,
+          "match": true
+        },
+        "realized_return_le_neg_60_count": {
+          "observed": 0,
+          "certified": 0.0,
+          "match": true
+        },
+        "realized_return_ge_pos_50_count": {
+          "observed": 37,
+          "certified": 37.0,
+          "match": true
+        },
+        "realized_return_ge_pos_100_count": {
+          "observed": 21,
+          "certified": 21.0,
+          "match": true
+        },
+        "final_equity_at_effective_close": {
+          "observed": 369418195.0108743,
+          "certified": 369418195.0108743,
+          "match": true
+        },
+        "mdd_pct": {
+          "observed": -30.80220460858844,
+          "certified": -30.802205,
+          "match": true
+        }
+      },
+      "all_match": true
+    }
+  },
+  "layers": {
+    "ELIGIBLE": "control_strategy_trades.csv (survivor-only, exact PIT MKTCAP >= 1T)",
+    "FILLED": "ENTRY/EXECUTED in control_portfolio_events.csv"
+  },
+  "return_definitions": {
+    "primary": "ledger terminal_return (same contract as the broad study; OPEN_AT_CUTOFF marked to cutoff)",
+    "secondary": "net realized return for filled closed trades = (exit notional - commission - tax) / (entry notional + commission) - 1; used for the headline gate and FILLED profile columns only"
+  },
+  "feature_cache_join": {
+    "P2-1": {
+      "rows": 355,
+      "joined": 328,
+      "fast_score_mismatch": 0,
+      "stage_mismatch": 0,
+      "unjoined_policy": "left as NA; features are not recomputed"
+    },
+    "P2-2": {
+      "rows": 485,
+      "joined": 450,
+      "fast_score_mismatch": 0,
+      "stage_mismatch": 0,
+      "unjoined_policy": "left as NA; features are not recomputed"
+    }
+  },
+  "future_leakage": "entry features come from the parent PIT enrichment (0 stage/fast_score mismatches, truncated-daily leakage check 0 mismatches); every joined row re-verified against realistic ledger fast_score and Pattern A stage",
+  "broad_class_rules": {
+    "baseline": "parent lifecycle_window_consistency WINDOW_P2-1 / WINDOW_P2-2 (same window and cutoff); broad pooled is a secondary column",
+    "MAINTAINED": "same sign and |realistic| >= 50% of |broad same-window|",
+    "WEAKENED": "same sign and 20% <= ratio < 50%",
+    "VANISHED": "ratio < 20% or realistic difference exactly 0",
+    "REVERSED": "opposite non-zero sign",
+    "NOT_COMPARABLE": "broad same-window difference is 0"
+  },
+  "verdict_rules": {
+    "comparison": "NORMAL_vs_COVERAGE_COMBINED on ledger terminal_return, ALL trades",
+    "evaluable_panel": "NORMAL n >= 10 and COVERAGE n >= 10",
+    "eligible_panel_favorable": "favorable > unfavorable over the 7 key metrics",
+    "filled_panel_favorable": "mean difference > 0 and >= 2 of (mean, +50%, +100%) favorable; filled tail rates are descriptive only",
+    "INSUFFICIENT_EVIDENCE": "fewer than 2 evaluable ELIGIBLE panels",
+    "REALISTIC_P2_CONFIRMS_NORMAL_HANDOFF_ADVANTAGE": "every evaluable panel favorable; every ELIGIBLE panel has 0 REVERSED key metrics, mean and +50% MAINTAINED vs broad same window, and |AUC-0.5| >= 0.05",
+    "REALISTIC_P2_LIFECYCLE_EFFECT_WEAK": "ELIGIBLE mean differences all > 0 but every ELIGIBLE mean is VANISHED, or every ELIGIBLE |AUC-0.5| < 0.05",
+    "REALISTIC_P2_PARTIALLY_CONFIRMS_NORMAL_HANDOFF_ADVANTAGE": "every evaluable ELIGIBLE panel favorable with mean difference > 0",
+    "REALISTIC_P2_LIFECYCLE_EFFECT_MIXED": "otherwise",
+    "order": [
+      "INSUFFICIENT_EVIDENCE",
+      "CONFIRMS",
+      "WEAK",
+      "PARTIALLY",
+      "MIXED"
+    ],
+    "nesting_note": "P2-1 is the early part of P2-2 and FILLED is a subset of ELIGIBLE; agreement across the 4 panels is not four independent confirmations"
+  },
+  "verdict": "REALISTIC_P2_CONFIRMS_NORMAL_HANDOFF_ADVANTAGE",
+  "verdict_detail": {
+    "panels": {
+      "P2-1|ELIGIBLE": {
+        "layer": "ELIGIBLE",
+        "evaluable": true,
+        "favorable": true,
+        "favorable_unfavorable_7": [
+          5,
+          0
+        ],
+        "mean_diff": 19.9829,
+        "auc_effect": 0.1332,
+        "classifications": {
+          "mean_return": "MAINTAINED",
+          "median_return": "MAINTAINED",
+          "ge_50_rate_pct": "MAINTAINED",
+          "ge_100_rate_pct": "MAINTAINED",
+          "le_neg_30_rate_pct": "MAINTAINED",
+          "le_neg_50_rate_pct": "VANISHED",
+          "le_neg_60_rate_pct": "VANISHED",
+          "return_auc_effect": "MAINTAINED"
+        },
+        "reversed_key_metrics": []
+      },
+      "P2-1|FILLED": {
+        "layer": "FILLED",
+        "evaluable": true,
+        "favorable": true,
+        "favorable_unfavorable_7": [
+          5,
+          0
+        ],
+        "mean_diff": 24.2807,
+        "auc_effect": 0.1606,
+        "classifications": {
+          "mean_return": "MAINTAINED",
+          "median_return": "MAINTAINED",
+          "ge_50_rate_pct": "MAINTAINED",
+          "ge_100_rate_pct": "MAINTAINED",
+          "le_neg_30_rate_pct": "MAINTAINED",
+          "le_neg_50_rate_pct": "VANISHED",
+          "le_neg_60_rate_pct": "VANISHED",
+          "return_auc_effect": "MAINTAINED"
+        },
+        "reversed_key_metrics": []
+      },
+      "P2-2|ELIGIBLE": {
+        "layer": "ELIGIBLE",
+        "evaluable": true,
+        "favorable": true,
+        "favorable_unfavorable_7": [
+          7,
+          0
+        ],
+        "mean_diff": 20.781,
+        "auc_effect": 0.0918,
+        "classifications": {
+          "mean_return": "MAINTAINED",
+          "median_return": "MAINTAINED",
+          "ge_50_rate_pct": "MAINTAINED",
+          "ge_100_rate_pct": "MAINTAINED",
+          "le_neg_30_rate_pct": "WEAKENED",
+          "le_neg_50_rate_pct": "MAINTAINED",
+          "le_neg_60_rate_pct": "WEAKENED",
+          "return_auc_effect": "MAINTAINED"
+        },
+        "reversed_key_metrics": []
+      },
+      "P2-2|FILLED": {
+        "layer": "FILLED",
+        "evaluable": true,
+        "favorable": true,
+        "favorable_unfavorable_7": [
+          5,
+          1
+        ],
+        "mean_diff": 24.8297,
+        "auc_effect": 0.1035,
+        "classifications": {
+          "mean_return": "MAINTAINED",
+          "median_return": "WEAKENED",
+          "ge_50_rate_pct": "MAINTAINED",
+          "ge_100_rate_pct": "MAINTAINED",
+          "le_neg_30_rate_pct": "REVERSED",
+          "le_neg_50_rate_pct": "MAINTAINED",
+          "le_neg_60_rate_pct": "VANISHED",
+          "return_auc_effect": "MAINTAINED"
+        },
+        "reversed_key_metrics": [
+          "le_neg_30_rate_pct"
+        ]
+      }
+    },
+    "evaluable_panels": [
+      "P2-1|ELIGIBLE",
+      "P2-1|FILLED",
+      "P2-2|ELIGIBLE",
+      "P2-2|FILLED"
+    ],
+    "evaluable_eligible_panels": [
+      "P2-1|ELIGIBLE",
+      "P2-2|ELIGIBLE"
+    ]
+  },
+  "path_check": {
+    "P2-1": {
+      "realistic_eligible": 355,
+      "identity_in_broad_same_window": 327,
+      "identical_return_and_lifecycle": 327,
+      "identical_pct_of_matched": 100.0,
+      "note": "realistic trades are not a pure subset: rejected (< 1T) signals do not consume re-entry state, so later entries can differ"
+    },
+    "P2-2": {
+      "realistic_eligible": 485,
+      "identity_in_broad_same_window": 449,
+      "identical_return_and_lifecycle": 449,
+      "identical_pct_of_matched": 100.0,
+      "note": "realistic trades are not a pure subset: rejected (< 1T) signals do not consume re-entry state, so later entries can differ"
+    }
+  },
+  "entry_vs_lifecycle_explanatory_power": [
+    {
+      "window": "P2-1",
+      "layer": "ELIGIBLE",
+      "comparison": "WIN_50_vs_REST",
+      "best_entry_feature": "post_breakout_min_low_vs_level_pct_26w",
+      "best_entry_auc_effect_abs": 0.1263,
+      "normal_handoff_auc_effect_abs": 0.1696,
+      "lifecycle_larger": true
+    },
+    {
+      "window": "P2-1",
+      "layer": "ELIGIBLE",
+      "comparison": "WIN_100_vs_REST",
+      "best_entry_feature": "range_position_24m",
+      "best_entry_auc_effect_abs": 0.1355,
+      "normal_handoff_auc_effect_abs": 0.2797,
+      "lifecycle_larger": true
+    },
+    {
+      "window": "P2-1",
+      "layer": "ELIGIBLE",
+      "comparison": "LOSS_ANY_vs_POSITIVE",
+      "best_entry_feature": "wma52_slope_1w",
+      "best_entry_auc_effect_abs": 0.1002,
+      "normal_handoff_auc_effect_abs": 0.1706,
+      "lifecycle_larger": true
+    },
+    {
+      "window": "P2-1",
+      "layer": "FILLED",
+      "comparison": "WIN_50_vs_REST",
+      "best_entry_feature": "post_breakout_min_low_vs_level_pct_26w",
+      "best_entry_auc_effect_abs": 0.1594,
+      "normal_handoff_auc_effect_abs": 0.1705,
+      "lifecycle_larger": true
+    },
+    {
+      "window": "P2-1",
+      "layer": "FILLED",
+      "comparison": "LOSS_ANY_vs_POSITIVE",
+      "best_entry_feature": "range_position_24m",
+      "best_entry_auc_effect_abs": 0.1099,
+      "normal_handoff_auc_effect_abs": 0.1684,
+      "lifecycle_larger": true
+    },
+    {
+      "window": "P2-2",
+      "layer": "ELIGIBLE",
+      "comparison": "WIN_50_vs_REST",
+      "best_entry_feature": "atr_14_pct",
+      "best_entry_auc_effect_abs": 0.1013,
+      "normal_handoff_auc_effect_abs": 0.154,
+      "lifecycle_larger": true
+    },
+    {
+      "window": "P2-2",
+      "layer": "ELIGIBLE",
+      "comparison": "WIN_100_vs_REST",
+      "best_entry_feature": "market_cap_eok",
+      "best_entry_auc_effect_abs": 0.1317,
+      "normal_handoff_auc_effect_abs": 0.1611,
+      "lifecycle_larger": true
+    },
+    {
+      "window": "P2-2",
+      "layer": "ELIGIBLE",
+      "comparison": "LOSS_ANY_vs_POSITIVE",
+      "best_entry_feature": "atr_14_pct",
+      "best_entry_auc_effect_abs": 0.1008,
+      "normal_handoff_auc_effect_abs": 0.1602,
+      "lifecycle_larger": true
+    },
+    {
+      "window": "P2-2",
+      "layer": "FILLED",
+      "comparison": "WIN_50_vs_REST",
+      "best_entry_feature": "atr_14_pct",
+      "best_entry_auc_effect_abs": 0.1654,
+      "normal_handoff_auc_effect_abs": 0.1623,
+      "lifecycle_larger": false
+    },
+    {
+      "window": "P2-2",
+      "layer": "FILLED",
+      "comparison": "WIN_100_vs_REST",
+      "best_entry_feature": "market_cap_eok",
+      "best_entry_auc_effect_abs": 0.1748,
+      "normal_handoff_auc_effect_abs": 0.1614,
+      "lifecycle_larger": false
+    },
+    {
+      "window": "P2-2",
+      "layer": "FILLED",
+      "comparison": "LOSS_ANY_vs_POSITIVE",
+      "best_entry_feature": "atr_14_pct",
+      "best_entry_auc_effect_abs": 0.1245,
+      "normal_handoff_auc_effect_abs": 0.162,
+      "lifecycle_larger": true
+    }
+  ],
+  "network_requests": 0
+}
