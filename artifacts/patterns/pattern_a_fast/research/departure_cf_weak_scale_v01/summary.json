@@ -1,0 +1,198 @@
+{
+  "work_id": "PATTERN_A_FAST_CORE_V2_DEPARTURE_CF_WEAK_SCALE_V01",
+  "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "scope": "CONTROL only; archived certified ledgers; holding lifecycle only; trade-level counterfactuals only (no portfolio replay); no backtest, strategy implementation, threshold sweep, or network",
+  "inputs": {
+    "a_vs_c1_trade_level_sha256": "4f93de917539af6323ec7c1ba9018f52f8d0b0ec929f845b1fa7e866ae94de0e",
+    "monthly_stage_cache_sha256": "ac670c372cca9a3029308f41923072a8214461b4971ba85295982ce4a853f817"
+  },
+  "gates": {
+    "count_gates": {
+      "dedup": {
+        "dedup_trade_count": 5380,
+        "duplicate_rows_removed": 6714,
+        "representative_window_counts": {
+          "P1": 4968,
+          "P3-2": 208,
+          "P2-2": 201,
+          "P2-1": 3
+        }
+      },
+      "REALISTIC_P2-1_count_gate": {
+        "observed": {
+          "eligible": 355,
+          "filled": 199,
+          "realized": 161,
+          "cash_skipped": 156
+        },
+        "certified": {
+          "filled": 199,
+          "realized": 161,
+          "cash_skipped": 156,
+          "eligible": 355
+        },
+        "match": true
+      },
+      "REALISTIC_P2-2_count_gate": {
+        "observed": {
+          "eligible": 485,
+          "filled": 242,
+          "realized": 218,
+          "cash_skipped": 243
+        },
+        "certified": {
+          "filled": 242,
+          "realized": 218,
+          "cash_skipped": 243,
+          "eligible": 485
+        },
+        "match": true
+      },
+      "REALISTIC_P3-2_count_gate": {
+        "observed": {
+          "eligible": 405,
+          "filled": 228,
+          "realized": 207,
+          "cash_skipped": 177
+        },
+        "certified": {
+          "filled": 228,
+          "realized": 207,
+          "cash_skipped": 177,
+          "eligible": 405
+        },
+        "match": true
+      }
+    },
+    "replication_gate": [
+      {
+        "panel": "SIMPLE_P1",
+        "rows": 4982,
+        "cache_missing": 0,
+        "replication_match": 4982,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_P2-1",
+        "rows": 1800,
+        "cache_missing": 0,
+        "replication_match": 1800,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_P2-2",
+        "rows": 2424,
+        "cache_missing": 0,
+        "replication_match": 2417,
+        "mismatch": 7,
+        "mismatch_pct": 0.2888,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_P3-1",
+        "rows": 1173,
+        "cache_missing": 0,
+        "replication_match": 1173,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_P3-2",
+        "rows": 1792,
+        "cache_missing": 0,
+        "replication_match": 1792,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_POOLED_DEDUP",
+        "rows": 5380,
+        "cache_missing": 0,
+        "replication_match": 5376,
+        "mismatch": 4,
+        "mismatch_pct": 0.0743,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P2-1_ELIGIBLE",
+        "rows": 355,
+        "cache_missing": 0,
+        "replication_match": 355,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P2-1_FILLED",
+        "rows": 199,
+        "cache_missing": 0,
+        "replication_match": 199,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P2-2_ELIGIBLE",
+        "rows": 485,
+        "cache_missing": 0,
+        "replication_match": 485,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P2-2_FILLED",
+        "rows": 242,
+        "cache_missing": 0,
+        "replication_match": 242,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P3-2_ELIGIBLE",
+        "rows": 405,
+        "cache_missing": 0,
+        "replication_match": 405,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P3-2_FILLED",
+        "rows": 228,
+        "cache_missing": 0,
+        "replication_match": 228,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      }
+    ],
+    "cf_price_rule_gate_a_exit3": {
+      "a_exit3_trades": 763,
+      "rule_match": 763,
+      "match_pct": 100.0
+    },
+    "departure_flag_matches_path": true,
+    "weak_flag_matches_path": true
+  },
+  "counterfactual_contract": {
+    "CONTROL": "actual ledger terminal_return",
+    "CF_FULL_EXIT": "sell 100% at the next session open after the first PROGRESSED departure label's effective date (same rule as the actual Exit3 execution); if the actual exit came first, the actual result is kept",
+    "CF_HALF_EXIT": "0.5 * CF_FULL_EXIT + 0.5 * CONTROL on the entry-cost basis",
+    "basis": "GROSS_LEDGER_BASIS for every panel (same price basis as the ledger); REALISTIC panels also NET_REALISTIC_COST_BASIS with the realistic run cost contract (buy/sell slippage 0.1%, commission 0.015%, year sell tax); open positions marked at the cutoff close without sell costs",
+    "not_computed": "capital redeployment, portfolio replay, other exit timings"
+  },
+  "decomposition_contract": "return_at_anchor = close at the first PROGRESSED label's effective date / entry_open - 1; anchor_to_terminal = (1+final)/(1+anchor)-1; confirmation_next_open_to_terminal = terminal price / next session open after the anchor observation - 1 (descriptive only, not a scale-up backtest)",
+  "tiers": {
+    "evaluable_min_n": 20,
+    "descriptive_min_n": 10
+  },
+  "elapsed_seconds": 225.5
+}
