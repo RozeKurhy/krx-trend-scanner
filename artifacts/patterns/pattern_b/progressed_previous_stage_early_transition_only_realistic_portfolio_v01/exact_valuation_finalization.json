@@ -1,0 +1,71 @@
+{
+  "global_gates": {
+    "A": "CHECK_REQUIRED",
+    "B": "CHECK_REQUIRED",
+    "C": "CHECK_REQUIRED",
+    "D": "CHECK_REQUIRED",
+    "E": "FAIL",
+    "F": "CHECK_REQUIRED"
+  },
+  "policy": "No nearest-day, proxy, or forward-filled mark was substituted. Any curve with a daily valuation gap has no official MDD; missing terminal equity has no official return/CAGR.",
+  "status": "FAIL_CLOSED_UNRESOLVED_EXACT_MARKS",
+  "verdict": "HOLD",
+  "windows": {
+    "P2-1": {
+      "daily_equity_gap_day_count": 783,
+      "effective_end": "2025-05-30",
+      "effective_end_equity_krw": null,
+      "execution_support": "2025-06-02",
+      "execution_support_equity_krw": null,
+      "gate_A": "CHECK_REQUIRED",
+      "gate_C": "CHECK_REQUIRED",
+      "gate_D": "CHECK_REQUIRED",
+      "gate_F": "CHECK_REQUIRED",
+      "official_MDD_available": false,
+      "official_net_return_and_CAGR_available": false,
+      "terminal_equity_complete": false
+    },
+    "P2-2": {
+      "daily_equity_gap_day_count": 1088,
+      "effective_end": "2026-08-31",
+      "effective_end_equity_krw": null,
+      "execution_support": "2026-09-01",
+      "execution_support_equity_krw": null,
+      "gate_A": "CHECK_REQUIRED",
+      "gate_C": "CHECK_REQUIRED",
+      "gate_D": "CHECK_REQUIRED",
+      "gate_F": "CHECK_REQUIRED",
+      "official_MDD_available": false,
+      "official_net_return_and_CAGR_available": false,
+      "terminal_equity_complete": false
+    },
+    "P3-1": {
+      "daily_equity_gap_day_count": 781,
+      "effective_end": "2025-05-30",
+      "effective_end_equity_krw": null,
+      "execution_support": "2025-06-02",
+      "execution_support_equity_krw": null,
+      "gate_A": "CHECK_REQUIRED",
+      "gate_C": "CHECK_REQUIRED",
+      "gate_D": "CHECK_REQUIRED",
+      "gate_F": "CHECK_REQUIRED",
+      "official_MDD_available": false,
+      "official_net_return_and_CAGR_available": false,
+      "terminal_equity_complete": false
+    },
+    "P3-2": {
+      "daily_equity_gap_day_count": 1086,
+      "effective_end": "2026-08-31",
+      "effective_end_equity_krw": null,
+      "execution_support": "2026-09-01",
+      "execution_support_equity_krw": null,
+      "gate_A": "CHECK_REQUIRED",
+      "gate_C": "CHECK_REQUIRED",
+      "gate_D": "CHECK_REQUIRED",
+      "gate_F": "CHECK_REQUIRED",
+      "official_MDD_available": false,
+      "official_net_return_and_CAGR_available": false,
+      "terminal_equity_complete": false
+    }
+  }
+}

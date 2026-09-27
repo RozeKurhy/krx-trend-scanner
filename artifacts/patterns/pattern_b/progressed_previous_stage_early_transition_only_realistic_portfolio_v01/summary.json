@@ -1,0 +1,165 @@
+{
+  "run_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_REALISTIC_PORTFOLIO_V01",
+  "start_head": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+  "plan_commit": "ce639f78ba1cc9842d3b066a1c3cce082b619942",
+  "plan_sha256": "97c21a5c97aac5ba7dd17a67c8ad5c5124e0e66295546b65f975dcd9220db971",
+  "verdict": "HOLD",
+  "global_gates": {
+    "A": "CHECK_REQUIRED",
+    "B": "CHECK_REQUIRED",
+    "C": "CHECK_REQUIRED",
+    "D": "CHECK_REQUIRED",
+    "E": "FAIL",
+    "F": "CHECK_REQUIRED"
+  },
+  "p1_cost_authority": {
+    "authoritative_schedule_start": "2021-01-01",
+    "p1_full_cost_portfolio_replay_performed": false,
+    "pre_2021_realized_exit_count_in_saved_P1_ledger": 211,
+    "pre_2021_realized_exit_missing_tax_count": 211,
+    "reason": "Repository tax schedule has no verified 2014-2020 rates; no rate was inferred and missing taxes would alter cash availability and portfolio paths.",
+    "source": {
+      "existing_trade_ledger": "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_5window_v01/p1/test_trade_ledger.csv",
+      "schedule_code": "scripts/run_v2_julia_official_validation_v01.py::HISTORICAL_SELL_TAX_SCHEDULE",
+      "trade_ledger_sha256": "032daae185ec0aa3adbb4ed8c0ec3f8eba61d0d30ee050929095eefc5e46c7c4"
+    },
+    "status": "CHECK_REQUIRED"
+  },
+  "terminal_exact_valuation": {
+    "P2-1": {
+      "daily_equity_gap_day_count": 783,
+      "effective_end": "2025-05-30",
+      "effective_end_equity_krw": null,
+      "execution_support": "2025-06-02",
+      "execution_support_equity_krw": null,
+      "gate_A": "CHECK_REQUIRED",
+      "gate_C": "CHECK_REQUIRED",
+      "gate_D": "CHECK_REQUIRED",
+      "gate_F": "CHECK_REQUIRED",
+      "official_MDD_available": false,
+      "official_net_return_and_CAGR_available": false,
+      "terminal_equity_complete": false
+    },
+    "P2-2": {
+      "daily_equity_gap_day_count": 1088,
+      "effective_end": "2026-08-31",
+      "effective_end_equity_krw": null,
+      "execution_support": "2026-09-01",
+      "execution_support_equity_krw": null,
+      "gate_A": "CHECK_REQUIRED",
+      "gate_C": "CHECK_REQUIRED",
+      "gate_D": "CHECK_REQUIRED",
+      "gate_F": "CHECK_REQUIRED",
+      "official_MDD_available": false,
+      "official_net_return_and_CAGR_available": false,
+      "terminal_equity_complete": false
+    },
+    "P3-1": {
+      "daily_equity_gap_day_count": 781,
+      "effective_end": "2025-05-30",
+      "effective_end_equity_krw": null,
+      "execution_support": "2025-06-02",
+      "execution_support_equity_krw": null,
+      "gate_A": "CHECK_REQUIRED",
+      "gate_C": "CHECK_REQUIRED",
+      "gate_D": "CHECK_REQUIRED",
+      "gate_F": "CHECK_REQUIRED",
+      "official_MDD_available": false,
+      "official_net_return_and_CAGR_available": false,
+      "terminal_equity_complete": false
+    },
+    "P3-2": {
+      "daily_equity_gap_day_count": 1086,
+      "effective_end": "2026-08-31",
+      "effective_end_equity_krw": null,
+      "execution_support": "2026-09-01",
+      "execution_support_equity_krw": null,
+      "gate_A": "CHECK_REQUIRED",
+      "gate_C": "CHECK_REQUIRED",
+      "gate_D": "CHECK_REQUIRED",
+      "gate_F": "CHECK_REQUIRED",
+      "official_MDD_available": false,
+      "official_net_return_and_CAGR_available": false,
+      "terminal_equity_complete": false
+    }
+  },
+  "window_summary": [
+    {
+      "window_id": "P1",
+      "net_total_return_pct": "",
+      "CAGR_pct": "",
+      "MDD_pct": "",
+      "ending_equity_krw": "",
+      "cash_shortage_skip_rate_pct": "",
+      "turnover_multiple_initial_capital": "",
+      "maximum_concurrent_positions": "",
+      "unresolved_count": "",
+      "window_gate": "CHECK_REQUIRED_TAX_AUTHORITY"
+    },
+    {
+      "window_id": "P2-1",
+      "net_total_return_pct": "",
+      "CAGR_pct": "",
+      "MDD_pct": "",
+      "ending_equity_krw": "",
+      "cash_shortage_skip_rate_pct": "15.040650406504067",
+      "turnover_multiple_initial_capital": "10.00606169863",
+      "maximum_concurrent_positions": "59.0",
+      "unresolved_count": "2528.0",
+      "window_gate": "A:CHECK_REQUIRED/C:CHECK_REQUIRED/D:CHECK_REQUIRED/E:FAIL/F:CHECK_REQUIRED"
+    },
+    {
+      "window_id": "P2-2",
+      "net_total_return_pct": "",
+      "CAGR_pct": "",
+      "MDD_pct": "",
+      "ending_equity_krw": "",
+      "cash_shortage_skip_rate_pct": "24.07932011331445",
+      "turnover_multiple_initial_capital": "13.057751907585008",
+      "maximum_concurrent_positions": "63.0",
+      "unresolved_count": "3898.0",
+      "window_gate": "A:CHECK_REQUIRED/C:CHECK_REQUIRED/D:CHECK_REQUIRED/E:FAIL/F:CHECK_REQUIRED"
+    },
+    {
+      "window_id": "P3-1",
+      "net_total_return_pct": "",
+      "CAGR_pct": "",
+      "MDD_pct": "",
+      "ending_equity_krw": "",
+      "cash_shortage_skip_rate_pct": "18.7192118226601",
+      "turnover_multiple_initial_capital": "7.758966276625",
+      "maximum_concurrent_positions": "53.0",
+      "unresolved_count": "2009.0",
+      "window_gate": "A:CHECK_REQUIRED/C:CHECK_REQUIRED/D:CHECK_REQUIRED/E:FAIL/F:CHECK_REQUIRED"
+    },
+    {
+      "window_id": "P3-2",
+      "net_total_return_pct": "",
+      "CAGR_pct": "",
+      "MDD_pct": "",
+      "ending_equity_krw": "",
+      "cash_shortage_skip_rate_pct": "28.70967741935484",
+      "turnover_multiple_initial_capital": "10.68682471118",
+      "maximum_concurrent_positions": "58.0",
+      "unresolved_count": "3070.0",
+      "window_gate": "A:CHECK_REQUIRED/C:CHECK_REQUIRED/D:CHECK_REQUIRED/E:FAIL/F:CHECK_REQUIRED"
+    }
+  ],
+  "actual_open_positions_at_effective_end": {
+    "P2-1": 45,
+    "P2-2": 59,
+    "P3-1": 40,
+    "P3-2": 53
+  },
+  "failed_attempts": [
+    {
+      "corrected_run_count": 1,
+      "reason": "CSV blank terminal_valuation_date was read as NaN and reached a nullable-date conversion in the certified helper",
+      "scope": "price load completed; no portfolio replay or window result artifacts were written",
+      "status": "ABORTED_BEFORE_PORTFOLIO_REPLAY",
+      "window": "P2-1"
+    }
+  ],
+  "source_reproducibility_note": "Saved study orchestrator source was untracked at starting HEAD and its saved run SHA does not match the current committed script; candidate runner and base signal source matched the starting HEAD.",
+  "additional_portfolio_replay_after_completed_run": false
+}

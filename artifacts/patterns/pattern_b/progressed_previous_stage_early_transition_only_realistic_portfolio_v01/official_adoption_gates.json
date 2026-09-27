@@ -1,0 +1,125 @@
+{
+  "P1": {
+    "A": "CHECK_REQUIRED",
+    "B": "CHECK_REQUIRED",
+    "C": "CHECK_REQUIRED",
+    "D": "CHECK_REQUIRED",
+    "E": "CHECK_REQUIRED",
+    "F": "CHECK_REQUIRED",
+    "cost_authority": {
+      "authoritative_schedule_start": "2021-01-01",
+      "p1_full_cost_portfolio_replay_performed": false,
+      "pre_2021_realized_exit_count_in_saved_P1_ledger": 211,
+      "pre_2021_realized_exit_missing_tax_count": 211,
+      "reason": "Repository tax schedule has no verified 2014-2020 rates; no rate was inferred and missing taxes would alter cash availability and portfolio paths.",
+      "source": {
+        "existing_trade_ledger": "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_5window_v01/p1/test_trade_ledger.csv",
+        "schedule_code": "scripts/run_v2_julia_official_validation_v01.py::HISTORICAL_SELL_TAX_SCHEDULE",
+        "trade_ledger_sha256": "032daae185ec0aa3adbb4ed8c0ec3f8eba61d0d30ee050929095eefc5e46c7c4"
+      },
+      "status": "CHECK_REQUIRED"
+    }
+  },
+  "exact_valuation_finalization": {
+    "P2-1": {
+      "daily_equity_gap_day_count": 783,
+      "effective_end": "2025-05-30",
+      "effective_end_equity_krw": null,
+      "execution_support": "2025-06-02",
+      "execution_support_equity_krw": null,
+      "gate_A": "CHECK_REQUIRED",
+      "gate_C": "CHECK_REQUIRED",
+      "gate_D": "CHECK_REQUIRED",
+      "gate_F": "CHECK_REQUIRED",
+      "official_MDD_available": false,
+      "official_net_return_and_CAGR_available": false,
+      "terminal_equity_complete": false
+    },
+    "P2-2": {
+      "daily_equity_gap_day_count": 1088,
+      "effective_end": "2026-08-31",
+      "effective_end_equity_krw": null,
+      "execution_support": "2026-09-01",
+      "execution_support_equity_krw": null,
+      "gate_A": "CHECK_REQUIRED",
+      "gate_C": "CHECK_REQUIRED",
+      "gate_D": "CHECK_REQUIRED",
+      "gate_F": "CHECK_REQUIRED",
+      "official_MDD_available": false,
+      "official_net_return_and_CAGR_available": false,
+      "terminal_equity_complete": false
+    },
+    "P3-1": {
+      "daily_equity_gap_day_count": 781,
+      "effective_end": "2025-05-30",
+      "effective_end_equity_krw": null,
+      "execution_support": "2025-06-02",
+      "execution_support_equity_krw": null,
+      "gate_A": "CHECK_REQUIRED",
+      "gate_C": "CHECK_REQUIRED",
+      "gate_D": "CHECK_REQUIRED",
+      "gate_F": "CHECK_REQUIRED",
+      "official_MDD_available": false,
+      "official_net_return_and_CAGR_available": false,
+      "terminal_equity_complete": false
+    },
+    "P3-2": {
+      "daily_equity_gap_day_count": 1086,
+      "effective_end": "2026-08-31",
+      "effective_end_equity_krw": null,
+      "execution_support": "2026-09-01",
+      "execution_support_equity_krw": null,
+      "gate_A": "CHECK_REQUIRED",
+      "gate_C": "CHECK_REQUIRED",
+      "gate_D": "CHECK_REQUIRED",
+      "gate_F": "CHECK_REQUIRED",
+      "official_MDD_available": false,
+      "official_net_return_and_CAGR_available": false,
+      "terminal_equity_complete": false
+    }
+  },
+  "gates": {
+    "A": "CHECK_REQUIRED",
+    "B": "CHECK_REQUIRED",
+    "C": "CHECK_REQUIRED",
+    "D": "CHECK_REQUIRED",
+    "E": "FAIL",
+    "F": "CHECK_REQUIRED"
+  },
+  "reason": "Exact daily equity gaps and/or terminal marks leave ending equity or MDD unresolved; P1 also lacks pre-2021 tax authority. No stale price or estimated tax was substituted.",
+  "verdict": "HOLD",
+  "window_gate_statuses": {
+    "P2-1": {
+      "A": "CHECK_REQUIRED",
+      "B": "PASS",
+      "C": "CHECK_REQUIRED",
+      "D": "CHECK_REQUIRED",
+      "E": "FAIL",
+      "F": "CHECK_REQUIRED"
+    },
+    "P2-2": {
+      "A": "CHECK_REQUIRED",
+      "B": "PASS",
+      "C": "CHECK_REQUIRED",
+      "D": "CHECK_REQUIRED",
+      "E": "FAIL",
+      "F": "CHECK_REQUIRED"
+    },
+    "P3-1": {
+      "A": "CHECK_REQUIRED",
+      "B": "PASS",
+      "C": "CHECK_REQUIRED",
+      "D": "CHECK_REQUIRED",
+      "E": "FAIL",
+      "F": "CHECK_REQUIRED"
+    },
+    "P3-2": {
+      "A": "CHECK_REQUIRED",
+      "B": "PASS",
+      "C": "CHECK_REQUIRED",
+      "D": "CHECK_REQUIRED",
+      "E": "FAIL",
+      "F": "CHECK_REQUIRED"
+    }
+  }
+}

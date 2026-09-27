@@ -1,0 +1,510 @@
+{
+  "exact_valuation_finalization": {
+    "P2-1": {
+      "daily_equity_gap_day_count": 783,
+      "effective_end": "2025-05-30",
+      "effective_end_equity_krw": null,
+      "execution_support": "2025-06-02",
+      "execution_support_equity_krw": null,
+      "gate_A": "CHECK_REQUIRED",
+      "gate_C": "CHECK_REQUIRED",
+      "gate_D": "CHECK_REQUIRED",
+      "gate_F": "CHECK_REQUIRED",
+      "official_MDD_available": false,
+      "official_net_return_and_CAGR_available": false,
+      "terminal_equity_complete": false
+    },
+    "P2-2": {
+      "daily_equity_gap_day_count": 1088,
+      "effective_end": "2026-08-31",
+      "effective_end_equity_krw": null,
+      "execution_support": "2026-09-01",
+      "execution_support_equity_krw": null,
+      "gate_A": "CHECK_REQUIRED",
+      "gate_C": "CHECK_REQUIRED",
+      "gate_D": "CHECK_REQUIRED",
+      "gate_F": "CHECK_REQUIRED",
+      "official_MDD_available": false,
+      "official_net_return_and_CAGR_available": false,
+      "terminal_equity_complete": false
+    },
+    "P3-1": {
+      "daily_equity_gap_day_count": 781,
+      "effective_end": "2025-05-30",
+      "effective_end_equity_krw": null,
+      "execution_support": "2025-06-02",
+      "execution_support_equity_krw": null,
+      "gate_A": "CHECK_REQUIRED",
+      "gate_C": "CHECK_REQUIRED",
+      "gate_D": "CHECK_REQUIRED",
+      "gate_F": "CHECK_REQUIRED",
+      "official_MDD_available": false,
+      "official_net_return_and_CAGR_available": false,
+      "terminal_equity_complete": false
+    },
+    "P3-2": {
+      "daily_equity_gap_day_count": 1086,
+      "effective_end": "2026-08-31",
+      "effective_end_equity_krw": null,
+      "execution_support": "2026-09-01",
+      "execution_support_equity_krw": null,
+      "gate_A": "CHECK_REQUIRED",
+      "gate_C": "CHECK_REQUIRED",
+      "gate_D": "CHECK_REQUIRED",
+      "gate_F": "CHECK_REQUIRED",
+      "official_MDD_available": false,
+      "official_net_return_and_CAGR_available": false,
+      "terminal_equity_complete": false
+    }
+  },
+  "execution_timestamp_utc": "2026-09-27T23:42:04.188363+00:00",
+  "failed_attempts": [
+    {
+      "corrected_run_count": 1,
+      "reason": "CSV blank terminal_valuation_date was read as NaN and reached a nullable-date conversion in the certified helper",
+      "scope": "price load completed; no portfolio replay or window result artifacts were written",
+      "status": "ABORTED_BEFORE_PORTFOLIO_REPLAY",
+      "window": "P2-1"
+    }
+  ],
+  "final_gates": {
+    "A": "CHECK_REQUIRED",
+    "B": "CHECK_REQUIRED",
+    "C": "CHECK_REQUIRED",
+    "D": "CHECK_REQUIRED",
+    "E": "FAIL",
+    "F": "CHECK_REQUIRED"
+  },
+  "final_verdict": "HOLD",
+  "finalizer_sha256": "b66b8518c780fd70819eaee3b0ad5a18522546911f13a14427c8d452e800726c",
+  "full_run_script_sha256": "b66b8518c780fd70819eaee3b0ad5a18522546911f13a14427c8d452e800726c",
+  "generated_files": {
+    "exact_valuation_finalization.json": {
+      "bytes": 2436,
+      "sha256": "25b624cff3b5322a8caabca7a7cc91687644b5a9fd6df412effeea204736a425"
+    },
+    "execution_contract.json": {
+      "bytes": 3266,
+      "sha256": "da32811c05517fb28106106a92b3985c3a974b9c8159ec15c223777f37f94139"
+    },
+    "five_window_summary.csv": {
+      "bytes": 746,
+      "sha256": "eeca889c18345402ecefefcd8d9ca3f766e0ee5744b1451402fa0bcffa61f4a0"
+    },
+    "official_adoption_gates.csv": {
+      "bytes": 2275,
+      "sha256": "650ff0d84a1ad4673bd56c54cb8e5ce6a1ba06f26fae158432624c7100802de6"
+    },
+    "official_adoption_gates.json": {
+      "bytes": 4138,
+      "sha256": "b81ba0cc76cb3ea492ee272193c3d7be9d00662c5c232992364e7a2a079adedb"
+    },
+    "p2_1/annual_performance.csv": {
+      "bytes": 127,
+      "sha256": "5cd84b6db0c58bc85271a1934d3453ba255c506eb00cbb8afc2b587c81bcf361"
+    },
+    "p2_1/cash_audit.csv": {
+      "bytes": 91187,
+      "sha256": "debca79c839a8020d653906add31327e9ebc4662aa0cf70aff9fe4b70e2bf523"
+    },
+    "p2_1/cash_skip_lifecycle_audit.csv": {
+      "bytes": 3497,
+      "sha256": "a4e35bda740eeba86665bd5b69efdf2af35157a964054471a0a55d553aa62f0e"
+    },
+    "p2_1/cost_audit.csv": {
+      "bytes": 203883,
+      "sha256": "d2ea79daac98a4789f377eb4ddee30306ca1798d3f67163555a056c4cbcd8943"
+    },
+    "p2_1/daily_equity.csv": {
+      "bytes": 130175,
+      "sha256": "b5556f89a9c66bff7ee5f3e94ef65cc734a68b18d3d79940c5417f3df743f7d7"
+    },
+    "p2_1/entry_attempt_audit.csv": {
+      "bytes": 91172,
+      "sha256": "a597c8841038d3e08bbc983ea56b5a22b1d12b93476b5c5da443b7806fc690a6"
+    },
+    "p2_1/execution_contract.json": {
+      "bytes": 25139,
+      "sha256": "41e8c187ef6f25035f2dc1094e31aeabce2963db99d17b8059965b0563735351"
+    },
+    "p2_1/hidden_position_cap_audit.json": {
+      "bytes": 169,
+      "sha256": "c9bdc5d39aaa3240dac7edf9777ee85353320d97796afefa3046a2b00b009798"
+    },
+    "p2_1/metrics.json": {
+      "bytes": 82397,
+      "sha256": "905dd1163c79532435f68d0b74d87f9139f0c238aefdcdd8077aa4f7877d32f4"
+    },
+    "p2_1/portfolio_events.csv": {
+      "bytes": 218870,
+      "sha256": "e13207d01eac685fab8cba8d671fd8acb0c43d5d9e3c5bbb4142518b065d78b0"
+    },
+    "p2_1/skipped_entries.csv": {
+      "bytes": 577367,
+      "sha256": "07081e7a084156dd844674b2fa2bb548c8130d604f0b4094d95b8c9856ea603d"
+    },
+    "p2_1/valuation_audit.csv": {
+      "bytes": 457624,
+      "sha256": "b86d9a3d3630f243bfa106cd451df7c12705ed194d927c4370e15cbe1659626d"
+    },
+    "p2_2/annual_performance.csv": {
+      "bytes": 127,
+      "sha256": "5cd84b6db0c58bc85271a1934d3453ba255c506eb00cbb8afc2b587c81bcf361"
+    },
+    "p2_2/cash_audit.csv": {
+      "bytes": 120609,
+      "sha256": "aadf0be2cb73c03744200d86954e1724c162a32b4d537960159293592a4b901e"
+    },
+    "p2_2/cash_skip_lifecycle_audit.csv": {
+      "bytes": 7687,
+      "sha256": "9293348cfccbd5b0c6639bdb0a40cc0c53ddd5a76a5706efff1f2f109839d8ba"
+    },
+    "p2_2/cost_audit.csv": {
+      "bytes": 269348,
+      "sha256": "13e9972b99a8d1117d2e6ab6f9fea40a208722380e82ab5cac715b8f1452f7ba"
+    },
+    "p2_2/daily_equity.csv": {
+      "bytes": 160118,
+      "sha256": "007e1a72c6fcef4a247c0370070bd50c36a8764e1bb4f6dc66cdae1c3bf50cde"
+    },
+    "p2_2/entry_attempt_audit.csv": {
+      "bytes": 131025,
+      "sha256": "eff580f4e3cf3c76d005f9d73f6171e691361d30e0ce0a4597499a02c66b0ffb"
+    },
+    "p2_2/execution_contract.json": {
+      "bytes": 29447,
+      "sha256": "9aed7cd29592e9e52fc95ac8703eeebc8245774fa4ca5d4c8bc29e9c1f40fc6d"
+    },
+    "p2_2/hidden_position_cap_audit.json": {
+      "bytes": 169,
+      "sha256": "ebe9136e3cd01dbc50bff0c2dda2a338b3a6a2be2f6138a50684e4a3de97d20a"
+    },
+    "p2_2/metrics.json": {
+      "bytes": 99833,
+      "sha256": "fe0ddae0780a7e2bf87719650eb3cc214be0cc3c058f99ce93c186ee6733ab27"
+    },
+    "p2_2/portfolio_events.csv": {
+      "bytes": 317971,
+      "sha256": "dd3f52bad5f66dad093cfbeb24ed049022da2596b0ebebf4630e54b87f177ff5"
+    },
+    "p2_2/skipped_entries.csv": {
+      "bytes": 904023,
+      "sha256": "07d126fc995b3b3ed0b200cbff26e6b24e333ff26466b462a788d4cbd475a821"
+    },
+    "p2_2/valuation_audit.csv": {
+      "bytes": 705594,
+      "sha256": "d53d322c27f60c56053ad8de4289cd06068e622b7fc7a1e9ae6fce449ca7e7cb"
+    },
+    "p3_1/annual_performance.csv": {
+      "bytes": 84,
+      "sha256": "d72f852dd4876a53b6583d4993db10b87ee9ebddee08d76473013674d9639bdb"
+    },
+    "p3_1/cash_audit.csv": {
+      "bytes": 70763,
+      "sha256": "09241895d30b92ed26586f93dec8618b9691a4095de4628cdc75a11a6413bb58"
+    },
+    "p3_1/cash_skip_lifecycle_audit.csv": {
+      "bytes": 3596,
+      "sha256": "5922a11aa8e98f96eaf87f3825ddf87128ac344463eff70c97f0490f896c0ba1"
+    },
+    "p3_1/cost_audit.csv": {
+      "bytes": 158493,
+      "sha256": "082a54c6015de4d7b5ab941aa7d8cffbde62c65871c09ad6013f40d8837a0b25"
+    },
+    "p3_1/daily_equity.csv": {
+      "bytes": 84244,
+      "sha256": "b48bb960c32dfe2cedaff5a5909c99c3ca1be1ad7990b3ee018b77d83b316787"
+    },
+    "p3_1/entry_attempt_audit.csv": {
+      "bytes": 75389,
+      "sha256": "feb21f79d8dc8cdf27ea96936febe0eec8f0535dce422e39466961698fcdae6b"
+    },
+    "p3_1/execution_contract.json": {
+      "bytes": 21554,
+      "sha256": "7e4fe3162443c379517749987b8bd94475fffd5c948b4151b4d1ef27fce108ae"
+    },
+    "p3_1/hidden_position_cap_audit.json": {
+      "bytes": 169,
+      "sha256": "c46750faa4b5ef99b8970aab751989ecd3968efcb70064dd0a437d86bb1a7a1a"
+    },
+    "p3_1/metrics.json": {
+      "bytes": 68153,
+      "sha256": "d36eb0805ce97cee81b314f5f6bdcdcecb40d913444d86f7fad1b1a0bc6bd120"
+    },
+    "p3_1/portfolio_events.csv": {
+      "bytes": 178433,
+      "sha256": "132e132e1137d99862a41e44bd780693bda4c69156190db33ac56cc5136a8f7c"
+    },
+    "p3_1/skipped_entries.csv": {
+      "bytes": 463208,
+      "sha256": "8b06aa272894d3e1e7117372bf1d5620a04df9f7064e8af192f4e617f4865d28"
+    },
+    "p3_1/valuation_audit.csv": {
+      "bytes": 363685,
+      "sha256": "cc3964327b22626a362169bb676ded8ca8ea52cc072e85b87dc6c198b27d63cc"
+    },
+    "p3_2/annual_performance.csv": {
+      "bytes": 84,
+      "sha256": "d72f852dd4876a53b6583d4993db10b87ee9ebddee08d76473013674d9639bdb"
+    },
+    "p3_2/cash_audit.csv": {
+      "bytes": 98727,
+      "sha256": "e8077af8e15544a157f9abc1079f59aa36c4dea72d20c6ca8c43c54e7ae17259"
+    },
+    "p3_2/cash_skip_lifecycle_audit.csv": {
+      "bytes": 8063,
+      "sha256": "8fdea509a9495272d08e986025e026755879034f0947ebf6b4e4f87ca1942add"
+    },
+    "p3_2/cost_audit.csv": {
+      "bytes": 220703,
+      "sha256": "582845f00d21511700df0a0fbadb912059f0707eb2ce3621e8cb3b3f6a832484"
+    },
+    "p3_2/daily_equity.csv": {
+      "bytes": 114261,
+      "sha256": "a85f9cd61200659fe5571ea5243dc9ee05e08f9d9d79067f3f0190ed7c924f97"
+    },
+    "p3_2/entry_attempt_audit.csv": {
+      "bytes": 115280,
+      "sha256": "87de8a6b1f6121366560229b2b856f2f998658d8b31202ec80ea6b865bddcf02"
+    },
+    "p3_2/execution_contract.json": {
+      "bytes": 25862,
+      "sha256": "606909c5f56340ea43e31622cefa62e561bbec259a77ffa28ebff5ddc9ac8985"
+    },
+    "p3_2/hidden_position_cap_audit.json": {
+      "bytes": 169,
+      "sha256": "59e99dc4ac2a71d2a95354748ee4dc04120304b32c71645e09437645a72cf01e"
+    },
+    "p3_2/metrics.json": {
+      "bytes": 84646,
+      "sha256": "327d9fbf4a77f6e574039b2b7cc98659fceba59d8a01838ebfd0af3533fe652e"
+    },
+    "p3_2/portfolio_events.csv": {
+      "bytes": 276454,
+      "sha256": "5f80ef57023d0a2f324d311e5be1fefd43e9f2fe5f09425d2132a32fb5286fc4"
+    },
+    "p3_2/skipped_entries.csv": {
+      "bytes": 723096,
+      "sha256": "8d93f325b479be141e70158d0262200d458417cdd0392b99e2c409259642e49a"
+    },
+    "p3_2/valuation_audit.csv": {
+      "bytes": 555726,
+      "sha256": "a4f88fbc9630461fe736a13ebfc27466724403e4dab497e9cbd433dd2a494024"
+    },
+    "portfolio_metrics.csv": {
+      "bytes": 752,
+      "sha256": "11b6477ade9416748f993720561ca0d63528f398d435012842f4c2ab50cbedef"
+    },
+    "portfolio_metrics.json": {
+      "bytes": 363395,
+      "sha256": "31c536fbc99df8ff9d706d0e166617a27a47a58f9436cedacdd21985b17f80c7"
+    },
+    "preflight.json": {
+      "bytes": 4710,
+      "sha256": "516c5f1e03755b1d01cfc485db9ef1413e7fcb9b48705f7a84359cf8fd642480"
+    },
+    "report.md": {
+      "bytes": 6254,
+      "sha256": "467d7ea3ed307f7eea407d1270356a5f97bf30d237e32652dcbacf62a0bf0c08"
+    },
+    "summary.json": {
+      "bytes": 6271,
+      "sha256": "70c08aa323a9f6380ae9574863c7fb79561829c4b50eeb278ad44afbe15e6ef6"
+    }
+  },
+  "market_authority": {
+    "calendar_content_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+    "calendar_frontier": "2026-09-21",
+    "calendar_sha256": "c9af2e5bd71ec387c73752eb4955c0d76f23e38cf30db71b49b01c04fe8538b8",
+    "common_interval_count": 3208,
+    "first_trading_date": "2010-01-04",
+    "interval_count": 3208,
+    "last_trading_date": "2026-09-21",
+    "pit_content_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
+    "pit_frontier": "2026-09-21",
+    "pit_sha256": "ff783168c56a4772a681e34b97b17d8855f28d1c13df25094bd65cedbc80cd26"
+  },
+  "p1_replay": "NOT_RUN_INCOMPLETE_HISTORICAL_TAX_AUTHORITY",
+  "plan_sha256": "97c21a5c97aac5ba7dd17a67c8ad5c5124e0e66295546b65f975dcd9220db971",
+  "preflight_script_sha256": "f06fd4580c6bcc8bc9d22cdbb18f4d4f86d3b8761aaa26eda7913ec5e36cefb3",
+  "run_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_REALISTIC_PORTFOLIO_V01",
+  "runnable_windows": [
+    "P2-1",
+    "P2-2",
+    "P3-1",
+    "P3-2"
+  ],
+  "script_sha256": "b66b8518c780fd70819eaee3b0ad5a18522546911f13a14427c8d452e800726c",
+  "source_artifact_sha256": {
+    "P2-1": {
+      "metadata.json": "dd652b8dd0ca77068960565646b63f78f4d20c2691ccc836fd96116cd37e23ac",
+      "previous_stage_audit.csv": "55eb9184a1f6700e4cfec3b9f8948e28ae1b219dd4a5405a3547d907eae4ee22",
+      "summary.json": "7ba2884973c37a742a58c94cdd3d439c8181e9deb7b333d79342907f41c459d3",
+      "test_trade_ledger.csv": "6ca597173665f42390f22beac8196f8a24f03b628a0e4ab86943c87a7cf0074f"
+    },
+    "P2-2": {
+      "metadata.json": "ab24512d275458affb823b226ee8416ee897ed64ea233fbeb428f4b3f9dbb5b0",
+      "previous_stage_audit.csv": "7695e3089243bc45962bee689337427bb576c7be8b3adbc19124808b0a3a0b3c",
+      "summary.json": "5a82d5d331442479d7b79d28f0be97b605767ad2a787b6673edfe605a4584317",
+      "test_trade_ledger.csv": "26284b8305ed8db39b49baeffa372d47904bab2c4cb30041888abf6cfebbaa59"
+    },
+    "P3-1": {
+      "metadata.json": "8e72c530015fa160158d129ccf02c1aad7c428e7a1a78fe8791e21acba5571f4",
+      "previous_stage_audit.csv": "ddf868fbf475bbd8f966951c3b730bde1ab50fefeb5a2f9317d16502877e0105",
+      "summary.json": "8956e32c08365ede45abde8640001c22b2d7b4d7d0938743c220d61f1c0eee65",
+      "test_trade_ledger.csv": "ca2df3a4cd29799dd6d05c0ab1c6ef3f7c0628d5bf494cb8e9b7a8abe2321612"
+    },
+    "P3-2": {
+      "metadata.json": "88f9be74ca388e0827bb56ed60b3d5b9b71e4aea4a36073fa1bc6e6714c2c3c7",
+      "previous_stage_audit.csv": "5dd1b45cea5c44b6633f15e9e48ff876942fe03ea6548158bda07042412954b8",
+      "summary.json": "7fbb739bcd210b05d259ebe898675124fca66f043af2a1a3a6d990f0fbbecaea",
+      "test_trade_ledger.csv": "87f60245c14fbec9740ea9f77e950dfad03c09db0a8079e20af22646999a5271"
+    }
+  },
+  "source_code_reproducibility_by_window": {
+    "P2-1": {
+      "bootstrap_signal_source_check": {
+        "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": {
+          "current_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+          "starting_head": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+          "starting_head_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+          "status": "PASS"
+        },
+        "scripts/run_pattern_b_pure_simple_backtest_v01.py": {
+          "current_sha256": "51ae1c565f019996d4b8e21c3bbc82b013f8f8d31dfdba6964cf44a6a6a9dd14",
+          "starting_head": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+          "starting_head_sha256": "51ae1c565f019996d4b8e21c3bbc82b013f8f8d31dfdba6964cf44a6a6a9dd14",
+          "status": "PASS"
+        }
+      },
+      "saved_orchestrator_code_check": {
+        "scripts/run_pattern_b_progressed_previous_stage_early_transition_only_5window_v01.py": {
+          "actual_sha256": "9a267006c8ed81c83a4a29a11d750c9932dbe31137a34a2c5d64b1feaefd2cdd",
+          "expected_sha256": "1de6bff08463198402737577af00ddcd01212f392d34cf587b3626da5b9eba0a",
+          "status": "RUN_SOURCE_UNTRACKED_AT_START"
+        },
+        "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": {
+          "actual_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+          "expected_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+          "status": "PASS"
+        }
+      },
+      "source_verified": false
+    },
+    "P2-2": {
+      "bootstrap_signal_source_check": {
+        "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": {
+          "current_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+          "starting_head": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+          "starting_head_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+          "status": "PASS"
+        },
+        "scripts/run_pattern_b_pure_simple_backtest_v01.py": {
+          "current_sha256": "51ae1c565f019996d4b8e21c3bbc82b013f8f8d31dfdba6964cf44a6a6a9dd14",
+          "starting_head": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+          "starting_head_sha256": "51ae1c565f019996d4b8e21c3bbc82b013f8f8d31dfdba6964cf44a6a6a9dd14",
+          "status": "PASS"
+        }
+      },
+      "saved_orchestrator_code_check": {
+        "scripts/run_pattern_b_progressed_previous_stage_early_transition_only_5window_v01.py": {
+          "actual_sha256": "9a267006c8ed81c83a4a29a11d750c9932dbe31137a34a2c5d64b1feaefd2cdd",
+          "expected_sha256": "1de6bff08463198402737577af00ddcd01212f392d34cf587b3626da5b9eba0a",
+          "status": "RUN_SOURCE_UNTRACKED_AT_START"
+        },
+        "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": {
+          "actual_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+          "expected_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+          "status": "PASS"
+        }
+      },
+      "source_verified": false
+    },
+    "P3-1": {
+      "bootstrap_signal_source_check": {
+        "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": {
+          "current_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+          "starting_head": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+          "starting_head_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+          "status": "PASS"
+        },
+        "scripts/run_pattern_b_pure_simple_backtest_v01.py": {
+          "current_sha256": "51ae1c565f019996d4b8e21c3bbc82b013f8f8d31dfdba6964cf44a6a6a9dd14",
+          "starting_head": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+          "starting_head_sha256": "51ae1c565f019996d4b8e21c3bbc82b013f8f8d31dfdba6964cf44a6a6a9dd14",
+          "status": "PASS"
+        }
+      },
+      "saved_orchestrator_code_check": {
+        "scripts/run_pattern_b_progressed_previous_stage_early_transition_only_5window_v01.py": {
+          "actual_sha256": "9a267006c8ed81c83a4a29a11d750c9932dbe31137a34a2c5d64b1feaefd2cdd",
+          "expected_sha256": "1de6bff08463198402737577af00ddcd01212f392d34cf587b3626da5b9eba0a",
+          "status": "RUN_SOURCE_UNTRACKED_AT_START"
+        },
+        "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": {
+          "actual_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+          "expected_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+          "status": "PASS"
+        }
+      },
+      "source_verified": false
+    },
+    "P3-2": {
+      "bootstrap_signal_source_check": {
+        "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": {
+          "current_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+          "starting_head": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+          "starting_head_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+          "status": "PASS"
+        },
+        "scripts/run_pattern_b_pure_simple_backtest_v01.py": {
+          "current_sha256": "51ae1c565f019996d4b8e21c3bbc82b013f8f8d31dfdba6964cf44a6a6a9dd14",
+          "starting_head": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+          "starting_head_sha256": "51ae1c565f019996d4b8e21c3bbc82b013f8f8d31dfdba6964cf44a6a6a9dd14",
+          "status": "PASS"
+        }
+      },
+      "saved_orchestrator_code_check": {
+        "scripts/run_pattern_b_progressed_previous_stage_early_transition_only_5window_v01.py": {
+          "actual_sha256": "9a267006c8ed81c83a4a29a11d750c9932dbe31137a34a2c5d64b1feaefd2cdd",
+          "expected_sha256": "1de6bff08463198402737577af00ddcd01212f392d34cf587b3626da5b9eba0a",
+          "status": "RUN_SOURCE_UNTRACKED_AT_START"
+        },
+        "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": {
+          "actual_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+          "expected_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+          "status": "PASS"
+        }
+      },
+      "source_verified": false
+    }
+  },
+  "source_code_sha256": {
+    "scripts/run_p2_1_realistic_portfolio_v01.py": "2b5fbc91ff4bf1770896ee2c40c48ad20d38855f95745294ada0a4bf2612f9b4",
+    "scripts/run_pattern_b_progressed_previous_et_only_realistic_portfolio_v01.py": "b66b8518c780fd70819eaee3b0ad5a18522546911f13a14427c8d452e800726c",
+    "scripts/run_pattern_b_progressed_previous_stage_early_transition_only_5window_v01.py": "9a267006c8ed81c83a4a29a11d750c9932dbe31137a34a2c5d64b1feaefd2cdd",
+    "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+    "scripts/run_pattern_b_pure_simple_backtest_v01.py": "51ae1c565f019996d4b8e21c3bbc82b013f8f8d31dfdba6964cf44a6a6a9dd14",
+    "scripts/run_v2_julia_official_validation_v01.py": "5466bac36b907bd0d66c25716a0816c221c331de5cca4237bd5b5cbd706415d0"
+  },
+  "starting_head": "ce639f78ba1cc9842d3b066a1c3cce082b619942",
+  "tax_authority": {
+    "authoritative_schedule_start": "2021-01-01",
+    "p1_full_cost_portfolio_replay_performed": false,
+    "pre_2021_realized_exit_count_in_saved_P1_ledger": 211,
+    "pre_2021_realized_exit_missing_tax_count": 211,
+    "reason": "Repository tax schedule has no verified 2014-2020 rates; no rate was inferred and missing taxes would alter cash availability and portfolio paths.",
+    "source": {
+      "existing_trade_ledger": "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_5window_v01/p1/test_trade_ledger.csv",
+      "schedule_code": "scripts/run_v2_julia_official_validation_v01.py::HISTORICAL_SELL_TAX_SCHEDULE",
+      "trade_ledger_sha256": "032daae185ec0aa3adbb4ed8c0ec3f8eba61d0d30ee050929095eefc5e46c7c4"
+    },
+    "status": "CHECK_REQUIRED"
+  },
+  "verdict": "HOLD",
+  "workers": 10,
+  "report_and_summary_finalization": {
+    "status": "REPORT_ONLY_POSTPROCESSING_NO_PORTFOLIO_REPLAY",
+    "diagnostic_scope": "window metrics from completed deterministic replay; equity-dependent annual/cash-utilization observations remain non-official where exact daily valuation gaps exist."
+  }
+}

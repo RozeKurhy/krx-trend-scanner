@@ -1,0 +1,2104 @@
+{
+  "bootstrap_signal_source_checks": {
+    "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": {
+      "current_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+      "starting_head": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+      "starting_head_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+      "status": "PASS"
+    },
+    "scripts/run_pattern_b_pure_simple_backtest_v01.py": {
+      "current_sha256": "51ae1c565f019996d4b8e21c3bbc82b013f8f8d31dfdba6964cf44a6a6a9dd14",
+      "starting_head": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+      "starting_head_sha256": "51ae1c565f019996d4b8e21c3bbc82b013f8f8d31dfdba6964cf44a6a6a9dd14",
+      "status": "PASS"
+    }
+  },
+  "cash_shortage_skip_attempt_denominator": 353,
+  "cash_shortage_skip_count": 85,
+  "cash_shortage_skip_rate_pct": 24.07932011331445,
+  "daily_equity_gap_day_count": 1088,
+  "diagnostics": {
+    "annual_performance": [
+      {
+        "annual_return_pct": 19.519133132696666,
+        "ending_equity_krw": 239038266.26539332,
+        "year": 2021
+      },
+      {
+        "annual_return_pct": -3.820591003502294,
+        "ending_equity_krw": 229905591.76952985,
+        "year": 2022
+      }
+    ],
+    "average_cash_utilization_pct": 20.179085463043982,
+    "average_concurrent_positions": 34.205479452054796,
+    "deep_arrival_candidate_diagnostic": {
+      "deep_arrival_count": 69,
+      "deep_arrival_rate_of_filled_pct": 19.546742209631727,
+      "deep_mean_mae_pct": -60.62192700328038,
+      "deep_median_mae_pct": -62.704918032786885,
+      "deep_open_count": 23,
+      "deep_realized_count": 46,
+      "deep_realized_mean_gross_pct": -19.10134276828716,
+      "deep_realized_median_gross_pct": -18.8840694272723,
+      "deep_realized_win_rate_pct": 19.565217391304348
+    },
+    "deep_arrival_note": "Candidate-level stored diagnostic; exact portfolio-executed DEEP membership was not present in the frozen source ledger.",
+    "maximum_cash_utilization_pct": 84.57178265154924,
+    "maximum_concurrent_positions": 63,
+    "mean_holding_krx_sessions": 143.57522123893804,
+    "median_holding_krx_sessions": 43.0,
+    "median_net_trade_return_pct": 10.784105787069334,
+    "open_at_cutoff_count": 42,
+    "open_at_cutoff_exact_mark_count": 0,
+    "open_at_cutoff_unresolved_count": 42,
+    "open_trades": [
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_109820_KR7109820001_2021-09-30_0002",
+        "status": "UNRESOLVED",
+        "ticker": "109820"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_069640_KR7069640001_2021-09-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "069640"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_093230_KR7093230001_2021-11-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "093230"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_181340_KR7181340001_2022-02-28_0001",
+        "status": "UNRESOLVED",
+        "ticker": "181340"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_121800_KR7121800007_2022-05-31_0001",
+        "status": "UNRESOLVED",
+        "ticker": "121800"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_234100_KR7234100006_2022-05-31_0001",
+        "status": "UNRESOLVED",
+        "ticker": "234100"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_151910_KR7151910007_2022-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "151910"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_030960_KR7030960009_2023-03-31_0001",
+        "status": "UNRESOLVED",
+        "ticker": "030960"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_290670_KR7290670009_2023-08-31_0001",
+        "status": "UNRESOLVED",
+        "ticker": "290670"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_227610_KR7227610003_2023-08-31_0002",
+        "status": "UNRESOLVED",
+        "ticker": "227610"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_900250_KYG2115T1076_2023-10-31_0001",
+        "status": "UNRESOLVED",
+        "ticker": "900250"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_096630_KR7096630009_2024-07-31_0001",
+        "status": "UNRESOLVED",
+        "ticker": "096630"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_317690_KR7317690006_2024-10-31_0001",
+        "status": "UNRESOLVED",
+        "ticker": "317690"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_091440_KR7091440008_2024-10-31_0001",
+        "status": "UNRESOLVED",
+        "ticker": "091440"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_001380_KR7001380005_2025-04-30_0002",
+        "status": "UNRESOLVED",
+        "ticker": "001380"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_039240_KR7039240007_2025-04-30_0003",
+        "status": "UNRESOLVED",
+        "ticker": "039240"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_321820_KR7321820003_2025-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "321820"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_042940_KR7042940007_2025-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "042940"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_011080_KR7011080009_2025-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "011080"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_105550_KR7105550008_2025-07-31_0001",
+        "status": "UNRESOLVED",
+        "ticker": "105550"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_148150_KR7148150006_2025-10-31_0002",
+        "status": "UNRESOLVED",
+        "ticker": "148150"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_007720_KR7007720006_2025-10-31_0001",
+        "status": "UNRESOLVED",
+        "ticker": "007720"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_082270_KR7082270000_2026-04-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "082270"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_156100_KR7156100000_2026-04-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "156100"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_100790_KR7100790005_2026-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "100790"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_100090_KR7100090000_2026-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "100090"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_048410_KR7048410005_2026-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "048410"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_056080_KR7056080005_2026-06-30_0002",
+        "status": "UNRESOLVED",
+        "ticker": "056080"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_174900_KR7174900001_2026-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "174900"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_117730_KR7117730002_2026-06-30_0002",
+        "status": "UNRESOLVED",
+        "ticker": "117730"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_010820_KR7010820009_2026-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "010820"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_187660_KR7187660006_2026-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "187660"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_014940_KR7014940001_2026-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "014940"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_322310_KR7322310004_2026-06-30_0002",
+        "status": "UNRESOLVED",
+        "ticker": "322310"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_251370_KR7251370003_2026-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "251370"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_036170_KR7036170009_2026-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "036170"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_012860_KR7012860003_2026-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "012860"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_035510_KR7035510007_2026-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "035510"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_314130_KR7314130006_2026-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "314130"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_079960_KR7079960001_2026-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "079960"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_418420_KR7418420006_2026-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "418420"
+      },
+      {
+        "net_return_pct": null,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_011690_KR7011690005_2026-06-30_0001",
+        "status": "UNRESOLVED",
+        "ticker": "011690"
+      }
+    ],
+    "p90_holding_krx_sessions": 413.0,
+    "positive_trade_rate_pct": 77.43362831858407,
+    "realized_trade_count": 226,
+    "realized_trades": [
+      {
+        "net_pnl_krw": 2435362.7732525,
+        "net_return_pct": 48.87563835334769,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_011000_KR7011000007_2021-03-31_0001",
+        "ticker": "011000"
+      },
+      {
+        "net_pnl_krw": 3841193.9696900006,
+        "net_return_pct": 76.90404176972643,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_109820_KR7109820001_2021-03-31_0001",
+        "ticker": "109820"
+      },
+      {
+        "net_pnl_krw": 523665.04983859975,
+        "net_return_pct": 10.48612738183953,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_012790_KR7012790002_2021-03-31_0001",
+        "ticker": "012790"
+      },
+      {
+        "net_pnl_krw": 1193769.7999832015,
+        "net_return_pct": 23.91602749115414,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_012790_KR7012790002_2021-05-31_0002",
+        "ticker": "012790"
+      },
+      {
+        "net_pnl_krw": 1069460.801430001,
+        "net_return_pct": 21.391168532877785,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_033200_KR7033200007_2021-05-31_0001",
+        "ticker": "033200"
+      },
+      {
+        "net_pnl_krw": -551546.9999820003,
+        "net_return_pct": -11.043623499013263,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_033200_KR7033200007_2021-08-31_0002",
+        "ticker": "033200"
+      },
+      {
+        "net_pnl_krw": -2902672.562307749,
+        "net_return_pct": -58.13226283056302,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_083550_KR7083550004_2021-08-31_0001",
+        "ticker": "083550"
+      },
+      {
+        "net_pnl_krw": 301597.3915640004,
+        "net_return_pct": 6.032546775022371,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_072770_KR7072770001_2021-08-31_0001",
+        "ticker": "072770"
+      },
+      {
+        "net_pnl_krw": -3672368.762396,
+        "net_return_pct": -73.99491335722445,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_019170_KR7019170000_2021-09-30_0001",
+        "ticker": "019170"
+      },
+      {
+        "net_pnl_krw": 287606.25493600126,
+        "net_return_pct": 5.752811457394132,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_062860_KR7062860002_2021-09-30_0001",
+        "ticker": "062860"
+      },
+      {
+        "net_pnl_krw": 9188193.019412752,
+        "net_return_pct": 184.45139438953333,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_121850_KR7121850002_2021-09-30_0001",
+        "ticker": "121850"
+      },
+      {
+        "net_pnl_krw": 2312045.1490257503,
+        "net_return_pct": 46.241188678150245,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_019490_KR7019490002_2021-09-30_0001",
+        "ticker": "019490"
+      },
+      {
+        "net_pnl_krw": -2055488.2077164995,
+        "net_return_pct": -41.134150634714395,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_004140_KR7004140000_2021-10-29_0001",
+        "ticker": "004140"
+      },
+      {
+        "net_pnl_krw": -443717.197364999,
+        "net_return_pct": -8.90887138083597,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_005250_KR7005250006_2021-11-30_0001",
+        "ticker": "005250"
+      },
+      {
+        "net_pnl_krw": 159255.74190825224,
+        "net_return_pct": 3.1855586864949546,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_073240_KR7073240004_2021-11-30_0001",
+        "ticker": "073240"
+      },
+      {
+        "net_pnl_krw": 1102615.624841501,
+        "net_return_pct": 22.073376405093732,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_036030_KR7036030005_2021-11-30_0001",
+        "ticker": "036030"
+      },
+      {
+        "net_pnl_krw": 272760.1383690005,
+        "net_return_pct": 5.457399008396766,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_214390_KR7214390007_2021-11-30_0001",
+        "ticker": "214390"
+      },
+      {
+        "net_pnl_krw": 65619.38052000105,
+        "net_return_pct": 1.3174142766932717,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_052420_KR7052420007_2021-11-30_0001",
+        "ticker": "052420"
+      },
+      {
+        "net_pnl_krw": 598766.3976495499,
+        "net_return_pct": 11.9869515240066,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_007330_KR7007330004_2021-11-30_0001",
+        "ticker": "007330"
+      },
+      {
+        "net_pnl_krw": 5647943.3431395,
+        "net_return_pct": 113.1248047170067,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_014200_KR7014200000_2021-11-30_0001",
+        "ticker": "014200"
+      },
+      {
+        "net_pnl_krw": -316238.02397499885,
+        "net_return_pct": -6.327365102860984,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_061250_KR7061250007_2021-11-30_0001",
+        "ticker": "061250"
+      },
+      {
+        "net_pnl_krw": -264752.45658014994,
+        "net_return_pct": -5.295087148069839,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_068330_KR7068330000_2021-11-30_0001",
+        "ticker": "068330"
+      },
+      {
+        "net_pnl_krw": 289447.30225650035,
+        "net_return_pct": 5.788987607591448,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_017550_KR7017550005_2021-11-30_0001",
+        "ticker": "017550"
+      },
+      {
+        "net_pnl_krw": -183851.49077099934,
+        "net_return_pct": -3.6792663298054453,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_100220_KR7100220003_2021-11-30_0001",
+        "ticker": "100220"
+      },
+      {
+        "net_pnl_krw": -562102.8812314989,
+        "net_return_pct": -11.253810779697274,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_043910_KR7043910009_2021-11-30_0001",
+        "ticker": "043910"
+      },
+      {
+        "net_pnl_krw": -124185.63123199996,
+        "net_return_pct": -2.4865484872960324,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_049430_KR7049430002_2021-11-30_0001",
+        "ticker": "049430"
+      },
+      {
+        "net_pnl_krw": -165988.024879599,
+        "net_return_pct": -3.320808324926904,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_106190_KR7106190002_2021-11-30_0001",
+        "ticker": "106190"
+      },
+      {
+        "net_pnl_krw": 1944704.9101870004,
+        "net_return_pct": 38.91791107193357,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_039240_KR7039240007_2021-11-30_0001",
+        "ticker": "039240"
+      },
+      {
+        "net_pnl_krw": -246179.4671999989,
+        "net_return_pct": -4.925814286237125,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_024120_KR7024120008_2021-11-30_0001",
+        "ticker": "024120"
+      },
+      {
+        "net_pnl_krw": 861494.2062628996,
+        "net_return_pct": 17.24039856098335,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_001380_KR7001380005_2021-11-30_0001",
+        "ticker": "001380"
+      },
+      {
+        "net_pnl_krw": 664514.4719925001,
+        "net_return_pct": 13.293099789960792,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_045340_KR7045340007_2021-11-30_0001",
+        "ticker": "045340"
+      },
+      {
+        "net_pnl_krw": 1378596.3369360017,
+        "net_return_pct": 27.580408393286504,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_024740_KR7024740003_2021-11-30_0001",
+        "ticker": "024740"
+      },
+      {
+        "net_pnl_krw": 82787.5655190004,
+        "net_return_pct": 1.6561462105905609,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_069730_KR7069730000_2021-11-30_0001",
+        "ticker": "069730"
+      },
+      {
+        "net_pnl_krw": 756685.7460240005,
+        "net_return_pct": 15.137006025054859,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_065440_KR7065440000_2021-11-30_0001",
+        "ticker": "065440"
+      },
+      {
+        "net_pnl_krw": 145272.90067559946,
+        "net_return_pct": 2.90760271571368,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_065770_KR7065770000_2021-11-30_0001",
+        "ticker": "065770"
+      },
+      {
+        "net_pnl_krw": 662738.8120012507,
+        "net_return_pct": 13.3033142187169,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_028080_KR7028080000_2021-11-30_0001",
+        "ticker": "028080"
+      },
+      {
+        "net_pnl_krw": 1442194.1073990008,
+        "net_return_pct": 28.84998144384238,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_002290_KR7002290005_2021-11-30_0001",
+        "ticker": "002290"
+      },
+      {
+        "net_pnl_krw": 984948.23985375,
+        "net_return_pct": 19.71793891255972,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_024850_KR7024850000_2021-11-30_0001",
+        "ticker": "024850"
+      },
+      {
+        "net_pnl_krw": 205748.2412910005,
+        "net_return_pct": 4.1152415699818246,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_079000_KR7079000006_2021-11-30_0001",
+        "ticker": "079000"
+      },
+      {
+        "net_pnl_krw": 533150.3073435007,
+        "net_return_pct": 10.665901760149403,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_016880_KR7016880007_2021-12-30_0001",
+        "ticker": "016880"
+      },
+      {
+        "net_pnl_krw": 176350.7256250009,
+        "net_return_pct": 3.527371791831766,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_073240_KR7073240004_2022-02-28_0002",
+        "ticker": "073240"
+      },
+      {
+        "net_pnl_krw": 665463.9554400006,
+        "net_return_pct": 13.313693293394465,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_007390_KR7007390008_2022-02-28_0001",
+        "ticker": "007390"
+      },
+      {
+        "net_pnl_krw": -857065.1973449998,
+        "net_return_pct": -17.190373017473952,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_084110_KR7084110006_2022-02-28_0001",
+        "ticker": "084110"
+      },
+      {
+        "net_pnl_krw": -2783765.2337495987,
+        "net_return_pct": -55.69832178781255,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_001360_KR7001360007_2022-02-28_0001",
+        "ticker": "001360"
+      },
+      {
+        "net_pnl_krw": 548911.4567099996,
+        "net_return_pct": 11.003027322670277,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_048910_KR7048910004_2022-02-28_0001",
+        "ticker": "048910"
+      },
+      {
+        "net_pnl_krw": 1032869.7402929999,
+        "net_return_pct": 20.66139058452687,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_017550_KR7017550005_2022-02-28_0002",
+        "ticker": "017550"
+      },
+      {
+        "net_pnl_krw": -1080619.0597964986,
+        "net_return_pct": -21.62409699660782,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_045660_KR7045660008_2022-02-28_0001",
+        "ticker": "045660"
+      },
+      {
+        "net_pnl_krw": 1006677.9970800001,
+        "net_return_pct": 20.13539782391696,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_120240_KR7120240007_2022-02-28_0001",
+        "ticker": "120240"
+      },
+      {
+        "net_pnl_krw": 426445.67789250147,
+        "net_return_pct": 8.533536974878283,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_038620_KR7038620001_2022-02-28_0001",
+        "ticker": "038620"
+      },
+      {
+        "net_pnl_krw": 1973318.959766251,
+        "net_return_pct": 39.487180113909666,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_039240_KR7039240007_2022-02-28_0002",
+        "ticker": "039240"
+      },
+      {
+        "net_pnl_krw": 3064139.1623375015,
+        "net_return_pct": 61.312073259210244,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_002410_KR7002410009_2022-02-28_0001",
+        "ticker": "002410"
+      },
+      {
+        "net_pnl_krw": -1499542.5267115994,
+        "net_return_pct": -29.991906602577078,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_015020_KR7015020001_2022-02-28_0001",
+        "ticker": "015020"
+      },
+      {
+        "net_pnl_krw": 496549.0048200004,
+        "net_return_pct": 9.93457230587927,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_023960_KR7023960008_2022-02-28_0001",
+        "ticker": "023960"
+      },
+      {
+        "net_pnl_krw": 384414.968994,
+        "net_return_pct": 7.689001202583921,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_224110_KR7224110007_2022-02-28_0001",
+        "ticker": "224110"
+      },
+      {
+        "net_pnl_krw": 898281.5618065009,
+        "net_return_pct": 17.966155935498886,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_069730_KR7069730000_2022-02-28_0002",
+        "ticker": "069730"
+      },
+      {
+        "net_pnl_krw": 296324.96243700106,
+        "net_return_pct": 5.926915626611322,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_001620_KR7001620004_2022-02-28_0001",
+        "ticker": "001620"
+      },
+      {
+        "net_pnl_krw": 169939.99679999985,
+        "net_return_pct": 3.4003358345091668,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_053160_KR7053160008_2022-02-28_0001",
+        "ticker": "053160"
+      },
+      {
+        "net_pnl_krw": 380215.29938250035,
+        "net_return_pct": 7.6116304831997565,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_024850_KR7024850000_2022-02-28_0002",
+        "ticker": "024850"
+      },
+      {
+        "net_pnl_krw": 3540413.29086,
+        "net_return_pct": 70.81685665898034,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_024940_KR7024940009_2022-02-28_0001",
+        "ticker": "024940"
+      },
+      {
+        "net_pnl_krw": 129942.45042250026,
+        "net_return_pct": 2.6015034356363422,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_134060_KR7134060003_2022-02-28_0001",
+        "ticker": "134060"
+      },
+      {
+        "net_pnl_krw": 2469849.59521755,
+        "net_return_pct": 49.40503298386241,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_019490_KR7019490002_2022-02-28_0002",
+        "ticker": "019490"
+      },
+      {
+        "net_pnl_krw": -1906090.8537299992,
+        "net_return_pct": -38.12415186176577,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_053290_KR7053290003_2022-03-31_0001",
+        "ticker": "053290"
+      },
+      {
+        "net_pnl_krw": -158887.57328499854,
+        "net_return_pct": -3.184226614328671,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_046890_KR7046890000_2022-05-31_0001",
+        "ticker": "046890"
+      },
+      {
+        "net_pnl_krw": -1888349.2608069996,
+        "net_return_pct": -37.869014436000974,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_206650_KR7206650004_2022-05-31_0001",
+        "ticker": "206650"
+      },
+      {
+        "net_pnl_krw": 945559.3076999998,
+        "net_return_pct": 18.980185728857634,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_194480_KR7194480000_2022-05-31_0001",
+        "ticker": "194480"
+      },
+      {
+        "net_pnl_krw": 432521.16831000056,
+        "net_return_pct": 8.658495181766703,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_108670_KR7108670001_2022-05-31_0001",
+        "ticker": "108670"
+      },
+      {
+        "net_pnl_krw": -1457218.2707499992,
+        "net_return_pct": -29.1458585625804,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_226950_KR7226950004_2022-05-31_0001",
+        "ticker": "226950"
+      },
+      {
+        "net_pnl_krw": -1798466.8513875003,
+        "net_return_pct": -36.023476635045455,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_048910_KR7048910004_2022-05-31_0002",
+        "ticker": "048910"
+      },
+      {
+        "net_pnl_krw": 907382.9235555008,
+        "net_return_pct": 18.157223269656424,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_066980_KR7066980004_2022-05-31_0001",
+        "ticker": "066980"
+      },
+      {
+        "net_pnl_krw": -2064513.2528999988,
+        "net_return_pct": -41.346195105278596,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_038620_KR7038620001_2022-05-31_0002",
+        "ticker": "038620"
+      },
+      {
+        "net_pnl_krw": -1777806.6539986492,
+        "net_return_pct": -35.60226149957273,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_008600_KR7008600009_2022-05-31_0001",
+        "ticker": "008600"
+      },
+      {
+        "net_pnl_krw": -1775154.8045174992,
+        "net_return_pct": -35.50783015377792,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_016920_KR7016920001_2022-05-31_0001",
+        "ticker": "016920"
+      },
+      {
+        "net_pnl_krw": -728801.6383094992,
+        "net_return_pct": -14.57705683406555,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_001620_KR7001620004_2022-05-31_0002",
+        "ticker": "001620"
+      },
+      {
+        "net_pnl_krw": 1662919.7568689995,
+        "net_return_pct": 33.32649846948934,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_196300_KR7196300008_2022-05-31_0001",
+        "ticker": "196300"
+      },
+      {
+        "net_pnl_krw": 20606.008949799463,
+        "net_return_pct": 0.41225901059947867,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_093240_KR7093240000_2022-05-31_0001",
+        "ticker": "093240"
+      },
+      {
+        "net_pnl_krw": 84253.58429180086,
+        "net_return_pct": 1.6852916522459571,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_071850_KR7071850002_2022-05-31_0001",
+        "ticker": "071850"
+      },
+      {
+        "net_pnl_krw": -723659.1114249993,
+        "net_return_pct": -14.636585017456447,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_112040_KR7112040001_2022-06-30_0001",
+        "ticker": "112040"
+      },
+      {
+        "net_pnl_krw": 192413.95560000092,
+        "net_return_pct": 3.868617249001515,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_011000_KR7011000007_2022-06-30_0002",
+        "ticker": "011000"
+      },
+      {
+        "net_pnl_krw": 906163.6134374999,
+        "net_return_pct": 18.194333116124696,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_213420_KR7213420003_2022-06-30_0001",
+        "ticker": "213420"
+      },
+      {
+        "net_pnl_krw": -351572.0994939981,
+        "net_return_pct": -7.034971771119849,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_003850_KR7003850005_2022-06-30_0001",
+        "ticker": "003850"
+      },
+      {
+        "net_pnl_krw": 993540.9760000007,
+        "net_return_pct": 19.887766886518694,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_064550_KR7064550007_2022-06-30_0001",
+        "ticker": "064550"
+      },
+      {
+        "net_pnl_krw": 503927.630880001,
+        "net_return_pct": 10.08401607451939,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_192400_KR7192400000_2022-06-30_0001",
+        "ticker": "192400"
+      },
+      {
+        "net_pnl_krw": 994347.4133599997,
+        "net_return_pct": 19.911890107035248,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_033160_KR7033160003_2022-06-30_0001",
+        "ticker": "033160"
+      },
+      {
+        "net_pnl_krw": 544596.3961250009,
+        "net_return_pct": 10.902309813989266,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_094480_KR7094480001_2022-06-30_0001",
+        "ticker": "094480"
+      },
+      {
+        "net_pnl_krw": 710764.6206125002,
+        "net_return_pct": 14.224565694958496,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_160550_KR7160550000_2022-06-30_0001",
+        "ticker": "160550"
+      },
+      {
+        "net_pnl_krw": 2779943.4266099995,
+        "net_return_pct": 55.603943848121006,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_054620_KR7054620000_2022-06-30_0001",
+        "ticker": "054620"
+      },
+      {
+        "net_pnl_krw": 686338.2579845004,
+        "net_return_pct": 13.74117106993326,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_007860_KR7007860000_2022-06-30_0001",
+        "ticker": "007860"
+      },
+      {
+        "net_pnl_krw": -954980.9675039994,
+        "net_return_pct": -19.10273995451509,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_053280_KR7053280004_2022-06-30_0001",
+        "ticker": "053280"
+      },
+      {
+        "net_pnl_krw": -951921.9296272495,
+        "net_return_pct": -19.044409615225824,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_009270_KR7009270000_2022-06-30_0001",
+        "ticker": "009270"
+      },
+      {
+        "net_pnl_krw": 829032.4423810001,
+        "net_return_pct": 16.596486337059233,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_060560_KR7060560000_2022-06-30_0001",
+        "ticker": "060560"
+      },
+      {
+        "net_pnl_krw": -1772733.725279999,
+        "net_return_pct": -35.45705894254995,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_104200_KR7104200001_2022-06-30_0001",
+        "ticker": "104200"
+      },
+      {
+        "net_pnl_krw": 1824735.360743801,
+        "net_return_pct": 36.50344783434687,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_086960_KR7086960002_2022-06-30_0001",
+        "ticker": "086960"
+      },
+      {
+        "net_pnl_krw": 749191.4969350006,
+        "net_return_pct": 15.117488621653713,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_053800_KR7053800009_2022-08-31_0001",
+        "ticker": "053800"
+      },
+      {
+        "net_pnl_krw": 838246.150080001,
+        "net_return_pct": 16.902518347592306,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_020150_KR7020150009_2022-09-30_0001",
+        "ticker": "020150"
+      },
+      {
+        "net_pnl_krw": 216020.63957000058,
+        "net_return_pct": 4.322191996813742,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_006360_KR7006360002_2022-09-30_0001",
+        "ticker": "006360"
+      },
+      {
+        "net_pnl_krw": 1665398.4768750016,
+        "net_return_pct": 33.310009498492505,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_064550_KR7064550007_2022-09-30_0002",
+        "ticker": "064550"
+      },
+      {
+        "net_pnl_krw": -151141.27498234808,
+        "net_return_pct": -3.0234005196500617,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_068240_KR7068240001_2022-09-30_0001",
+        "ticker": "068240"
+      },
+      {
+        "net_pnl_krw": 1714307.174406751,
+        "net_return_pct": 34.29998816498304,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_003530_KR7003530003_2022-09-30_0001",
+        "ticker": "003530"
+      },
+      {
+        "net_pnl_krw": 1305650.9062520014,
+        "net_return_pct": 26.145768585640567,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_101730_KR7101730000_2022-09-30_0001",
+        "ticker": "101730"
+      },
+      {
+        "net_pnl_krw": 1105496.4845750006,
+        "net_return_pct": 22.131004279261273,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_064260_KR7064260003_2022-09-30_0001",
+        "ticker": "064260"
+      },
+      {
+        "net_pnl_krw": 514086.9486300014,
+        "net_return_pct": 10.284840034091962,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_317330_KR7317330009_2022-09-30_0001",
+        "ticker": "317330"
+      },
+      {
+        "net_pnl_krw": 394707.5513249999,
+        "net_return_pct": 7.8991424730403565,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_036200_KR7036200004_2022-09-30_0001",
+        "ticker": "036200"
+      },
+      {
+        "net_pnl_krw": 1043148.4029285014,
+        "net_return_pct": 20.888966490470203,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_004980_KR7004980009_2022-09-30_0001",
+        "ticker": "004980"
+      },
+      {
+        "net_pnl_krw": 1871306.2130399998,
+        "net_return_pct": 37.46104703389682,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_160550_KR7160550000_2022-09-30_0002",
+        "ticker": "160550"
+      },
+      {
+        "net_pnl_krw": 1728008.2638562499,
+        "net_return_pct": 34.56435830329746,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_014160_KR7014160006_2022-09-30_0001",
+        "ticker": "014160"
+      },
+      {
+        "net_pnl_krw": -1317201.6647039992,
+        "net_return_pct": -26.45769839247959,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_249420_KR7249420001_2023-01-31_0001",
+        "ticker": "249420"
+      },
+      {
+        "net_pnl_krw": 5254087.911030001,
+        "net_return_pct": 105.14188131943779,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_064550_KR7064550007_2023-01-31_0003",
+        "ticker": "064550"
+      },
+      {
+        "net_pnl_krw": 257111.1069975011,
+        "net_return_pct": 5.143680357976594,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_031330_KR7031330004_2023-01-31_0001",
+        "ticker": "031330"
+      },
+      {
+        "net_pnl_krw": 471700.2888080003,
+        "net_return_pct": 9.435282622694611,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_006880_KR7006880009_2023-01-31_0001",
+        "ticker": "006880"
+      },
+      {
+        "net_pnl_krw": 3131977.520548803,
+        "net_return_pct": 62.66499476715971,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_227610_KR7227610003_2023-01-31_0001",
+        "ticker": "227610"
+      },
+      {
+        "net_pnl_krw": 294769.73011200037,
+        "net_return_pct": 5.898058697788747,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_005870_KR7005870001_2023-02-28_0001",
+        "ticker": "005870"
+      },
+      {
+        "net_pnl_krw": 1998195.454645251,
+        "net_return_pct": 39.97027853250652,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_090080_KR7090080003_2023-02-28_0001",
+        "ticker": "090080"
+      },
+      {
+        "net_pnl_krw": 1649064.0593700008,
+        "net_return_pct": 32.988255373151084,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_010660_KR7010660009_2023-02-28_0001",
+        "ticker": "010660"
+      },
+      {
+        "net_pnl_krw": 1073578.0896750009,
+        "net_return_pct": 21.472876828583644,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_035460_KR7035460005_2023-02-28_0001",
+        "ticker": "035460"
+      },
+      {
+        "net_pnl_krw": 2003897.4503625017,
+        "net_return_pct": 40.09365053202668,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_005860_KR7005860002_2023-03-31_0001",
+        "ticker": "005860"
+      },
+      {
+        "net_pnl_krw": 731949.5999270007,
+        "net_return_pct": 14.64854167978701,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_006880_KR7006880009_2023-03-31_0002",
+        "ticker": "006880"
+      },
+      {
+        "net_pnl_krw": 1399961.6669849996,
+        "net_return_pct": 28.019463414154206,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_032680_KR7032680001_2023-03-31_0001",
+        "ticker": "032680"
+      },
+      {
+        "net_pnl_krw": -964667.7787929983,
+        "net_return_pct": -19.305245268396696,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_025770_KR7025770009_2023-06-30_0001",
+        "ticker": "025770"
+      },
+      {
+        "net_pnl_krw": -1758036.3971799999,
+        "net_return_pct": -35.191068338475404,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_065370_KR7065370009_2023-06-30_0001",
+        "ticker": "065370"
+      },
+      {
+        "net_pnl_krw": 3636652.5868890006,
+        "net_return_pct": 72.76504481350908,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_053050_KR7053050001_2023-07-31_0001",
+        "ticker": "053050"
+      },
+      {
+        "net_pnl_krw": 687659.9718239997,
+        "net_return_pct": 13.756107673033826,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_010660_KR7010660009_2023-07-31_0002",
+        "ticker": "010660"
+      },
+      {
+        "net_pnl_krw": -3267492.383721999,
+        "net_return_pct": -65.35790715344352,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_131400_KR7131400004_2023-08-31_0001",
+        "ticker": "131400"
+      },
+      {
+        "net_pnl_krw": 1048837.2593474993,
+        "net_return_pct": 21.008318544720858,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_006220_KR7006220008_2023-08-31_0001",
+        "ticker": "006220"
+      },
+      {
+        "net_pnl_krw": 784771.331197001,
+        "net_return_pct": 15.697299443467111,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_042670_KR7042670000_2023-10-31_0001",
+        "ticker": "042670"
+      },
+      {
+        "net_pnl_krw": 44715.80657600053,
+        "net_return_pct": 0.8950501742467915,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_052020_KR7052020005_2023-10-31_0001",
+        "ticker": "052020"
+      },
+      {
+        "net_pnl_krw": 435077.71718950104,
+        "net_return_pct": 8.723713356075914,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_003120_KR7003120003_2023-10-31_0001",
+        "ticker": "003120"
+      },
+      {
+        "net_pnl_krw": 518813.8652462512,
+        "net_return_pct": 10.381226232648547,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_005160_KR7005160007_2023-10-31_0001",
+        "ticker": "005160"
+      },
+      {
+        "net_pnl_krw": 1683170.1565000014,
+        "net_return_pct": 33.69211387494621,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_049950_KR7049950009_2023-10-31_0001",
+        "ticker": "049950"
+      },
+      {
+        "net_pnl_krw": 915468.320960002,
+        "net_return_pct": 18.33001454712224,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_179290_KR7179290002_2023-10-31_0001",
+        "ticker": "179290"
+      },
+      {
+        "net_pnl_krw": 950698.6694800006,
+        "net_return_pct": 19.043929078844517,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_190510_KR7190510008_2023-10-31_0001",
+        "ticker": "190510"
+      },
+      {
+        "net_pnl_krw": 1094313.259095,
+        "net_return_pct": 21.888263059070198,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_317830_KR7317830008_2023-10-31_0001",
+        "ticker": "317830"
+      },
+      {
+        "net_pnl_krw": 374104.9446399994,
+        "net_return_pct": 7.488840388159952,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_322180_KR7322180001_2023-10-31_0001",
+        "ticker": "322180"
+      },
+      {
+        "net_pnl_krw": 167834.97916779947,
+        "net_return_pct": 3.357644742604201,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_018500_KR7018500009_2023-10-31_0001",
+        "ticker": "018500"
+      },
+      {
+        "net_pnl_krw": 1722842.33086,
+        "net_return_pct": 34.56520066260237,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_011330_KR7011330008_2023-11-30_0001",
+        "ticker": "011330"
+      },
+      {
+        "net_pnl_krw": 179056.38881500065,
+        "net_return_pct": 3.58353570901324,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_000440_KR7000440008_2023-11-30_0001",
+        "ticker": "000440"
+      },
+      {
+        "net_pnl_krw": 3426582.0756544983,
+        "net_return_pct": 68.57057750920127,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_008110_KR7008110009_2023-11-30_0001",
+        "ticker": "008110"
+      },
+      {
+        "net_pnl_krw": 436190.75906000007,
+        "net_return_pct": 8.727407768285584,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_042660_KR7042660001_2024-01-31_0001",
+        "ticker": "042660"
+      },
+      {
+        "net_pnl_krw": 1063518.7160960017,
+        "net_return_pct": 21.361186177643038,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_001470_KR7001470004_2024-01-31_0001",
+        "ticker": "001470"
+      },
+      {
+        "net_pnl_krw": 658363.2026900006,
+        "net_return_pct": 13.32158771907429,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_012320_KR7012320008_2024-01-31_0001",
+        "ticker": "012320"
+      },
+      {
+        "net_pnl_krw": 638873.1716115009,
+        "net_return_pct": 12.777555169625233,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_322180_KR7322180001_2024-01-31_0002",
+        "ticker": "322180"
+      },
+      {
+        "net_pnl_krw": -148502.52496589907,
+        "net_return_pct": -2.970682112630772,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_004920_KR7004920005_2024-01-31_0001",
+        "ticker": "004920"
+      },
+      {
+        "net_pnl_krw": 364895.8891190011,
+        "net_return_pct": 7.298905519853516,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_071090_KR7071090005_2024-01-31_0001",
+        "ticker": "071090"
+      },
+      {
+        "net_pnl_krw": 2567760.5936640007,
+        "net_return_pct": 51.45758451833421,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_010120_KR7010120004_2024-02-29_0001",
+        "ticker": "010120"
+      },
+      {
+        "net_pnl_krw": 1522527.855862,
+        "net_return_pct": 30.506422771075396,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_023160_KR7023160005_2024-04-30_0001",
+        "ticker": "023160"
+      },
+      {
+        "net_pnl_krw": 394490.74416400027,
+        "net_return_pct": 7.899488424246333,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_084690_KR7084690007_2024-04-30_0001",
+        "ticker": "084690"
+      },
+      {
+        "net_pnl_krw": -1279764.7267019995,
+        "net_return_pct": -25.60378352535943,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_047310_KR7047310008_2024-04-30_0001",
+        "ticker": "047310"
+      },
+      {
+        "net_pnl_krw": 1760796.6788352001,
+        "net_return_pct": 35.275942386321006,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_322510_KR7322510009_2024-04-30_0001",
+        "ticker": "322510"
+      },
+      {
+        "net_pnl_krw": 1353073.17516,
+        "net_return_pct": 27.063933795855043,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_004100_KR7004100004_2024-04-30_0001",
+        "ticker": "004100"
+      },
+      {
+        "net_pnl_krw": 314139.2748340005,
+        "net_return_pct": 6.294198480045371,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_060280_KR7060280005_2024-05-31_0001",
+        "ticker": "060280"
+      },
+      {
+        "net_pnl_krw": 266758.31840000115,
+        "net_return_pct": 5.354739927544385,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_053610_KR7053610002_2024-05-31_0001",
+        "ticker": "053610"
+      },
+      {
+        "net_pnl_krw": -663415.7425984992,
+        "net_return_pct": -13.291857471504951,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_117730_KR7117730002_2024-05-31_0001",
+        "ticker": "117730"
+      },
+      {
+        "net_pnl_krw": -1890097.5903039994,
+        "net_return_pct": -37.84936230942817,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_079810_KR7079810008_2024-05-31_0001",
+        "ticker": "079810"
+      },
+      {
+        "net_pnl_krw": -746268.5501459995,
+        "net_return_pct": -14.933910635023546,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_265520_KR7265520007_2024-07-31_0001",
+        "ticker": "265520"
+      },
+      {
+        "net_pnl_krw": -302611.96005999856,
+        "net_return_pct": -6.05400398099212,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_000680_KR7000680009_2024-07-31_0001",
+        "ticker": "000680"
+      },
+      {
+        "net_pnl_krw": -611003.4562204992,
+        "net_return_pct": -12.260048130656726,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_054450_KR7054450002_2024-07-31_0001",
+        "ticker": "054450"
+      },
+      {
+        "net_pnl_krw": -116148.97312000021,
+        "net_return_pct": -2.3270125531358916,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_011330_KR7011330008_2024-07-31_0002",
+        "ticker": "011330"
+      },
+      {
+        "net_pnl_krw": -871526.2640769999,
+        "net_return_pct": -17.45868656921251,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_065510_KR7065510000_2024-07-31_0001",
+        "ticker": "065510"
+      },
+      {
+        "net_pnl_krw": 994127.2846016018,
+        "net_return_pct": 19.8868615515498,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_018500_KR7018500009_2024-07-31_0002",
+        "ticker": "018500"
+      },
+      {
+        "net_pnl_krw": 7429921.096440001,
+        "net_return_pct": 149.15858486651905,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_065350_KR7065350001_2024-09-30_0001",
+        "ticker": "065350"
+      },
+      {
+        "net_pnl_krw": 1502337.8804400014,
+        "net_return_pct": 30.205554581398236,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_140410_KR7140410002_2024-09-30_0001",
+        "ticker": "140410"
+      },
+      {
+        "net_pnl_krw": -1496538.9747699993,
+        "net_return_pct": -30.026106939638797,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_006110_KR7006110001_2024-09-30_0001",
+        "ticker": "006110"
+      },
+      {
+        "net_pnl_krw": 221791.84805699997,
+        "net_return_pct": 4.440937336567508,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_108860_KR7108860008_2024-09-30_0001",
+        "ticker": "108860"
+      },
+      {
+        "net_pnl_krw": 658196.5735439993,
+        "net_return_pct": 13.167664464447547,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_056080_KR7056080005_2024-09-30_0001",
+        "ticker": "056080"
+      },
+      {
+        "net_pnl_krw": 1519202.6130960006,
+        "net_return_pct": 30.412403991730745,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_078350_KR7078350006_2024-09-30_0001",
+        "ticker": "078350"
+      },
+      {
+        "net_pnl_krw": 779321.9471600009,
+        "net_return_pct": 15.596606687242653,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_102120_KR7102120003_2024-09-30_0001",
+        "ticker": "102120"
+      },
+      {
+        "net_pnl_krw": -495159.7576799998,
+        "net_return_pct": -9.90767035159895,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_093640_KR7093640001_2024-09-30_0001",
+        "ticker": "093640"
+      },
+      {
+        "net_pnl_krw": 2798881.8629737515,
+        "net_return_pct": 56.00714050499528,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_010100_KR7010100006_2024-09-30_0001",
+        "ticker": "010100"
+      },
+      {
+        "net_pnl_krw": -126778.69568649866,
+        "net_return_pct": -2.5376703349522556,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_103840_KR7103840005_2024-09-30_0001",
+        "ticker": "103840"
+      },
+      {
+        "net_pnl_krw": 171892.71827985067,
+        "net_return_pct": 3.46908064383473,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_003670_KR7003670007_2024-10-31_0001",
+        "ticker": "003670"
+      },
+      {
+        "net_pnl_krw": 984139.6448325012,
+        "net_return_pct": 19.917313253879765,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_086520_KR7086520004_2024-10-31_0001",
+        "ticker": "086520"
+      },
+      {
+        "net_pnl_krw": 332912.66652000044,
+        "net_return_pct": 6.664466227804463,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_131970_KR7131970006_2024-10-31_0001",
+        "ticker": "131970"
+      },
+      {
+        "net_pnl_krw": 750446.7556275018,
+        "net_return_pct": 15.01725178004567,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_080220_KR7080220007_2024-10-31_0001",
+        "ticker": "080220"
+      },
+      {
+        "net_pnl_krw": -234863.12888999842,
+        "net_return_pct": -4.730657620344826,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_003960_KR7003960002_2024-10-31_0001",
+        "ticker": "003960"
+      },
+      {
+        "net_pnl_krw": 864196.572575001,
+        "net_return_pct": 17.295206547221994,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_084690_KR7084690007_2024-10-31_0002",
+        "ticker": "084690"
+      },
+      {
+        "net_pnl_krw": 1954178.9507625,
+        "net_return_pct": 39.16408206975475,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_094360_KR7094360005_2024-10-31_0001",
+        "ticker": "094360"
+      },
+      {
+        "net_pnl_krw": 1131469.0445175003,
+        "net_return_pct": 22.682545693161604,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_322310_KR7322310004_2024-10-31_0001",
+        "ticker": "322310"
+      },
+      {
+        "net_pnl_krw": 3673629.915670003,
+        "net_return_pct": 73.54410438695328,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_119850_KR7119850006_2024-10-31_0001",
+        "ticker": "119850"
+      },
+      {
+        "net_pnl_krw": 735771.4965209989,
+        "net_return_pct": 14.720310482068838,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_099190_KR7099190001_2024-11-29_0001",
+        "ticker": "099190"
+      },
+      {
+        "net_pnl_krw": 347290.2144679511,
+        "net_return_pct": 6.960609609719008,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_058470_KR7058470006_2024-12-30_0001",
+        "ticker": "058470"
+      },
+      {
+        "net_pnl_krw": 743599.640300001,
+        "net_return_pct": 14.946830441429352,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_036830_KR7036830008_2024-12-30_0001",
+        "ticker": "036830"
+      },
+      {
+        "net_pnl_krw": 222592.90357850026,
+        "net_return_pct": 4.455378172259531,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_083450_KR7083450007_2024-12-30_0001",
+        "ticker": "083450"
+      },
+      {
+        "net_pnl_krw": -415868.4074520003,
+        "net_return_pct": -8.32978689584359,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_148150_KR7148150006_2024-12-30_0001",
+        "ticker": "148150"
+      },
+      {
+        "net_pnl_krw": 435704.02478200104,
+        "net_return_pct": 8.715015569648466,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_054950_KR7054950001_2024-12-30_0001",
+        "ticker": "054950"
+      },
+      {
+        "net_pnl_krw": 944483.3804000011,
+        "net_return_pct": 18.901990198553804,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_009470_KR7009470006_2024-12-30_0002",
+        "ticker": "009470"
+      },
+      {
+        "net_pnl_krw": 486611.89988579974,
+        "net_return_pct": 9.733822258144546,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_024840_KR7024840001_2024-12-30_0001",
+        "ticker": "024840"
+      },
+      {
+        "net_pnl_krw": 1190204.556641099,
+        "net_return_pct": 23.844280851437038,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_290650_KR7290650001_2025-02-28_0001",
+        "ticker": "290650"
+      },
+      {
+        "net_pnl_krw": 2108039.93687925,
+        "net_return_pct": 42.16887793325317,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_025320_KR7025320003_2025-02-28_0001",
+        "ticker": "025320"
+      },
+      {
+        "net_pnl_krw": 263991.0630525006,
+        "net_return_pct": 5.281731064896022,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_024840_KR7024840001_2025-02-28_0002",
+        "ticker": "024840"
+      },
+      {
+        "net_pnl_krw": 1299570.5370577509,
+        "net_return_pct": 26.001593517216193,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_081580_KR7081580003_2025-02-28_0001",
+        "ticker": "081580"
+      },
+      {
+        "net_pnl_krw": 808495.5152400006,
+        "net_return_pct": 16.22401744633411,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_030520_KR7030520001_2025-03-31_0001",
+        "ticker": "030520"
+      },
+      {
+        "net_pnl_krw": 1760889.0169750014,
+        "net_return_pct": 35.37755812256043,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_009470_KR7009470006_2025-03-31_0003",
+        "ticker": "009470"
+      },
+      {
+        "net_pnl_krw": 52826.19589800015,
+        "net_return_pct": 1.0568235242743054,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_078150_KR7078150000_2025-03-31_0001",
+        "ticker": "078150"
+      },
+      {
+        "net_pnl_krw": 359615.9666793002,
+        "net_return_pct": 7.196079801029544,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_042500_KR7042500009_2025-03-31_0001",
+        "ticker": "042500"
+      },
+      {
+        "net_pnl_krw": -841912.1992574991,
+        "net_return_pct": -16.847878077922278,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_010770_KR7010770006_2025-05-30_0001",
+        "ticker": "010770"
+      },
+      {
+        "net_pnl_krw": 1892794.6713714506,
+        "net_return_pct": 37.859083741806856,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_062970_KR7062970009_2025-07-31_0001",
+        "ticker": "062970"
+      },
+      {
+        "net_pnl_krw": -828484.5148369991,
+        "net_return_pct": -16.579237166270843,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_082800_KR7082800004_2025-10-31_0001",
+        "ticker": "082800"
+      },
+      {
+        "net_pnl_krw": 1494801.0172375003,
+        "net_return_pct": 29.902102582009434,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_168330_KR7168330009_2025-10-31_0001",
+        "ticker": "168330"
+      },
+      {
+        "net_pnl_krw": 2561034.2487975005,
+        "net_return_pct": 51.23151604613463,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_009470_KR7009470006_2025-12-30_0004",
+        "ticker": "009470"
+      },
+      {
+        "net_pnl_krw": 442037.75674100034,
+        "net_return_pct": 8.85173656874128,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_071280_KR7071280002_2025-12-30_0001",
+        "ticker": "071280"
+      },
+      {
+        "net_pnl_krw": 585212.9634470008,
+        "net_return_pct": 11.711894490358384,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_018290_KR7018290007_2026-03-31_0001",
+        "ticker": "018290"
+      },
+      {
+        "net_pnl_krw": 893290.7306400007,
+        "net_return_pct": 17.90293731081679,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_263860_KR7263860009_2026-03-31_0001",
+        "ticker": "263860"
+      },
+      {
+        "net_pnl_krw": 666443.5196720008,
+        "net_return_pct": 13.3295532688533,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_308080_KR7308080001_2026-03-31_0001",
+        "ticker": "308080"
+      },
+      {
+        "net_pnl_krw": 1106502.5287680011,
+        "net_return_pct": 22.140051020319007,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_306040_KR7306040007_2026-03-31_0001",
+        "ticker": "306040"
+      },
+      {
+        "net_pnl_krw": 188386.20150000043,
+        "net_return_pct": 3.8598928826625536,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_005490_KR7005490008_2026-06-30_0001",
+        "ticker": "005490"
+      },
+      {
+        "net_pnl_krw": 559834.2308650007,
+        "net_return_pct": 11.2149992428452,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_377300_KR7377300009_2026-06-30_0001",
+        "ticker": "377300"
+      },
+      {
+        "net_pnl_krw": 812374.2730600005,
+        "net_return_pct": 16.302507216629582,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_140410_KR7140410002_2026-06-30_0002",
+        "ticker": "140410"
+      },
+      {
+        "net_pnl_krw": 357571.6970000006,
+        "net_return_pct": 7.229977902453967,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_103140_KR7103140000_2026-06-30_0001",
+        "ticker": "103140"
+      },
+      {
+        "net_pnl_krw": 623508.0089000007,
+        "net_return_pct": 13.083859349169572,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_298020_KR7298020009_2026-06-30_0001",
+        "ticker": "298020"
+      },
+      {
+        "net_pnl_krw": 198164.75140000042,
+        "net_return_pct": 4.023765938593214,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_058650_KR7058650003_2026-06-30_0001",
+        "ticker": "058650"
+      },
+      {
+        "net_pnl_krw": 274695.4325499991,
+        "net_return_pct": 5.518500695098081,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_001530_KR7001530005_2026-06-30_0001",
+        "ticker": "001530"
+      },
+      {
+        "net_pnl_krw": 604898.7332080007,
+        "net_return_pct": 12.110331362353618,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_017900_KR7017900002_2026-06-30_0001",
+        "ticker": "017900"
+      },
+      {
+        "net_pnl_krw": 1263196.4288265016,
+        "net_return_pct": 25.273826343514767,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_064260_KR7064260003_2026-06-30_0002",
+        "ticker": "064260"
+      },
+      {
+        "net_pnl_krw": 345852.134649002,
+        "net_return_pct": 6.922623001334831,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_015860_KR7015860000_2026-06-30_0001",
+        "ticker": "015860"
+      },
+      {
+        "net_pnl_krw": 1360388.1810715003,
+        "net_return_pct": 27.216732893624034,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_069540_KR7069540003_2026-06-30_0001",
+        "ticker": "069540"
+      },
+      {
+        "net_pnl_krw": 83966.83122100029,
+        "net_return_pct": 1.681294507252166,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_000050_KR7000050005_2026-06-30_0001",
+        "ticker": "000050"
+      },
+      {
+        "net_pnl_krw": 123040.02580800094,
+        "net_return_pct": 2.460989666900091,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_023760_KR7023760002_2026-06-30_0001",
+        "ticker": "023760"
+      },
+      {
+        "net_pnl_krw": 362162.9166015005,
+        "net_return_pct": 7.253244257666265,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_000320_KR7000320002_2026-06-30_0001",
+        "ticker": "000320"
+      },
+      {
+        "net_pnl_krw": 605631.0053500002,
+        "net_return_pct": 12.155837216613422,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_073490_KR7073490005_2026-06-30_0001",
+        "ticker": "073490"
+      },
+      {
+        "net_pnl_krw": 2776467.7662049998,
+        "net_return_pct": 55.70621244618359,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_294570_KR7294570007_2026-06-30_0001",
+        "ticker": "294570"
+      },
+      {
+        "net_pnl_krw": 551599.8396089999,
+        "net_return_pct": 11.039569488367611,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_004310_KR7004310009_2026-06-30_0001",
+        "ticker": "004310"
+      },
+      {
+        "net_pnl_krw": 2981502.4025674993,
+        "net_return_pct": 59.631311977288306,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_024840_KR7024840001_2026-06-30_0003",
+        "ticker": "024840"
+      },
+      {
+        "net_pnl_krw": 170364.13948819973,
+        "net_return_pct": 3.4084237797424164,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_016880_KR7016880007_2026-06-30_0002",
+        "ticker": "016880"
+      },
+      {
+        "net_pnl_krw": 1060148.3049115008,
+        "net_return_pct": 21.221815138409486,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_388050_KR7388050007_2026-06-30_0001",
+        "ticker": "388050"
+      },
+      {
+        "net_pnl_krw": 518635.6553700017,
+        "net_return_pct": 10.375841607478664,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_104480_KR7104480009_2026-06-30_0001",
+        "ticker": "104480"
+      },
+      {
+        "net_pnl_krw": 1314377.841,
+        "net_return_pct": 26.362808153551594,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_011070_KR7011070000_2026-07-31_0001",
+        "ticker": "011070"
+      },
+      {
+        "net_pnl_krw": 1415094.29215,
+        "net_return_pct": 28.428571827227955,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_001440_KR7001440007_2026-07-31_0001",
+        "ticker": "001440"
+      }
+    ],
+    "tail_counts": {
+      "+100": 4,
+      "+30": 41,
+      "+50": 17,
+      "-30": 15,
+      "-40": 6,
+      "-50": 4,
+      "-60": 2
+    },
+    "ticker_net_pnl_concentration": {
+      "top5_loser_contribution_to_negative_pnl_pct": 26.91548908083663,
+      "top5_tickers_by_net_pnl_krw": [
+        {
+          "net_pnl_krw": 9188193.019412752,
+          "ticker": "121850"
+        },
+        {
+          "net_pnl_krw": 7913027.363905003,
+          "ticker": "064550"
+        },
+        {
+          "net_pnl_krw": 7429921.096440001,
+          "ticker": "065350"
+        },
+        {
+          "net_pnl_krw": 5647943.3431395,
+          "ticker": "014200"
+        },
+        {
+          "net_pnl_krw": 5266406.646172503,
+          "ticker": "009470"
+        }
+      ],
+      "top5_winner_contribution_to_positive_pnl_pct": 17.92208814617961,
+      "top_ticker_positive_pnl_share_pct": 4.6457701211936175
+    },
+    "turnover_krw": 2611550381.5170016,
+    "turnover_multiple_initial_capital": 13.057751907585008,
+    "unresolved_terminal_max_initial_cost_exposure_krw": 209798522.55862498,
+    "unresolved_terminal_max_initial_cost_exposure_pct": 104.89926127931248,
+    "unresolved_terminal_positions": [
+      {
+        "entry_cost_krw": 4995138.558409999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4975692792049995,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_109820_KR7109820001_2021-09-30_0002",
+        "ticker": "109820"
+      },
+      {
+        "entry_cost_krw": 4991934.87793,
+        "entry_cost_upper_bound_pct_initial_capital": 2.495967438965,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_069640_KR7069640001_2021-09-30_0001",
+        "ticker": "069640"
+      },
+      {
+        "entry_cost_krw": 4999562.640922849,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4997813204614245,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_093230_KR7093230001_2021-11-30_0001",
+        "ticker": "093230"
+      },
+      {
+        "entry_cost_krw": 4995819.340511999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4979096702559995,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_181340_KR7181340001_2022-02-28_0001",
+        "ticker": "181340"
+      },
+      {
+        "entry_cost_krw": 4995338.788439999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4976693942199995,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_121800_KR7121800007_2022-05-31_0001",
+        "ticker": "121800"
+      },
+      {
+        "entry_cost_krw": 4993536.718169999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4967683590849994,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_234100_KR7234100006_2022-05-31_0001",
+        "ticker": "234100"
+      },
+      {
+        "entry_cost_krw": 4996595.23187825,
+        "entry_cost_upper_bound_pct_initial_capital": 2.498297615939125,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_151910_KR7151910007_2022-06-30_0001",
+        "ticker": "151910"
+      },
+      {
+        "entry_cost_krw": 4999493.561562499,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4997467807812495,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_030960_KR7030960009_2023-03-31_0001",
+        "ticker": "030960"
+      },
+      {
+        "entry_cost_krw": 4981823.261415,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4909116307075,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_290670_KR7290670009_2023-08-31_0001",
+        "ticker": "290670"
+      },
+      {
+        "entry_cost_krw": 4997971.8133344995,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4989859066672495,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_227610_KR7227610003_2023-08-31_0002",
+        "ticker": "227610"
+      },
+      {
+        "entry_cost_krw": 4994149.422061799,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4970747110308995,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_900250_KYG2115T1076_2023-10-31_0001",
+        "ticker": "900250"
+      },
+      {
+        "entry_cost_krw": 4998001.847838999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4990009239194992,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_096630_KR7096630009_2024-07-31_0001",
+        "ticker": "096630"
+      },
+      {
+        "entry_cost_krw": 4998472.388409499,
+        "entry_cost_upper_bound_pct_initial_capital": 2.49923619420475,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_317690_KR7317690006_2024-10-31_0001",
+        "ticker": "317690"
+      },
+      {
+        "entry_cost_krw": 4995498.972463999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4977494862319998,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_091440_KR7091440008_2024-10-31_0001",
+        "ticker": "091440"
+      },
+      {
+        "entry_cost_krw": 4996191.768367799,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4980958841838996,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_001380_KR7001380005_2025-04-30_0002",
+        "ticker": "001380"
+      },
+      {
+        "entry_cost_krw": 4998802.767959,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4994013839794995,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_039240_KR7039240007_2025-04-30_0003",
+        "ticker": "039240"
+      },
+      {
+        "entry_cost_krw": 4993476.649161,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4967383245805,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_321820_KR7321820003_2025-06-30_0001",
+        "ticker": "321820"
+      },
+      {
+        "entry_cost_krw": 4996219.8005719995,
+        "entry_cost_upper_bound_pct_initial_capital": 2.498109900286,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_042940_KR7042940007_2025-06-30_0001",
+        "ticker": "042940"
+      },
+      {
+        "entry_cost_krw": 4999409.464949899,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4997047324749495,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_011080_KR7011080009_2025-06-30_0001",
+        "ticker": "011080"
+      },
+      {
+        "entry_cost_krw": 4997741.5488,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4988707744,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_105550_KR7105550008_2025-07-31_0001",
+        "ticker": "105550"
+      },
+      {
+        "entry_cost_krw": 4999303.343033999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4996516715169994,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_148150_KR7148150006_2025-10-31_0002",
+        "ticker": "148150"
+      },
+      {
+        "entry_cost_krw": 4997857.6822174,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4989288411087,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_007720_KR7007720006_2025-10-31_0001",
+        "ticker": "007720"
+      },
+      {
+        "entry_cost_krw": 4990933.727779999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.49546686389,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_082270_KR7082270000_2026-04-30_0001",
+        "ticker": "082270"
+      },
+      {
+        "entry_cost_krw": 4997981.824835999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4989909124179994,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_156100_KR7156100000_2026-04-30_0001",
+        "ticker": "156100"
+      },
+      {
+        "entry_cost_krw": 4996680.329640999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4983401648204997,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_100790_KR7100790005_2026-06-30_0001",
+        "ticker": "100790"
+      },
+      {
+        "entry_cost_krw": 4997901.732824,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4989508664119997,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_100090_KR7100090000_2026-06-30_0001",
+        "ticker": "100090"
+      },
+      {
+        "entry_cost_krw": 4995559.041472999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4977795207364997,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_048410_KR7048410005_2026-06-30_0001",
+        "ticker": "048410"
+      },
+      {
+        "entry_cost_krw": 4988731.197449999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4943655987249995,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_056080_KR7056080005_2026-06-30_0002",
+        "ticker": "056080"
+      },
+      {
+        "entry_cost_krw": 4990883.670272499,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4954418351362495,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_174900_KR7174900001_2026-06-30_0001",
+        "ticker": "174900"
+      },
+      {
+        "entry_cost_krw": 4989091.611504,
+        "entry_cost_upper_bound_pct_initial_capital": 2.494545805752,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_117730_KR7117730002_2026-06-30_0002",
+        "ticker": "117730"
+      },
+      {
+        "entry_cost_krw": 4994958.351383,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4974791756915,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_010820_KR7010820009_2026-06-30_0001",
+        "ticker": "010820"
+      },
+      {
+        "entry_cost_krw": 4997741.548799999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4988707743999994,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_187660_KR7187660006_2026-06-30_0001",
+        "ticker": "187660"
+      },
+      {
+        "entry_cost_krw": 4998642.583934999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4993212919674996,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_014940_KR7014940001_2026-06-30_0001",
+        "ticker": "014940"
+      },
+      {
+        "entry_cost_krw": 4977718.5458,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4888592729000005,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_322310_KR7322310004_2026-06-30_0002",
+        "ticker": "322310"
+      },
+      {
+        "entry_cost_krw": 4993756.971202999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4968784856014996,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_251370_KR7251370003_2026-06-30_0001",
+        "ticker": "251370"
+      },
+      {
+        "entry_cost_krw": 4998582.514925999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4992912574629993,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_036170_KR7036170009_2026-06-30_0001",
+        "ticker": "036170"
+      },
+      {
+        "entry_cost_krw": 4997741.5488,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4988707744,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_012860_KR7012860003_2026-06-30_0001",
+        "ticker": "012860"
+      },
+      {
+        "entry_cost_krw": 4999303.343033999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4996516715169994,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_035510_KR7035510007_2026-06-30_0001",
+        "ticker": "035510"
+      },
+      {
+        "entry_cost_krw": 4996720.375646999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4983601878235,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_314130_KR7314130006_2026-06-30_0001",
+        "ticker": "314130"
+      },
+      {
+        "entry_cost_krw": 4985727.7469999995,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4928638734999997,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_079960_KR7079960001_2026-06-30_0001",
+        "ticker": "079960"
+      },
+      {
+        "entry_cost_krw": 4999543.61907,
+        "entry_cost_upper_bound_pct_initial_capital": 2.499771809535,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_418420_KR7418420006_2026-06-30_0001",
+        "ticker": "418420"
+      },
+      {
+        "entry_cost_krw": 4997981.824835999,
+        "entry_cost_upper_bound_pct_initial_capital": 2.4989909124179994,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_011690_KR7011690005_2026-06-30_0001",
+        "ticker": "011690"
+      }
+    ]
+  },
+  "effective_end": "2026-08-31",
+  "effective_start": "2021-01-04",
+  "exact_daily_valuation_gap_count": 3898,
+  "exact_terminal_equity_available": false,
+  "execution_support": "2026-09-01",
+  "gates": {
+    "A": "CHECK_REQUIRED",
+    "B": "PASS",
+    "C": "CHECK_REQUIRED",
+    "D": "CHECK_REQUIRED",
+    "E": "FAIL",
+    "F": "CHECK_REQUIRED"
+  },
+  "orchestration_code_checks": {
+    "scripts/run_pattern_b_progressed_previous_stage_early_transition_only_5window_v01.py": {
+      "actual_sha256": "9a267006c8ed81c83a4a29a11d750c9932dbe31137a34a2c5d64b1feaefd2cdd",
+      "expected_sha256": "1de6bff08463198402737577af00ddcd01212f392d34cf587b3626da5b9eba0a",
+      "status": "RUN_SOURCE_UNTRACKED_AT_START"
+    },
+    "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": {
+      "actual_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+      "expected_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+      "status": "PASS"
+    }
+  },
+  "orchestration_source_sha_verified": false,
+  "portfolio_metrics": {
+    "CAGR_pct": null,
+    "average_capital_utilization_pct": 20.179085463043982,
+    "average_cash_ratio_pct": 79.82091453695602,
+    "average_concurrent_positions": 34.205479452054796,
+    "average_holding_trading_days": 143.57522123893804,
+    "cash_conservation_pass": true,
+    "cash_drag_pct": 79.82091453695602,
+    "cash_shortage_skipped_entries": 85,
+    "cumulative_return_pct": null,
+    "final_equity": null,
+    "final_equity_at_effective_close": null,
+    "maximum_capital_utilization_pct": 84.57178265154924,
+    "maximum_concurrent_positions": 63,
+    "mdd_pct": null,
+    "median_holding_trading_days": 43.0,
+    "observed_last_valid_equity_not_terminal": 229905591.76952985,
+    "observed_valid_subset_mdd_not_official": -15.220632,
+    "open_at_effective_cutoff_count": 59,
+    "open_at_effective_cutoff_ids": [
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_000320_KR7000320002_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_001380_KR7001380005_2025-04-30_0002",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_001440_KR7001440007_2026-07-31_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_004310_KR7004310009_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_005490_KR7005490008_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_007720_KR7007720006_2025-10-31_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_010820_KR7010820009_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_011070_KR7011070000_2026-07-31_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_011080_KR7011080009_2025-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_011690_KR7011690005_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_012860_KR7012860003_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_014940_KR7014940001_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_015860_KR7015860000_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_017900_KR7017900002_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_023760_KR7023760002_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_024840_KR7024840001_2026-06-30_0003",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_030960_KR7030960009_2023-03-31_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_035510_KR7035510007_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_036170_KR7036170009_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_039240_KR7039240007_2025-04-30_0003",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_042940_KR7042940007_2025-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_048410_KR7048410005_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_056080_KR7056080005_2026-06-30_0002",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_064260_KR7064260003_2026-06-30_0002",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_069540_KR7069540003_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_069640_KR7069640001_2021-09-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_073490_KR7073490005_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_079960_KR7079960001_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_082270_KR7082270000_2026-04-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_091440_KR7091440008_2024-10-31_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_093230_KR7093230001_2021-11-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_096630_KR7096630009_2024-07-31_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_100090_KR7100090000_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_100790_KR7100790005_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_104480_KR7104480009_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_105550_KR7105550008_2025-07-31_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_109820_KR7109820001_2021-09-30_0002",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_117730_KR7117730002_2026-06-30_0002",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_121800_KR7121800007_2022-05-31_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_140410_KR7140410002_2026-06-30_0002",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_148150_KR7148150006_2025-10-31_0002",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_151910_KR7151910007_2022-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_156100_KR7156100000_2026-04-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_174900_KR7174900001_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_181340_KR7181340001_2022-02-28_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_187660_KR7187660006_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_227610_KR7227610003_2023-08-31_0002",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_234100_KR7234100006_2022-05-31_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_251370_KR7251370003_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_290670_KR7290670009_2023-08-31_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_294570_KR7294570007_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_314130_KR7314130006_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_317690_KR7317690006_2024-10-31_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_321820_KR7321820003_2025-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_322310_KR7322310004_2026-06-30_0002",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_377300_KR7377300009_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_388050_KR7388050007_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_418420_KR7418420006_2026-06-30_0001",
+      "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P2_2_NEW_TEST_900250_KYG2115T1076_2023-10-31_0001"
+    ],
+    "open_at_effective_cutoff_market_value_krw": 212138804.0,
+    "peak_date": null,
+    "pending_sale_proceeds_at_support_krw": 101599462.20882782,
+    "position_cap": null,
+    "realized_return_ge_pos_100_count": 4,
+    "realized_return_ge_pos_50_count": 17,
+    "realized_return_le_neg_30_count": 15,
+    "realized_return_le_neg_40_count": 6,
+    "realized_return_le_neg_50_count": 4,
+    "realized_return_le_neg_60_count": 2,
+    "realized_trade_count": 226,
+    "recovered": false,
+    "recovery_date": null,
+    "slippage_impact_krw": 2611489.3349998454,
+    "total_buy_notional_krw": 1337604193.9260008,
+    "total_commissions_krw": 391732.55722754996,
+    "total_sell_notional_krw": 1273946187.5910008,
+    "total_sell_tax_krw": 2521053.8328897003,
+    "trade_count": 268,
+    "trough_date": null,
+    "turnover_krw": 2611550381.5170016,
+    "turnover_multiple": 13.057751907585008,
+    "turnover_pct_initial_capital": 1305.7751907585007,
+    "unresolved_count": 3898,
+    "win_rate_pct": 77.43362831858407
+  },
+  "portfolio_replay_method": "ledger-only replay with exact all-allowed-signal-stream audit; no allowed signal was suppressed in the baseline lifecycle source",
+  "repository_v2_silent_inner_drop_count": 0,
+  "source_after_end_unfilled_count": 2,
+  "source_filled_trade_count": 353,
+  "source_window_candidate_count": 355,
+  "unresolved_source_ticker_count": 0,
+  "window_id": "P2-2"
+}

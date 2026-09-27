@@ -1,0 +1,108 @@
+{
+  "estimated_available_window_work": {
+    "P2-1": {
+      "candidate_trade_count": 246,
+      "estimated_cap_lookup_seconds": 0.865,
+      "estimated_price_load_seconds": 891.757,
+      "estimated_sequential_replay_seconds": 1.825,
+      "estimated_total_seconds": 897.447,
+      "exact_mcap_partition_count": 58,
+      "trading_sessions_in_replay": 1083,
+      "unique_ticker_count": 213
+    },
+    "P2-2": {
+      "candidate_trade_count": 353,
+      "estimated_cap_lookup_seconds": 1.044,
+      "estimated_price_load_seconds": 1289.488,
+      "estimated_sequential_replay_seconds": 3.357,
+      "estimated_total_seconds": 1296.889,
+      "exact_mcap_partition_count": 70,
+      "trading_sessions_in_replay": 1388,
+      "unique_ticker_count": 308
+    },
+    "P3-1": {
+      "candidate_trade_count": 203,
+      "estimated_cap_lookup_seconds": 0.716,
+      "estimated_price_load_seconds": 761.97,
+      "estimated_sequential_replay_seconds": 1.161,
+      "estimated_total_seconds": 766.848,
+      "exact_mcap_partition_count": 48,
+      "trading_sessions_in_replay": 835,
+      "unique_ticker_count": 182
+    },
+    "P3-2": {
+      "candidate_trade_count": 310,
+      "estimated_cap_lookup_seconds": 0.895,
+      "estimated_price_load_seconds": 1163.889,
+      "estimated_sequential_replay_seconds": 2.421,
+      "estimated_total_seconds": 1170.205,
+      "exact_mcap_partition_count": 60,
+      "trading_sessions_in_replay": 1140,
+      "unique_ticker_count": 278
+    }
+  },
+  "estimated_runtime_within_two_hours": true,
+  "estimated_total_minutes_for_4_tax_complete_windows": 68.86,
+  "estimated_total_seconds_for_4_tax_complete_windows": 4131.388,
+  "exact_mcap_partition_lookup_seconds": 0.298,
+  "execution_limit_seconds": 7200,
+  "execution_timestamp_utc": "2026-09-27T23:27:03.798405+00:00",
+  "loader_explicit_unavailable_count": 0,
+  "loader_ticker_count": 30,
+  "market_authority": {
+    "calendar_content_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+    "calendar_frontier": "2026-09-21",
+    "calendar_sha256": "c9af2e5bd71ec387c73752eb4955c0d76f23e38cf30db71b49b01c04fe8538b8",
+    "common_interval_count": 3208,
+    "first_trading_date": "2010-01-04",
+    "interval_count": 3208,
+    "last_trading_date": "2026-09-21",
+    "pit_content_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
+    "pit_frontier": "2026-09-21",
+    "pit_sha256": "ff783168c56a4772a681e34b97b17d8855f28d1c13df25094bd65cedbc80cd26"
+  },
+  "p1_tax_authority_gap": {
+    "authoritative_schedule_start": "2021-01-01",
+    "p1_full_cost_portfolio_replay_performed": false,
+    "pre_2021_realized_exit_count_in_saved_P1_ledger": 211,
+    "pre_2021_realized_exit_missing_tax_count": 211,
+    "reason": "Repository tax schedule has no verified 2014-2020 rates; no rate was inferred and missing taxes would alter cash availability and portfolio paths.",
+    "source": {
+      "existing_trade_ledger": "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_5window_v01/p1/test_trade_ledger.csv",
+      "schedule_code": "scripts/run_v2_julia_official_validation_v01.py::HISTORICAL_SELL_TAX_SCHEDULE",
+      "trade_ledger_sha256": "032daae185ec0aa3adbb4ed8c0ec3f8eba61d0d30ee050929095eefc5e46c7c4"
+    },
+    "status": "CHECK_REQUIRED"
+  },
+  "pit_component_frame_seconds": 0.093,
+  "plan_sha256": "97c21a5c97aac5ba7dd17a67c8ad5c5124e0e66295546b65f975dcd9220db971",
+  "price_load_seconds": 125.6,
+  "repository_v2_silent_inner_drop_count": 0,
+  "sample_cash_conservation_pass": true,
+  "sample_daily_equity_gap_days": 4,
+  "sample_exact_entry_exit_price_audit": {
+    "checked_entries_and_realized_exits": 30,
+    "missing_exact_opens": 0,
+    "price_mismatch_count": 0,
+    "terminal_exact_close_count": 3,
+    "terminal_unresolved_source_count": 0
+  },
+  "sample_exact_mcap_partition_count": 20,
+  "sample_peak_rss_bytes": 3217178624,
+  "sample_peak_rss_delta_bytes": 3092545536,
+  "sample_portfolio_event_count": 57,
+  "sample_process_cpu_seconds": 131.93,
+  "sample_trade_count": 30,
+  "sample_unique_ticker_count": 30,
+  "sample_wall_seconds": 126.221,
+  "sample_window": "P2-1",
+  "script_sha256": "f06fd4580c6bcc8bc9d22cdbb18f4d4f86d3b8761aaa26eda7913ec5e36cefb3",
+  "sequential_portfolio_replay_seconds": 0.223,
+  "source_artifact_sha256": {
+    "metadata.json": "dd652b8dd0ca77068960565646b63f78f4d20c2691ccc836fd96116cd37e23ac",
+    "previous_stage_audit.csv": "55eb9184a1f6700e4cfec3b9f8948e28ae1b219dd4a5405a3547d907eae4ee22",
+    "summary.json": "7ba2884973c37a742a58c94cdd3d439c8181e9deb7b333d79342907f41c459d3",
+    "test_trade_ledger.csv": "6ca597173665f42390f22beac8196f8a24f03b628a0e4ab86943c87a7cf0074f"
+  },
+  "status": "PASS"
+}

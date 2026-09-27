@@ -1,0 +1,80 @@
+{
+  "capital": {
+    "initial_krw": 200000000.0,
+    "partial_fill": false,
+    "per_entry_buy_budget_krw": 5000000.0,
+    "position_cap": null
+  },
+  "costs": {
+    "P1_cost_status": {
+      "authoritative_schedule_start": "2021-01-01",
+      "p1_full_cost_portfolio_replay_performed": false,
+      "pre_2021_realized_exit_count_in_saved_P1_ledger": 211,
+      "pre_2021_realized_exit_missing_tax_count": 211,
+      "reason": "Repository tax schedule has no verified 2014-2020 rates; no rate was inferred and missing taxes would alter cash availability and portfolio paths.",
+      "source": {
+        "existing_trade_ledger": "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_5window_v01/p1/test_trade_ledger.csv",
+        "schedule_code": "scripts/run_v2_julia_official_validation_v01.py::HISTORICAL_SELL_TAX_SCHEDULE",
+        "trade_ledger_sha256": "032daae185ec0aa3adbb4ed8c0ec3f8eba61d0d30ee050929095eefc5e46c7c4"
+      },
+      "status": "CHECK_REQUIRED"
+    },
+    "commission_rate_each_side": 0.00015,
+    "slippage_rate_each_side": 0.001,
+    "tax_schedule": [
+      {
+        "KOSDAQ": 0.0023,
+        "KOSPI": 0.0023,
+        "end": "2022-12-31",
+        "start": "2021-01-01"
+      },
+      {
+        "KOSDAQ": 0.002,
+        "KOSPI": 0.002,
+        "end": "2023-12-31",
+        "start": "2023-01-01"
+      },
+      {
+        "KOSDAQ": 0.0018,
+        "KOSPI": 0.0018,
+        "end": "2024-12-31",
+        "start": "2024-01-01"
+      },
+      {
+        "KOSDAQ": 0.0015,
+        "KOSPI": 0.0015,
+        "end": "2025-12-31",
+        "start": "2025-01-01"
+      },
+      {
+        "KOSDAQ": 0.002,
+        "KOSPI": 0.002,
+        "end": "2026-12-31",
+        "start": "2026-01-01"
+      }
+    ],
+    "tax_schedule_first_date": "2021-01-01",
+    "tax_schedule_source": "scripts/run_v2_julia_official_validation_v01.py::HISTORICAL_SELL_TAX_SCHEDULE"
+  },
+  "daily_equity": "cash + pending settlement + open positions valued at exact Repository V2 close; no carry/proxy/forward-fill",
+  "drawdown": "minimum(equity / running peak equity - 1)",
+  "event_contract": {
+    "buy_priority": "exact KRX raw market_cap at signal date descending, ticker ascending, pair ID ascending; allocation order only",
+    "date_order": "ascending exact KRX session",
+    "hidden_position_cap": null,
+    "same_open_exit_reentry": false,
+    "same_open_sale_proceeds_reusable": false,
+    "source": "scripts/run_p2_1_realistic_portfolio_v01.py::_portfolio_replay",
+    "within_day": "release previous T+1 settlement; sells; buys"
+  },
+  "frozen_rule": {
+    "entry": "Pattern B DEPRESSED AND current Pattern A Stage PROGRESSED AND previous Pattern A Stage in {EARLY_TREND, TRANSITION}",
+    "exit": "Pattern B NORMAL -> next exact KRX session open",
+    "no_rule_changes": true
+  },
+  "plan_path": "docs/patterns/pattern_b/strategy/PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_REALISTIC_VALIDATION_PLAN_V01.md",
+  "plan_sha256": "97c21a5c97aac5ba7dd17a67c8ad5c5124e0e66295546b65f975dcd9220db971",
+  "starting_head": "ce639f78ba1cc9842d3b066a1c3cce082b619942",
+  "terminal_open": "exact cutoff close with no synthetic sell/cost/reinvestment; unresolved otherwise",
+  "turnover": "executed buy plus sell notional before costs divided by initial capital"
+}
