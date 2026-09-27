@@ -1,0 +1,322 @@
+{
+  "work_id": "PATTERN_A_FAST_CORE_V2_EXIT4_THRESHOLD_SENSITIVITY_V01",
+  "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "scope": "CONTROL only; archived certified ledgers; trade-level counterfactual only (no portfolio replay, no capital redeployment); thresholds fixed to 10/15/20/25pt",
+  "thresholds_pt": [
+    10.0,
+    15.0,
+    20.0,
+    25.0
+  ],
+  "control_threshold_pt": 15.0,
+  "rules_kept": "Loss Guard (pre-first-PROGRESSED), Exit3 on NORMAL path, coverage monitoring end on any non-PROGRESSED label, next-session-open execution, window-cutoff close valuation",
+  "affected_universe": "trades not closed by the Loss Guard and whose window path reaches PROGRESSED; all other trades are identical across thresholds",
+  "data_boundary": "alternative thresholds may hold beyond the actual exit by construction; no data beyond the window cutoff / execution support day is used",
+  "gates": {
+    "count_gates": {
+      "dedup": {
+        "dedup_trade_count": 5380,
+        "duplicate_rows_removed": 6714,
+        "representative_window_counts": {
+          "P1": 4968,
+          "P3-2": 208,
+          "P2-2": 201,
+          "P2-1": 3
+        }
+      },
+      "REALISTIC_P2-1_count_gate": {
+        "observed": {
+          "eligible": 355,
+          "filled": 199,
+          "realized": 161,
+          "cash_skipped": 156
+        },
+        "certified": {
+          "filled": 199,
+          "realized": 161,
+          "cash_skipped": 156,
+          "eligible": 355
+        },
+        "match": true
+      },
+      "REALISTIC_P2-2_count_gate": {
+        "observed": {
+          "eligible": 485,
+          "filled": 242,
+          "realized": 218,
+          "cash_skipped": 243
+        },
+        "certified": {
+          "filled": 242,
+          "realized": 218,
+          "cash_skipped": 243,
+          "eligible": 485
+        },
+        "match": true
+      },
+      "REALISTIC_P3-2_count_gate": {
+        "observed": {
+          "eligible": 405,
+          "filled": 228,
+          "realized": 207,
+          "cash_skipped": 177
+        },
+        "certified": {
+          "filled": 228,
+          "realized": 207,
+          "cash_skipped": 177,
+          "eligible": 405
+        },
+        "match": true
+      }
+    },
+    "replication_gate": [
+      {
+        "panel": "SIMPLE_P1",
+        "rows": 4982,
+        "cache_missing": 0,
+        "replication_match": 4982,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_P2-1",
+        "rows": 1800,
+        "cache_missing": 0,
+        "replication_match": 1800,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_P2-2",
+        "rows": 2424,
+        "cache_missing": 0,
+        "replication_match": 2417,
+        "mismatch": 7,
+        "mismatch_pct": 0.2888,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_P3-1",
+        "rows": 1173,
+        "cache_missing": 0,
+        "replication_match": 1173,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_P3-2",
+        "rows": 1792,
+        "cache_missing": 0,
+        "replication_match": 1792,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "SIMPLE_POOLED_DEDUP",
+        "rows": 5380,
+        "cache_missing": 0,
+        "replication_match": 5376,
+        "mismatch": 4,
+        "mismatch_pct": 0.0743,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P2-1_ELIGIBLE",
+        "rows": 355,
+        "cache_missing": 0,
+        "replication_match": 355,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P2-1_FILLED",
+        "rows": 199,
+        "cache_missing": 0,
+        "replication_match": 199,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P2-2_ELIGIBLE",
+        "rows": 485,
+        "cache_missing": 0,
+        "replication_match": 485,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P2-2_FILLED",
+        "rows": 242,
+        "cache_missing": 0,
+        "replication_match": 242,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P3-2_ELIGIBLE",
+        "rows": 405,
+        "cache_missing": 0,
+        "replication_match": 405,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      },
+      {
+        "panel": "REALISTIC_P3-2_FILLED",
+        "rows": 228,
+        "cache_missing": 0,
+        "replication_match": 228,
+        "mismatch": 0,
+        "mismatch_pct": 0.0,
+        "mismatch_with_lifecycle_event": 0
+      }
+    ],
+    "t15_parity": [
+      {
+        "panel": "SIMPLE_P1",
+        "panel_trades": 4982,
+        "affected": 1780,
+        "t15_parity_ok": 1774,
+        "t15_parity_fail": 6,
+        "t15_parity_pct": 99.663
+      },
+      {
+        "panel": "SIMPLE_P2-1",
+        "panel_trades": 1800,
+        "affected": 604,
+        "t15_parity_ok": 603,
+        "t15_parity_fail": 1,
+        "t15_parity_pct": 99.834
+      },
+      {
+        "panel": "SIMPLE_P2-2",
+        "panel_trades": 2417,
+        "affected": 890,
+        "t15_parity_ok": 889,
+        "t15_parity_fail": 1,
+        "t15_parity_pct": 99.888
+      },
+      {
+        "panel": "SIMPLE_P3-1",
+        "panel_trades": 1173,
+        "affected": 247,
+        "t15_parity_ok": 246,
+        "t15_parity_fail": 1,
+        "t15_parity_pct": 99.595
+      },
+      {
+        "panel": "SIMPLE_P3-2",
+        "panel_trades": 1792,
+        "affected": 533,
+        "t15_parity_ok": 532,
+        "t15_parity_fail": 1,
+        "t15_parity_pct": 99.812
+      },
+      {
+        "panel": "SIMPLE_POOLED_DEDUP",
+        "panel_trades": 5376,
+        "affected": 1976,
+        "t15_parity_ok": 1974,
+        "t15_parity_fail": 2,
+        "t15_parity_pct": 99.899
+      },
+      {
+        "panel": "REALISTIC_P2-1_ELIGIBLE",
+        "panel_trades": 355,
+        "affected": 118,
+        "t15_parity_ok": 118,
+        "t15_parity_fail": 0,
+        "t15_parity_pct": 100.0
+      },
+      {
+        "panel": "REALISTIC_P2-1_FILLED",
+        "panel_trades": 199,
+        "affected": 55,
+        "t15_parity_ok": 55,
+        "t15_parity_fail": 0,
+        "t15_parity_pct": 100.0
+      },
+      {
+        "panel": "REALISTIC_P2-2_ELIGIBLE",
+        "panel_trades": 485,
+        "affected": 202,
+        "t15_parity_ok": 202,
+        "t15_parity_fail": 0,
+        "t15_parity_pct": 100.0
+      },
+      {
+        "panel": "REALISTIC_P2-2_FILLED",
+        "panel_trades": 242,
+        "affected": 94,
+        "t15_parity_ok": 94,
+        "t15_parity_fail": 0,
+        "t15_parity_pct": 100.0
+      },
+      {
+        "panel": "REALISTIC_P3-2_ELIGIBLE",
+        "panel_trades": 405,
+        "affected": 159,
+        "t15_parity_ok": 159,
+        "t15_parity_fail": 0,
+        "t15_parity_pct": 100.0
+      },
+      {
+        "panel": "REALISTIC_P3-2_FILLED",
+        "panel_trades": 228,
+        "affected": 84,
+        "t15_parity_ok": 84,
+        "t15_parity_fail": 0,
+        "t15_parity_pct": 100.0
+      }
+    ],
+    "t15_vs_exit4_effectiveness": {
+      "t15_exit4_trades": 5014,
+      "exit4_analysis_trades": 5014,
+      "both": 5014,
+      "signal_and_execution_equal": 5014
+    }
+  },
+  "verdict_rules": {
+    "core_metrics": [
+      "median_return (higher)",
+      "mean_excl_top5 (higher)",
+      "ge_50 count (higher)",
+      "ge_100 count (higher)",
+      "le_neg_30 count (lower)"
+    ],
+    "panel_better": ">= 4 of 5 core metrics strictly better than T15 AND median_return >= T15 + 2.0pp",
+    "ALTERNATIVE_THRESHOLD_PROMISING": "exactly one alternative is panel_better in the pooled panel, in >= 4 of 5 simple windows and in >= 2 of 3 realistic eligible panels",
+    "T15_ROBUST": "no alternative is panel_better in the pooled panel and each alternative is panel_better in <= 1 simple window",
+    "MIXED_NO_CLEAR_WINNER": "otherwise",
+    "INSUFFICIENT_EVIDENCE": "pooled affected trades < 20",
+    "median_margin_pp": 2.0
+  },
+  "verdict": "T15_ROBUST",
+  "verdict_detail": {
+    "T10": {
+      "pooled_better": false,
+      "simple_windows_better": 0,
+      "realistic_eligible_better": 0
+    },
+    "T20": {
+      "pooled_better": false,
+      "simple_windows_better": 0,
+      "realistic_eligible_better": 0
+    },
+    "T25": {
+      "pooled_better": false,
+      "simple_windows_better": 0,
+      "realistic_eligible_better": 0
+    }
+  },
+  "elapsed_seconds": 455.6
+}
