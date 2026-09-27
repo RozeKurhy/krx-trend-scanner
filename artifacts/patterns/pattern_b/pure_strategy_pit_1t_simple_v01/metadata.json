@@ -1,0 +1,3414 @@
+{
+  "study": "KRX Pattern B Pure Strategy PIT 1T Simple Backtest V01",
+  "created_at_local_date": "2026-09-27",
+  "baseline_commit": "5dcfe79f40800ed8ac17558bad6dc600a91fd653",
+  "strategy_id": "PATTERN_B_PURE_SIMPLE_PIT_1T_V01",
+  "verdict": "PATTERN_B_PIT_1T_SIMPLE_MIXED",
+  "signal_start": "2013-01-31",
+  "signal_end": "2026-08-31",
+  "evaluation_cutoff": "2026-09-21",
+  "entry_filter": "exact PIT market_cap_krw >= 1,000,000,000,000 on entry_signal_date only",
+  "entry_filter_key": [
+    "ticker",
+    "isu_cd",
+    "snapshot_date"
+  ],
+  "missing_exact_pit_cap_rule": "do not fill; retain in raw signal audit and count separately",
+  "adjacent_date_or_other_cap_imputation": false,
+  "control_artifact": {
+    "artifact_directory": "artifacts/patterns/pattern_b/pure_strategy_simple_v01",
+    "baseline_commit": "5dcfe79f40800ed8ac17558bad6dc600a91fd653",
+    "control_source_sample_sha256": "b8c9c5999ad920c23c57174dd73d9530d86517b19aa9d6f3a356e0decafcf2e5",
+    "control_trade_ledger_sha256": "0bc676c72bd242b0174ca6c00da41968ddfe0644d61a621ef929493d3114c04a",
+    "control_entry_signal_ledger_sha256": "34bd049eb3a052423f03218e4af96ec329ccbe899d323a5a5bb11770beac871e",
+    "control_summary_sha256": "d0e1246176cbce801bb8c1c680304ec76fb6c11d0db5cfe86dc2bde48e720232",
+    "control_metadata_sha256": "478643b1798d928d511a012ac8b73194688f02989b80a2d89bbb7daeb0ce217f",
+    "control_committed_blob_sha256": {
+      "trade_ledger.csv": "0bc676c72bd242b0174ca6c00da41968ddfe0644d61a621ef929493d3114c04a",
+      "entry_signal_ledger.csv": "34bd049eb3a052423f03218e4af96ec329ccbe899d323a5a5bb11770beac871e",
+      "summary.json": "d0e1246176cbce801bb8c1c680304ec76fb6c11d0db5cfe86dc2bde48e720232",
+      "metadata.json": "478643b1798d928d511a012ac8b73194688f02989b80a2d89bbb7daeb0ce217f"
+    },
+    "control_was_replayed": false,
+    "control_reconciliation": "version-controlled V01 ledger retained verbatim; row counts, status counts, source hash, and gross summary metrics verified",
+    "monthly_sample_rows": 290008
+  },
+  "control_cost_contract": {
+    "buy_commission_rate": 0.00015,
+    "sell_commission_rate": 0.00015,
+    "buy_slippage_rate": 0.001,
+    "sell_slippage_rate": 0.001,
+    "sell_tax_schedule": [
+      {
+        "start": "2021-01-01",
+        "end": "2022-12-31",
+        "KOSPI": 0.0023,
+        "KOSDAQ": 0.0023
+      },
+      {
+        "start": "2023-01-01",
+        "end": "2023-12-31",
+        "KOSPI": 0.002,
+        "KOSDAQ": 0.002
+      },
+      {
+        "start": "2024-01-01",
+        "end": "2024-12-31",
+        "KOSPI": 0.0018,
+        "KOSDAQ": 0.0018
+      },
+      {
+        "start": "2025-01-01",
+        "end": "2025-12-31",
+        "KOSPI": 0.0015,
+        "KOSDAQ": 0.0015
+      },
+      {
+        "start": "2026-01-01",
+        "end": null,
+        "KOSPI": 0.002,
+        "KOSDAQ": 0.002
+      }
+    ],
+    "tax_complete_from": "2021-01-01",
+    "full_period_primary_metric": "gross",
+    "net_metric_scope": "closed trades with a documented exit-date market sell-tax schedule"
+  },
+  "test_cost_contract": {
+    "buy_commission_rate": 0.00015,
+    "sell_commission_rate": 0.00015,
+    "buy_slippage_rate": 0.001,
+    "sell_slippage_rate": 0.001,
+    "sell_tax_schedule": [
+      {
+        "start": "2021-01-01",
+        "end": "2022-12-31",
+        "KOSPI": 0.0023,
+        "KOSDAQ": 0.0023
+      },
+      {
+        "start": "2023-01-01",
+        "end": "2023-12-31",
+        "KOSPI": 0.002,
+        "KOSDAQ": 0.002
+      },
+      {
+        "start": "2024-01-01",
+        "end": "2024-12-31",
+        "KOSPI": 0.0018,
+        "KOSDAQ": 0.0018
+      },
+      {
+        "start": "2025-01-01",
+        "end": "2025-12-31",
+        "KOSPI": 0.0015,
+        "KOSDAQ": 0.0015
+      },
+      {
+        "start": "2026-01-01",
+        "end": null,
+        "KOSPI": 0.002,
+        "KOSDAQ": 0.002
+      }
+    ],
+    "tax_complete_from": "2021-01-01",
+    "full_period_primary_metric": "gross",
+    "net_metric_scope": "closed trades with a documented exit-date market sell-tax schedule"
+  },
+  "market_cap_audit": {
+    "raw_transition_signal_count": 20076,
+    "exact_entry_date_cap_count": 20076,
+    "exact_pit_ge_1t_count": 1462,
+    "exact_pit_below_1t_count": 18614,
+    "missing_or_nonexact_count": 0,
+    "panel_b_eligibility_mismatches": 0,
+    "imputation_count": 0,
+    "adjacent_date_fallback_count": 0,
+    "sample_table_key_duplicates": 0
+  },
+  "source_sample_path": "artifacts/patterns/pattern_b/state_forward_return_v01/snapshot_samples.csv.gz",
+  "source_state_rule": "Pattern B State Rule V02 monthly snapshots; unchanged",
+  "entry_rule": "adjacent month previous observed non-DEPRESSED to current DEPRESSED; cap gate is applied after transition generation",
+  "exit_rule": "first observed NORMAL after entry; DEEP_DEPRESSED remains held",
+  "execution_rule": "first exact Repository V2 adjusted daily OHLC row strictly after signal date within same contiguous COMMON identity chain",
+  "evaluation_rule": "exact adjusted close on 2026-09-21; unresolved positions remain open with no substitute mark",
+  "cost_source": "scripts/run_v2_julia_official_validation_v01.py via unchanged Pattern B V01 runner helpers",
+  "full_period_primary_metric": "closed-trade gross return; open marks reported separately",
+  "portfolio_model": "none; independent trade return ratios",
+  "no_future_delisting_filter": true,
+  "manual_followup_started": false,
+  "output_files": [
+    "report.md",
+    "control_vs_test.csv",
+    "test_trade_ledger.csv",
+    "test_open_positions.csv",
+    "test_entry_signal_ledger.csv",
+    "pit_entry_signal_audit.csv",
+    "control_vs_test_signal_status.csv",
+    "deep_depressed_analysis.csv",
+    "annual_entry_year_stats.csv",
+    "lifecycle_spot_checks.csv",
+    "summary.json",
+    "metadata.json"
+  ],
+  "source_provenance": {
+    "pit_frontier": "2026-09-21",
+    "pit_content_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
+    "calendar_frontier": "2026-09-21",
+    "calendar_content_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+    "interval_count": 3208,
+    "common_interval_count": 3208,
+    "first_trading_date": "2010-01-04",
+    "last_trading_date": "2026-09-21",
+    "pit_sha256": "ff783168c56a4772a681e34b97b17d8855f28d1c13df25094bd65cedbc80cd26",
+    "calendar_sha256": "c9af2e5bd71ec387c73752eb4955c0d76f23e38cf30db71b49b01c04fe8538b8"
+  },
+  "ticker_price_load_audit": {
+    "000060": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1928,
+      "effective_as_of": "2023-01-27",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 16,
+        "explicit_exclusion_count": 16,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "000070": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2449,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 17,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "000080": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3103,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "000100": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2327,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 3,
+        "explicit_exclusion_count": 78,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "000120": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2219,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "000150": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2944,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 13,
+        "explicit_exclusion_count": 58,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "000210": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2987,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 17,
+        "explicit_exclusion_count": 53,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "000240": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2756,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "000250": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 58,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "000270": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3103,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "000660": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2610,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "000670": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2642,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 9,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "000720": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3017,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 45,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "000810": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2059,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "000830": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 572,
+      "effective_as_of": "2015-08-26",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 13,
+        "explicit_exclusion_count": 13,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "000880": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3270,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 17,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "000990": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 623,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "001040": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2327,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 17,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "001120": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3266,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "001300": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 59,
+      "effective_as_of": "2014-06-26",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 12,
+        "explicit_exclusion_count": 12,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "001430": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3224,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "001440": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2515,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 17,
+        "explicit_exclusion_count": 55,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "001450": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2919,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "001570": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 93,
+      "effective_as_of": "2025-03-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 367,
+        "explicit_exclusion_count": 368,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "001680": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2693,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "001740": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3329,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "001800": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2560,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 27,
+        "explicit_exclusion_count": 32,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "002350": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3062,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "002380": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2482,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 15,
+        "explicit_exclusion_count": 48,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "002790": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2087,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 14,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "003000": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1217,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 1,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "003090": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 991,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "003240": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2592,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "003410": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 259,
+      "effective_as_of": "2024-06-20",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 12,
+        "explicit_exclusion_count": 12,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "003490": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2499,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 31,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "003520": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1938,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "003550": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3084,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 18,
+        "explicit_exclusion_count": 80,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "003620": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1789,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 600,
+        "explicit_exclusion_count": 638,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "003670": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 520,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "003690": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2942,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 120,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "004000": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3224,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "004020": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3224,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "004170": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3266,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "004370": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2840,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "004800": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3222,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 52,
+        "explicit_exclusion_count": 107,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "004990": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2443,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 16,
+        "explicit_exclusion_count": 23,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "005070": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 420,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "005250": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2427,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "005290": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 705,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "005300": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2430,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 19,
+        "explicit_exclusion_count": 36,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "005380": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2940,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "005420": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 642,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "005440": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2418,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 29,
+        "explicit_exclusion_count": 91,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "005490": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3309,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "005610": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2241,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "005830": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1795,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "005930": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2729,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 3,
+        "explicit_exclusion_count": 4,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "005940": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3143,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "006040": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 785,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 1,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "006120": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2333,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 24,
+        "explicit_exclusion_count": 31,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "006260": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3266,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "006280": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2979,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "006360": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3183,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 2,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "006400": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2934,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 6,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "006650": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1938,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "006800": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3287,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "007070": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2162,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 17,
+        "explicit_exclusion_count": 20,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "007310": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2101,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "007390": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1117,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "007700": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1218,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "008560": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1152,
+      "effective_as_of": "2023-03-31",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 16,
+        "explicit_exclusion_count": 16,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "008770": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2592,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "008930": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2308,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 56,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "009150": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3103,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "009240": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2119,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "009420": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1218,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "009540": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3155,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 25,
+        "explicit_exclusion_count": 69,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "009830": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2979,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 23,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "010060": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3256,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 20,
+        "explicit_exclusion_count": 73,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "010120": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2710,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 3,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "010130": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3224,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "010140": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2515,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 12,
+        "explicit_exclusion_count": 55,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "010620": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2627,
+      "effective_as_of": "2025-11-26",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 12,
+        "explicit_exclusion_count": 25,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "010780": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2261,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 1,
+        "explicit_exclusion_count": 1,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "010950": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3224,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "011070": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2733,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "011170": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3240,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 47,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "011200": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3172,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 24,
+        "explicit_exclusion_count": 52,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "011210": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2818,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "011780": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3224,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "011790": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3276,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 11,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "012330": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2940,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "012450": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3138,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 18,
+        "explicit_exclusion_count": 26,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "012510": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1057,
+      "effective_as_of": "2026-06-25",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 13,
+        "explicit_exclusion_count": 13,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "012630": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3173,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 28,
+        "explicit_exclusion_count": 51,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "012750": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1998,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "014680": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 765,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "014820": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2182,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "015760": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2283,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "016360": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3257,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 30,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "016380": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1550,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "017670": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2443,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 24,
+        "explicit_exclusion_count": 66,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "017800": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1630,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 1,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "018260": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1589,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "018880": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1589,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "019170": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1218,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "020150": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 971,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "020560": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3150,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 51,
+        "explicit_exclusion_count": 137,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "021240": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1938,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "022100": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 420,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "023530": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3036,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 16,
+        "explicit_exclusion_count": 47,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "024110": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3247,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "026960": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2080,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "028050": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3203,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 10,
+        "explicit_exclusion_count": 21,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "028150": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1370,
+      "effective_as_of": "2021-06-28",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 13,
+        "explicit_exclusion_count": 13,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "028260": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2020,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "028300": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1089,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 7,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "028670": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1651,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "029780": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3203,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "030000": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2878,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "030200": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3103,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "031430": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1034,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "032500": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 991,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "032640": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1589,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "032830": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2818,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "033780": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2857,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "034020": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2825,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 53,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "034220": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2704,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 9,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "034230": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2651,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "034730": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1795,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "035250": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2119,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "035420": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1938,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "035720": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3232,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 4,
+        "explicit_exclusion_count": 34,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "035760": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2840,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "035900": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 562,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "036460": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2840,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "036570": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3002,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "036830": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 157,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "037620": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 119,
+      "effective_as_of": "2016-12-20",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 21,
+        "explicit_exclusion_count": 21,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "039490": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3185,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "041510": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 520,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "041960": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1991,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 7,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "042660": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2687,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 315,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "042670": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2864,
+      "effective_as_of": "2025-12-26",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 45,
+        "explicit_exclusion_count": 98,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "043260": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 36,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "046890": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2940,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "047040": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3266,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "047050": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2756,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "047810": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2235,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 6,
+        "explicit_exclusion_count": 6,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "051600": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2570,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "051900": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3062,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "051910": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3329,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "052690": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3164,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "053210": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2979,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "055550": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2610,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "056190": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1589,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "058470": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 409,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 11,
+        "explicit_exclusion_count": 11,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "064350": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1816,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "064760": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 971,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "065350": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 481,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "066570": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3164,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "066970": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 481,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "067630": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 930,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "068270": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1117,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "068760": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1753,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "069620": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1424,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "069960": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3040,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "071050": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2592,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "071840": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2840,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "073240": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3287,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "078340": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1816,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "078600": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 420,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "078930": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3224,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "079160": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2383,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 22,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "081660": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1589,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "082270": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 97,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "082640": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3256,
+      "effective_as_of": "2026-08-06",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 15,
+        "explicit_exclusion_count": 15,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "084990": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1683,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 9,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "085660": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 58,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "086280": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2725,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 8,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "086520": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 461,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "086790": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2878,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "086900": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1725,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 28,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "088350": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2570,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "088980": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 420,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "089860": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 402,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "090430": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3263,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 10,
+        "explicit_exclusion_count": 24,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "091990": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 176,
+      "effective_as_of": "2023-12-15",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 16,
+        "explicit_exclusion_count": 16,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "093370": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 743,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "095340": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 340,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "095700": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1736,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 17,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "096530": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1054,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "096770": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3193,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 10,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "097950": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2080,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "098460": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1054,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "100790": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 58,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "103140": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 58,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "105560": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3287,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "108320": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 705,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "108670": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2509,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "111770": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2466,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "112040": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1034,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "112610": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 683,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "114090": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2713,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "115390": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2794,
+      "effective_as_of": "2024-11-19",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 27,
+        "explicit_exclusion_count": 38,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "117930": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 826,
+      "effective_as_of": "2017-03-06",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 19,
+        "explicit_exclusion_count": 19,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "120110": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 3329,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "128940": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1905,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 33,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "131970": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 36,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "137310": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 382,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "137400": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 157,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "138040": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1938,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "138930": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2592,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "139130": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2878,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "139480": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2919,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "140410": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 58,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "145020": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1177,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "161390": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1938,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "161890": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1998,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "175330": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1692,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "180640": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 971,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "181710": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2339,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 25,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "185750": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1167,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 10,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "192820": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 2237,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 25,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "195940": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 36,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "196170": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 971,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "204320": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1938,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "207940": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 688,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 17,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "214150": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 16,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "214320": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1117,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "214370": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 481,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "225570": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 481,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "237690": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 765,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "240810": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1795,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "241560": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1671,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "247540": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 520,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "251270": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1117,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "253450": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 971,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "263750": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1034,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "267250": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1502,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 3,
+        "explicit_exclusion_count": 3,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "271560": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1177,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "278280": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 743,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "280360": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 847,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "282330": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 705,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "285130": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1034,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "293490": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 279,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "294870": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 1177,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "298020": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 971,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "298050": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 642,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "298380": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 36,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "300720": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 58,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "302440": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 302,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "307950": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 461,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "310210": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 36,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "323410": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 178,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "326030": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 58,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "328130": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 237,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "336260": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 786,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "336370": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 807,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "348370": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 420,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "352820": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 520,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "357780": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 461,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "361610": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 382,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "373220": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 302,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "375500": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 543,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "377300": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 380,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 2,
+        "explicit_exclusion_count": 2,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "383220": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 481,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "403870": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 36,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    },
+    "950160": {
+      "status": "PROCESSED",
+      "reason": null,
+      "rows": 562,
+      "effective_as_of": "2026-09-21",
+      "session_projection_summary": {
+        "adjusted_only_count": 0,
+        "raw_only_count": 0,
+        "explicit_exclusion_count": 0,
+        "silent_inner_drop_count": 0
+      }
+    }
+  },
+  "validation_checks": {
+    "control_signal_keys_match_fresh_transitions": true,
+    "control_source_and_trade_summary_reconcile": true,
+    "all_pit_caps_on_exact_entry_signal_dates": true,
+    "test_filled_trades_all_exactly_at_least_1t": true,
+    "pit_market_cap_imputation_count_zero": true,
+    "all_fills_on_merged_krx_sessions": true,
+    "all_entry_fills_strictly_after_signals": true,
+    "no_duplicate_test_trade_ids": true,
+    "no_overlapping_same_identity_positions": true,
+    "closed_plus_open_reconciles_to_filled": true,
+    "repository_v2_silent_inner_drop_count_zero": true,
+    "lifecycle_and_pit_spot_checks_passed": true
+  },
+  "verdict_rubric": {
+    "quality_metrics_improved_of_3": 0,
+    "downside_metrics_improved_of_5": 4
+  }
+}
