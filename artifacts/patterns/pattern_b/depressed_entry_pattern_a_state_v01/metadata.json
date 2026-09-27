@@ -1,0 +1,856 @@
+{
+  "study_id": "PATTERN_B_DEPRESSED_ENTRY_PATTERN_A_STATE_V01",
+  "created_at_kst_date": "2026-09-27",
+  "starting_git": {
+    "head": "5aa343917bd42b1717d20c98796df23b778d8d6b",
+    "origin_main": "5aa343917bd42b1717d20c98796df23b778d8d6b",
+    "working_tree_clean_before_task": true,
+    "analysis_files_uncommitted_at_run": [
+      "artifacts/patterns/pattern_b/depressed_entry_pattern_a_state_v01/",
+      "scripts/analyze_pattern_b_depressed_entry_pattern_a_state_v01.py",
+      "tests/test_analyze_pattern_b_depressed_entry_pattern_a_state_v01.py"
+    ]
+  },
+  "signal_definition": "NOT DEPRESSED -> DEPRESSED; one unit per raw transition signal",
+  "signal_period": {
+    "start": "2013-01-31",
+    "end": "2026-08-31"
+  },
+  "evaluation_cutoff": "2026-09-21",
+  "pattern_b_state_observation_frontier": "2026-08-31",
+  "pattern_b_state_source": "artifacts/patterns/pattern_b/state_forward_return_v01/snapshot_samples.csv.gz",
+  "pattern_a_authority": {
+    "official_contract": "docs/patterns/pattern_a/spec/production_authority.md",
+    "classifier": "trend_scanner.patterns.pattern_a_stage.classify_pattern_a_stage",
+    "snapshot_builder": "trend_scanner.validation.historical_snapshot.build_historical_snapshot",
+    "stage_enum_states": [
+      "WEAK",
+      "BASE",
+      "TRANSITION",
+      "EARLY_TREND",
+      "PROGRESSED"
+    ],
+    "snapshot_policy": "include_incomplete_periods=False; daily input clipped by snapshot_date in builder; official rolling merged KRX calendar"
+  },
+  "daily_price_authority": {
+    "repository": "RepositoryV2DailyLoader / MarketDataRepositoryV2",
+    "requested_start": "2010-01-04",
+    "requested_end": "2026-09-21",
+    "network_used": false
+  },
+  "workers": 10,
+  "permanent_exclusion_count_from_base_loader": 43,
+  "control_lineage": {
+    "artifact_directory": "artifacts/patterns/pattern_b/pure_strategy_simple_v01",
+    "baseline_commit": "5dcfe79f40800ed8ac17558bad6dc600a91fd653",
+    "control_source_sample_sha256": "b8c9c5999ad920c23c57174dd73d9530d86517b19aa9d6f3a356e0decafcf2e5",
+    "control_trade_ledger_sha256": "0bc676c72bd242b0174ca6c00da41968ddfe0644d61a621ef929493d3114c04a",
+    "control_entry_signal_ledger_sha256": "34bd049eb3a052423f03218e4af96ec329ccbe899d323a5a5bb11770beac871e",
+    "control_summary_sha256": "d0e1246176cbce801bb8c1c680304ec76fb6c11d0db5cfe86dc2bde48e720232",
+    "control_metadata_sha256": "478643b1798d928d511a012ac8b73194688f02989b80a2d89bbb7daeb0ce217f",
+    "control_committed_blob_sha256": {
+      "trade_ledger.csv": "0bc676c72bd242b0174ca6c00da41968ddfe0644d61a621ef929493d3114c04a",
+      "entry_signal_ledger.csv": "34bd049eb3a052423f03218e4af96ec329ccbe899d323a5a5bb11770beac871e",
+      "summary.json": "d0e1246176cbce801bb8c1c680304ec76fb6c11d0db5cfe86dc2bde48e720232",
+      "metadata.json": "478643b1798d928d511a012ac8b73194688f02989b80a2d89bbb7daeb0ce217f"
+    },
+    "control_was_replayed": false,
+    "control_reconciliation": "version-controlled V01 ledger retained verbatim; row counts, status counts, source hash, and gross summary metrics verified",
+    "monthly_sample_rows": 290008
+  },
+  "authority_provenance": {
+    "pit_frontier": "2026-09-21",
+    "pit_content_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
+    "calendar_frontier": "2026-09-21",
+    "calendar_content_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+    "interval_count": 3208,
+    "common_interval_count": 3208,
+    "first_trading_date": "2010-01-04",
+    "last_trading_date": "2026-09-21",
+    "pit_sha256": "ff783168c56a4772a681e34b97b17d8855f28d1c13df25094bd65cedbc80cd26",
+    "calendar_sha256": "c9af2e5bd71ec387c73752eb4955c0d76f23e38cf30db71b49b01c04fe8538b8"
+  },
+  "calendar_provenance": {
+    "path": "data/market/rolling_authority/merged_trading_calendar.json",
+    "sha256": "c9af2e5bd71ec387c73752eb4955c0d76f23e38cf30db71b49b01c04fe8538b8",
+    "frontier": "2026-09-21",
+    "first_trading_date": "2010-01-04",
+    "last_trading_date": "2026-09-21",
+    "completed_month_end_count": 200,
+    "last_completed_month_end": "2026-08-31"
+  },
+  "input_sha256": {
+    "artifacts/patterns/pattern_b/state_forward_return_v01/snapshot_samples.csv.gz": "b8c9c5999ad920c23c57174dd73d9530d86517b19aa9d6f3a356e0decafcf2e5",
+    "data/market/rolling_authority/merged_pit_intervals.json": "ff783168c56a4772a681e34b97b17d8855f28d1c13df25094bd65cedbc80cd26",
+    "data/market/rolling_authority/merged_trading_calendar.json": "c9af2e5bd71ec387c73752eb4955c0d76f23e38cf30db71b49b01c04fe8538b8",
+    "artifacts/patterns/pattern_b/pure_strategy_simple_v01/summary.json": "d0e1246176cbce801bb8c1c680304ec76fb6c11d0db5cfe86dc2bde48e720232",
+    "artifacts/patterns/pattern_b/pure_strategy_simple_v01/metadata.json": "478643b1798d928d511a012ac8b73194688f02989b80a2d89bbb7daeb0ce217f",
+    "artifacts/patterns/pattern_b/pure_strategy_simple_v01/entry_signal_ledger.csv": "34bd049eb3a052423f03218e4af96ec329ccbe899d323a5a5bb11770beac871e",
+    "artifacts/patterns/pattern_b/pure_strategy_simple_v01/trade_ledger.csv": "0bc676c72bd242b0174ca6c00da41968ddfe0644d61a621ef929493d3114c04a"
+  },
+  "checks": {
+    "raw_signal_count": 20076,
+    "raw_signal_key_mismatch_count": 0,
+    "pattern_a_unavailable_count": 1540,
+    "pattern_a_unavailable_reason_counts": {
+      "insufficient_data": 1010,
+      "DAILY_DATA_UNAVAILABLE": 530
+    },
+    "duplicate_signal_count": 0,
+    "outcome_collision_count": 0,
+    "control_filled_signal_count": 13910,
+    "control_suppressed_signal_count": 6166,
+    "control_link_missing_count": 0,
+    "random_review_count": 20,
+    "random_review_pass_count": 20,
+    "outcome_counts": {
+      "NORMAL_FIRST": 11224,
+      "DEEP_FIRST": 7278,
+      "NEITHER_BY_CUTOFF": 945,
+      "OTHER_UNEVALUATED": 629
+    },
+    "workers": 10,
+    "permanently_excluded_identity_count": 43,
+    "monthly_sample_count": 290008,
+    "control_trade_count": 13910,
+    "control_realized_trade_count": 12454,
+    "control_open_trade_count": 1456
+  },
+  "ticker_load_audit_summary": {
+    "ticker_count": 2465,
+    "available_ticker_count": 2356,
+    "unavailable_ticker_count": 109,
+    "unavailable_ticker_examples": [
+      {
+        "ticker": "182360",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "184230",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "187790",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "192250",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "198440",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "200130",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "203650",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "203690",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "204620",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "204630",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "204840",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "205100",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "205470",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "205500",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "206400",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "206640",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "207760",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "208140",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "208350",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "208370",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "208640",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "208710",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "214150",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "214270",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "214680",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "215090",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "215100",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "215380",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "215480",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "215790",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "217270",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "217500",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "217600",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "217620",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "218150",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "218410",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "219550",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "220260",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "222080",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "222420",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "222810",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "225430",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "225570",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "225590",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "226340",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "226360",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "227950",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "230240",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "230980",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "232140",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "239340",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "242040",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "250060",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "250930",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "252500",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "253590",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "254120",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "256630",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "256840",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "258790",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "261200",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "263770",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "264850",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "267320",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "270520",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "273060",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "277410",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "281740",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "284620",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "291230",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "297570",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "299170",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "303030",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "306620",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "307180",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "307280",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "307750",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "307870",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "309930",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "310200",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "310870",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "317240",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "319400",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "320000",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "321260",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "322780",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "323230",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "328380",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "331380",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "331520",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "332290",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "333050",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "333430",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "335870",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "336060",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "336570",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "339950",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "340360",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "340440",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      },
+      {
+        "ticker": "351320",
+        "rows": 0,
+        "effective_as_of": null,
+        "status": "EXPLICIT_DATA_UNAVAILABLE",
+        "reason": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"
+      }
+    ]
+  },
+  "generated_files": {
+    "pattern_a_stage_summary.csv": {
+      "sha256": "f7dc7f1193e644f82886f2a509c70890a6fc6012665ee7a0f83f7bd48aeeefe2",
+      "bytes": 3699
+    },
+    "signal_stage_path_trade_linkage.csv": {
+      "sha256": "d4d898ab41246c023c84f82868ef47d95a42024c2acc3bc60eadbaede2ddc02b",
+      "bytes": 13007722
+    },
+    "normal_first_outcomes.csv": {
+      "sha256": "aa5419bb82797083fc32181fe1f2b4a729c9707a1e0147dae838eeab29088b43",
+      "bytes": 7419122
+    },
+    "deep_first_outcomes.csv": {
+      "sha256": "85e6c27aa7cc8756288b9189160a0404d7002a5f752e849e8b2b0f775eb68829",
+      "bytes": 4525421
+    },
+    "other_unevaluated_signals.csv": {
+      "sha256": "50819c10ba5d101d0fc7fab37f2309e1e3fd249cfd4f1fc3add4af0c851b3bf3",
+      "bytes": 479360
+    },
+    "pattern_a_stage_random_review_20.csv": {
+      "sha256": "c32f5850557d2d3ba1d7c71001d395c84a22ee5dd361ec1924cb2f6cf2a6b57e",
+      "bytes": 6798
+    },
+    "summary.json": {
+      "sha256": "7014442e1e612b35fd01711814f0b65bd6e45346d3b06bfa80935a27b2fe1e55",
+      "bytes": 12634
+    }
+  }
+}
