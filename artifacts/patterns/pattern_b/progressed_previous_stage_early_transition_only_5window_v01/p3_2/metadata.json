@@ -1,0 +1,78 @@
+{
+  "study_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2",
+  "starting_git": {
+    "head": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+    "origin_main": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+    "branch": "main",
+    "unexpected_changes": [],
+    "start_status": [
+      "?? scripts/run_pattern_b_progressed_previous_stage_early_transition_only_5window_v01.py"
+    ]
+  },
+  "window": {
+    "window_id": "P3-2",
+    "calendar_range": [
+      "2022-01-01",
+      "2026-08-31"
+    ],
+    "effective_start": "2022-01-03",
+    "effective_end": "2026-08-31",
+    "execution_support": "2026-09-01",
+    "authority_source": "ROLLING_AUTHORITY_MERGED_CALENDAR_V01",
+    "authority_metadata": {
+      "authority_version": "ROLLING_MARKET_DATA_V01",
+      "certified_through": "2026-09-21",
+      "calendar_frontier": "2026-09-21",
+      "calendar_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+      "calendar_built_against_certified_through": "2026-09-18"
+    },
+    "support_policy": "only an exit signal dated on or before effective_end may fill on execution_support; entries after effective_end are not filled"
+  },
+  "workers": 10,
+  "allowed_previous_pattern_a_stages": [
+    "EARLY_TREND",
+    "TRANSITION"
+  ],
+  "new_test_only_replay": true,
+  "frozen_control_test_rerun": false,
+  "fast_core_v2_rerun": false,
+  "source_sha256": {
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p3_2/metadata.json": "6f57a4fba92a27bbd00242a049c521e167652b502e2d0dbcceb4a54085947984",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p3_2/summary.json": "d33a826cc0f8175b3f249b0e19a628c557f86bb02808ee6056960da5ee795bc0",
+    "artifacts/backtests/p3_2_neg40_weak_protect_v01/run_20260925_p3_2_worker10_corrective_v01/summary.json": "d500be2806e0a6555389797f9d5035076dd4176774b49db25f70110949e325bf"
+  },
+  "code_sha256": {
+    "scripts/run_pattern_b_progressed_previous_stage_early_transition_only_5window_v01.py": "1de6bff08463198402737577af00ddcd01212f392d34cf587b3626da5b9eba0a",
+    "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058"
+  },
+  "generated_files": {
+    "summary.json": {
+      "sha256": "886e651731b092cc7c423c0dc6aeec74e36bb0e60fc14627d959e6322c72a057",
+      "bytes": 17319
+    },
+    "previous_stage_audit.csv": {
+      "sha256": "5dd1b45cea5c44b6633f15e9e48ff876942fe03ea6548158bda07042412954b8",
+      "bytes": 106443
+    },
+    "report.md": {
+      "sha256": "77ba4887bfd963a116f0f481f5a102bcf1830752394d0c01b6f42823dcecec1a",
+      "bytes": 1948
+    },
+    "posthoc_trade_set_comparison.csv": {
+      "sha256": "c94795a23c8afecbdc6858acc3fd3208efa14204dbf69d44d8672a38caea69c5",
+      "bytes": 109880
+    },
+    "test_trade_ledger.csv": {
+      "sha256": "87f60245c14fbec9740ea9f77e950dfad03c09db0a8079e20af22646999a5271",
+      "bytes": 206626
+    },
+    "lifecycle_spot_checks.csv": {
+      "sha256": "1ba1a90b33cd6b239b92934f9a95f8cc97944f436493fd84eb32db71e33257fd",
+      "bytes": 5479
+    },
+    "test_open_positions.csv": {
+      "sha256": "0d220891b14478b597358db77958dd0290b1311034d7aff18d631d56fa554492",
+      "bytes": 35943
+    }
+  }
+}

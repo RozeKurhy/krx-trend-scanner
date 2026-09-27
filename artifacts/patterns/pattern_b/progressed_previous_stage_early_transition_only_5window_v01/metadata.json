@@ -1,0 +1,199 @@
+{
+  "study_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01",
+  "verdict": "PROMISING",
+  "starting_git": {
+    "head": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+    "origin_main": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+    "branch": "main",
+    "unexpected_changes": [],
+    "start_status": [
+      "?? scripts/run_pattern_b_progressed_previous_stage_early_transition_only_5window_v01.py"
+    ]
+  },
+  "frozen_reference_commit": "2104d12675b18bea269d02e40a0b3a8864a104b9",
+  "workers": 10,
+  "window_order": [
+    "P1",
+    "P2-1",
+    "P2-2",
+    "P3-1",
+    "P3-2"
+  ],
+  "window_resolutions": {
+    "P1": {
+      "window_id": "P1",
+      "calendar_range": [
+        "2014-01-01",
+        "2026-08-31"
+      ],
+      "effective_start": "2014-01-02",
+      "effective_end": "2026-08-31",
+      "execution_support": "2026-09-01",
+      "authority_source": "ROLLING_AUTHORITY_MERGED_CALENDAR_V01",
+      "authority_metadata": {
+        "authority_version": "ROLLING_MARKET_DATA_V01",
+        "certified_through": "2026-09-21",
+        "calendar_frontier": "2026-09-21",
+        "calendar_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+        "calendar_built_against_certified_through": "2026-09-18"
+      },
+      "support_policy": "only an exit signal dated on or before effective_end may fill on execution_support; entries after effective_end are not filled"
+    },
+    "P2-1": {
+      "window_id": "P2-1",
+      "calendar_range": [
+        "2021-01-01",
+        "2025-05-31"
+      ],
+      "effective_start": "2021-01-04",
+      "effective_end": "2025-05-30",
+      "execution_support": "2025-06-02",
+      "authority_source": "ROLLING_AUTHORITY_MERGED_CALENDAR_V01",
+      "authority_metadata": {
+        "authority_version": "ROLLING_MARKET_DATA_V01",
+        "certified_through": "2026-09-21",
+        "calendar_frontier": "2026-09-21",
+        "calendar_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+        "calendar_built_against_certified_through": "2026-09-18"
+      },
+      "support_policy": "only an exit signal dated on or before effective_end may fill on execution_support; entries after effective_end are not filled"
+    },
+    "P2-2": {
+      "window_id": "P2-2",
+      "calendar_range": [
+        "2021-01-01",
+        "2026-08-31"
+      ],
+      "effective_start": "2021-01-04",
+      "effective_end": "2026-08-31",
+      "execution_support": "2026-09-01",
+      "authority_source": "ROLLING_AUTHORITY_MERGED_CALENDAR_V01",
+      "authority_metadata": {
+        "authority_version": "ROLLING_MARKET_DATA_V01",
+        "certified_through": "2026-09-21",
+        "calendar_frontier": "2026-09-21",
+        "calendar_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+        "calendar_built_against_certified_through": "2026-09-18"
+      },
+      "support_policy": "only an exit signal dated on or before effective_end may fill on execution_support; entries after effective_end are not filled"
+    },
+    "P3-1": {
+      "window_id": "P3-1",
+      "calendar_range": [
+        "2022-01-01",
+        "2025-05-31"
+      ],
+      "effective_start": "2022-01-03",
+      "effective_end": "2025-05-30",
+      "execution_support": "2025-06-02",
+      "authority_source": "ROLLING_AUTHORITY_MERGED_CALENDAR_V01",
+      "authority_metadata": {
+        "authority_version": "ROLLING_MARKET_DATA_V01",
+        "certified_through": "2026-09-21",
+        "calendar_frontier": "2026-09-21",
+        "calendar_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+        "calendar_built_against_certified_through": "2026-09-18"
+      },
+      "support_policy": "only an exit signal dated on or before effective_end may fill on execution_support; entries after effective_end are not filled"
+    },
+    "P3-2": {
+      "window_id": "P3-2",
+      "calendar_range": [
+        "2022-01-01",
+        "2026-08-31"
+      ],
+      "effective_start": "2022-01-03",
+      "effective_end": "2026-08-31",
+      "execution_support": "2026-09-01",
+      "authority_source": "ROLLING_AUTHORITY_MERGED_CALENDAR_V01",
+      "authority_metadata": {
+        "authority_version": "ROLLING_MARKET_DATA_V01",
+        "certified_through": "2026-09-21",
+        "calendar_frontier": "2026-09-21",
+        "calendar_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+        "calendar_built_against_certified_through": "2026-09-18"
+      },
+      "support_policy": "only an exit signal dated on or before effective_end may fill on execution_support; entries after effective_end are not filled"
+    }
+  },
+  "new_test_only_replay": true,
+  "frozen_control_test_rerun": false,
+  "fast_core_v2_rerun": false,
+  "aggregation_recovery": "All five NEW_TEST replays completed once. Root report assembly was recovered from hash-verified saved window outputs; no lifecycle or FAST V2 replay was repeated.",
+  "source_sha256": {
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p1_simple_v01/metadata.json": "9c0c331344c1bdc522f09bf6098032a31962ed6607eae292b59c2ca90b5e04aa",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p1_simple_v01/summary.json": "4898dc910c49914744083a0d229350d1ff94ca32bd9477b05adc3fd77bf1c267",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p1_simple_v01/control_trade_ledger.csv": "3de920a1d0a77c4795b6ffde754e61df3876a96a6e14b0e116c553dee6258f1e",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p1_simple_v01/test_trade_ledger.csv": "5c32d6dfa9919dc629d412b41d803074467defa5dba1808ba41d6e79bc332b3f",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p1_simple_v01/control_open_positions.csv": "d527c861d9313258435ca28be634ffd1d9ae5477df064508f2229ac2adada4db",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p1_simple_v01/test_open_positions.csv": "6b39a47c84b2633c3b59f89c02f62de9b1333235a912f7b75c7ad6b6cff21bb4",
+    "artifacts/backtests/p1_neg40_weak_protect_v01/run_20260925_standard_full_worker10_v01/raw_only_exclusion_closure_v02/summary.json": "99b6af6db16ed52c197343e4858bbc316021f42e281033e4363952ccd7d68f08",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p2_1/metadata.json": "5404c17debbd0efbfa2aa74933991ee2b18650f9adf4c396b1b15f7e7a8198f9",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p2_1/summary.json": "261932095f9f9921b417d59b13efe79f3ab16a809966a02e357b1f8ca39d320e",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p2_1/control_trade_ledger.csv": "df337a80ee9967b82faffaed975bdf5fd41d441efe3b2047a16e6f267938e598",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p2_1/test_trade_ledger.csv": "f2010b141c66d612e4abf444fbc3a35411c726dac276f486ba57bf0bc7c7ae6b",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p2_1/control_open_positions.csv": "f0364a65397c8cc3785f7eb5e88422e80b1bba69e898ddfd86942f707c93d316",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p2_1/test_open_positions.csv": "8131ffbab5716dfcf45df6540b1982666e976e5a7c3916be740fa034bb0ab4bd",
+    "artifacts/backtests/p2_1_neg40_weak_protect_v01/run_20260925_corrective_full_recert_v02/raw_only_lifecycle_closure_v01/summary.json": "913a55dc81bbf628ed3214684010877dc4010a9c8bed7857c6996330066206e6",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p2_2/metadata.json": "361499c93e37634baba25016d23b7dc9c8af925fecd336ca63edfbdb186325c6",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p2_2/summary.json": "dcf872f5455e5c04c4843b1d90dcb4a6215fce2dec8fdd3ad3095280ca6e6e7b",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p2_2/control_trade_ledger.csv": "6e572bdbf214bcaa7e0f2dd987234e25993e795bd4d4d0d305949ff37c1c27bf",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p2_2/test_trade_ledger.csv": "0ab550c09ba42c0b620395256b8319334e105b50905ae7fa2e962845345eb3f0",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p2_2/control_open_positions.csv": "d8416d063d18678820085295e5e5e9107f74d22d40e14751cb6ae3f6e4cd9214",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p2_2/test_open_positions.csv": "27662c26b5a0ad89b065c94a634b8e14e0e17bdcf1f686c934bfdde3ef79014c",
+    "artifacts/backtests/p2_2_neg40_weak_protect_v01/run_20260924_final_corrective_v01/summary.json": "cc04b7f1608d5e7a27e8f3739916f5d83aa9374100684d40f54a7ca1ab773409",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p3_1/metadata.json": "96441f454e3113c41f8f1abb2bb2bff83336a84bef772b5a1fc13d406fe32760",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p3_1/summary.json": "9dd1446a2a53177239d185da09318246a53e6282f9cadc0c1aa09b41090f8fac",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p3_1/control_trade_ledger.csv": "2e5b2505a514530ced030dd3d1c0d2a3cca0e82352d2c89f3564df13c3ff076a",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p3_1/test_trade_ledger.csv": "a2a45b01feae8be09e1cb779241cf19fde68dc76e54cd62e9dae2d99e64a0f91",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p3_1/control_open_positions.csv": "b325ef6af7b503f7944991f2954dab261445488f3846651cef1e0c3786e380c5",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p3_1/test_open_positions.csv": "3354cbd7e7953ecd05cc0b919dd1afd26c1294660a83e0af1c83b0692ab43b61",
+    "artifacts/backtests/p3_1_neg40_weak_protect_v01/run_20260925_worker10_replay_v01/summary.json": "6d2757f521130f2455b1489361bab3c40f224b8025458be2d45d040dd990b156",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p3_2/metadata.json": "6f57a4fba92a27bbd00242a049c521e167652b502e2d0dbcceb4a54085947984",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p3_2/summary.json": "d33a826cc0f8175b3f249b0e19a628c557f86bb02808ee6056960da5ee795bc0",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p3_2/control_trade_ledger.csv": "127ca77b85310d59e1ffaaec9d85ae6928f3b46938ecc9cdc92440f212804084",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p3_2/test_trade_ledger.csv": "3deb58d359265934ba1d877129b1d32ef6d097434c2df6cb47ad959b1d8cd73d",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p3_2/control_open_positions.csv": "aa0b0530d149fb88784bf6c7e15fd41b579e133fcb6b7ad8fa55b33257604c81",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p3_2/test_open_positions.csv": "9864372741e53f831a68d8eb8e963f6111b41710c352fda652dcd8431a81d1b9",
+    "artifacts/backtests/p3_2_neg40_weak_protect_v01/run_20260925_p3_2_worker10_corrective_v01/summary.json": "d500be2806e0a6555389797f9d5035076dd4176774b49db25f70110949e325bf"
+  },
+  "postprocessing_code_sha256": {
+    "scripts/run_pattern_b_progressed_previous_stage_early_transition_only_5window_v01.py": "ee01dff4b822676b3a4e59a5692b84a79d1dc16657d30d7049e97c88396eb235"
+  },
+  "replay_code_sha256_by_window": {
+    "P1": "1de6bff08463198402737577af00ddcd01212f392d34cf587b3626da5b9eba0a",
+    "P2-1": "1de6bff08463198402737577af00ddcd01212f392d34cf587b3626da5b9eba0a",
+    "P2-2": "1de6bff08463198402737577af00ddcd01212f392d34cf587b3626da5b9eba0a",
+    "P3-1": "1de6bff08463198402737577af00ddcd01212f392d34cf587b3626da5b9eba0a",
+    "P3-2": "1de6bff08463198402737577af00ddcd01212f392d34cf587b3626da5b9eba0a"
+  },
+  "window_metadata_sha256": {
+    "P1": "5b2047b6a846dc2d975e6cf100a83faf674dc26c973a3ff54356d9a69a7a7ab5",
+    "P2-1": "bd66434c4a502073784898c11eb515c1328f60ce0ba539d06564e4e45afe641c",
+    "P2-2": "de9bdc99540071bd2ba7bdae7821de4efffc2b8e81fd491a08ad3860e9c85782",
+    "P3-1": "66dda50e122c462b55c1d830ab7d27b069bf705cfcc525d95122e038e837b460",
+    "P3-2": "86106a693bf3d4ea3b69180db1dd938c17dba1f83ff168eeac9895d0863dbdcb"
+  },
+  "generated_files": {
+    "five_window_synthesis.csv": {
+      "sha256": "8cd5bf1fac66321171f89c970ea49dd1d4ab5b6bd3fe3c8e1ea7759dcda7a9ef",
+      "bytes": 12579
+    },
+    "resolved_terminal_synthesis.csv": {
+      "sha256": "787e98be489634f5f5cfbf0e1fe536fcec8b5a14516f7d11dc20d75ae924befb",
+      "bytes": 6577
+    },
+    "fast_core_v2_terminal_reference.csv": {
+      "sha256": "4f0a22ae14258279e1f4489e84b286ad11adc652daf47e21662b48ab182e29f7",
+      "bytes": 5202
+    },
+    "report.md": {
+      "sha256": "054e9248a7d5de3d391da722fe93932888abd0f83fa8a4f03f807da97f085ab4",
+      "bytes": 11884
+    },
+    "summary.json": {
+      "sha256": "8d1a4ad37c58f37984ca4bd04d402f9ad37d3df9681a1d1a1f84f22f893e9f50",
+      "bytes": 170695
+    }
+  }
+}

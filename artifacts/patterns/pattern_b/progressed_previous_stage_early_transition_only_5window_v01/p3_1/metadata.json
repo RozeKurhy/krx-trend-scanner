@@ -1,0 +1,78 @@
+{
+  "study_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_1",
+  "starting_git": {
+    "head": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+    "origin_main": "7d5fbcd83273f644eb48ae3f595aaf1f23f54091",
+    "branch": "main",
+    "unexpected_changes": [],
+    "start_status": [
+      "?? scripts/run_pattern_b_progressed_previous_stage_early_transition_only_5window_v01.py"
+    ]
+  },
+  "window": {
+    "window_id": "P3-1",
+    "calendar_range": [
+      "2022-01-01",
+      "2025-05-31"
+    ],
+    "effective_start": "2022-01-03",
+    "effective_end": "2025-05-30",
+    "execution_support": "2025-06-02",
+    "authority_source": "ROLLING_AUTHORITY_MERGED_CALENDAR_V01",
+    "authority_metadata": {
+      "authority_version": "ROLLING_MARKET_DATA_V01",
+      "certified_through": "2026-09-21",
+      "calendar_frontier": "2026-09-21",
+      "calendar_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+      "calendar_built_against_certified_through": "2026-09-18"
+    },
+    "support_policy": "only an exit signal dated on or before effective_end may fill on execution_support; entries after effective_end are not filled"
+  },
+  "workers": 10,
+  "allowed_previous_pattern_a_stages": [
+    "EARLY_TREND",
+    "TRANSITION"
+  ],
+  "new_test_only_replay": true,
+  "frozen_control_test_rerun": false,
+  "fast_core_v2_rerun": false,
+  "source_sha256": {
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p3_1/metadata.json": "96441f454e3113c41f8f1abb2bb2bff83336a84bef772b5a1fc13d406fe32760",
+    "artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01/p3_1/summary.json": "9dd1446a2a53177239d185da09318246a53e6282f9cadc0c1aa09b41090f8fac",
+    "artifacts/backtests/p3_1_neg40_weak_protect_v01/run_20260925_worker10_replay_v01/summary.json": "6d2757f521130f2455b1489361bab3c40f224b8025458be2d45d040dd990b156"
+  },
+  "code_sha256": {
+    "scripts/run_pattern_b_progressed_previous_stage_early_transition_only_5window_v01.py": "1de6bff08463198402737577af00ddcd01212f392d34cf587b3626da5b9eba0a",
+    "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058"
+  },
+  "generated_files": {
+    "summary.json": {
+      "sha256": "aabffac42e2968147329dc06bb5a83f24d2d2d1447c299d0967476721296cbf2",
+      "bytes": 16985
+    },
+    "previous_stage_audit.csv": {
+      "sha256": "ddf868fbf475bbd8f966951c3b730bde1ab50fefeb5a2f9317d16502877e0105",
+      "bytes": 71694
+    },
+    "report.md": {
+      "sha256": "700f20ad53c760e7ab1d5e88302faa79c09ecb9c39ee19b9db8d2c0022da22f3",
+      "bytes": 1942
+    },
+    "posthoc_trade_set_comparison.csv": {
+      "sha256": "9c4b982809d8813a0c6c8d0ba1fcd58dab508f3d01924495df387801ae2b861f",
+      "bytes": 71856
+    },
+    "test_trade_ledger.csv": {
+      "sha256": "ca2df3a4cd29799dd6d05c0ab1c6ef3f7c0628d5bf494cb8e9b7a8abe2321612",
+      "bytes": 135505
+    },
+    "lifecycle_spot_checks.csv": {
+      "sha256": "7a65633548d91af879c470d6f3b9cfe8b676f2c2d581d37d3145bb04191cba47",
+      "bytes": 5550
+    },
+    "test_open_positions.csv": {
+      "sha256": "8e77cdf9ca63b1bb9996f840c8b6bc46f98acd73573bb7b4f8697fe5e495306b",
+      "bytes": 28716
+    }
+  }
+}
