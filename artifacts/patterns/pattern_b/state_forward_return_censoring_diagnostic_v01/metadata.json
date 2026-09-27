@@ -1,0 +1,151 @@
+{
+  "diagnostic": "KRX Pattern B Horizon Outcome Censoring Diagnostic V01",
+  "verdict": "PATTERN_B_FORWARD_CENSORING_DIAGNOSTIC_CAUTION",
+  "prior_forward_study_verdict": "PATTERN_B_FORWARD_SIGNAL_MIXED",
+  "prior_interpretation": "기존 해석에 censoring caution 필요",
+  "exploratory_strategy_backtest_next_step_allowed": true,
+  "confirmatory_strategy_claim_supported": false,
+  "strategy_backtest_readiness_text": "탐색적 백테스트 단계로는 넘어갈 수 있다. 다만 표본 기간·진입/청산·거래 비용·성숙 표본 및 terminal/endpoint missing 처리를 사전 고정해야 한다. 이번 기술통계만으로 전략 우위가 확인된 것은 아니다.",
+  "baseline_head_at_start": "272016f6dca62e32af66c67bdfb9f072d8de8bbf",
+  "baseline_origin_main_at_start": "272016f6dca62e32af66c67bdfb9f072d8de8bbf",
+  "source_directory": "artifacts/patterns/pattern_b/state_forward_return_v01",
+  "source_sample_rows": 290008,
+  "source_outcome_rows": 1033473,
+  "source_sample_unique_keys": 290008,
+  "source_outcome_unique_keys": 1033473,
+  "source_panel_a_snapshots": 290008,
+  "source_panel_b_snapshots": 31862,
+  "source_horizon_outcome_counts": {
+    "3M": 279380,
+    "6M": 271593,
+    "12M": 256436,
+    "24M": 226064
+  },
+  "panel_definitions": {
+    "PANEL_A_ALL": "ALL PIT Eligible",
+    "PANEL_B_PIT_1T_PLUS": "Exact snapshot PIT market cap >= 1T KRW"
+  },
+  "state_definitions": [
+    "DEEP_DEPRESSED",
+    "DEPRESSED",
+    "NORMAL",
+    "OVERHEATED",
+    "EXTREME_OVERHEATED"
+  ],
+  "horizons_sessions": {
+    "3M": 63,
+    "6M": 126,
+    "12M": 252,
+    "24M": 504
+  },
+  "frontier": "2026-09-21",
+  "pit_authority_content_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
+  "calendar_authority_content_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+  "classification": {
+    "COMPLETED": "matching exact existing sample/horizon row in forward_outcomes.csv.gz",
+    "FRONTIER_INCOMPLETE": "exact requested session offset is beyond the authoritative calendar/data frontier",
+    "TERMINAL_IDENTITY": "no continuous same-ISU COMMON history_chain from snapshot interval through endpoint, based on existing PIT authority",
+    "ENDPOINT_PRICE_MISSING": "identity chain is continuous to endpoint but exact outcome row is absent",
+    "OTHER_MISSING": "remaining unclassified missing outcome; zero expected and checked against source metadata"
+  },
+  "rate_units": "percentage points (0-100 scale)",
+  "mature_denominator": "total_snapshot_n - frontier_incomplete_n",
+  "terminal_and_endpoint_missing_rate_denominator": "mature_sample_n",
+  "source_metadata_reconciliation": {
+    "3M": {
+      "expected_FRONTIER_INCOMPLETE": 6539,
+      "expected_TERMINAL_IDENTITY": 355,
+      "expected_ENDPOINT_PRICE_MISSING": 3734,
+      "observed_FRONTIER_INCOMPLETE": 6539,
+      "observed_TERMINAL_IDENTITY": 355,
+      "observed_ENDPOINT_PRICE_MISSING": 3734
+    },
+    "6M": {
+      "expected_FRONTIER_INCOMPLETE": 12947,
+      "expected_TERMINAL_IDENTITY": 745,
+      "expected_ENDPOINT_PRICE_MISSING": 4723,
+      "observed_FRONTIER_INCOMPLETE": 12947,
+      "observed_TERMINAL_IDENTITY": 745,
+      "observed_ENDPOINT_PRICE_MISSING": 4723
+    },
+    "12M": {
+      "expected_FRONTIER_INCOMPLETE": 25882,
+      "expected_TERMINAL_IDENTITY": 1633,
+      "expected_ENDPOINT_PRICE_MISSING": 6057,
+      "observed_FRONTIER_INCOMPLETE": 25882,
+      "observed_TERMINAL_IDENTITY": 1633,
+      "observed_ENDPOINT_PRICE_MISSING": 6057
+    },
+    "24M": {
+      "expected_FRONTIER_INCOMPLETE": 53215,
+      "expected_TERMINAL_IDENTITY": 3630,
+      "expected_ENDPOINT_PRICE_MISSING": 7099,
+      "observed_FRONTIER_INCOMPLETE": 53215,
+      "observed_TERMINAL_IDENTITY": 3630,
+      "observed_ENDPOINT_PRICE_MISSING": 7099
+    }
+  },
+  "status_missing_counts_panel_a": {
+    "3M": {
+      "COMPLETED": 279380,
+      "FRONTIER_INCOMPLETE": 6539,
+      "TERMINAL_IDENTITY": 355,
+      "ENDPOINT_PRICE_MISSING": 3734,
+      "OTHER_MISSING": 0
+    },
+    "6M": {
+      "COMPLETED": 271593,
+      "FRONTIER_INCOMPLETE": 12947,
+      "TERMINAL_IDENTITY": 745,
+      "ENDPOINT_PRICE_MISSING": 4723,
+      "OTHER_MISSING": 0
+    },
+    "12M": {
+      "COMPLETED": 256436,
+      "FRONTIER_INCOMPLETE": 25882,
+      "TERMINAL_IDENTITY": 1633,
+      "ENDPOINT_PRICE_MISSING": 6057,
+      "OTHER_MISSING": 0
+    },
+    "24M": {
+      "COMPLETED": 226064,
+      "FRONTIER_INCOMPLETE": 53215,
+      "TERMINAL_IDENTITY": 3630,
+      "ENDPOINT_PRICE_MISSING": 7099,
+      "OTHER_MISSING": 0
+    }
+  },
+  "panel_b_mature_completion_matches_source_outcome_counts": true,
+  "panel_b_membership_revalidated_from_exact_snapshot_cap": true,
+  "panel_a_repeated_depressed_vs_normal_censoring_pattern_12m_24m": true,
+  "terminal_identity_sample_horizon_rows": 6363,
+  "terminal_identity_spot_checks": 20,
+  "spot_check_seed": 20260927,
+  "spot_check_selection": "one sample per observed reason code, then seeded random fill to 20",
+  "spot_check_result": "PASS",
+  "outcome_or_price_replay_performed": false,
+  "existing_study_artifacts_modified": false,
+  "strategy_backtest_performed": false,
+  "source_study_metadata_outcome_ineligible_reasons": {
+    "24M:ENDPOINT_AFTER_FRONTIER": 53215,
+    "12M:ENDPOINT_AFTER_FRONTIER": 25882,
+    "6M:ENDPOINT_AFTER_FRONTIER": 12947,
+    "3M:ENDPOINT_AFTER_FRONTIER": 6539,
+    "24M:FUTURE_IDENTITY_NOT_CONTIGUOUS": 3630,
+    "12M:NO_EXACT_ENDPOINT_CLOSE": 6057,
+    "12M:FUTURE_IDENTITY_NOT_CONTIGUOUS": 1633,
+    "6M:NO_EXACT_ENDPOINT_CLOSE": 4723,
+    "6M:FUTURE_IDENTITY_NOT_CONTIGUOUS": 745,
+    "3M:NO_EXACT_ENDPOINT_CLOSE": 3734,
+    "3M:FUTURE_IDENTITY_NOT_CONTIGUOUS": 355,
+    "24M:NO_EXACT_ENDPOINT_CLOSE": 7099
+  },
+  "outputs": [
+    "completion_by_state.csv",
+    "state_comparisons.csv",
+    "terminal_identity_samples.csv",
+    "terminal_identity_spot_checks.csv",
+    "metadata.json",
+    "report.md"
+  ]
+}
