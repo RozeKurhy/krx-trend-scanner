@@ -139,11 +139,12 @@
 - **처리 방침**:
   - 현재 V02 전략에는 **추가적인 가격 Trailing Stop, Coverage Exit 3 확장, MFE Giveback Guard 등의 규칙을 일체 반영하지 않음**.
   - 25%~30%는 사후 관찰된 후보 범위(`PHASE1_OBSERVED_CANDIDATE_RANGE_ONLY`)일 뿐이며, 정식 전략 규칙이 아님.
-  - 해당 과제는 당시 별도 후속 연구 후보(`PROGRESSED_DOWNSIDE_PROTECTION_PHASE2`)로 보류했으며, 현재는 재개하지 않는다.
+  - 별도 후속 과제(`PROGRESSED_DOWNSIDE_PROTECTION_PHASE2`)로 보류했던 연구와 관련 Exit3 Coverage Extension은 realistic portfolio 검증까지 마쳤으며, 어떤 변경도 승격하지 않고 종료했다. 상세 판정은 [V2 개선 연구 종료 기록](../../research/v2_improvement_research_closure_20260927.md)에 있다.
 
 ## 연구 상태
 
 - **V2 전략 확정**: 완료 (`FAST_CORE_STRATEGY_RESEARCH_STATUS: CLOSED`)
+- **V2 개선 연구 전체**: 종료 (`A_FAST_CORE_V2_IMPROVEMENT_RESEARCH_CLOSED`)
 - **현재 기본 전략**: `PATTERN_A_FAST_FINAL_STRATEGY_V02`
 - **V2 vs Julia 최종 비교**: 완료 (`2021-01-01 ~ 2026-08-14`)
   - V2 realistic portfolio: Total Return `58.8579%`, CAGR `8.5917%`, MDD `-31.9277%`, trades `249`
@@ -151,5 +152,11 @@
   - 양쪽 결과: `PASS`, unresolved `0`, cash conservation `PASS`
 - **Julia 일반 종목 채택 여부**: `NOT ADOPTED / RETIRED AS GENERAL-STOCK OFFICIAL STRATEGY`
 - **Julia ETF 가능성**: ETF 전용 후보로만 보존하며 현재 `DEFERRED`; ETF 공식 전략으로 확정하지 않음
-- **V3/V4 및 추가 exit-rule 연구**: 현재 재개하지 않음
+- **V2.1 Candidate**: 비채택·종료 (`V2_1_PROMOTION_REJECTED_RESEARCH_CLOSED`)
+- **Exit4 threshold research**: T15 유지·종료 (`EXIT4_T15_KEEP_RESEARCH_CLOSED`)
+- **Exit3 Coverage Extension**: 비승격·종료 (`EXIT3_COVERAGE_EXTENSION_NOT_PROMOTED_RESEARCH_CLOSED`)
+- **EARLY_TREND-only**: 사용자 결정으로 미실행 종료 (`NOT_RUN_BY_DECISION`)
+- **V3/V4 후보**: 현재 기본 전략이 아닌 역사 기록으로 보존
 - **기존 V3 후보·하락 방어 연구 문서**: 역사적 기록으로 보존
+
+최종 연구 상태와 관련 산출물 색인은 [A FAST Core V2 개선 연구 종료 기록](../../research/v2_improvement_research_closure_20260927.md)을 따른다.

@@ -8,12 +8,16 @@
 
 - **현재 기본 전략**: V2 — `PATTERN_A_FAST_FINAL_STRATEGY_V02`
 - **V2 운영 상태**: 의사결정 지원 운영 — `PRODUCTION_DECISION_SUPPORT`
+- **V2 개선 연구 상태**: 종료 — `A_FAST_CORE_V2_IMPROVEMENT_RESEARCH_CLOSED`
 - **V1 역할**: 공식 과거 비교 기준선
 - **V3 역할**: 종료된 후보 전략 기록
 - **V4 역할**: 종료된 후보 전략 기록
 
-현재 추가 전략 연구는 진행하지 않는다. V3와 V4의 상세 규칙과 당시 판단은
-각 버전 문서에 역사 기록으로 보존한다.
+현재 추가 V2 미세조정 연구는 진행하지 않는다. V2.1 Candidate는 비채택·종료,
+Exit4 15pt는 유지·종료, Exit3 Coverage Extension은 비승격·종료했다. V3와 V4의
+상세 규칙과 당시 판단은 각 버전 문서에 역사 기록으로 보존한다. [V2 개선 연구
+종료 기록](../research/v2_improvement_research_closure_20260927.md)에 최종 근거와
+보존 산출물 색인이 있다.
 
 ## 버전 한눈에 보기
 
@@ -33,7 +37,8 @@
 
 ## 후보 검증 기록
 
-- [A FAST Core V2 + NEG40 / WEAK Protect 5-window synthesis V01](./FAST_CORE_V2_NEG40_WEAK_PROTECT_5_WINDOW_SYNTHESIS_V01.md): P1/P2-1/P2-2/P3-1/P3-2 비교 기록이며, 기본 전략 변경이나 V2.1 승격을 승인하지 않는다.
+- [A FAST Core V2 + NEG40 / WEAK Protect 5-window synthesis V01](./FAST_CORE_V2_NEG40_WEAK_PROTECT_5_WINDOW_SYNTHESIS_V01.md): P1/P2-1/P2-2/P3-1/P3-2의 당시 비교 기록이다. 후속 realistic portfolio 검증을 포함한 최종 상태는 [V2 개선 연구 종료 기록](../research/v2_improvement_research_closure_20260927.md)을 따른다.
+- [A FAST Core V2 개선 연구 종료 기록](../research/v2_improvement_research_closure_20260927.md): V2.1 Candidate, Exit4 threshold, Exit3 Coverage Extension, EARLY_TREND-only의 최종 결정을 정리한다.
 
 ## 공통 절차
 

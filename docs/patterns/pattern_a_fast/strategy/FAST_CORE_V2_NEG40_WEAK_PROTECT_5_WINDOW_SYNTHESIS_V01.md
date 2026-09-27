@@ -2,6 +2,8 @@
 
 작성일: 2026-09-26 KST
 
+> **최종 상태 갱신 (2026-09-27)**: 이 문서는 5-window synthesis 당시의 판단과 근거를 보존한다. 후속 realistic portfolio 검증을 포함한 V2.1 최종 판정은 [A FAST Core V2 개선 연구 종료 기록](../research/v2_improvement_research_closure_20260927.md)을 따른다. V2.1은 승격하지 않고 연구를 종료했다.
+
 ## Executive verdict
 
 Across the five available windows, Candidate consistently lowers the most severe `<= -50%` and `<= -60%` terminal-return tails. It does **not** consistently improve the entire loss distribution: `<= -30%` and `<= -40%` counts rise in every window. Mean terminal return is positive versus CONTROL in P2-1, P3-1, and P3-2, but lower in P2-2 and materially lower in the long P1 window. The `>= +100%` winner count is unchanged in P2-1, P2-2, P3-1, and P3-2, but falls by five in P1.
@@ -70,4 +72,4 @@ The five windows overlap, so these counts and deltas are a consistency check acr
 
 ## Last portfolio-level validation
 
-The next authorized portfolio backtest should evaluate the exact frozen candidate and threshold without adding windows or changing the strategy. It should validate transaction costs and slippage, position sizing and concurrent holdings, turnover/capacity, portfolio drawdown and tail-risk measures, and whether the trade-level left-tail reductions survive portfolio aggregation. This synthesis does not execute that backtest, begin new strategy research, or decide `A FAST Core V2.1` promotion.
+At the time of this synthesis, one realistic portfolio backtest remained necessary to assess whether the trade-level tail changes survived account-level execution. The subsequent realistic portfolio validation is recorded in the V2 improvement closure document linked above. No further V2.1 validation or promotion is planned.

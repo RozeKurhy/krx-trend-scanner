@@ -20,6 +20,7 @@ Pattern A FAST는 Pattern A보다 상승 전환을 빠르게 탐지하기 위한
 | 사용 목적 | 투자 의사결정 지원 |
 | 현재 운영 상태 | 의사결정 지원 운영 (`PRODUCTION_DECISION_SUPPORT`) |
 | 자동매매 | 승인하지 않음 (`NOT_APPROVED`) |
+| V2 개선 연구 | 종료 (`A_FAST_CORE_V2_IMPROVEMENT_RESEARCH_CLOSED`) |
 | V1 | 공식 과거 비교 기준선 |
 | V2 | 현재 공식 기본 전략 |
 | V3 | 종료된 후보 전략 기록 |
@@ -27,6 +28,8 @@ Pattern A FAST는 Pattern A보다 상승 전환을 빠르게 탐지하기 위한
 
 현실적 비교 검증과 V2·Julia 공식 비교는 완료되었으며, 일반 종목의 현재
 기본 전략은 V2를 유지한다. Julia는 일반 종목 공식 전략으로 채택하지 않는다.
+V2.1 Candidate, Exit4 threshold, Exit3 Coverage Extension을 포함한 V2 개선 연구는
+[종료 기록](research/v2_improvement_research_closure_20260927.md)에 따라 마감되었다.
 
 ## 문서 구조
 
@@ -34,6 +37,7 @@ Pattern A FAST는 Pattern A보다 상승 전환을 빠르게 탐지하기 위한
 |---|---|---|
 | 패턴 정의·생애주기 | [spec/](spec/) | Pattern A FAST가 무엇을 의미하고 어떻게 상태가 바뀌는지 |
 | 전략 | [strategy/](strategy/) | V1~V4의 규칙과 현재·과거 역할 안내 |
+| V2 개선 연구 종료 | [research/v2_improvement_research_closure_20260927.md](research/v2_improvement_research_closure_20260927.md) | V2.1·Exit4·Exit3 연구의 최종 판정과 보존 산출물 색인 |
 | 연구 | [archive/research/](archive/research/) | 기능, 시간 프레임, Pattern A 비교 등 역사적 연구 기록 |
 | 검증 계획 | [archive/validation_plan/](archive/validation_plan/) | 검증 전에 작성한 계획과 종료된 비교 계획 기록 |
 | 검증 결과 | [archive/validation/](archive/validation/) | 실제 수행한 사람 검토와 평가 결과 |
@@ -46,6 +50,7 @@ Pattern A FAST는 Pattern A보다 상승 전환을 빠르게 탐지하기 위한
 - [전략 안내](strategy/README.md)
 - [A FAST Core V1 — 역사적 기준선](archive/strategy/version_01/README.md)
 - [A FAST Core V2 — 현재 기본 전략](strategy/version_02/README.md)
+- [A FAST Core V2 개선 연구 종료 기록](research/v2_improvement_research_closure_20260927.md)
 - [A FAST Core V3 — 종료된 후보 기록](archive/strategy/version_03/README.md)
 - [A FAST Core V4 — 종료된 후보 기록](archive/strategy/version_04/README.md)
 - [NEG40 / WEAK Protect P2-2 최종 연구 마감](archive/research/neg40_weak_protect_p2_2_closeout_v01.md)
