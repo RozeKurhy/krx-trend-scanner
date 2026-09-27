@@ -1,0 +1,133 @@
+{
+  "study": "KRX Pattern B State Forward Return Study V01",
+  "started_from_head": "78aa728a7116ad18e7f74744f30efde745f05521",
+  "pit_authority_frontier": "2026-09-21",
+  "pit_authority_content_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
+  "calendar_frontier": "2026-09-21",
+  "calendar_content_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+  "first_trading_date": "2010-01-04",
+  "last_trading_date": "2026-09-21",
+  "snapshot_months": 200,
+  "snapshot_start": "2010-01-29",
+  "snapshot_end": "2026-08-31",
+  "snapshot_rule": "last exchange trading date of each fully closed calendar month; frontier month excluded",
+  "feature_contract": "Pattern B Feature Contract V01; adjusted OHLC through snapshot only; MonthEnd and W-FRI completed bars",
+  "state_rule": "Pattern B State Rule V02; unchanged authoritative classifier",
+  "interval_count_all": 3208,
+  "interval_count_common": 3208,
+  "eligible_identity_keys": 3131,
+  "permanent_excluded_identity_count": 43,
+  "permanent_excluded_snapshot_identity_months": 6556,
+  "common_identity_month_cells_before_price_state_eligibility": 410529,
+  "panel_a_snapshot_count": 290008,
+  "panel_a_unique_identity_count": 2597,
+  "exact_pit_market_cap_count": 290008,
+  "missing_or_invalid_exact_pit_market_cap_count": 0,
+  "panel_b_snapshot_count": 31862,
+  "panel_b_threshold_krw": 1000000000000,
+  "horizons": {
+    "3M": 63,
+    "6M": 126,
+    "12M": 252,
+    "24M": 504
+  },
+  "horizon_counts": {
+    "3M": {
+      "n": 279380,
+      "snapshot_start": "2013-01-31",
+      "snapshot_end": "2026-05-29",
+      "endpoint_start": "2013-05-03",
+      "endpoint_end": "2026-08-31",
+      "distinct_snapshot_dates": 161,
+      "panel_b_n": 30765
+    },
+    "6M": {
+      "n": 271593,
+      "snapshot_start": "2013-01-31",
+      "snapshot_end": "2026-02-27",
+      "endpoint_start": "2013-08-02",
+      "endpoint_end": "2026-09-02",
+      "distinct_snapshot_dates": 158,
+      "panel_b_n": 29777
+    },
+    "12M": {
+      "n": 256436,
+      "snapshot_start": "2013-01-31",
+      "snapshot_end": "2025-08-29",
+      "endpoint_start": "2014-02-11",
+      "endpoint_end": "2026-09-11",
+      "distinct_snapshot_dates": 152,
+      "panel_b_n": 27917
+    },
+    "24M": {
+      "n": 226064,
+      "snapshot_start": "2013-01-31",
+      "snapshot_end": "2024-07-31",
+      "endpoint_start": "2015-02-23",
+      "endpoint_end": "2026-08-31",
+      "distinct_snapshot_dates": 139,
+      "panel_b_n": 24675
+    }
+  },
+  "feature_unavailable_reasons": {
+    "36M_RANGE_POSITION:INSUFFICIENT_BARS|MONTHLY_MA24_DISTANCE:INSUFFICIENT_BARS|52W_RANGE_POSITION:INSUFFICIENT_BARS": 34975,
+    "36M_RANGE_POSITION:INSUFFICIENT_BARS|MONTHLY_MA24_DISTANCE:INSUFFICIENT_BARS": 32820,
+    "36M_RANGE_POSITION:INSUFFICIENT_BARS": 31411
+  },
+  "segment_unavailable_reasons": {
+    "DATA_UNAVAILABLE: ADJUSTED_MISSING": 17,
+    "CHAIN_DATA_UNAVAILABLE": 206,
+    "REPOSITORY_V2_TRADING_SESSION_MISMATCH": 1
+  },
+  "outcome_ineligible_reasons": {
+    "24M:ENDPOINT_AFTER_FRONTIER": 53215,
+    "12M:ENDPOINT_AFTER_FRONTIER": 25882,
+    "6M:ENDPOINT_AFTER_FRONTIER": 12947,
+    "3M:ENDPOINT_AFTER_FRONTIER": 6539,
+    "24M:FUTURE_IDENTITY_NOT_CONTIGUOUS": 3630,
+    "12M:NO_EXACT_ENDPOINT_CLOSE": 6057,
+    "12M:FUTURE_IDENTITY_NOT_CONTIGUOUS": 1633,
+    "6M:NO_EXACT_ENDPOINT_CLOSE": 4723,
+    "6M:FUTURE_IDENTITY_NOT_CONTIGUOUS": 745,
+    "3M:NO_EXACT_ENDPOINT_CLOSE": 3734,
+    "3M:FUTURE_IDENTITY_NOT_CONTIGUOUS": 355,
+    "24M:NO_EXACT_ENDPOINT_CLOSE": 7099
+  },
+  "snapshot_without_exact_adjusted_close_count": 14553,
+  "lookahead_spot_checks": 20,
+  "pit_market_cap_spot_checks": 20,
+  "random_seed": 20260927,
+  "raw_repository_reader_stats": {
+    "partition_files_opened": 11354,
+    "partition_cache_hits": 0,
+    "ticker_frame_cache_hits": 6353,
+    "ticker_position_index_hits": 6353,
+    "manifest_rows_scanned": 12040,
+    "index_lookups": 6353,
+    "ticker_rows_returned": 16680131,
+    "full_store_scans": 1,
+    "full_store_scans_per_ticker": 0,
+    "index_memory_bytes": 1294132986,
+    "build_total_seconds": 125.31343095796183,
+    "manifest_list_seconds": 0.026580417063087225,
+    "partition_load_seconds": 119.68405048362911,
+    "partition_compact_seconds": 3.802478465717286,
+    "ticker_location_index_seconds": 0.0189285920932889,
+    "location_sort_seconds": 0.0,
+    "global_frame_materialize_seconds": 1.244073917157948,
+    "ticker_position_index_seconds": 0.5242095421999693
+  },
+  "elapsed_seconds": 724.27,
+  "artifacts": [
+    "snapshot_samples.csv.gz",
+    "forward_outcomes.csv.gz",
+    "summary_by_state.csv",
+    "summary_by_group.csv",
+    "permanent_identity_exclusions.csv",
+    "segment_data_issues.csv",
+    "lookahead_spot_checks.csv",
+    "pit_market_cap_spot_checks.csv",
+    "survivorship_spot_checks.csv"
+  ],
+  "survivorship_spot_checks": 20
+}
