@@ -39,6 +39,31 @@ P2-1/P2-2와 P3-1/P3-2는 기간 종료일이 다른 창이야. 아래에서는 
 
 previous Stage 분포는 새 gate 적용 전 현재 Pattern A Stage가 PROGRESSED인 후보 전체 기준이야. Exact/unresolved open은 effective_end cutoff valuation 기준이야.
 
+보유기간은 CONTROL/FROZEN_TEST/POSTHOC/NEW_TEST 모두 각 scenario의 전체 filled ledger(realized + cutoff-open) 기준이야.
+
+| Window | Scenario | Filled | Mean holding sessions | Median holding sessions |
+|---|---|---:|---:|---:|
+| P1 | CONTROL | 798 | 188.24 | 44.0 |
+| P1 | FROZEN_TEST | 694 | 177.97 | 43.0 |
+| P1 | POSTHOC_EARLY_TRANSITION | 582 | 168.83 | 43.0 |
+| P1 | NEW_TEST | 582 | 168.83 | 43.0 |
+| P2-1 | CONTROL | 329 | 175.11 | 60.0 |
+| P2-1 | FROZEN_TEST | 284 | 168.55 | 44.0 |
+| P2-1 | POSTHOC_EARLY_TRANSITION | 246 | 167.94 | 44.0 |
+| P2-1 | NEW_TEST | 246 | 167.94 | 44.0 |
+| P2-2 | CONTROL | 453 | 169.54 | 43.0 |
+| P2-2 | FROZEN_TEST | 403 | 158.61 | 43.0 |
+| P2-2 | POSTHOC_EARLY_TRANSITION | 353 | 155.43 | 43.0 |
+| P2-2 | NEW_TEST | 353 | 155.43 | 43.0 |
+| P3-1 | CONTROL | 279 | 173.58 | 62.0 |
+| P3-1 | FROZEN_TEST | 236 | 168.17 | 62.0 |
+| P3-1 | POSTHOC_EARLY_TRANSITION | 203 | 168.77 | 61.0 |
+| P3-1 | NEW_TEST | 203 | 168.77 | 61.0 |
+| P3-2 | CONTROL | 403 | 165.11 | 43.0 |
+| P3-2 | FROZEN_TEST | 355 | 154.03 | 43.0 |
+| P3-2 | POSTHOC_EARLY_TRANSITION | 310 | 150.89 | 43.0 |
+| P3-2 | NEW_TEST | 310 | 150.89 | 43.0 |
+
 | Window | Allowed signals | Filled | Realized / open | Exact open / unresolved | Mean / median holding sessions | Mean MFE / MAE | DEEP count / filled rate | Previous-stage distribution |
 |---|---:|---:|---:|---:|---:|---:|---:|---|
 | P1 | 584 | 582 | 521 / 61 | 52 / 9 | 168.8 / 43.0 | 35.13% / -22.51% | 106 / 18.21% | BASE 42, EARLY_TREND 285, TRANSITION 299, UNAVAILABLE 70, WEAK 107 |

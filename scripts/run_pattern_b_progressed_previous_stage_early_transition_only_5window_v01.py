@@ -95,8 +95,11 @@ def _trade_metrics(trades: list[dict[str, Any]]) -> dict[str, Any]:
         "filled_count": len(trades),
         "realized_count": len(realized),
         "open_count": len(opened),
-        "mean_holding_sessions": _stats([row.get("holding_krx_sessions") for row in realized])["mean_pct"],
-        "median_holding_sessions": _stats([row.get("holding_krx_sessions") for row in realized])["median_pct"],
+        # Holding duration describes every filled position, including open positions
+        # marked at the effective cutoff, so keep its denominator consistent across
+        # CONTROL, FROZEN_TEST, POSTHOC, and NEW_TEST.
+        "mean_holding_sessions": _stats([row.get("holding_krx_sessions") for row in trades])["mean_pct"],
+        "median_holding_sessions": _stats([row.get("holding_krx_sessions") for row in trades])["median_pct"],
         "mean_mfe_pct": _stats([row.get("mfe_pct") for row in trades])["mean_pct"],
         "median_mfe_pct": _stats([row.get("mfe_pct") for row in trades])["median_pct"],
         "mean_mae_pct": _stats([row.get("mae_pct") for row in trades])["mean_pct"],
@@ -200,7 +203,7 @@ def _load_fast_refs(data_root: Path) -> dict[str, dict[str, Any]]:
             "open_at_cutoff_count": int(control.get("open_at_cutoff_count", 0)),
             "tail_counts": control.get("tail_counts", {}),
             "winner_counts": control.get("winner_counts", {}),
-            "terminal_contract_note": "저장된 공식 V2.1 control 요약. 별도 lifecycle/settlement 포함 terminal이며 Pattern B와 표본 및 terminal 계약이 달라 비대응 참고값.",
+            "terminal_contract_note": "저장된 공식 Pattern A FAST 전략 PATTERN_A_FAST_FINAL_STRATEGY_V02 (A FAST Core V2) 요약. 별도 lifecycle/settlement 포함 terminal이며 Pattern B와 표본 및 terminal 계약이 달라 비대응 참고값.",
             "v2_rerun": False,
         }
     return resolved
@@ -571,6 +574,21 @@ def _root_report(
         "## 거래 수·보유기간·DEEP·previous Stage 분포",
         "",
         "previous Stage 분포는 새 gate 적용 전 현재 Pattern A Stage가 PROGRESSED인 후보 전체 기준이야. Exact/unresolved open은 effective_end cutoff valuation 기준이야.",
+        "",
+        "보유기간은 CONTROL/FROZEN_TEST/POSTHOC/NEW_TEST 모두 각 scenario의 전체 filled ledger(realized + cutoff-open) 기준이야.",
+        "",
+        "| Window | Scenario | Filled | Mean holding sessions | Median holding sessions |",
+        "|---|---|---:|---:|---:|",
+    ]
+    for window_id in WINDOW_IDS:
+        saved = per_window[window_id]
+        for scenario in ("CONTROL", "FROZEN_TEST", "POSTHOC_EARLY_TRANSITION", "NEW_TEST"):
+            metric = saved["scenario_metrics"][scenario]
+            lines.append(
+                f"| {window_id} | {scenario} | {metric['filled_count']} | "
+                f"{_fmt(metric['mean_holding_sessions'], '', 2)} | {_fmt(metric['median_holding_sessions'], '', 1)} |"
+            )
+    lines += [
         "",
         "| Window | Allowed signals | Filled | Realized / open | Exact open / unresolved | Mean / median holding sessions | Mean MFE / MAE | DEEP count / filled rate | Previous-stage distribution |",
         "|---|---:|---:|---:|---:|---:|---:|---:|---|",
@@ -1148,6 +1166,18 @@ def finalize_saved_results(data_root: Path = ROOT) -> dict[str, Any]:
     fast_frame = pd.read_csv(root / "fast_core_v2_terminal_reference.csv")
     if len(synthesis) != 5 or len(terminals) != 5 or len(fast_frame) != 5:
         raise RuntimeError("saved aggregate CSV row counts are not exactly five windows")
+    fast_csv_path = root / "fast_core_v2_terminal_reference.csv"
+    fast_csv_text = fast_csv_path.read_text(encoding="utf-8")
+    old_fast_note = "저장된 공식 V2.1 control 요약. 별도 lifecycle/settlement 포함 terminal이며 Pattern B와 표본 및 terminal 계약이 달라 비대응 참고값."
+    new_fast_note = next(iter(fast_refs.values()))["terminal_contract_note"]
+    old_note_count = fast_csv_text.count(old_fast_note)
+    if old_note_count not in (0, len(WINDOW_IDS)):
+        raise RuntimeError(f"saved FAST reference has an unexpected legacy note count: {old_note_count}")
+    if old_note_count:
+        fast_csv_path.write_text(fast_csv_text.replace(old_fast_note, new_fast_note), encoding="utf-8")
+    fast_frame["terminal_contract_note"] = fast_frame["window"].astype(str).map(
+        {window_id: reference["terminal_contract_note"] for window_id, reference in fast_refs.items()}
+    )
     aliases = {
         "new_minus_posthoc_mean_pp": "new_minus_posthoc_mean_pct_pp",
         "new_minus_posthoc_positive_rate_pp": "new_minus_posthoc_positive_rate_pct_pp",
@@ -1161,6 +1191,18 @@ def finalize_saved_results(data_root: Path = ROOT) -> dict[str, Any]:
         if actual not in synthesis:
             raise RuntimeError(f"saved aggregate table lacks {actual}")
         synthesis[expected] = synthesis[actual]
+    # Preserve realized-return fields from the saved aggregate, but re-source all
+    # holding summaries from the corrected all-filled per-window scenario metrics.
+    for window_id, saved in window_results.items():
+        row_index = synthesis.index[synthesis["window"].astype(str).eq(window_id)]
+        if len(row_index) != 1:
+            raise RuntimeError(f"saved aggregate must contain one row for {window_id}")
+        index = row_index[0]
+        for scenario in ("CONTROL", "FROZEN_TEST", "POSTHOC_EARLY_TRANSITION", "NEW_TEST"):
+            metric = saved["scenario_metrics"][scenario]
+            prefix = scenario.lower()
+            synthesis.at[index, f"{prefix}_mean_holding_sessions"] = metric["mean_holding_sessions"]
+            synthesis.at[index, f"{prefix}_median_holding_sessions"] = metric["median_holding_sessions"]
     synthesis["new_minus_frozen_test_le_30_count"] = synthesis["new_test_le_30_count"] - synthesis["frozen_test_le_30_count"]
     synthesis.to_csv(root / "five_window_synthesis.csv", index=False, encoding="utf-8")
     verdict_input = [

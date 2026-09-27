@@ -36,6 +36,10 @@ Pattern B의 "싸다"는 기업가치 대비가 아니라 자기 과거 가격 �
 과정과 봉인 자료, 이전 운영 계약·감사는 `validation/`과 `spec/`에 연구 기록으로 보존한다. 당시
 문서의 상태 표현은 현재 상태가 아니며, 현재 공식 기준은 위 문서 목록을 따른다.
 
+### 관련 전략 연구 상태
+
+- Pattern B PROGRESSED / previous EARLY_TREND 또는 TRANSITION 후보 V1은 무결성 인증은 통과했지만, 현재 trade-level 자료에 포트폴리오 MDD·회전율 및 P1 전 기간 세후 비용 근거가 부족해 공식 전략 채택을 보류(`HOLD`)한다. 규칙과 저장 결과는 [후보 규칙 문서](strategy/PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01.md) 및 [공식 검토 결과](../../../artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_official_validation_v01/report.md)에 보존한다. 이 상태는 Pattern B 패턴의 공식 상태와 별개다.
+
 ## 관련 문서
 
 - [패턴 안내](../README.md)
