@@ -1,0 +1,426 @@
+{
+  "study_id": "PATTERN_B_PATTERN_A_ENTRY_FILTER_SIMPLE_V01",
+  "created_at_kst_date": "2026-09-27",
+  "starting_git": {
+    "head_expected": "fc2ac17df3b28b89e23b2b2764b3b5da139a1900",
+    "baseline_control_commit": "5dcfe79f40800ed8ac17558bad6dc600a91fd653"
+  },
+  "signal_period": {
+    "start": "2013-01-31",
+    "end": "2026-08-31"
+  },
+  "evaluation_cutoff": "2026-09-21",
+  "pattern_b_state_observation_frontier": "2026-08-31",
+  "universe": "ALL PIT Eligible COMMON; approved permanent identity exclusions; no future delisting filter; no market-cap filter",
+  "strategies": {
+    "CONTROL": "fixed existing Pattern B Pure Simple V01 all raw DEPRESSED transitions",
+    "TRANSITION": "independent Pattern B state machine; exact entry-date Pattern A TRANSITION only",
+    "PROGRESSED": "independent Pattern B state machine; exact entry-date Pattern A PROGRESSED only"
+  },
+  "trade_rules": {
+    "entry": "NOT DEPRESSED -> DEPRESSED; first later legal adjusted daily open",
+    "exit": "first subsequent NORMAL; first later legal adjusted daily open",
+    "deep_depressed": "continue holding",
+    "one_live_position_per_isu": true,
+    "while_holding_entry_signals": "suppressed",
+    "stops_or_maximum_holding_period": false
+  },
+  "workers": 10,
+  "permanent_exclusion_count": 43,
+  "stage_source": {
+    "artifact_directory": "artifacts/patterns/pattern_b/depressed_entry_pattern_a_state_v01",
+    "linkage_sha256": "d4d898ab41246c023c84f82868ef47d95a42024c2acc3bc60eadbaede2ddc02b",
+    "metadata_sha256": "7801f64a55bcc2516454ff784fea187e60876373958dca6381238afc46c3e52c",
+    "source_worker_count": 10,
+    "pattern_a_authority": {
+      "official_contract": "docs/patterns/pattern_a/spec/production_authority.md",
+      "classifier": "trend_scanner.patterns.pattern_a_stage.classify_pattern_a_stage",
+      "snapshot_builder": "trend_scanner.validation.historical_snapshot.build_historical_snapshot",
+      "stage_enum_states": [
+        "WEAK",
+        "BASE",
+        "TRANSITION",
+        "EARLY_TREND",
+        "PROGRESSED"
+      ],
+      "snapshot_policy": "include_incomplete_periods=False; daily input clipped by snapshot_date in builder; official rolling merged KRX calendar"
+    },
+    "input_sha256": {
+      "artifacts/patterns/pattern_b/state_forward_return_v01/snapshot_samples.csv.gz": "b8c9c5999ad920c23c57174dd73d9530d86517b19aa9d6f3a356e0decafcf2e5",
+      "data/market/rolling_authority/merged_pit_intervals.json": "ff783168c56a4772a681e34b97b17d8855f28d1c13df25094bd65cedbc80cd26",
+      "data/market/rolling_authority/merged_trading_calendar.json": "c9af2e5bd71ec387c73752eb4955c0d76f23e38cf30db71b49b01c04fe8538b8",
+      "artifacts/patterns/pattern_b/pure_strategy_simple_v01/summary.json": "d0e1246176cbce801bb8c1c680304ec76fb6c11d0db5cfe86dc2bde48e720232",
+      "artifacts/patterns/pattern_b/pure_strategy_simple_v01/metadata.json": "478643b1798d928d511a012ac8b73194688f02989b80a2d89bbb7daeb0ce217f",
+      "artifacts/patterns/pattern_b/pure_strategy_simple_v01/entry_signal_ledger.csv": "34bd049eb3a052423f03218e4af96ec329ccbe899d323a5a5bb11770beac871e",
+      "artifacts/patterns/pattern_b/pure_strategy_simple_v01/trade_ledger.csv": "0bc676c72bd242b0174ca6c00da41968ddfe0644d61a621ef929493d3114c04a"
+    }
+  },
+  "control_lineage": {
+    "artifact_directory": "artifacts/patterns/pattern_b/pure_strategy_simple_v01",
+    "baseline_commit": "5dcfe79f40800ed8ac17558bad6dc600a91fd653",
+    "control_source_sample_sha256": "b8c9c5999ad920c23c57174dd73d9530d86517b19aa9d6f3a356e0decafcf2e5",
+    "control_trade_ledger_sha256": "0bc676c72bd242b0174ca6c00da41968ddfe0644d61a621ef929493d3114c04a",
+    "control_entry_signal_ledger_sha256": "34bd049eb3a052423f03218e4af96ec329ccbe899d323a5a5bb11770beac871e",
+    "control_summary_sha256": "d0e1246176cbce801bb8c1c680304ec76fb6c11d0db5cfe86dc2bde48e720232",
+    "control_metadata_sha256": "478643b1798d928d511a012ac8b73194688f02989b80a2d89bbb7daeb0ce217f",
+    "control_committed_blob_sha256": {
+      "trade_ledger.csv": "0bc676c72bd242b0174ca6c00da41968ddfe0644d61a621ef929493d3114c04a",
+      "entry_signal_ledger.csv": "34bd049eb3a052423f03218e4af96ec329ccbe899d323a5a5bb11770beac871e",
+      "summary.json": "d0e1246176cbce801bb8c1c680304ec76fb6c11d0db5cfe86dc2bde48e720232",
+      "metadata.json": "478643b1798d928d511a012ac8b73194688f02989b80a2d89bbb7daeb0ce217f"
+    },
+    "control_was_replayed": false,
+    "control_reconciliation": "version-controlled V01 ledger retained verbatim; row counts, status counts, source hash, and gross summary metrics verified",
+    "monthly_sample_rows": 290008
+  },
+  "authority_provenance": {
+    "pit_frontier": "2026-09-21",
+    "pit_content_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
+    "calendar_frontier": "2026-09-21",
+    "calendar_content_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+    "interval_count": 3208,
+    "common_interval_count": 3208,
+    "first_trading_date": "2010-01-04",
+    "last_trading_date": "2026-09-21",
+    "pit_sha256": "ff783168c56a4772a681e34b97b17d8855f28d1c13df25094bd65cedbc80cd26",
+    "calendar_sha256": "c9af2e5bd71ec387c73752eb4955c0d76f23e38cf30db71b49b01c04fe8538b8"
+  },
+  "source_sha256": {
+    "artifacts/patterns/pattern_b/state_forward_return_v01/snapshot_samples.csv.gz": "b8c9c5999ad920c23c57174dd73d9530d86517b19aa9d6f3a356e0decafcf2e5",
+    "data/market/rolling_authority/merged_pit_intervals.json": "ff783168c56a4772a681e34b97b17d8855f28d1c13df25094bd65cedbc80cd26",
+    "data/market/rolling_authority/merged_trading_calendar.json": "c9af2e5bd71ec387c73752eb4955c0d76f23e38cf30db71b49b01c04fe8538b8",
+    "artifacts/patterns/pattern_b/pure_strategy_simple_v01/trade_ledger.csv": "0bc676c72bd242b0174ca6c00da41968ddfe0644d61a621ef929493d3114c04a",
+    "artifacts/patterns/pattern_b/pure_strategy_simple_v01/entry_signal_ledger.csv": "34bd049eb3a052423f03218e4af96ec329ccbe899d323a5a5bb11770beac871e"
+  },
+  "trade_cost_contract": {
+    "buy_commission_rate": 0.00015,
+    "sell_commission_rate": 0.00015,
+    "buy_slippage_rate": 0.001,
+    "sell_slippage_rate": 0.001,
+    "sell_tax_schedule": [
+      {
+        "start": "2021-01-01",
+        "end": "2022-12-31",
+        "KOSPI": 0.0023,
+        "KOSDAQ": 0.0023
+      },
+      {
+        "start": "2023-01-01",
+        "end": "2023-12-31",
+        "KOSPI": 0.002,
+        "KOSDAQ": 0.002
+      },
+      {
+        "start": "2024-01-01",
+        "end": "2024-12-31",
+        "KOSPI": 0.0018,
+        "KOSDAQ": 0.0018
+      },
+      {
+        "start": "2025-01-01",
+        "end": "2025-12-31",
+        "KOSPI": 0.0015,
+        "KOSDAQ": 0.0015
+      },
+      {
+        "start": "2026-01-01",
+        "end": null,
+        "KOSPI": 0.002,
+        "KOSDAQ": 0.002
+      }
+    ],
+    "tax_complete_from": "2021-01-01",
+    "full_period_primary_metric": "gross",
+    "net_metric_scope": "closed trades with a documented exit-date market sell-tax schedule"
+  },
+  "raw_transition_signal_count": 20076,
+  "pattern_a_stage_counts": {
+    "BASE": 2063,
+    "EARLY_TREND": 3,
+    "PROGRESSED": 835,
+    "TRANSITION": 1478,
+    "UNAVAILABLE": 1540,
+    "WEAK": 14157
+  },
+  "price_load_audit": {
+    "ticker_count": 1327,
+    "available_ticker_count": 1327,
+    "unavailable_ticker_count": 0,
+    "price_rows_loaded": 2110761,
+    "projection_audit": {
+      "silent_inner_drop_count": 0,
+      "explicit_exclusion_count": 88874
+    }
+  },
+  "checks": {
+    "raw_transition_signal_count": 20076,
+    "raw_transition_signal_key_mismatch_count": 0,
+    "stage_counts": {
+      "BASE": 2063,
+      "EARLY_TREND": 3,
+      "PROGRESSED": 835,
+      "TRANSITION": 1478,
+      "UNAVAILABLE": 1540,
+      "WEAK": 14157
+    },
+    "permanent_exclusion_identity_count": 43,
+    "ticker_price_load_count": 1327,
+    "workers": 10,
+    "lifecycle_spot_review_count": 40,
+    "lifecycle_spot_review_pass_count": 40
+  },
+  "validation_checks": {
+    "control_artifacts_match_baseline_commit": true,
+    "raw_transition_signal_keys_match_control": true,
+    "pattern_a_linkage_is_exact_and_complete": true,
+    "pattern_a_stage_is_point_in_time_and_lookahead_free": true,
+    "test_transition_contains_only_exact_transition_stage": true,
+    "test_progressed_contains_only_exact_progressed_stage": true,
+    "no_future_stage_used": true,
+    "same_isu_position_overlap_count_zero": true,
+    "entry_and_exit_fills_on_later_merged_krx_sessions": true,
+    "control_cost_contract_reused": true,
+    "repository_v2_silent_inner_drop_count_zero": true,
+    "transition_lifecycle_spot_checks_20_passed": true,
+    "progressed_lifecycle_spot_checks_20_passed": true
+  },
+  "candidate_assessments": {
+    "TRANSITION": {
+      "profitability_direction_checks": {
+        "median_better": false,
+        "expectancy_better": false,
+        "win_rate_better": true,
+        "ge_50_rate_better": false
+      },
+      "risk_direction_checks": {
+        "realized_le_30_no_worse": true,
+        "realized_le_50_no_worse": true,
+        "open_le_30_no_worse": false,
+        "open_le_50_no_worse": false,
+        "deep_arrival_rate_lower": true,
+        "deep_realized_loss_no_worse": false
+      },
+      "strict_risk_improvement_checks": {
+        "realized_le_30_better": true,
+        "realized_le_50_better": true,
+        "open_le_30_better": false,
+        "open_le_50_better": false,
+        "deep_arrival_lower": true,
+        "deep_realized_loss_better": false
+      },
+      "yearly_repeatability": {
+        "comparable_year_count": 14,
+        "years_with_higher_median": 2,
+        "median_improved_in_more_than_half": false,
+        "year_details": [
+          {
+            "year": 2013,
+            "candidate_median_higher": false,
+            "candidate_win_rate_higher": false,
+            "candidate_realized_trades": 68
+          },
+          {
+            "year": 2014,
+            "candidate_median_higher": false,
+            "candidate_win_rate_higher": true,
+            "candidate_realized_trades": 73
+          },
+          {
+            "year": 2015,
+            "candidate_median_higher": false,
+            "candidate_win_rate_higher": false,
+            "candidate_realized_trades": 75
+          },
+          {
+            "year": 2016,
+            "candidate_median_higher": true,
+            "candidate_win_rate_higher": true,
+            "candidate_realized_trades": 131
+          },
+          {
+            "year": 2017,
+            "candidate_median_higher": false,
+            "candidate_win_rate_higher": false,
+            "candidate_realized_trades": 95
+          },
+          {
+            "year": 2018,
+            "candidate_median_higher": false,
+            "candidate_win_rate_higher": false,
+            "candidate_realized_trades": 140
+          },
+          {
+            "year": 2019,
+            "candidate_median_higher": false,
+            "candidate_win_rate_higher": false,
+            "candidate_realized_trades": 163
+          },
+          {
+            "year": 2020,
+            "candidate_median_higher": false,
+            "candidate_win_rate_higher": true,
+            "candidate_realized_trades": 72
+          },
+          {
+            "year": 2021,
+            "candidate_median_higher": false,
+            "candidate_win_rate_higher": false,
+            "candidate_realized_trades": 47
+          },
+          {
+            "year": 2022,
+            "candidate_median_higher": false,
+            "candidate_win_rate_higher": true,
+            "candidate_realized_trades": 148
+          },
+          {
+            "year": 2023,
+            "candidate_median_higher": true,
+            "candidate_win_rate_higher": true,
+            "candidate_realized_trades": 73
+          },
+          {
+            "year": 2024,
+            "candidate_median_higher": false,
+            "candidate_win_rate_higher": false,
+            "candidate_realized_trades": 152
+          },
+          {
+            "year": 2025,
+            "candidate_median_higher": false,
+            "candidate_win_rate_higher": false,
+            "candidate_realized_trades": 89
+          },
+          {
+            "year": 2026,
+            "candidate_median_higher": false,
+            "candidate_win_rate_higher": false,
+            "candidate_realized_trades": 58
+          }
+        ]
+      },
+      "recommend_for_next_validation": false,
+      "candidate_assessment": "MIXED"
+    },
+    "PROGRESSED": {
+      "profitability_direction_checks": {
+        "median_better": true,
+        "expectancy_better": true,
+        "win_rate_better": true,
+        "ge_50_rate_better": true
+      },
+      "risk_direction_checks": {
+        "realized_le_30_no_worse": false,
+        "realized_le_50_no_worse": false,
+        "open_le_30_no_worse": false,
+        "open_le_50_no_worse": false,
+        "deep_arrival_rate_lower": true,
+        "deep_realized_loss_no_worse": false
+      },
+      "strict_risk_improvement_checks": {
+        "realized_le_30_better": false,
+        "realized_le_50_better": false,
+        "open_le_30_better": false,
+        "open_le_50_better": false,
+        "deep_arrival_lower": true,
+        "deep_realized_loss_better": false
+      },
+      "yearly_repeatability": {
+        "comparable_year_count": 14,
+        "years_with_higher_median": 12,
+        "median_improved_in_more_than_half": true,
+        "year_details": [
+          {
+            "year": 2013,
+            "candidate_median_higher": false,
+            "candidate_win_rate_higher": false,
+            "candidate_realized_trades": 31
+          },
+          {
+            "year": 2014,
+            "candidate_median_higher": false,
+            "candidate_win_rate_higher": true,
+            "candidate_realized_trades": 18
+          },
+          {
+            "year": 2015,
+            "candidate_median_higher": true,
+            "candidate_win_rate_higher": false,
+            "candidate_realized_trades": 33
+          },
+          {
+            "year": 2016,
+            "candidate_median_higher": true,
+            "candidate_win_rate_higher": false,
+            "candidate_realized_trades": 95
+          },
+          {
+            "year": 2017,
+            "candidate_median_higher": true,
+            "candidate_win_rate_higher": true,
+            "candidate_realized_trades": 50
+          },
+          {
+            "year": 2018,
+            "candidate_median_higher": true,
+            "candidate_win_rate_higher": true,
+            "candidate_realized_trades": 57
+          },
+          {
+            "year": 2019,
+            "candidate_median_higher": true,
+            "candidate_win_rate_higher": false,
+            "candidate_realized_trades": 53
+          },
+          {
+            "year": 2020,
+            "candidate_median_higher": true,
+            "candidate_win_rate_higher": true,
+            "candidate_realized_trades": 30
+          },
+          {
+            "year": 2021,
+            "candidate_median_higher": true,
+            "candidate_win_rate_higher": true,
+            "candidate_realized_trades": 47
+          },
+          {
+            "year": 2022,
+            "candidate_median_higher": true,
+            "candidate_win_rate_higher": true,
+            "candidate_realized_trades": 135
+          },
+          {
+            "year": 2023,
+            "candidate_median_higher": true,
+            "candidate_win_rate_higher": true,
+            "candidate_realized_trades": 42
+          },
+          {
+            "year": 2024,
+            "candidate_median_higher": true,
+            "candidate_win_rate_higher": true,
+            "candidate_realized_trades": 69
+          },
+          {
+            "year": 2025,
+            "candidate_median_higher": true,
+            "candidate_win_rate_higher": false,
+            "candidate_realized_trades": 18
+          },
+          {
+            "year": 2026,
+            "candidate_median_higher": true,
+            "candidate_win_rate_higher": true,
+            "candidate_realized_trades": 68
+          }
+        ]
+      },
+      "recommend_for_next_validation": true,
+      "candidate_assessment": "MIXED"
+    }
+  },
+  "recommended_next_validation_candidate": "PROGRESSED",
+  "verdict": "PATTERN_B_PATTERN_A_ENTRY_FILTER_MIXED",
+  "elapsed_seconds": 218.12587523460388
+}
