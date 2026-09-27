@@ -799,6 +799,7 @@ def _direct_effect(
             "open": summary["open_count"],
             "winner_count": sum(value > 0 for value in realized_returns),
             "loser_count": sum(value < 0 for value in realized_returns),
+            "mean_gross_pct": gross["mean_pct"],
             "median_gross_pct": gross["median_pct"],
             "win_rate_pct": gross["win_rate_pct"],
             "ge_50_count": gross["ge_50_count"],
@@ -812,7 +813,7 @@ def _direct_effect(
     independent = next(row for row in rows if row["group"] == "TEST_INDEPENDENT_REPLAY")
     delta_fields = (
         "signal_or_key_count", "filled", "realized", "open", "winner_count", "loser_count",
-        "median_gross_pct", "win_rate_pct", "ge_50_count", "ge_50_rate_pct",
+        "mean_gross_pct", "median_gross_pct", "win_rate_pct", "ge_50_count", "ge_50_rate_pct",
         "le_30_count", "le_30_rate_pct", "le_50_count", "le_50_rate_pct",
     )
     difference = {"group": "TEST_INDEPENDENT_MINUS_CONTROL_POSTHOC"}
@@ -1120,15 +1121,15 @@ def _report(
         "",
         "`weak_exclusion_direct_effect.csv`는 CONTROL에서 WEAK-origin으로 실제 체결된 거래, CONTROL 원장의 사후 삭제 참고값, 독립 TEST, TEST에서만 새로 생긴 entry key를 비교해. 승·패는 실현 gross 수익률 기준이고, 사후 삭제와 독립 TEST 차이를 마지막 행에 따로 계산했어.",
         "",
-        "| 비교군 | 후보/key | 체결/실현/open | 승/패 | 중앙 gross | 승률 | +50% | -30% | -50% |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "| 비교군 | 후보/key | 체결/실현/open | 승/패 | 평균 gross | 중앙 gross | 승률 | +50% | -30% | -50% |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for row in direct.to_dict("records"):
         lines.append(
             f"| {row['group']} | {_format_number(row.get('signal_or_key_count'), 0)} | "
             f"{_format_number(row.get('filled'), 0)}/{_format_number(row.get('realized'), 0)}/{_format_number(row.get('open'), 0)} | "
             f"{_format_number(row.get('winner_count'), 0)}/{_format_number(row.get('loser_count'), 0)} | "
-            f"{_format_pct(row.get('median_gross_pct'))} | {_format_pct(row.get('win_rate_pct'))} | "
+            f"{_format_pct(row.get('mean_gross_pct'))} | {_format_pct(row.get('median_gross_pct'))} | {_format_pct(row.get('win_rate_pct'))} | "
             f"{_format_number(row.get('ge_50_count'), 0)} ({_format_pct(row.get('ge_50_rate_pct'))}) | "
             f"{_format_number(row.get('le_30_count'), 0)} ({_format_pct(row.get('le_30_rate_pct'))}) | "
             f"{_format_number(row.get('le_50_count'), 0)} ({_format_pct(row.get('le_50_rate_pct'))}) |"

@@ -210,6 +210,7 @@ def test_direct_effect_reports_realized_weak_outcomes_and_independent_replay_del
 
     assert result.loc["CONTROL_WEAK_ORIGIN_FILLED", "filled"] == 1
     assert result.loc["CONTROL_WEAK_ORIGIN_FILLED", "loser_count"] == 1
+    assert result.loc["CONTROL_WEAK_ORIGIN_FILLED", "mean_gross_pct"] == -40.0
     assert result.loc["CONTROL_WEAK_ORIGIN_FILLED", "le_30_count"] == 1
     assert result.loc["TEST_NEW_ENTRY_KEYS_VS_CONTROL", "filled"] == 1
     assert result.loc["TEST_INDEPENDENT_MINUS_CONTROL_POSTHOC", "filled"] == 1
