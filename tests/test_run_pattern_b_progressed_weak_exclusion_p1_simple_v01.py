@@ -15,6 +15,20 @@ def test_p1_window_resolves_to_instruction_dates() -> None:
     assert resolved["execution_support"] == "2026-09-01"
 
 
+def test_p2_p3_windows_resolve_to_instruction_dates() -> None:
+    expected = {
+        "P2-1": ("2021-01-04", "2025-05-30", "2025-06-02"),
+        "P2-2": ("2021-01-04", "2026-08-31", "2026-09-01"),
+        "P3-1": ("2022-01-03", "2025-05-30", "2025-06-02"),
+        "P3-2": ("2022-01-03", "2026-08-31", "2026-09-01"),
+    }
+    for window_id, dates in expected.items():
+        _, resolved = study._resolve_window(study.ROOT, window_id)
+        assert (
+            resolved["effective_start"], resolved["effective_end"], resolved["execution_support"]
+        ) == dates
+
+
 def test_only_exact_weak_to_progressed_transition_is_excluded() -> None:
     assert study._filter_decisions("PROGRESSED", "WEAK") == (
         "PASS_PATTERN_A_PROGRESSED", "REJECTED_PREVIOUS_STAGE_WEAK"
@@ -27,7 +41,7 @@ def test_only_exact_weak_to_progressed_transition_is_excluded() -> None:
     )
 
 
-def test_p1_end_entry_is_not_filled_on_exit_only_execution_support() -> None:
+def test_window_end_entry_is_not_filled_on_exit_only_execution_support() -> None:
     period_end = "2026-08-31"
     support = "2026-09-01"
     event = {
@@ -51,10 +65,10 @@ def test_p1_end_entry_is_not_filled_on_exit_only_execution_support() -> None:
     assert trades == []
     assert event["entry_signal_status"] == "ENTRY_UNFILLED_AFTER_CUTOFF"
 
-    study._normalize_unfilled_p1_end_entries([event], period_end)
-    assert event["entry_signal_status"] == "ENTRY_NOT_FILLED_AFTER_P1_END"
+    study._normalize_unfilled_window_end_entries([event], period_end)
+    assert event["entry_signal_status"] == "ENTRY_NOT_FILLED_AFTER_WINDOW_END"
     assert event["entry_execution_date"] is None
-    assert event["p1_entry_support_not_allowed_date"] == support
+    assert event["window_entry_support_not_allowed_date"] == support
 
 
 def test_p1_execution_support_completes_only_a_pre_end_exit() -> None:
@@ -82,7 +96,7 @@ def test_p1_execution_support_completes_only_a_pre_end_exit() -> None:
     assert trade["exit_execution_date"] == support
     assert trade["exit_reference_open"] == 11.0
     assert trade["exit_fill_status"] == "FILLED"
-    assert trade["p1_execution_support_exit_fill"] is True
+    assert trade["window_execution_support_exit_fill"] is True
     assert "cutoff_close" not in trade
 
 
@@ -128,6 +142,40 @@ def test_verdict_no_benefit_and_mixed_boundaries_follow_instruction() -> None:
     mixed = _scenario_summary(10.0, 60.0, 5.0, 9.0, 5.0, 24.0)
     short_spread = _annual_risk_table(2, (10.0, 5.0), (9.0, 5.0))
     assert study._verdict(control, mixed, short_spread)[0] == "PATTERN_B_PROGRESSED_WEAK_FILTER_P1_MIXED"
+
+
+def test_verdict_label_uses_non_p1_window_without_changing_the_rule() -> None:
+    control = _scenario_summary(10.0, 60.0, 5.0, 10.0, 5.0, 25.0)
+    test = _scenario_summary(10.0, 60.0, 5.0, 9.0, 4.0, 24.0)
+    annual = _annual_risk_table(3, (10.0, 5.0), (9.0, 4.0))
+
+    verdict, _ = study._verdict(control, test, annual, "P2-1")
+
+    assert verdict == "PATTERN_B_PROGRESSED_WEAK_FILTER_P2_1_IMPROVED"
+
+
+def test_deep_arrival_for_open_position_stops_at_window_cutoff() -> None:
+    trade = {
+        "ticker": "000001", "isu_cd": "KR7000000001", "component_id": "000001:KR7000000001:000",
+        "entry_signal_date": "2025-04-30", "exit_signal_date": None,
+    }
+    samples = pd.DataFrame([
+        {"ticker": trade["ticker"], "isu_cd": trade["isu_cd"], "component_id": trade["component_id"], "snapshot_date": "2025-04-30", "state": "DEPRESSED"},
+        {"ticker": trade["ticker"], "isu_cd": trade["isu_cd"], "component_id": trade["component_id"], "snapshot_date": "2025-05-30", "state": "DEPRESSED"},
+        {"ticker": trade["ticker"], "isu_cd": trade["isu_cd"], "component_id": trade["component_id"], "snapshot_date": "2025-06-30", "state": "DEEP_DEPRESSED"},
+    ])
+
+    assert study._deep_trade_keys([trade], samples, "2025-05-30") == set()
+    samples.loc[samples["snapshot_date"] == "2025-05-30", "state"] = "DEEP_DEPRESSED"
+    assert study._deep_trade_keys([trade], samples, "2025-05-30") == {study._key(trade)}
+
+
+def test_annual_comparison_marks_fixed_cutoff_year_as_right_censored() -> None:
+    event = {"entry_signal_date": "2025-04-30"}
+
+    annual = study._annual_comparison([event], [], [], [], [], "2025-05-30")
+
+    assert annual["right_censored_recent_year"].tolist() == [True, True]
 
 
 def test_direct_effect_reports_realized_weak_outcomes_and_independent_replay_delta() -> None:

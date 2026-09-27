@@ -28,7 +28,6 @@ if str(ROOT / "src") not in sys.path:
 
 from scripts import run_pattern_b_pattern_a_entry_filter_simple_v01 as entry_filter  # noqa: E402
 from scripts import run_pattern_b_pure_simple_backtest_v01 as base  # noqa: E402
-from scripts import analyze_pattern_b_progressed_previous_pattern_a_stage_v01 as prior_stage  # noqa: E402
 from trend_scanner.backtest.standard_windows import resolve_standard_backtest_window  # noqa: E402
 from trend_scanner.data.market_calendar import load_rolling_production_market_calendar  # noqa: E402
 from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2  # noqa: E402
@@ -36,6 +35,15 @@ from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, bui
 STUDY_ID = "PATTERN_B_PROGRESSED_WEAK_FILTER_P1_SIMPLE_V01"
 EXPECTED_HEAD = "7b0b5821986b75e3c204874350bdbfd53b8ac882"
 OUTPUT_RELATIVE = Path("artifacts/patterns/pattern_b/progressed_weak_exclusion_p1_simple_v01")
+ROBUSTNESS_START_HEAD = "2104d12675b18bea269d02e40a0b3a8864a104b9"
+ROBUSTNESS_OUTPUT_RELATIVE = Path("artifacts/patterns/pattern_b/progressed_weak_exclusion_p2_p3_4window_v01")
+STANDARD_WINDOW_EXPECTATIONS = {
+    "P1": ("2014-01-01", "2026-08-31", "2014-01-02", "2026-08-31", "2026-09-01"),
+    "P2-1": ("2021-01-01", "2025-05-31", "2021-01-04", "2025-05-30", "2025-06-02"),
+    "P2-2": ("2021-01-01", "2026-08-31", "2021-01-04", "2026-08-31", "2026-09-01"),
+    "P3-1": ("2022-01-01", "2025-05-31", "2022-01-03", "2025-05-30", "2025-06-02"),
+    "P3-2": ("2022-01-01", "2026-08-31", "2022-01-03", "2026-08-31", "2026-09-01"),
+}
 PREVIOUS_STAGE_ROOT = Path("artifacts/patterns/pattern_b/progressed_previous_pattern_a_stage_v01")
 PREVIOUS_STAGE_HISTORY = PREVIOUS_STAGE_ROOT / "candidate_signal_stage_history.csv"
 PREVIOUS_STAGE_METADATA = PREVIOUS_STAGE_ROOT / "metadata.json"
@@ -48,7 +56,7 @@ FLOAT_COMPARISON_EPSILON = 1e-9
 STAGES = {"WEAK", "BASE", "TRANSITION", "EARLY_TREND", "PROGRESSED", "UNAVAILABLE"}
 SIGNAL_KEY = ("ticker", "isu_cd", "entry_signal_date")
 TRADE_METRICS = (
-    "mean_pct", "median_pct", "win_rate_pct", "profit_factor", "expectancy_pct",
+    "mean_pct", "win_rate_pct", "median_pct", "profit_factor", "expectancy_pct",
     "ge_20_count", "ge_20_rate_pct", "ge_50_count", "ge_50_rate_pct",
     "ge_100_count", "ge_100_rate_pct", "le_20_count", "le_20_rate_pct",
     "le_30_count", "le_30_rate_pct", "le_50_count", "le_50_rate_pct",
@@ -86,6 +94,11 @@ def _key(row: Mapping[str, Any]) -> tuple[str, str, str]:
         base.norm_isu(row["isu_cd"]),
         str(row["entry_signal_date"])[:10],
     )
+
+
+def _study_id(window_id: str) -> str:
+    window_key = window_id.replace("-", "_")
+    return f"PATTERN_B_PROGRESSED_WEAK_FILTER_{window_key}_SIMPLE_V01"
 
 
 def _safe_num(value: Any) -> float | None:
@@ -130,55 +143,77 @@ def _json_clean(value: Any) -> Any:
     return str(value)
 
 
-def _assert_git_start(data_root: Path) -> dict[str, Any]:
+def _assert_git_start(
+    data_root: Path,
+    expected_head: str = EXPECTED_HEAD,
+    allowed_paths: Iterable[str] = (),
+    output_root: Path = OUTPUT_RELATIVE,
+    current_output_dir: Path | None = None,
+) -> dict[str, Any]:
     head = _git_text(data_root, "rev-parse", "HEAD")
     origin_main = _git_text(data_root, "rev-parse", "origin/main")
     branch = _git_text(data_root, "branch", "--show-current")
-    if head != EXPECTED_HEAD or origin_main != EXPECTED_HEAD or branch != "main":
+    if head != expected_head or origin_main != expected_head or branch != "main":
         raise RuntimeError(
-            f"unexpected P1 base: branch={branch}, HEAD={head}, origin/main={origin_main}"
+            f"unexpected backtest base: branch={branch}, HEAD={head}, origin/main={origin_main}, expected={expected_head}"
         )
-    status = _git_text(data_root, "status", "--porcelain")
+    status = subprocess.run(
+        ["git", "status", "--porcelain"], cwd=data_root, check=True,
+        stdout=subprocess.PIPE, text=True,
+    ).stdout
     allowed = {
         Path(__file__).resolve().relative_to(data_root.resolve()).as_posix(),
         "tests/test_run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py",
+        *allowed_paths,
     }
     unexpected = []
     for line in status.splitlines():
         path = line[3:].strip()
-        if path in allowed or path == OUTPUT_RELATIVE.as_posix() or path.startswith(OUTPUT_RELATIVE.as_posix() + "/"):
+        if path in allowed or path == output_root.as_posix() or path.startswith(output_root.as_posix() + "/"):
             continue
         unexpected.append(line)
     if unexpected:
-        raise RuntimeError(f"unrelated worktree changes present before P1: {unexpected}")
-    output_dir = data_root / OUTPUT_RELATIVE
+        raise RuntimeError(f"unrelated worktree changes present before {output_root.name}: {unexpected}")
+    output_dir = Path(current_output_dir or data_root / output_root).resolve()
     if output_dir.exists() and any(output_dir.iterdir()):
-        raise RuntimeError(f"refusing to rerun an existing P1 output: {output_dir}")
-    return {"head": head, "origin_main": origin_main, "branch": branch, "unexpected_changes": unexpected}
+        raise RuntimeError(f"refusing to rerun an existing backtest output: {output_dir}")
+    return {
+        "head": head, "origin_main": origin_main, "branch": branch,
+        "unexpected_changes": unexpected, "start_status": status.splitlines(),
+    }
 
 
-def _resolve_p1(data_root: Path) -> tuple[Any, dict[str, Any]]:
+def _resolve_window(data_root: Path, window_id: str) -> tuple[Any, dict[str, Any]]:
     calendar = load_rolling_production_market_calendar(data_root)
-    resolved = resolve_standard_backtest_window("P1", calendar)
-    actual = tuple(
-        date.strftime("%Y-%m-%d")
-        for date in (resolved.effective_start, resolved.effective_end, resolved.execution_support)
+    resolved = resolve_standard_backtest_window(window_id, calendar)
+    actual = (
+        resolved.window.calendar_start.strftime("%Y-%m-%d"),
+        resolved.window.calendar_end.strftime("%Y-%m-%d"),
+        resolved.effective_start.strftime("%Y-%m-%d"),
+        resolved.effective_end.strftime("%Y-%m-%d"),
+        resolved.execution_support.strftime("%Y-%m-%d"),
     )
-    expected = ("2014-01-02", "2026-08-31", "2026-09-01")
+    expected = STANDARD_WINDOW_EXPECTATIONS.get(window_id)
+    if expected is None:
+        raise RuntimeError(f"unsupported standard window: {window_id}")
     if actual != expected:
-        raise RuntimeError(f"P1 resolution differs from the instruction: actual={actual}, expected={expected}")
-    if calendar is None or not calendar.is_trading_day(actual[1]) or not calendar.is_trading_day(actual[2]):
-        raise RuntimeError("P1 end or execution-support date is not an exact certified KRX session")
+        raise RuntimeError(f"{window_id} resolution differs from the instruction: actual={actual}, expected={expected}")
+    if calendar is None or not calendar.is_trading_day(actual[3]) or not calendar.is_trading_day(actual[4]):
+        raise RuntimeError(f"{window_id} end or execution-support date is not an exact certified KRX session")
     return resolved, {
-        "window_id": "P1",
-        "calendar_range": [resolved.window.calendar_start.strftime("%Y-%m-%d"), resolved.window.calendar_end.strftime("%Y-%m-%d")],
-        "effective_start": actual[0],
-        "effective_end": actual[1],
-        "execution_support": actual[2],
+        "window_id": window_id,
+        "calendar_range": [actual[0], actual[1]],
+        "effective_start": actual[2],
+        "effective_end": actual[3],
+        "execution_support": actual[4],
         "authority_source": calendar.source_name,
         "authority_metadata": calendar.metadata,
         "support_policy": "only an exit signal dated on or before effective_end may fill on execution_support; entries after effective_end are not filled",
     }
+
+
+def _resolve_p1(data_root: Path) -> tuple[Any, dict[str, Any]]:
+    return _resolve_window(data_root, "P1")
 
 
 def _read_previous_stage_history(data_root: Path) -> tuple[dict[tuple[str, str, str], dict[str, Any]], dict[str, Any]]:
@@ -303,12 +338,12 @@ def _prepare_inputs(data_root: Path, resolved: Any) -> tuple[
     provenance = {
         "pattern_b_authorized_event_count": len(all_events),
         "pattern_b_authority_discontinuity_count": len(blocked),
-        "p1_pattern_b_raw_event_count": len(p1_events),
-        "p1_pattern_a_stage_counts": dict(sorted(Counter(event["pattern_a_stage"] for event in p1_events).items())),
-        "p1_control_filter_pass_count": sum(event["control_filter_status"] == "PASS_PATTERN_A_PROGRESSED" for event in p1_events),
-        "p1_test_weak_reject_count": sum(event["test_filter_status"] == "REJECTED_PREVIOUS_STAGE_WEAK" for event in p1_events),
-        "p1_test_filter_pass_count": sum(event["test_filter_status"] == "PASS_PATTERN_A_PROGRESSED" for event in p1_events),
-        "p1_progressed_previous_stage_counts": dict(sorted(Counter(event["previous_pattern_a_stage"] for event in p1_events if event["pattern_a_stage"] == "PROGRESSED").items())),
+        "window_pattern_b_raw_event_count": len(p1_events),
+        "window_pattern_a_stage_counts": dict(sorted(Counter(event["pattern_a_stage"] for event in p1_events).items())),
+        "window_control_filter_pass_count": sum(event["control_filter_status"] == "PASS_PATTERN_A_PROGRESSED" for event in p1_events),
+        "window_test_weak_reject_count": sum(event["test_filter_status"] == "REJECTED_PREVIOUS_STAGE_WEAK" for event in p1_events),
+        "window_test_filter_pass_count": sum(event["test_filter_status"] == "PASS_PATTERN_A_PROGRESSED" for event in p1_events),
+        "window_progressed_previous_stage_counts": dict(sorted(Counter(event["previous_pattern_a_stage"] for event in p1_events if event["pattern_a_stage"] == "PROGRESSED").items())),
         "raw_candidate_key_mismatch_count": 0,
         "permanent_exclusion_identity_count": permanent_exclusion_count,
         "pattern_a_linkage_source_study_id": linkage_metadata.get("study_id"),
@@ -393,19 +428,19 @@ def _finish_exit_on_support(
         "valuation_reason", "cutoff_valuation_date", "mark_to_cutoff_gross_return_pct",
     ):
         trade.pop(field, None)
-    trade["p1_execution_support_exit_fill"] = True
+    trade["window_execution_support_exit_fill"] = True
     return {"position": None, "pending": None}
 
 
-def _normalize_unfilled_p1_end_entries(events: list[dict[str, Any]], period_end: str) -> None:
+def _normalize_unfilled_window_end_entries(events: list[dict[str, Any]], period_end: str) -> None:
     for event in events:
         if event.get("entry_signal_status") != "ENTRY_UNFILLED_AFTER_CUTOFF":
             continue
         if event.get("entry_signal_date") != period_end:
             raise RuntimeError("an in-window pre-end entry unexpectedly lacks an execution open")
-        event["p1_entry_support_not_allowed_date"] = event.get("entry_execution_date")
-        event["entry_signal_status"] = "ENTRY_NOT_FILLED_AFTER_P1_END"
-        event["status_reason"] = "P1 execution support is reserved for exits; no new entry is filled after effective_end"
+        event["window_entry_support_not_allowed_date"] = event.get("entry_execution_date")
+        event["entry_signal_status"] = "ENTRY_NOT_FILLED_AFTER_WINDOW_END"
+        event["status_reason"] = "execution support is reserved for exits; no new entry is filled after effective_end"
         event["entry_execution_date"] = None
         event["entry_reference_open"] = None
         event["trade_id"] = None
@@ -421,6 +456,7 @@ def _simulate_scenario(
     period_start: str,
     period_end: str,
     execution_support: str,
+    study_id: str = STUDY_ID,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[tuple[str, str, str], pd.DataFrame]]:
     events = [_reset_candidate(event) for event in candidates]
     events_by_identity: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
@@ -443,7 +479,7 @@ def _simulate_scenario(
 
     trades: list[dict[str, Any]] = []
     original_strategy_id = base.STRATEGY_ID
-    base.STRATEGY_ID = f"{STUDY_ID}_{name}"
+    base.STRATEGY_ID = f"{study_id}_{name}"
     try:
         for identity, group in active_samples.groupby(["ticker", "isu_cd"], sort=True):
             normalized = (str(identity[0]), str(identity[1]))
@@ -460,7 +496,7 @@ def _simulate_scenario(
             )
             state = _finish_exit_on_support(identity_trades, state, daily_by_component, period_end, execution_support)
             if state.get("position") is not None and state["position"].get("cutoff_close") is None:
-                state["position"]["valuation_reason"] = f"no exact adjusted close on P1 effective_end={period_end}"
+                state["position"]["valuation_reason"] = f"no exact adjusted close on window effective_end={period_end}"
             trades.extend(identity_trades)
     finally:
         base.STRATEGY_ID = original_strategy_id
@@ -468,8 +504,8 @@ def _simulate_scenario(
     event_by_key = {_key(event): event for event in events}
     for event in events:
         if event.get("entry_signal_status") == "ENTRY_UNFILLED_AFTER_CUTOFF":
-            event["p1_entry_support_not_allowed_date"] = event.get("entry_execution_date")
-    _normalize_unfilled_p1_end_entries(events, period_end)
+            event["window_entry_support_not_allowed_date"] = event.get("entry_execution_date")
+    _normalize_unfilled_window_end_entries(events, period_end)
     for trade in trades:
         event = event_by_key[_key(trade)]
         for field in (
@@ -488,28 +524,28 @@ def _simulate_scenario(
     realized = sum(trade.get("trade_status") == "REALIZED" for trade in trades)
     opened = sum(trade.get("trade_status") == "OPEN_AT_CUTOFF" for trade in trades)
     if filled != realized + opened:
-        raise RuntimeError(f"{name}: P1 filled trades do not reconcile to realized plus open")
+        raise RuntimeError(f"{name}: window filled trades do not reconcile to realized plus open")
     if filled != status_counts["FILLED"]:
-        raise RuntimeError(f"{name}: P1 FILLED statuses do not reconcile to the trade ledger")
+        raise RuntimeError(f"{name}: window FILLED statuses do not reconcile to the trade ledger")
     if any(event["pattern_a_stage"] != "PROGRESSED" for event in events):
         raise RuntimeError(f"{name}: a non-PROGRESSED entry passed the exact Pattern A filter")
     if name == "TEST" and any(event["previous_pattern_a_stage"] == "WEAK" for event in events):
-        raise RuntimeError("TEST admitted a WEAK-origin P1 entry")
+        raise RuntimeError("TEST admitted a WEAK-origin entry")
     trading_set = set(trading_dates)
     for trade in trades:
         if not (period_start <= trade["entry_signal_date"] <= period_end):
-            raise RuntimeError(f"{name}: entry signal falls outside P1")
+            raise RuntimeError(f"{name}: entry signal falls outside the window")
         if not (trade["entry_signal_date"] < trade["entry_execution_date"] <= period_end):
-            raise RuntimeError(f"{name}: new entry executed outside the P1 period")
+            raise RuntimeError(f"{name}: new entry executed outside the window")
         if trade["entry_execution_date"] not in trading_set:
             raise RuntimeError(f"{name}: entry execution is not an exact KRX session")
         if trade.get("exit_execution_date"):
             if trade["exit_execution_date"] not in trading_set or trade["exit_execution_date"] <= trade["exit_signal_date"]:
                 raise RuntimeError(f"{name}: exit execution is not a later exact KRX session")
             if trade["exit_execution_date"] > execution_support:
-                raise RuntimeError(f"{name}: exit execution is later than P1 support")
-            if trade["exit_execution_date"] > period_end and trade.get("p1_execution_support_exit_fill") is not True:
-                raise RuntimeError(f"{name}: post-P1 exit fill lacks execution-support provenance")
+                raise RuntimeError(f"{name}: exit execution is later than window support")
+            if trade["exit_execution_date"] > period_end and trade.get("window_execution_support_exit_fill") is not True:
+                raise RuntimeError(f"{name}: post-window exit fill lacks execution-support provenance")
     if len({trade["trade_id"] for trade in trades}) != len(trades):
         raise RuntimeError(f"{name}: duplicate trade identifiers")
     for identity, group in pd.DataFrame(trades).groupby(["ticker", "isu_cd"], sort=False) if trades else []:
@@ -549,15 +585,39 @@ def _trade_group_summary(trades: list[dict[str, Any]]) -> dict[str, Any]:
     }
 
 
+def _deep_trade_keys(
+    trades: list[dict[str, Any]], samples: pd.DataFrame, period_end: str
+) -> set[tuple[str, str, str]]:
+    by_component = {
+        (str(key[0]), str(key[1]), str(key[2])): group.sort_values("snapshot_date")
+        for key, group in samples.groupby(["ticker", "isu_cd", "component_id"], sort=False)
+    }
+    deep_keys: set[tuple[str, str, str]] = set()
+    for trade in trades:
+        component_key = (str(trade["ticker"]), str(trade["isu_cd"]), str(trade["component_id"]))
+        group = by_component.get(component_key)
+        if group is None:
+            raise RuntimeError(f"trade lacks exact Pattern B component observations: {_key(trade)}")
+        observation_end = str(trade.get("exit_signal_date") or period_end)[:10]
+        held = group.loc[
+            group["snapshot_date"].astype(str).gt(str(trade["entry_signal_date"])[:10])
+            & group["snapshot_date"].astype(str).le(observation_end)
+        ]
+        if held["state"].astype(str).eq("DEEP_DEPRESSED").any():
+            deep_keys.add(_key(trade))
+    return deep_keys
+
+
 def _scenario_summary(
     name: str,
     raw_events: list[dict[str, Any]],
     passed_events: list[dict[str, Any]],
     trades: list[dict[str, Any]],
     samples: pd.DataFrame,
+    period_end: str = base.SIGNAL_END,
 ) -> dict[str, Any]:
     trade_stats = _trade_group_summary(trades)
-    deep_keys = prior_stage._deep_trade_keys(trades, samples)
+    deep_keys = _deep_trade_keys(trades, samples, period_end)
     deep_trades = [trade for trade in trades if _key(trade) in deep_keys]
     deep_realized = [trade for trade in deep_trades if trade.get("trade_status") == "REALIZED"]
     deep_stats = base._metric_summary(trade.get("gross_return_pct") for trade in deep_realized)
@@ -661,6 +721,7 @@ def _annual_comparison(
     test_events: list[dict[str, Any]],
     control_trades: list[dict[str, Any]],
     test_trades: list[dict[str, Any]],
+    period_end: str = base.SIGNAL_END,
 ) -> pd.DataFrame:
     years = sorted({str(event["entry_signal_date"])[:4] for event in raw_events})
     result = []
@@ -693,7 +754,9 @@ def _annual_comparison(
                 "realized_le_30_rate_pct": gross["le_30_rate_pct"],
                 "realized_le_50_count": gross["le_50_count"],
                 "realized_le_50_rate_pct": gross["le_50_rate_pct"],
-                "right_censored_recent_year": year == "2026",
+                "right_censored_recent_year": (
+                    year == period_end[:4] and period_end < f"{year}-12-31"
+                ),
             })
     return pd.DataFrame(result)
 
@@ -784,7 +847,10 @@ def _annual_risk_improved_years(annual: pd.DataFrame) -> list[int]:
     return improved
 
 
-def _verdict(control: Mapping[str, Any], test: Mapping[str, Any], annual: pd.DataFrame) -> tuple[str, dict[str, Any]]:
+def _verdict(
+    control: Mapping[str, Any], test: Mapping[str, Any], annual: pd.DataFrame,
+    window_id: str = "P1",
+) -> tuple[str, dict[str, Any]]:
     c = control["realized_gross"]
     t = test["realized_gross"]
     quality_deltas = {
@@ -812,12 +878,13 @@ def _verdict(control: Mapping[str, Any], test: Mapping[str, Any], annual: pd.Dat
         for value in risk_deltas.values()
     )
     risk_improved_years = _annual_risk_improved_years(annual)
+    window_key = window_id.replace("-", "_")
     if quality_nonworse and risk_improvement_count >= 2 and len(risk_improved_years) >= 3:
-        verdict = "PATTERN_B_PROGRESSED_WEAK_FILTER_P1_IMPROVED"
+        verdict = f"PATTERN_B_PROGRESSED_WEAK_FILTER_{window_key}_IMPROVED"
     elif risk_improvement_count == 0 or quality_materially_worse_count >= 2:
-        verdict = "PATTERN_B_PROGRESSED_WEAK_FILTER_P1_NO_BENEFIT"
+        verdict = f"PATTERN_B_PROGRESSED_WEAK_FILTER_{window_key}_NO_BENEFIT"
     else:
-        verdict = "PATTERN_B_PROGRESSED_WEAK_FILTER_P1_MIXED"
+        verdict = f"PATTERN_B_PROGRESSED_WEAK_FILTER_{window_key}_MIXED"
     return verdict, {
         "percentage_point_tolerance": PERCENTAGE_POINT_TOLERANCE,
         "quality_deltas_test_minus_control": quality_deltas,
@@ -858,7 +925,7 @@ def _lifecycle_spot_checks(
         ]
         selected.extend((name, row) for name, row in randomizer.sample(remaining, REVIEW_COUNT - len(selected)))
     if len(selected) != REVIEW_COUNT:
-        raise RuntimeError(f"cannot make {REVIEW_COUNT} lifecycle spot checks from P1 trades")
+        raise RuntimeError(f"cannot make {REVIEW_COUNT} lifecycle spot checks from window trades")
     control_by_key = {_key(event): event for event in control_events}
     test_by_key = {_key(event): event for event in test_events}
     raw_by_key = {_key(event): event for event in all_events}
@@ -871,9 +938,9 @@ def _lifecycle_spot_checks(
         if event is None:
             raise RuntimeError(f"spot-check trade has no same-scenario entry event: {scenario} {key}")
         checks = {
-            "exact_p1_entry_date": period_start <= trade["entry_signal_date"] <= period_end,
+            "exact_window_entry_date": period_start <= trade["entry_signal_date"] <= period_end,
             "next_exact_session_entry": trade["entry_execution_date"] in trading_set and trade["entry_execution_date"] > trade["entry_signal_date"],
-            "no_entry_after_p1_end": trade["entry_execution_date"] <= period_end,
+            "no_entry_after_window_end": trade["entry_execution_date"] <= period_end,
             "entry_pattern_b_transition": base.is_entry_transition(event["previous_state"], event["entry_signal_state"], base.month_is_adjacent(event["previous_state_date"], event["entry_signal_date"])),
             "entry_pattern_a_stage_exact": raw["pattern_a_stage"] == "PROGRESSED" and raw["pattern_a_requested_asof"] == raw["entry_signal_date"] and raw["pattern_a_lookahead_free"],
             "test_does_not_admit_weak": scenario != "TEST" or raw["previous_pattern_a_stage"] != "WEAK",
@@ -912,7 +979,7 @@ def _lifecycle_spot_checks(
         })
     result = pd.DataFrame(rows)
     if not result["all_checks_pass"].all():
-        raise RuntimeError("P1 lifecycle spot check failed")
+        raise RuntimeError("window lifecycle spot check failed")
     return result
 
 
@@ -957,7 +1024,7 @@ def _filter_audit(
             "test_lifecycle_status": test.get("entry_signal_status") if test else raw["test_filter_status"],
             "test_trade_id": test.get("trade_id") if test else None,
             "test_execution_date": test.get("entry_execution_date") if test else None,
-            "test_p1_support_not_allowed_date": test.get("p1_entry_support_not_allowed_date") if test else None,
+            "test_window_support_not_allowed_date": test.get("window_entry_support_not_allowed_date") if test else None,
         })
     return pd.DataFrame(rows)
 
@@ -986,23 +1053,24 @@ def _report(
 ) -> str:
     by_name = {row["scenario"]: row for row in summaries}
     direct_by_group = {row["group"]: row for row in direct.to_dict("records")}
+    window_id = str(window["window_id"])
     lines = [
-        "# Pattern B + PROGRESSED 이전 WEAK 제외 P1 단순 백테스트 V01",
+        f"# Pattern B + PROGRESSED 이전 WEAK 제외 {window_id} 단순 백테스트 V01",
         "",
         f"판정: `{verdict}`",
         "",
         "## 기간 및 계약",
         "",
-        f"- Window `P1`; calendar range {window['calendar_range'][0]}~{window['calendar_range'][1]}; resolver 결과 {window['effective_start']}~{window['effective_end']}; execution support {window['execution_support']}.",
+        f"- Window `{window_id}`; calendar range {window['calendar_range'][0]}~{window['calendar_range'][1]}; resolver 결과 {window['effective_start']}~{window['effective_end']}; execution support {window['execution_support']}.",
         "- CONTROL은 `Pattern B DEPRESSED 신규 진입 + 진입일 Pattern A exact PROGRESSED`; TEST는 동일 조건에서 이전 authoritative Stage가 `WEAK`인 신규 진입만 제외했어. `UNAVAILABLE`은 허용했어.",
-        "- CONTROL/TEST를 P1 시작부터 각각 독립 replay했어. P1 시작 전 포지션 carry-in은 없고, TEST를 CONTROL 원장에서 사후 삭제해 만들지 않았어.",
-        "- P1 종료일 이후 신규 진입 체결은 막았어. 2026-09-01 support는 2026-08-31까지 확정된 exit 신호의 체결에만 썼어. 미청산은 2026-08-31 exact adjusted close로 평가했어.",
+        f"- CONTROL/TEST를 {window_id} 시작부터 각각 독립 replay했어. 시작 전 포지션 carry-in은 없고, TEST를 CONTROL 원장에서 사후 삭제해 만들지 않았어.",
+        f"- {window_id} 종료일 이후 신규 진입 체결은 막았어. {window['execution_support']} support는 {window['effective_end']}까지 확정된 exit 신호의 체결에만 썼어. 미청산은 {window['effective_end']} exact adjusted close로 평가했어.",
         f"- 비용: 매수/매도 수수료 {base.COMMISSION_RATE * 100:.3f}%, 매수/매도 슬리피지 {base.SLIPPAGE_RATE * 100:.2f}%, 실제 매도일·시장별 역사적 세금표. 핵심 성과 비교는 기존 simple strategy 계약대로 gross야.",
         "- 동일 ISU 동시 보유 0, 부분체결은 사용하지 않았어. PIT universe·identity·permanent exclusion 및 completed monthly Pattern B 입력은 기존 계약을 유지했어.",
         "",
         "## CONTROL / TEST 비교",
         "",
-        "| 시나리오 | P1 raw B 진입 | A PROGRESSED 통과 | WEAK 제외 | 체결/실현/미청산 | 미청산률 | 평균/중앙 gross | 승률 | PF | 기대값 | +20 / +50 / +100 | -20 / -30 / -50 | Deep 도달 |",
+        f"| 시나리오 | {window_id} raw B 진입 | A PROGRESSED 통과 | WEAK 제외 | 체결/실현/미청산 | 미청산률 | 평균 gross | 승률 | 중앙 gross | PF | 기대값 | +20 / +50 / +100 | -20 / -30 / -50 | Deep 도달 |",
         "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for summary in summaries:
@@ -1011,7 +1079,7 @@ def _report(
             f"| {summary['scenario']} | {summary['pattern_b_raw_entry_candidates']:,} | {summary['pattern_a_progressed_candidate_count']:,} | "
             f"{summary['pattern_a_progressed_candidate_count'] - summary['filter_pass_count']:,} | "
             f"{summary['filled_count']:,}/{summary['realized_count']:,}/{summary['open_count']:,} | {_format_pct(summary['open_rate_pct'])} | "
-            f"{_format_pct(gross['mean_pct'])}/{_format_pct(gross['median_pct'])} | {_format_pct(gross['win_rate_pct'])} | "
+            f"{_format_pct(gross['mean_pct'])} | {_format_pct(gross['win_rate_pct'])} | {_format_pct(gross['median_pct'])} | "
             f"{_format_number(gross['profit_factor'])} | {_format_pct(gross['expectancy_pct'])} | "
             f"{_format_pct(gross['ge_20_rate_pct'])}/{_format_pct(gross['ge_50_rate_pct'])}/{_format_pct(gross['ge_100_rate_pct'])} | "
             f"{_format_pct(gross['le_20_rate_pct'])}/{_format_pct(gross['le_30_rate_pct'])}/{_format_pct(gross['le_50_rate_pct'])} | "
@@ -1019,7 +1087,7 @@ def _report(
         )
     lines += [
         "",
-        "평균·중앙 수익률은 실현 거래 gross 기준이야. MFE/MAE와 보유기간은 realized/open 체결 원장의 P1 경로 지표고, 비용 반영 전후 수익률은 `control_vs_test.csv`에 같이 있어.",
+        "평균·중앙 수익률은 실현 거래 gross 기준이야. MFE/MAE와 보유기간은 realized/open 체결 원장의 window 경로 지표고, 비용 반영 전후 수익률은 `control_vs_test.csv`에 같이 있어.",
         "",
         "## Pattern B DEEP 도달 cohort",
         "",
@@ -1034,7 +1102,7 @@ def _report(
         )
     lines += [
         "",
-        "## 미청산 P1 cutoff 평가",
+        f"## 미청산 {window_id} cutoff 평가",
         "",
         "| 시나리오 | 미청산 | exact 평가 | 미해결 | 평가 평균/중앙 gross | -30 이하 | -50 이하 | cutoff Pattern B 상태 |",
         "|---|---:|---:|---:|---:|---:|---:|---|",
@@ -1067,9 +1135,9 @@ def _report(
         )
     lines += [
         "",
-        "## P1 진입연도 비교",
+        f"## {window_id} 진입연도 비교",
         "",
-        "연도별 filled/realized/open과 중앙수익·승률·+50·-30·미청산률은 `annual_comparison.csv`에 기록했어. 2026년 진입은 기간 종료로 오른쪽 검열 영향이 있어.",
+        f"연도별 filled/realized/open과 중앙수익·승률·+50·-30·미청산률은 `annual_comparison.csv`에 기록했어. {window['effective_end'][:4]}년 진입은 기간 종료로 오른쪽 검열 영향이 있어.",
         "",
         "## 사전 판정 규칙 적용",
         "",
@@ -1080,8 +1148,8 @@ def _report(
         "",
         "## 검증",
         "",
-        f"- P1 resolver exact: {window['effective_start']}~{window['effective_end']}, support {window['execution_support']}; raw linkage mismatch {validations['raw_candidate_key_mismatch_count']}; 미래 Pattern A 입력 {validations['future_pattern_a_input_count']}.",
-        f"- TEST WEAK-origin 진입 통과 {validations['test_weak_origin_pass_count']}; entry after P1 end {validations['entry_after_p1_end_count']}; exact P1 cutoff/open evaluations {validations['open_exact_mark_count']}/{validations['open_unresolved_count']}; 동일 ISU overlap CONTROL/TEST {validations['control_overlap_count']}/{validations['test_overlap_count']}.",
+        f"- standard resolver exact: {window['effective_start']}~{window['effective_end']}, support {window['execution_support']}; raw linkage mismatch {validations['raw_candidate_key_mismatch_count']}; 미래 Pattern A 입력 {validations['future_pattern_a_input_count']}.",
+        f"- TEST WEAK-origin 진입 통과 {validations['test_weak_origin_pass_count']}; entry after window end {validations['entry_after_window_end_count']}; exact cutoff/open evaluations {validations['open_exact_mark_count']}/{validations['open_unresolved_count']}; 동일 ISU overlap CONTROL/TEST {validations['control_overlap_count']}/{validations['test_overlap_count']}.",
         f"- Repository V2 tickers {validations['price_ticker_count']:,}; adjusted OHLC rows {validations['price_rows_loaded']:,}; silent inner drops {validations['repository_v2_silent_inner_drop_count']}; workers {WORKERS}.",
         f"- lifecycle spot checks {validations['lifecycle_spot_check_pass_count']}/{validations['lifecycle_spot_check_count']}; focused tests, py_compile, git diff --check 실행. 전체 pytest는 실행하지 않았어.",
         "",
@@ -1090,7 +1158,7 @@ def _report(
         f"1. tail risk: realized -30/-50 개선(control-test)은 `{json.dumps({'le_30': rubric['risk_deltas_control_minus_test']['le_30_rate_pct'], 'le_50': rubric['risk_deltas_control_minus_test']['le_50_rate_pct']}, ensure_ascii=False)}` pp, DEEP 도달률 개선은 `{_format_number(rubric['risk_deltas_control_minus_test']['deep_arrival_rate_pct'])}` pp야. 사전 기준상 3개 중 {rubric['risk_metrics_improved_count']}개가 0.1pp 이상 개선됐어.",
         f"2. median/win/+50 의미 있는 훼손 여부: `{rubric['quality_metrics_materially_worse_count'] > 0}` ({rubric['quality_metrics_materially_worse_count']}/3 지표가 0.1pp 초과 악화). TEST−CONTROL 변화는 `{json.dumps(rubric['quality_deltas_test_minus_control'], ensure_ascii=False)}` pp야.",
         f"3. 독립 재생 뒤의 변화: TEST weak-origin 통과 `{validations['test_weak_origin_pass_count']}`건, CONTROL weak-origin 실제 체결 `{_format_number(direct_by_group['CONTROL_WEAK_ORIGIN_FILLED']['filled'], 0)}`건. 사후 삭제 대비 TEST 독립 replay의 체결 수 차이는 `{_format_number(direct_by_group['TEST_INDEPENDENT_MINUS_CONTROL_POSTHOC']['filled'], 0)}`건이야. CONTROL weak-origin과 비-WEAK 사후삭제군의 손실률을 위 표에서 직접 비교했어.",
-        f"4. 정식 개선안으로 다음 단계에 넘길 근거: `{'있어' if verdict == 'PATTERN_B_PROGRESSED_WEAK_FILTER_P1_IMPROVED' else '아직 충분하지 않아'}`. 이 결론은 사전 판정 규칙을 그대로 적용했어.",
+        f"4. 다음 단계 연구 근거: `{'개선으로 판정됐어' if verdict.endswith('_IMPROVED') else '아직 충분하지 않아'}`. 이 결론은 P1과 같은 사전 판정 규칙을 그대로 적용했어.",
         f"5. 판정: `{verdict}`.",
         "",
         "## 산출물",
@@ -1108,12 +1176,27 @@ def _write_csv(path: Path, frame: pd.DataFrame | list[dict[str, Any]]) -> None:
         pd.DataFrame(frame).to_csv(path, index=False, encoding="utf-8")
 
 
-def run(data_root: Path = ROOT, output_dir: Path | None = None) -> dict[str, Any]:
+def run(
+    data_root: Path = ROOT,
+    output_dir: Path | None = None,
+    window_id: str = "P1",
+    expected_head: str = EXPECTED_HEAD,
+    allowed_paths: Iterable[str] = (),
+    output_root: Path | None = None,
+    additional_code_paths: Iterable[Path] = (),
+    additional_source_paths: Iterable[Path] = (),
+    print_summary: bool = True,
+) -> dict[str, Any]:
     started = time.time()
     data_root = Path(data_root).resolve()
-    output_dir = Path(output_dir or data_root / OUTPUT_RELATIVE).resolve()
-    git_start = _assert_git_start(data_root)
-    resolved, window = _resolve_p1(data_root)
+    output_root = Path(output_root or OUTPUT_RELATIVE)
+    output_dir = Path(output_dir or data_root / output_root).resolve()
+    study_id = _study_id(window_id)
+    git_start = _assert_git_start(
+        data_root, expected_head=expected_head, allowed_paths=allowed_paths,
+        output_root=output_root, current_output_dir=output_dir,
+    )
+    resolved, window = _resolve_window(data_root, window_id)
     p1_events, samples, stage_by_key, all_source_events, previous_rows, blocked, source_provenance = _prepare_inputs(data_root, resolved)
     start, end, support = window["effective_start"], window["effective_end"], window["execution_support"]
 
@@ -1133,20 +1216,19 @@ def run(data_root: Path = ROOT, output_dir: Path | None = None) -> dict[str, Any
     _, trading_dates, _ = base._load_authorities(data_root)
     control_trades, control_events, control_component_prices = _simulate_scenario(
         "CONTROL", control_candidates, samples, daily_by_ticker, intervals_by_component,
-        trading_dates,
-        start, end, support,
+        trading_dates, start, end, support, study_id,
     )
     if not control_events and control_candidates:
-        raise RuntimeError("CONTROL P1 candidate events disappeared during independent replay")
+        raise RuntimeError(f"CONTROL {window_id} candidate events disappeared during independent replay")
     test_trades, test_events, test_component_prices = _simulate_scenario(
         "TEST", test_candidates, samples, daily_by_ticker, intervals_by_component,
-        trading_dates, start, end, support,
+        trading_dates, start, end, support, study_id,
     )
 
-    control_summary = _scenario_summary("CONTROL", all_events, control_events, control_trades, samples)
-    test_summary = _scenario_summary("TEST", all_events, test_events, test_trades, samples)
-    annual = _annual_comparison(all_events, control_events, test_events, control_trades, test_trades)
-    verdict, rubric = _verdict(control_summary, test_summary, annual)
+    control_summary = _scenario_summary("CONTROL", all_events, control_events, control_trades, samples, end)
+    test_summary = _scenario_summary("TEST", all_events, test_events, test_trades, samples, end)
+    annual = _annual_comparison(all_events, control_events, test_events, control_trades, test_trades, end)
+    verdict, rubric = _verdict(control_summary, test_summary, annual, window_id)
     comparison = _comparison_frame([control_summary, test_summary])
     deep = _deep_frame([control_summary, test_summary])
     opened = _open_frame([control_summary, test_summary])
@@ -1174,20 +1256,20 @@ def run(data_root: Path = ROOT, output_dir: Path | None = None) -> dict[str, Any
     for event in all_events:
         key = _key(event)
         if event["pattern_a_stage"] == "PROGRESSED" and key not in previous_rows:
-            raise RuntimeError(f"P1 PROGRESSED entry has no previous-stage history: {key}")
+            raise RuntimeError(f"{window_id} PROGRESSED entry has no previous-stage history: {key}")
     if len(control_by_key) != len(control_events) or len(test_by_key) != len(test_events):
         raise RuntimeError("duplicate signal key in independent scenario signal ledgers")
     support_entry_count = sum(
-        event.get("p1_entry_support_not_allowed_date") == support
+        event.get("window_entry_support_not_allowed_date") == support
         for event in (*control_events, *test_events)
     )
     entry_after_end_count = sum(
         trade["entry_execution_date"] > end for trade in (*control_trades, *test_trades)
     )
     if entry_after_end_count:
-        raise RuntimeError("a new entry was filled after the P1 effective end")
-    if any(trade.get("exit_execution_date") == support and trade.get("p1_execution_support_exit_fill") is not True for trade in (*control_trades, *test_trades)):
-        raise RuntimeError("execution-support exit lacks explicit P1 support provenance")
+        raise RuntimeError(f"a new entry was filled after the {window_id} effective end")
+    if any(trade.get("exit_execution_date") == support and trade.get("window_execution_support_exit_fill") is not True for trade in (*control_trades, *test_trades)):
+        raise RuntimeError("execution-support exit lacks explicit window provenance")
     control_overlap = entry_filter._overlap_count(control_trades) if hasattr(entry_filter, "_overlap_count") else 0
     test_overlap = entry_filter._overlap_count(test_trades) if hasattr(entry_filter, "_overlap_count") else 0
     if not hasattr(entry_filter, "_overlap_count"):
@@ -1199,15 +1281,15 @@ def run(data_root: Path = ROOT, output_dir: Path | None = None) -> dict[str, Any
     projection_drops = sum(int(row.get("silent_inner_drop_count", 0)) for row in ticker_audit.values())
     validations = {
         "raw_candidate_key_mismatch_count": 0,
-        "p1_raw_pattern_b_candidate_count": len(all_events),
-        "p1_control_pattern_a_pass_count": len(control_candidates),
-        "p1_test_pattern_a_pass_count": len(test_candidates),
-        "p1_weak_origin_exclusion_count": len(weak_keys),
+        "window_raw_pattern_b_candidate_count": len(all_events),
+        "window_control_pattern_a_pass_count": len(control_candidates),
+        "window_test_pattern_a_pass_count": len(test_candidates),
+        "window_weak_origin_exclusion_count": len(weak_keys),
         "test_weak_origin_pass_count": test_weak_pass,
         "future_pattern_a_input_count": sum(not event["pattern_a_lookahead_free"] for event in all_events),
-        "entry_after_p1_end_count": entry_after_end_count,
-        "p1_end_entry_support_blocked_count": support_entry_count,
-        "execution_support_exit_fill_count": sum(trade.get("p1_execution_support_exit_fill") is True for trade in (*control_trades, *test_trades)),
+        "entry_after_window_end_count": entry_after_end_count,
+        "window_end_entry_support_blocked_count": support_entry_count,
+        "execution_support_exit_fill_count": sum(trade.get("window_execution_support_exit_fill") is True for trade in (*control_trades, *test_trades)),
         "control_filled_trade_count": len(control_trades),
         "test_filled_trade_count": len(test_trades),
         "control_realized_trade_count": sum(trade.get("trade_status") == "REALIZED" for trade in control_trades),
@@ -1229,13 +1311,13 @@ def run(data_root: Path = ROOT, output_dir: Path | None = None) -> dict[str, Any
     }
     zero_checks = (
         "raw_candidate_key_mismatch_count", "future_pattern_a_input_count",
-        "entry_after_p1_end_count", "test_weak_origin_pass_count", "control_overlap_count",
+        "entry_after_window_end_count", "test_weak_origin_pass_count", "control_overlap_count",
         "test_overlap_count", "repository_v2_silent_inner_drop_count",
     )
     if any(validations[key] != 0 for key in zero_checks):
-        raise RuntimeError(f"P1 validation failed: {validations}")
+        raise RuntimeError(f"{window_id} validation failed: {validations}")
     if validations["lifecycle_spot_check_pass_count"] != REVIEW_COUNT:
-        raise RuntimeError(f"P1 lifecycle review did not fully pass: {validations}")
+        raise RuntimeError(f"{window_id} lifecycle review did not fully pass: {validations}")
     if validations["control_filled_trade_count"] != validations["control_realized_trade_count"] + validations["control_open_trade_count"]:
         raise RuntimeError("CONTROL realized plus open does not reconcile")
     if validations["test_filled_trade_count"] != validations["test_realized_trade_count"] + validations["test_open_trade_count"]:
@@ -1258,12 +1340,12 @@ def run(data_root: Path = ROOT, output_dir: Path | None = None) -> dict[str, Any
         _write_csv(output_dir / filename, frame)
 
     summary = {
-        "study_id": STUDY_ID,
+        "study_id": study_id,
         "verdict": verdict,
         "window": window,
         "starting_git": git_start,
-        "control_definition": "P1 independent replay: Pattern B DEPRESSED new entry and exact entry-date Pattern A PROGRESSED",
-        "test_definition": "P1 independent replay with only previous authoritative Pattern A WEAK -> current PROGRESSED new entries rejected",
+        "control_definition": f"{window_id} independent replay: Pattern B DEPRESSED new entry and exact entry-date Pattern A PROGRESSED",
+        "test_definition": f"{window_id} independent replay with only previous authoritative Pattern A WEAK -> current PROGRESSED new entries rejected",
         "control_summary": control_summary,
         "test_summary": test_summary,
         "direct_effect_records": direct.to_dict("records"),
@@ -1297,9 +1379,15 @@ def run(data_root: Path = ROOT, output_dir: Path | None = None) -> dict[str, Any
         Path("scripts/run_pattern_b_pure_simple_backtest_v01.py"),
         Path("scripts/run_pattern_b_pattern_a_entry_filter_simple_v01.py"),
         Path("scripts/analyze_pattern_b_progressed_previous_pattern_a_stage_v01.py"),
+        *additional_source_paths,
     ]
+    code_paths = {
+        "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": Path(__file__).resolve(),
+        "tests/test_run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": data_root / "tests/test_run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py",
+        **{path.as_posix(): data_root / path for path in additional_code_paths},
+    }
     metadata = {
-        "study_id": STUDY_ID,
+        "study_id": study_id,
         "created_at_kst_date": pd.Timestamp.now(tz="Asia/Seoul").strftime("%Y-%m-%d"),
         "starting_git": git_start,
         "window": window,
@@ -1311,10 +1399,7 @@ def run(data_root: Path = ROOT, output_dir: Path | None = None) -> dict[str, Any
         "no_control_trade_ledger_posthoc_filter_for_test": True,
         "trade_cost_contract": summary["cost_contract"],
         "source_sha256": {path.as_posix(): _sha256(data_root / path) for path in source_paths},
-        "code_sha256": {
-            "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": _sha256(Path(__file__).resolve()),
-            "tests/test_run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": _sha256(data_root / "tests/test_run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py"),
-        },
+        "code_sha256": {path: _sha256(file_path) for path, file_path in code_paths.items()},
         "price_load_audit": ticker_audit,
         "validations": validations,
         "generated_files": {
@@ -1326,15 +1411,16 @@ def run(data_root: Path = ROOT, output_dir: Path | None = None) -> dict[str, Any
         json.dumps(_json_clean(metadata), ensure_ascii=False, indent=2, allow_nan=False) + "\n",
         encoding="utf-8",
     )
-    print(json.dumps(_json_clean({
-        "verdict": verdict,
-        "p1_window": window,
-        "control": control_summary,
-        "test": test_summary,
-        "rubric": rubric,
-        "validations": validations,
-        "output": str(output_dir),
-    }), ensure_ascii=False, indent=2, allow_nan=False), flush=True)
+    if print_summary:
+        print(json.dumps(_json_clean({
+            "verdict": verdict,
+            "window": window,
+            "control": control_summary,
+            "test": test_summary,
+            "rubric": rubric,
+            "validations": validations,
+            "output": str(output_dir),
+        }), ensure_ascii=False, indent=2, allow_nan=False), flush=True)
     return summary
 
 
