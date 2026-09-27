@@ -1,0 +1,103 @@
+{
+  "study_id": "PATTERN_B_DEPRESSED_PREVIOUS_STATE_DIAGNOSTIC_V01",
+  "verdict": "PATTERN_B_PREVIOUS_STATE_SIGNAL_MIXED",
+  "signal_period": {
+    "start": "2013-01-31",
+    "end": "2026-08-31"
+  },
+  "pattern_b_state_observation_frontier": "2026-08-31",
+  "evaluation_cutoff": "2026-09-21",
+  "raw_transition_signal_count": 20076,
+  "permanent_exclusion_identity_count": 43,
+  "previous_state_group_count": {
+    "NORMAL": 12618,
+    "DEEP_DEPRESSED": 7163,
+    "OVERHEATED": 244,
+    "EXTREME_OVERHEATED": 51,
+    "DEPRESSED": 0,
+    "UNAVAILABLE": 0
+  },
+  "core_normal_to_depressed": {
+    "transition": "NORMAL -> DEPRESSED",
+    "N": 12618,
+    "normal_first_pct": 65.98510064986527,
+    "deep_first_pct": 30.56744333491837,
+    "median_return_pct": 7.483809497507565,
+    "win_rate_pct": 72.64972144846796,
+    "ge_50_pct": 4.5264623955431755,
+    "le_30_pct": 5.013927576601671,
+    "le_50_pct": 1.653899721448468,
+    "open_rate_pct": 8.955460453320653,
+    "median_mae_pct": -10.944753252445562
+  },
+  "core_deep_to_depressed": {
+    "transition": "DEEP_DEPRESSED -> DEPRESSED",
+    "N": 7163,
+    "normal_first_pct": 41.82605053748429,
+    "deep_first_pct": 50.83065754572107,
+    "median_return_pct": 8.157389635316692,
+    "win_rate_pct": 67.96973518284993,
+    "ge_50_pct": 9.457755359394703,
+    "le_30_pct": 8.953341740226985,
+    "le_50_pct": 5.170239596469105,
+    "open_rate_pct": 22.709551656920077,
+    "median_mae_pct": -17.63636363636364
+  },
+  "verdict_comparisons": {
+    "normal_first_rate_better_group": "NORMAL_PRIOR",
+    "lower_deep_first_rate_better_group": "NORMAL_PRIOR",
+    "median_return_better_group": "DEEP_PRIOR",
+    "win_rate_better_group": "NORMAL_PRIOR",
+    "plus_50_rate_better_group": "DEEP_PRIOR",
+    "realized_le_30_tail_better_group": "NORMAL_PRIOR",
+    "realized_le_50_tail_better_group": "NORMAL_PRIOR",
+    "open_le_30_tail_better_group": "DEEP_PRIOR",
+    "open_le_50_tail_better_group": "DEEP_PRIOR",
+    "path_direction_group": "NORMAL_PRIOR",
+    "quality_direction_group": null,
+    "risk_direction_group": null
+  },
+  "next_simple_backtest_candidate": null,
+  "validation_checks": {
+    "raw_signal_count": 20076,
+    "expected_raw_signal_count": 20076,
+    "raw_signal_key_mismatch_count": 0,
+    "duplicate_signal_key_count": 0,
+    "previous_state_unavailable_count": 0,
+    "previous_state_mismatch_count": 0,
+    "previous_state_matches_raw_transition_predecessor_count": 20076,
+    "future_previous_state_input_count": 0,
+    "normal_deep_first_date_conflict_count": 0,
+    "filled_trade_link_missing_count": 0,
+    "orphan_trade_ledger_row_count": 0,
+    "direct_review_count": 40,
+    "direct_review_pass_count": 40,
+    "no_raw_signal_or_trade_replay": true,
+    "existing_control_lineage_verified": true
+  },
+  "existing_control_summary": {
+    "filled_trade_count": 13910,
+    "closed_trade_count": 12454,
+    "open_trade_count": 1456,
+    "source_verdict": "PATTERN_B_PURE_SIMPLE_MIXED"
+  },
+  "control_lineage": {
+    "artifact_directory": "artifacts/patterns/pattern_b/pure_strategy_simple_v01",
+    "baseline_commit": "5dcfe79f40800ed8ac17558bad6dc600a91fd653",
+    "control_source_sample_sha256": "b8c9c5999ad920c23c57174dd73d9530d86517b19aa9d6f3a356e0decafcf2e5",
+    "control_trade_ledger_sha256": "0bc676c72bd242b0174ca6c00da41968ddfe0644d61a621ef929493d3114c04a",
+    "control_entry_signal_ledger_sha256": "34bd049eb3a052423f03218e4af96ec329ccbe899d323a5a5bb11770beac871e",
+    "control_summary_sha256": "d0e1246176cbce801bb8c1c680304ec76fb6c11d0db5cfe86dc2bde48e720232",
+    "control_metadata_sha256": "478643b1798d928d511a012ac8b73194688f02989b80a2d89bbb7daeb0ce217f",
+    "control_committed_blob_sha256": {
+      "trade_ledger.csv": "0bc676c72bd242b0174ca6c00da41968ddfe0644d61a621ef929493d3114c04a",
+      "entry_signal_ledger.csv": "34bd049eb3a052423f03218e4af96ec329ccbe899d323a5a5bb11770beac871e",
+      "summary.json": "d0e1246176cbce801bb8c1c680304ec76fb6c11d0db5cfe86dc2bde48e720232",
+      "metadata.json": "478643b1798d928d511a012ac8b73194688f02989b80a2d89bbb7daeb0ce217f"
+    },
+    "control_was_replayed": false,
+    "control_reconciliation": "version-controlled V01 ledger retained verbatim; row counts, status counts, source hash, and gross summary metrics verified",
+    "monthly_sample_rows": 290008
+  },
+  "elapsed_seconds": 20.029
+}
