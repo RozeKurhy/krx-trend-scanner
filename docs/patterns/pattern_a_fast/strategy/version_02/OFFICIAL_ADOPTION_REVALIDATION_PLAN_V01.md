@@ -145,3 +145,15 @@ artifacts/patterns/pattern_a_fast/strategy/v2_official_adoption_revalidation_v01
 최소 파일: `report.md`, `summary.json`, `execution_contract.json`, `source_hashes.json`, `window_metrics.csv`, `gate_results.csv`, `cash_events.csv`, `daily_equity_<window>.csv`; 재진입 감사와 필요한 거래·포트폴리오 이벤트 원장을 함께 보존한다. 구현 스크립트, 평가 데이터·계약·원천의 실제 사용 SHA-256, 표본/실행 상태를 결과 manifest에 추가한다.
 
 이 계획 문서만 별도 stage/commit/push하고, 그 뒤 계획 commit SHA를 산출물·V2 README에 기록한다. 최종 결과가 정해지면 README에는 재심사 사실, verdict, 결과 경로만 짧게 연결한다. 결과와 최소 필요한 코드/문서만 commit/push하고 `HEAD == origin/main` 및 clean worktree를 확인한다. 결과 보고는 대화와 사용자 지정 `r.md`에도 남긴다.
+
+## V01 종료 기록
+
+종료 상태: `ABORTED_BY_VALIDATION_CONTRACT_REVISION` (2026-09-28 KST)
+
+이 계획은 이후의 공통 계약 개정으로 공식 재심사 실행 전에 종료했으며 삭제하거나 새 계획으로 덮어쓰지 않는다. 다음 사항 때문에 V01 실행 방식으로 공식 판정을 계속하지 않는다.
+
+- cash skip 뒤 종목별 신호를 동적으로 재생성하면 사전 확정된 원장에 없던 반복 시도까지 E의 분모/분자에 포함될 수 있어, 기존 realistic portfolio 실행과 다른 현금 부족률이 나온다.
+- 동적 신호 재생은 실행량과 시간을 크게 늘렸다.
+- 거래정지/비거래가 아닌 단순 결측까지 exact daily mark 결손으로만 처리하면 포트폴리오 평가 기준의 해석을 과도하게 제한한다.
+
+V01의 60거래일 샘플 `94.242%`는 폐기하지 않고 역사적 실험 기록으로 보존하되, 공식 V2 판정·보고 지표·E 게이트에는 사용하지 않는다. 이 수치는 V01의 동적 재생 정의 아래에서만 유효하다. V02는 개정된 공통 계약에 따라 사전 확정 CONTROL 원장 기반 portfolio-only 재생으로 새로 시작한다.
