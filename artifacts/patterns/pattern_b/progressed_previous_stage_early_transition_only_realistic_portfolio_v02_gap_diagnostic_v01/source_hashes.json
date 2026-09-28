@@ -1,0 +1,403 @@
+{
+  "analysis_scope": "Existing V02 artifact only; no backtest, signal generation, classifier, or permanent exclusion changes.",
+  "baseline_commit": "b24779b41940ae83e170c7fae06aa230d286c434",
+  "source_files_sha256": {
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/unresolved_valuation_summary.csv": "ff098dadc98db0b511e3f25debb78d096e97043a0349794e2f7c397f3b2eabd3",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/metadata.json": "9d7d8b52fc9bf23df241581c25884441e102512227b4728fa36f9e70fa2cd07a",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/preflight.json": "0097c7e6fda7b9a371612a0c2de099bc9060d38d2a82c8f1c02e071b8647a06f",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/summary.json": "3df9bd05c9ebe1c0c77ea1cc8352dad0171a51e25915f3979f324f0dc3577450",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p1/portfolio_events.csv": "d2ec0fa1223ff020487b75b3e80401d5aee0d74cd5af1da1f7455bb8bcb062be",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p1/valuation_audit.csv": "0a491412deefcdc81d6bc1ee5f8a34976dcf8b910a75559a56543735040729a6",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p1/daily_equity.csv": "5e7f8fb06be12376796f8f06c317a47118a6449902ec625a2b8d260d7fb5e5bf",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p1/valuation_coverage.json": "df25bd08627f036ad6cb17a94c1f86674f4f2fafb99c0b02789f2702de01603a",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p2_1/portfolio_events.csv": "5691edf08bc6746511821e40e620b0ec42757b7691f6b74d58671df7fa1de489",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p2_1/valuation_audit.csv": "1f018f11ec69e76003275d4c0dcb143b09efd9f3f82f76faafce27a45d321f4d",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p2_1/daily_equity.csv": "a697533e63538461f139ad09e9cad3df4a4ed5044864cf19c19280e60b6c3bfd",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p2_1/valuation_coverage.json": "79df73e77753c34fde7d3b738691c787bad4227cb41ad6abcec62f8e52b5ee43",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p2_2/portfolio_events.csv": "557ecfea124918f5598c19e444bc3e67cf56485948915f1d9a3467056a2f5f30",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p2_2/valuation_audit.csv": "80c464f676928a25170d677ad63d4c811f8e0f173a01fc16b17fbb38839fcbaa",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p2_2/daily_equity.csv": "7e6c30f27df55c519c8e741509593297c579615372a08e1691accbad07c021c0",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p2_2/valuation_coverage.json": "2759347d09b11b103c3f6a251462e6f042d74fae20ec4a817e5f06fab11c1ce5",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p3_1/portfolio_events.csv": "c8e3e6ef95e7a7db79fd1e88b38791b08297ec0f4a4fc88c4089a3ceb41c291d",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p3_1/valuation_audit.csv": "dd8d6987d23f1b51896d8d6fc75af8292eea4fa66d458182f21107a50c48305e",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p3_1/daily_equity.csv": "e32037c53fa63672a5e5c6af9ead71d1d6870251e0661f878ba5be901c714a61",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p3_1/valuation_coverage.json": "42f54b0f7ea8b519aa0e537a74e56c352e1fc4093dedce85efbc4d182406f4f2",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p3_2/portfolio_events.csv": "b18554c2287993ac647636663bfca2c0bc555140358693b3d0371606c189f5f4",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p3_2/valuation_audit.csv": "402fc94d09e248495aeb6f0c72e0f08a921d824266014bdb2da54429056b52fe",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p3_2/daily_equity.csv": "6aa3fd60cd52b84644bd61be2a2639ccfa449aec7892ccd6ac62da70916b1cd1",
+    "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_realistic_portfolio_v02/p3_2/valuation_coverage.json": "1989d6dbcf6926ad4e83be839a4bc703fb2e8175604004333f3dd38c6f262a7b"
+  },
+  "authority_files_sha256": {
+    "data/market/rolling_authority/merged_pit_intervals.json": "ff783168c56a4772a681e34b97b17d8855f28d1c13df25094bd65cedbc80cd26",
+    "data/market/raw/krx_stocks/v01/manifest.sqlite3": "350b27a75e2fe1fd73dc6fedde451c3970fe036f5edd6a03336fde208d1e6cf0",
+    "src/trend_scanner/universe/permanent_identity_exclusions.py": "432d33bf9b1bdd0ab0424b5b56204a485ac4630f213c9ca6be7bf72094182768",
+    "docs/validation/backtest_common_rules.md": "e8783958064ddfc54f57bef3500ad41de6d3b6bc853fce2464845f9c4cc4d06b",
+    "scripts/run_p2_1_realistic_portfolio_v01.py": "2b5fbc91ff4bf1770896ee2c40c48ad20d38855f95745294ada0a4bf2612f9b4"
+  },
+  "adjusted_stock_sources_sha256": {
+    "053280": {
+      "parquet": "750fbe2284b44c07d6586defa284fe5c95e6689951f39749e499de1f218745b4",
+      "meta": "b4021f6abc9b123b9e173be5f0f78f2fac775d5e1a829e25407046d5b5b907dd"
+    },
+    "054180": {
+      "parquet": "c4846834b7fb57763042dbff48aee53699d0200d10e96065f6b6e5c1a01bd711",
+      "meta": "a719a97fc713f7c5075b1a083947017a5f8c52c4682815d01ed18d670b0cb907"
+    },
+    "109820": {
+      "parquet": "e2b35e273009803905122359c604c788258f7d4892b9c31ffb05c983ecab0767",
+      "meta": "5e34ca2dbeba5548d3a9998f4eff0f6f19fc17c61241b3c6c993d10ec1bf495e"
+    },
+    "109070": {
+      "parquet": "007225c1338f8f594376ad88008816c6796bccf8d9b6326255abccb3f1097ca2",
+      "meta": "eb2f22430817fa273057fa6ec2943d9c39abcd39697169b325bb7b6313ebc798"
+    },
+    "900050": {
+      "parquet": "fc382439a77420c1bf46af9e551e03590e238d04b64b502c254acca7afc8fb4b",
+      "meta": "00710ece2e9d6e1d743f9354e3327d19eb79c6c17fe11748aa9023881eb19e3d"
+    },
+    "043650": {
+      "parquet": "d5b9c4abda2067bc689ee6f52b250a66552f186c53a8d9002da28565dff3b1ea",
+      "meta": "404c6a92e1fa0f9aa8056912bf6c3803a036785c73ac21d75cabf44328e6a129"
+    },
+    "123750": {
+      "parquet": "0b4afc24ce481718b003a8f8067e4e39a38995dd0d0b962990c517637769a144",
+      "meta": "57c48318ad939e630c453581a0088295b4b9208489ae3c3488cdc3650cba49f8"
+    },
+    "065440": {
+      "parquet": "b289a33ad4a5a669100eb3fc602459a8708c8c9dec4d6e86d50d6f676bc9ae4d",
+      "meta": "5c7ab6152c2468d8bfaecfc69746f0bfb44a58a14d6ae0c1f2ea9908cc1ca819"
+    },
+    "020560": {
+      "parquet": "656c0467e26a8ce5bbacb9d6be37f8e9a650d985f7868ae65d2ca8c13ab88d9c",
+      "meta": "7d74083db6ba0edddcf133fa64da4b1dab15258978b882238f1b70ab62e1c73e"
+    },
+    "005030": {
+      "parquet": "4becb78e1aa3ae673748087914a666404448139c0314961866194081782cfc3f",
+      "meta": "d2d3acfaa39be4ef00dd731f9785f00319ac2d96cf7eed82480748c9cf5cccc5"
+    },
+    "018680": {
+      "parquet": "4b7c3339f8162adf3c744c67d3503560fc62749955a6f00bb33b3b547cc05edd",
+      "meta": "6bafda966a62f83d771cb8736ddd44b53ac85153b39a8fa938669ac5612d164b"
+    },
+    "001000": {
+      "parquet": "94ffe92c6361d5b187a760deef906b41d065b9fdd81e7a4c4c2f4e1f09712384",
+      "meta": "c66db050545250df8b11425d7248f79fb9a27d140e45782b1b2260bc7ed5139d"
+    },
+    "015540": {
+      "parquet": "9e6689258a8b81967d3d5e140dfc66dfec92c87fad9ae280a4036ad22d6f8a78",
+      "meta": "9bbc183a61492d3c8e07b60f37db848924a8e2a4c9c2ca1ba9b80627f8a8b38a"
+    },
+    "014190": {
+      "parquet": "64e2191eb977b00c2dcb5087c1415c25c752edf840c85bb4f7875811ffeca47a",
+      "meta": "006c008a09db325d3dc136350303e304576deb12ff800fa8702bdd5d3cfce732"
+    },
+    "127120": {
+      "parquet": "c72e845ec2b8961dd97cfb5d4044498a15ad73e92d030d749210d5288b965d1b",
+      "meta": "8ab46c36822400f3831ee0347c0fd30a65444df88d9e0eb37343174e8798297f"
+    },
+    "093240": {
+      "parquet": "0fc786bd5a4848ba4fffe6c39f9d6152d8988c0b40efd3d5cb7c049f72c8b4a2",
+      "meta": "2d2258d7b8dd09a68d6b1a75615b09ce1fc32f1869d728d2bc25a7482e413ad6"
+    },
+    "023960": {
+      "parquet": "c5ded586efb3abaa14324b72b50e8f7539ce1374ae07b89153486e61953c40e2",
+      "meta": "8a77e56c01bf25f97ca684689a072dbb3f4254b70060cb3d107edcc2ce9aa71e"
+    },
+    "121800": {
+      "parquet": "ecd7fe2ed81504fca2cbf28ef4acc85e50e2399ad322e9fc209a5284abf38dd7",
+      "meta": "6af51987ba9b907300f9fa11ff5678e76ef43b225c33e8e8c704ba6820bb77a9"
+    },
+    "099410": {
+      "parquet": "b07d6400b09f48a519b08a27a3ba529461de4de4ebc9c53833808a1cc1b6ffe9",
+      "meta": "08d71c9fde7689a3febdd6d9ec8d88340847ada03c6e48130fc4224038ca0979"
+    },
+    "035510": {
+      "parquet": "b64699520bcd655abc4185eed5793350d20c493ce5ca85446277742113a82d1e",
+      "meta": "2a9c90a3843ae76658af89bf2ea063fda5cfc98a1d1b778f404ee764a9f52989"
+    },
+    "064520": {
+      "parquet": "fe0a5424d1b2c06f3638df634b89b0235c553a5c971003ab878b101821fb4d92",
+      "meta": "917e130017a1192bd2ca74e3e307166b4945e44bba2a20237c27f374682e7992"
+    },
+    "085670": {
+      "parquet": "08b30895a600af8c519816219a36d3fae973bb555c6336e04f5de2d1f63abdeb",
+      "meta": "ce0a5fdc2194554f9b263845b75c3f30942e7451a8c96bdf6a7c1931ee28b2e3"
+    },
+    "043100": {
+      "parquet": "5b136ccb5d9c26e23ce75b69d9870d3675be5a380a96a1654bc14059a1df860c",
+      "meta": "6d01fde6b0e04ea7ac551bc05c72dd2d12aceb76b5cad457dac008196b656261"
+    },
+    "065560": {
+      "parquet": "35df08e673bed0188574c99f2778ea5b49fb7ec9baf6ff6a1a75aa971f1cf69d",
+      "meta": "d3182e367dbfc2d12c3fde69a1ba7540a8e71f412c31d2efd58c749502453655"
+    },
+    "017680": {
+      "parquet": "7e06ca320dff147f9abe62f506ada4b9f802c2c6fe9c191bb162590cf334f049",
+      "meta": "4a43bd026ff5fe01afcce3a6b599219907425a3d7d977d681e907ebb17cc74bf"
+    },
+    "058820": {
+      "parquet": "c8314d5842be2232826f56cd2d2f7c3526e9aa0ec90d129bfee4f0bb2f8f72d9",
+      "meta": "cf102173f48559c13770f397073e60691f4847b6a7a878729adb4a4b47af2bad"
+    },
+    "012600": {
+      "parquet": "26c508dcb30cd1ca7f1ffd6f081cbc23b2fdcf9a077f6753823b8a36136c7189",
+      "meta": "f915f72b75a5d5758440563a0a95fc96397b2deafaf16b5bab0e1f0dbd931ce5"
+    },
+    "029480": {
+      "parquet": "43c54aabaf7126d4c5b8177fbf1f61834f62c691f59d423e752a7c67e7aedadb",
+      "meta": "622887833d28c5348e8d0fd1a275d4813715f4b48f5f22972f8c8e1d9e9c1fce"
+    },
+    "066410": {
+      "parquet": "81d98d988864e29b404f4ec9cff1932b744e6e828cd74f55509d47b9d8aad4d3",
+      "meta": "78b1485d065552d610ce7e7f52aad38978eb8ac5e6fa4961d0e026f1e9ec97ee"
+    },
+    "007120": {
+      "parquet": "f1f42004c9fcb3dcbb8926c646abaea1a2b8ae7c44cbb5596fd18a78e0ca226f",
+      "meta": "c2c39cf05b7211a816f8cf7baf1675674588ad38a6d34d11ec450ab8c2f3d9ba"
+    },
+    "024840": {
+      "parquet": "377a07a032dfb0bbe473fc2141f4171d5475b6c0301a05dabccdb8733500fb9d",
+      "meta": "258958756c51f39358533dc109e8ce8f5a9004b7eb27aaab0221e6c14b303882"
+    },
+    "021650": {
+      "parquet": "e2637825e1c811a708995d976b33bf238d8e15a7518c492c22f168090fc4796f",
+      "meta": "dc1eabe8026f4bb2a43d361ff1e345a64229645dc61df7bf443484ea869c106f"
+    },
+    "083790": {
+      "parquet": "03cf6c1a9a162cc0eb404612dd80bb50c6b5c94fbb45ad33b65900cf997dc449",
+      "meta": "83430e109ee699a63c0a35ceb4a9434d23acc4abc2b9dfef33133052194bd8d1"
+    },
+    "008930": {
+      "parquet": "53c6f4d3a6fa4fcd8f438bc20c19e46edebfd281b9644919d0ed6346f313e568",
+      "meta": "b1bf5f98f62e2658fa4f095ca1a96ba106df3e753a762cdb00a1e3bcf083b32f"
+    },
+    "041590": {
+      "parquet": "4404ae73bbfc595f05dc66842577e7da9bf3a2ec888a33ec1304910669b1a48a",
+      "meta": "7949a4adab21f5cf721c451918124b3bf4db65d274d930ea3935a86f66a387ec"
+    },
+    "023430": {
+      "parquet": "f7519ebc29d48ffa5810ccb0984cc2e3122fc8897439ba598b4464dae3e38972",
+      "meta": "84446a0094658d81b92bca9394177f0c6fe88b714e89b88c0719f23658125225"
+    },
+    "072020": {
+      "parquet": "09d962c00b1b0f35bc9700445b9817dfe52b7e30c72dad41654fddd5a8a8893e",
+      "meta": "faff340e0cc1fa6ffbe73abda946d12c505c6a39452e2263a9ca5438f7272d96"
+    },
+    "019570": {
+      "parquet": "2174002c3679bdd3c53a7a2b529d09bae6b89db2ed436d4f41102462e3484675",
+      "meta": "ff2ddf56d64cbf7e04ae9ce704804e581769b347011528fafbbb92e0a71b5c31"
+    },
+    "001040": {
+      "parquet": "7407e24813868fb89d6e5d60521f65bd0f26de697f121112fd993ea9daab7083",
+      "meta": "02a9e5b4b11b69ad1b9c2166269c36fe40748e1fc396f7b5a2cdca63ef3b7a0b"
+    },
+    "048530": {
+      "parquet": "a2a15e7b4f87909f82ab3f29a8fc85270224fc6315062433e108fa6014ce7ab0",
+      "meta": "9e10a4254cf744adea3f9fa72373dd486b963b75ddced87a8107156e503b401e"
+    },
+    "015260": {
+      "parquet": "53b4fbf32add42d9db0b5b5f1cbca4f561202c975107f824166792a1c3b68d23",
+      "meta": "74bb578a711eaddcbb5675bf137a4e8f1429ee41a58c42ac83ea8c73b0fd779f"
+    },
+    "053060": {
+      "parquet": "67222c4872049c7b01e70db47af943d41694a42280cfed5275e57665775d2d9a",
+      "meta": "bec67e39394b92f0e334b5baeae13478456375637da111a67a282e7967a73f9c"
+    },
+    "005110": {
+      "parquet": "27c01f482eb5304812d63e1e54926b11ae354804b46e31839094ac00bc79828e",
+      "meta": "846120a0090ba6d51ed5e79739346fdf3e57634784c9125f2cf5daf3d01a1789"
+    },
+    "007530": {
+      "parquet": "906daca764fb1c7c42fc989513fad5584a336ae8d7cf4d8ebcccc58f2f7d25e8",
+      "meta": "6539d4fe52ebc3d6f7a3fe085b3213f6353d036e340a4e43380343c92a0ccd45"
+    },
+    "073570": {
+      "parquet": "7ef83da87d56e1c072e3be87b46ddbb63423853217a8efb6ab3aaf86ad0141d1",
+      "meta": "0d23a183355ffeaaa7af69c842f14f8c034ffca77fa4152a416dd3dd7868464d"
+    },
+    "092460": {
+      "parquet": "73c402e1745f41f17ab80ebf6486e6a370c741e42d4dc289f1bfd1e58e149a45",
+      "meta": "fb94238b3e7851b9a8069e3ce5650ecda912c7cd8a4eb18a24e1a25476fb821d"
+    },
+    "900100": {
+      "parquet": "eb59506fa61369eccd6c493a77c5bf68a3bd86ca9ff0dfd9f185c61eedba1b3b",
+      "meta": "5f419eedd92988ae81e98b21a6b8d2706bdb1b6bc926547d4ad0fb1b45fc4f44"
+    },
+    "066790": {
+      "parquet": "95e5d9337af0d79e5c642ea2801e5af290835f953e77f74e4c678042a1b4b00f",
+      "meta": "1f1164720bf7d80ce1186234336e224ac904bc2d719e6ba2d34d1d170f441bed"
+    },
+    "089600": {
+      "parquet": "648da9711f1231e2a6860745842e50ebb4d9887be1f682c37696abdee03d9cbe",
+      "meta": "f3c7d6362a651a1ecd7718046f14d0a4b384570d45cf9e8b5b8aeccf0b4a61fa"
+    },
+    "078160": {
+      "parquet": "bff0f7f74b749fa356ff8e26b9004a437d272ed9fafa8efac1eadf4b56c6c288",
+      "meta": "271df591fd17232cc4dd59e80f02e127468d79886071360c9d54083c0d8477e6"
+    },
+    "083660": {
+      "parquet": "76dbcf40ca0879594d6ec0dcb47f12c806c71d9e130be8c2924d1a3ba1e27818",
+      "meta": "0d3f8399fefc10158868a8e36618ff24c2ba0c02848f998fd5856c29cceae12e"
+    },
+    "007630": {
+      "parquet": "2957eb179f16aa375ccd8fc93234b42372acae21d2651a856ceb49ecdb4bb882",
+      "meta": "abe1bbced45132771b46bdc6e74d24dc6cb69b2f161c2060b72a76c8f7a6f0aa"
+    },
+    "071090": {
+      "parquet": "6880d22d879f33b10dd2e8f1547448839d0c5d0fabd2d12919afdaac8d38d101",
+      "meta": "1e42a2568c65f4efaf4cf92d1c34f93739d8bdbdff6bc4f4ce79189a83424c3a"
+    },
+    "052020": {
+      "parquet": "7c8330ae862cc9a398185d918164cdb76e4f46f1cd8ad12bfb84a0260ab0ecd2",
+      "meta": "7ee35b6f0f39f725b55e5a241f286da827147c7a844f89197cc67a09babc9041"
+    },
+    "123010": {
+      "parquet": "1e946fb98eb767e280e521715003e762f10589cfc54f53e20d282bce74ea018d",
+      "meta": "003f76dbf107ba0c581a2665d1ea9355e03f4c929c1e983c81e0e9180bfdc94c"
+    },
+    "086250": {
+      "parquet": "3606502c8fd76ea61de5ed9c94b442c1e18773095d2dfdcc1b824ad4ba57c208",
+      "meta": "5e296cc8c53bcb0e5b283329c303059d80bf3a1f8e3bf60d8f49e936f508c54d"
+    },
+    "057880": {
+      "parquet": "dc6f2d1e963ef7a6473ba6e489a4b4807540201db121f29a453fe8efe8ff909e",
+      "meta": "83810415b19822f78fd0adef5fed6dd06ca0cb9b2f2f6fe46b46442391af38b3"
+    },
+    "103230": {
+      "parquet": "d2755b223db36a606a86d87dd38c7d0e61691cc81470b577bf4df7991fcf41d6",
+      "meta": "622b519e6de6f2555201862787c44515d2fdc313ec6d41d23684e7c1e92cac30"
+    },
+    "174880": {
+      "parquet": "a2d9156a94a7fb9914f6b8789d59e9932f74e32e72b2070800c1410d6f4a1692",
+      "meta": "a5551b4bbda26a736365ebe7b51f3f79638d894348b916e73814f4b5e1d131fe"
+    },
+    "121850": {
+      "parquet": "7bb87a03fcdcadfdc1dfd03431947f74760e2835c0971064ce2ad0d912abf239",
+      "meta": "fe9e43927e29c299565903fc3a51c8c4722ec307c28c0a7d5eb03ae129ad116e"
+    },
+    "093230": {
+      "parquet": "8a5be75aa96611c25d28762abd2f62fe02605791f43b2e5973291b7c0ecb0b52",
+      "meta": "3568b8223735ba0ce659589b23cd31c58792c9245814041f970aa53525e73522"
+    },
+    "181340": {
+      "parquet": "434783ce77e2500186dde7c741da996d1fc1784ccd490d24f17bafb51fc9e0a6",
+      "meta": "5b0df97a76b70741d41c1249d5e2817f53e8fb705041378fc10b890106b28819"
+    },
+    "019490": {
+      "parquet": "b10355e4eff4353923b4f46173c619e5a65cfcb0f45c088b612bd6e872057385",
+      "meta": "ed7dd1477417bfc95679c05f6e1ef144e92e52c6dced21e335314f901c36e4df"
+    },
+    "014200": {
+      "parquet": "6aba4d632a71450ad7cda8ab6746474c0238ddb5c74445a24ff9d184b6828934",
+      "meta": "63107319ad1903e0a4d69221e6adcdcb7d9c54f075be3b3dbb96a7df3e644553"
+    },
+    "078890": {
+      "parquet": "ef10bd44f963f8cbb05ae24cdfc4a5fac60bec027e6cf36035b2b3f127f5044d",
+      "meta": "f48e8fbee5b56f895c8e0934c7e4969e4a03e612e0e4ec91daaa4b0aa6cbf8af"
+    },
+    "111870": {
+      "parquet": "95009bef1abc3c2abfb356f988ed6b7e0e200383cebb699adc0077e495f1c74d",
+      "meta": "03f9315edf5d7fa03e0e27b443f4f87943937302949cf6fb55adf8e93b42a2ff"
+    },
+    "032680": {
+      "parquet": "9d3622614f3e9f38df702e643c67b85bede6d6cc8c432d2b9784c71192829052",
+      "meta": "e409241ee133f9bf9f31a4c9fc4b15c400bd8be11f77944d99a14f1107ebbe04"
+    },
+    "151910": {
+      "parquet": "be05a91d4a5c21b5ea5bdd21ef8621cf30ea984b9d097f16bc39821a2e2936de",
+      "meta": "781e863d939f8c2dc81af815010c9f7912ffe513c0a6100c0cb4f0e18bcb5fb7"
+    },
+    "322510": {
+      "parquet": "683442d1e936f5185852f1583171ee340837d9a4171bbc6772cad43b04dba8f7",
+      "meta": "2022d31f67dda876c234b5f2a67a1beadf8195c00067009e9676d83c25f0ea55"
+    },
+    "015020": {
+      "parquet": "293160348a1b56f1187bdf0e0faa318c286749374efcde335a24aabcdca7288f",
+      "meta": "7d6acaba9d86960dbd08df9554592e9f7fe4ad02463387f8cbb9a7208c16b905"
+    },
+    "023790": {
+      "parquet": "a0f8b730777423480fb2725f835ef10a6949e447298002b453aa70a60ae9fbe8",
+      "meta": "2295afbc8887764692c0cfeb13d142d983de9e81616c34e7ee8cdab6e0a47f2d"
+    },
+    "001380": {
+      "parquet": "94f7a9eea985d131b2d59ecf88749383ca13cd9fff210a359132771141a5f28c",
+      "meta": "171c89e098986c733ee892e2034ff623c2e34e02033804109010f7ccf72a18cc"
+    },
+    "011080": {
+      "parquet": "7d97ced8742442f6f5dde97fae39049301013590a11b875b0fc9c899210b9246",
+      "meta": "3e01cb01c65d14dc2a8f9a61b74223bb478256e51de394eaf4b1a2a04838a433"
+    },
+    "096630": {
+      "parquet": "c24fb512128a0d0b4b65a28f60243a467d9fb8fe08284ded348963b2d476955e",
+      "meta": "1f2b3544f07f7c0ce09a51d1140af0f5d30a043a84cb0bf1e16f2ca860b33d8a"
+    },
+    "069640": {
+      "parquet": "65aba0d74ca64a325d4a351073d400d14cd277367148e43833c135173ee99690",
+      "meta": "a48da22ab1cd82fdd5d2010e7878c49aefa1f87f9b30caa04d4922887f0221db"
+    },
+    "234100": {
+      "parquet": "cc56b726b89a046fa29e14fad0d0ac7cc6c6b7db5f4109c4414d3a54f1ec95b9",
+      "meta": "84f01fc5af6c2000802043af42c0914a9dc06902ac07cc976c3471454e978f01"
+    },
+    "227610": {
+      "parquet": "c19c708513279b283340e79b465057c248bb71a1a11942e661e57629d59ed533",
+      "meta": "0e920576439c3159a90e857e743ec64dc336f8069e263ac5cb926634155f500a"
+    },
+    "900250": {
+      "parquet": "f98294332a362ad08d1d2a100c85d9cbfccdc323890379d11d62b9625e7bb9d0",
+      "meta": "e2c7a43ec96097e04e80f91535634df8bbb98118140a2359bd96722d419ca4b9"
+    },
+    "007720": {
+      "parquet": "d0629aa6197f75c26b5edbd92300186a4057f7d4abb1eb34687764fbc4012b0e",
+      "meta": "6e39b07ea5d88702925dde31de12412b1201eaeec537fdca40a20c80648d1530"
+    },
+    "105550": {
+      "parquet": "c9561b9dbb3c18d616b331b1a93d2e5ce4aceec44bf032694de27722e286207f",
+      "meta": "f023b1d35f87286fe39050f50c1b9245313bfbf45c70e5cfb030a8019c2b7904"
+    },
+    "023760": {
+      "parquet": "d5d87c06f69647dc0f2d59d66edcbaade1e898df7187bfbd2b1db917669516e0",
+      "meta": "e019c6406bc8bc6ae9b5db1fa0fa160b86cb19ca94146dbab60244845fc52676"
+    }
+  },
+  "raw_partition_audit": {
+    "unique_market_date_partitions_checked": 3860,
+    "all_checked_status_complete": true,
+    "partition_manifest_sha256_aggregate": "e76368cb99a7cd85578efbe7ca11a8706703446a3defec2f89cf46f4d2d1c848",
+    "valuation_mark_classification_sha256_aggregate": "615dd359d80ac5b32a5832befc1f9e78412d69837430a633cd39bfbc2afa2ab1",
+    "status_counts": {
+      "COMPLETE": 3860
+    }
+  },
+  "krx_public_reference_urls": {
+    "007630_delisting_and_liquidation_period": "https://kind.krx.co.kr/external/2021/11/02/000494/20211102001123/68051.htm",
+    "086250_delisting_and_liquidation_period": "https://kind.krx.co.kr/external/2021/08/18/000466/20210818001107/70769.htm",
+    "174880_improvement_period_trade_halt_notice": "https://kind.krx.co.kr/external/2023/04/27/000491/20230427000167/70780.htm",
+    "093230_delisting_notice": "https://kind.krx.co.kr/external/2025/02/14/001474/20250214003151/68051.htm",
+    "121800_trade_halt_notice": "https://kind.krx.co.kr/external/2026/06/02/000871/20260602001954/70798.htm",
+    "103230_period_change_source": "https://kind.krx.co.kr/external/2022/07/08/000567/20220708001288/70798.htm"
+  },
+  "official_lifecycle_cutoffs": {
+    "007630/KR7007630007": {
+      "last_eligible_listing_day": "2021-11-16",
+      "delisting_effective_date": "2021-11-17",
+      "basis": "KRX delisting notice; source URL above"
+    }
+  },
+  "parity": {
+    "window_identity_groups": 140,
+    "unique_exact_identities": 81,
+    "duplicate_identical_valuation_audit_rows_deduplicated": 23,
+    "frozen_summary_rows": 140,
+    "frozen_summary_group_exact_key_parity": true,
+    "frozen_summary_missing_day_parity": true,
+    "expected_window_identity_groups": 140,
+    "expected_unique_exact_identities": 81,
+    "long_gap_identity_count_ge_100": 13,
+    "expected_long_gap_identity_count": 13,
+    "already_approved_exclusion_count": 109,
+    "overlap_with_unresolved_identities": 0,
+    "overlap_exact_identities": []
+  },
+  "scenario_arithmetic": "Scenario A recovered dates are the exact baseline-invalid dates where every unresolved valuation mark has one exact in-PIT KRX OHLC=0/close>0/volume=0/trading_value=0 row and a prior positive adjusted close inside the same exact PIT interval. Scenario B equals A because the baseline already includes approved exclusions and there is no unresolved-target overlap. Carry remains a candidate projection, not applied data."
+}
