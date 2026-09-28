@@ -46,6 +46,18 @@ FastCore 비교에서 사용한 값일 뿐 모든 백테스트의 영구 기본�
   의미를 결과에 남긴다.
 - `UNRESOLVED`가 발생했다고 항상 전체 백테스트를 자동 중단하지는 않는다. 영향도와
   특정 종목 예외 판단은 §2.6 및 §5를 따르며, 임의 숫자 대체는 계속 금지한다.
+- 일별 포트폴리오 MDD를 계산할 때 미해결 valuation으로 전체 자산가치를 확정할 수
+  없는 거래일은 해당 날짜 전체를 `Observed MDD` 시계열에서 제외한다. 누락 종목만
+  보유액에서 제거해 NAV를 만들거나 0 대체·보간·nearest date·임의 forward-fill을
+  하지 않는다. Coverage는 전체 거래일 중 유효한 일별 포트폴리오 자산가치가 있는
+  날의 비율로 계산한다. 결과에는 MDD 유형(`EXACT`/`OBSERVED`), coverage, 전체·관측·
+  누락 거래일 수, 미해결 valuation mark 수, 미해결 구간 수, 최대 연속 누락일과
+  MDD peak·trough·recovery 날짜를 남긴다. Coverage와 공식 MDD 채택 기준은
+  [`official_strategy_adoption_criteria.md`](official_strategy_adoption_criteria.md)가
+  단일 authority다.
+- 충분한 coverage가 있으면 미해결 일별 equity가 일부 남아 있어도 `Observed MDD`를
+  계산할 수 있다. `unresolved == 0`을 만들기 위한 무제한 종목 제외나 반복 실행을
+  요구하지 않으며, 구조적 영향과 특정 종목 예외는 §2.6에 따라 처리한다.
 
 ### 2.3 신호와 체결
 
