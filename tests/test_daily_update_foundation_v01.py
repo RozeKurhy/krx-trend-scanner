@@ -386,6 +386,130 @@ def test_pit_extension_is_staged_and_promoted_only_after_validation(tmp_path):
     assert json.loads((authority / "manifest.json").read_text())["certified_through"] == "2026-08-24"
 
 
+def test_nontrading_target_promotes_actual_market_frontier_and_second_run_is_noop(tmp_path):
+    target = "2026-09-25"
+    actual_dates = ["2026-09-21", "2026-09-22", "2026-09-23"]
+    no_data_dates = {"2026-09-24", target}
+    authority = _authority(tmp_path, [actual_dates[0]], certified=actual_dates[0])
+
+    class FinalizedRawStore(FakeRawStore):
+        def is_finalized_no_data(self, market, day):
+            return market in {"KOSPI", "KOSDAQ"} and day in no_data_dates
+
+        def load_snapshot(self, _market, _day):
+            return pd.DataFrame()
+
+    raw = FinalizedRawStore(
+        calendar=[*actual_dates, *sorted(no_data_dates)],
+        complete=actual_dates,
+        etf_complete=actual_dates,
+    )
+
+    class TerminalCommonRaw:
+        def __init__(self):
+            self.calls = []
+
+        def refresh(self, boundary, requested, *, required_dates):
+            self.calls.append((boundary, requested, list(required_dates)))
+            return {
+                "status": "PASS",
+                "runner_result": {"status": "IDEMPOTENT_NOOP", "krx_open_api_attempt_count": 0},
+                "required_dates": list(required_dates),
+                "missing_dates": [],
+                "new_boundary": requested,
+            }
+
+    class ExtensionAwareAdjusted:
+        def __init__(self):
+            self.calls = []
+
+        def plan(self, tickers, boundary, requested, *, market_authority_as_of):
+            return {
+                "target_as_of": requested,
+                "market_authority_as_of": market_authority_as_of,
+                "missing_dates": [],
+                "blocked": [],
+                "failures": [],
+            }
+
+        def refresh_with_extension(
+            self, tickers, boundary, requested, extension, *, market_authority_as_of, workdir
+        ):
+            self.calls.append((requested, market_authority_as_of, tuple(extension.merged_calendar_dates)))
+            return {
+                "status": "PASS",
+                "market_authority_as_of": market_authority_as_of,
+                "expected_tickers": list(tickers),
+                "updated": list(tickers),
+                "skipped": [],
+                "failures": [],
+                "blocked": [],
+                "new_boundary": market_authority_as_of,
+            }
+
+    common_raw = TerminalCommonRaw()
+    common_adjusted = ExtensionAwareAdjusted()
+    extension = PitExtensionResult(
+        merged_intervals=(
+            {
+                "ticker": "000001",
+                "isu_cd": "KR7000000001",
+                "market": "KOSPI",
+                "state": "COMMON",
+                "effective_from": actual_dates[0],
+                "effective_to": actual_dates[-1],
+            },
+        ),
+        merged_calendar_dates=tuple(actual_dates),
+        extension_start=actual_dates[1],
+        extension_end=actual_dates[-1],
+        frozen_interval_count=1,
+        merged_interval_count=1,
+        new_ticker_count=0,
+    )
+    foundation = DailyUpdateFoundation(
+        authority_dir=authority,
+        raw_store=raw,
+        adjusted_store=AdjustedPriceStore(tmp_path / "adjusted"),
+        common_adjusted_tickers=["000001"],
+        common_raw_updater=common_raw,
+        etf_raw_updater=FakeEtfRaw(raw),
+        common_adjusted_updater=common_adjusted,
+        etf_adjusted_updater=FakeAdjusted(),
+        market_index_refresh=lambda requested: {"status": "PROMOTED", "new_boundary": requested},
+        repository_validator=lambda requested, _stage, _legs: {"status": "PASS", "target": requested},
+        corporate_action_state_store=EmptyCorporateActionState(),
+        corporate_action_refresh_service=EmptyCorporateActionService(),
+        basic_info_runner=FakeAcquisition(),
+        pit_extension_builder=lambda **_kwargs: extension,
+    )
+
+    result = foundation.execute(target, dry_run=False)
+
+    assert result["final_status"] == "PASS"
+    assert result["market_authority_as_of"] == actual_dates[-1]
+    assert result["certified_through"] == target
+    assert result["authority_promotion"] == 1
+    assert result["leg_results"]["common_raw"]["missing_dates"] == []
+    assert result["leg_results"]["common_adjusted"]["market_authority_as_of"] == actual_dates[-1]
+    assert result["leg_results"]["common_adjusted"]["new_boundary"] == target
+    assert result["leg_results"]["common_adjusted"]["failures"] == []
+    assert result["leg_results"]["etf_adjusted"].get("failures", []) == []
+    assert result["leg_results"]["market_index"]["status"] == "PROMOTED"
+    assert result["leg_results"]["repository_v2"]["status"] == "PASS"
+    assert common_adjusted.calls == [(target, actual_dates[-1], tuple(actual_dates))]
+    promoted_calendar = json.loads((authority / "merged_trading_calendar.json").read_text())
+    assert promoted_calendar["trading_dates"] == actual_dates
+    assert not no_data_dates.intersection(promoted_calendar["trading_dates"])
+
+    second = foundation.execute(target, dry_run=False)
+
+    assert second["final_status"] == "NOOP"
+    assert second["status"] == "NOOP_ALREADY_COMPLETE"
+    assert second["authority_promotion"] == 0
+    assert len(common_adjusted.calls) == 1
+
+
 def test_insufficient_pit_authority_blocks_without_current_universe_fallback(tmp_path):
     foundation, _raw, authority, *_ = _foundation(
         tmp_path, calendar=["2026-08-21"], complete=["2026-08-21", "2026-08-24"], certified="2026-08-21"

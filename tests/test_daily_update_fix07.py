@@ -6,9 +6,12 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.rolling_market_data_refresh import (
+    InsufficientPitFrontierError,
+    PitExtensionResult,
     RollingAdjustedPriceUpdater,
     _load_production_raw_coverage_authority,
 )
@@ -195,3 +198,121 @@ def test_unresolved_raw_row_blocks_plan_and_refresh_without_provider_or_write(tm
     assert result["new_boundary"] == BOUNDARY
     assert provider.calls == []
     assert not store.exists("000001")
+
+
+def test_holiday_target_uses_last_trading_date_for_common_adjusted(tmp_path):
+    requested = "2026-09-25"
+    market_date = "2026-09-23"
+    trading_dates = ["2026-09-21", "2026-09-22", market_date]
+    interval = {
+        "ticker": "000001",
+        "isu_cd": "KR7000000001",
+        "market": "KOSPI",
+        "state": "COMMON",
+        "effective_from": "2020-01-01",
+        "effective_to": market_date,
+    }
+    pit = tmp_path / "extended-pit.json"
+    calendar = tmp_path / "extended-calendar.json"
+    pit.write_text(json.dumps({"intervals": [interval]}), encoding="utf-8")
+    calendar.write_text(json.dumps({"trading_dates": trading_dates}), encoding="utf-8")
+
+    class Raw:
+        def list_manifest(self, market=None):
+            if market == "KOSPI":
+                return [{"market": market, "date": day, "status": "COMPLETE"} for day in trading_dates[1:]]
+            return []
+
+        def load_snapshot(self, market, day):
+            return pd.DataFrame([_row("000001", "USABLE")])
+
+    store = AdjustedPriceStore(tmp_path / "adjusted")
+    store.save_full("000001", _frame([trading_dates[0]]), {
+        "requested_start": trading_dates[0], "requested_end": trading_dates[0]
+    })
+
+    class Provider:
+        calls = []
+
+        def load_daily(self, ticker, start, end):
+            self.calls.append((ticker, start, end))
+            return _frame(trading_dates[1:])
+
+    provider = Provider()
+    updater = RollingAdjustedPriceUpdater(
+        provider,
+        store,
+        pit_path=pit,
+        historical_calendar_path=calendar,
+        production_raw_store=Raw(),
+    )
+    plan = updater.plan(["000001"], trading_dates[0], requested)
+    extension = PitExtensionResult(
+        merged_intervals=(interval,),
+        merged_calendar_dates=tuple(trading_dates),
+        extension_start=trading_dates[1],
+        extension_end=market_date,
+        frozen_interval_count=1,
+        merged_interval_count=1,
+        new_ticker_count=0,
+    )
+    result = updater.refresh_with_extension(
+        ["000001"],
+        trading_dates[0],
+        requested,
+        extension,
+        workdir=tmp_path / "stage",
+    )
+
+    assert plan["market_authority_as_of"] == market_date
+    assert plan["ticker_records"][0]["required_end"] == market_date
+    assert not {"2026-09-24", requested} & set(plan["missing_dates"])
+    assert result["market_authority_as_of"] == market_date
+    assert result["new_boundary"] == market_date
+    assert provider.calls == [("000001", "2026-09-22", market_date)]
+    assert set(store.load_daily("000001").index.strftime("%Y-%m-%d")) == set(trading_dates)
+    assert store.load_metadata("000001")["requested_end"] == requested
+
+
+def test_holiday_target_still_blocks_when_actual_market_date_exceeds_extension(tmp_path):
+    requested = "2026-09-25"
+    market_date = "2026-09-23"
+    pit = tmp_path / "pit.json"
+    calendar = tmp_path / "calendar.json"
+    pit.write_text(json.dumps({"intervals": []}), encoding="utf-8")
+    calendar.write_text(json.dumps({"trading_dates": ["2026-09-21"]}), encoding="utf-8")
+
+    class Provider:
+        calls = []
+
+        def load_daily(self, *_args):
+            self.calls.append(_args)
+            return _frame([market_date])
+
+    provider = Provider()
+    updater = RollingAdjustedPriceUpdater(
+        provider,
+        AdjustedPriceStore(tmp_path / "adjusted"),
+        pit_path=pit,
+        historical_calendar_path=calendar,
+    )
+    extension = PitExtensionResult(
+        merged_intervals=(),
+        merged_calendar_dates=("2026-09-21", "2026-09-22", market_date),
+        extension_start="2026-09-22",
+        extension_end="2026-09-22",
+        frozen_interval_count=0,
+        merged_interval_count=0,
+        new_ticker_count=0,
+    )
+
+    with pytest.raises(InsufficientPitFrontierError, match="market-authority date 2026-09-23"):
+        updater.refresh_with_extension(
+            ["000001"],
+            "2026-09-21",
+            requested,
+            extension,
+            market_authority_as_of=market_date,
+            workdir=tmp_path / "stage",
+        )
+    assert provider.calls == []

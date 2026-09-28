@@ -233,6 +233,10 @@ class DailyUpdateFoundation:
             set(_paired_complete_dates(self.raw_store, target)) | finalized_no_data
         )
         common_missing = sorted(set(required_candidates) - set(complete_raw))
+        operating_dates = sorted(
+            set(known_dates) | set(_paired_complete_dates(self.raw_store, target))
+        )
+        market_authority_as_of = max(operating_dates, default=None)
         etf_missing = [
             day for day in etf_required_dates
             if self.raw_store.get_manifest("KOSPI", day) is not None
@@ -243,13 +247,30 @@ class DailyUpdateFoundation:
             )
         ]
         if hasattr(self.common_adjusted_updater, "plan"):
-            common_adjusted_plan = dict(
-                self.common_adjusted_updater.plan(
-                    self.common_adjusted_tickers,
-                    manifest.leg_boundaries["common_adjusted"],
-                    target,
-                )
+            plan_kwargs = (
+                {"market_authority_as_of": market_authority_as_of}
+                if market_authority_as_of is not None
+                else {}
             )
+            try:
+                common_adjusted_plan = dict(
+                    self.common_adjusted_updater.plan(
+                        self.common_adjusted_tickers,
+                        manifest.leg_boundaries["common_adjusted"],
+                        target,
+                        **plan_kwargs,
+                    )
+                )
+            except TypeError as exc:
+                if not plan_kwargs or "unexpected keyword argument" not in str(exc):
+                    raise
+                common_adjusted_plan = dict(
+                    self.common_adjusted_updater.plan(
+                        self.common_adjusted_tickers,
+                        manifest.leg_boundaries["common_adjusted"],
+                        target,
+                    )
+                )
         else:
             common_adjusted_plan = _leg_summary("PLAN", reason="PIT_AND_STORE_CHECK_DEFERRED_TO_LIVE_LEG")
         if hasattr(self.etf_adjusted_updater, "plan"):
@@ -274,7 +295,7 @@ class DailyUpdateFoundation:
             market_index_plan = _leg_summary("PLAN", reason="INDEX_STORE_CHECK_DEFERRED_TO_LIVE_LEG")
         extension_needed = bool(tail_candidates)
         dirty_state_count = 0
-        managed_universe = self._managed_universe(target)
+        managed_universe = self._managed_universe(market_authority_as_of or target)
         if self.corporate_action_state_store is not None:
             dirty_state_count = sum(
                 state.status in {"DIRTY", "FAILED"}
@@ -283,6 +304,7 @@ class DailyUpdateFoundation:
             )
         return {
             "target_as_of": target,
+            "market_authority_as_of": market_authority_as_of,
             "current_certified_through": manifest.certified_through,
             "operating_calendar_frontier": authority["operating_frontier"],
             "required_candidate_dates": required_candidates,
@@ -958,6 +980,7 @@ class DailyUpdateFoundation:
                 "authority_promotion": 0,
             }
         manifest: RollingAuthorityManifest = plan.pop("manifest")
+        market_authority_as_of = plan.get("market_authority_as_of")
         if dry_run:
             complete_plan = not any(
                 plan.get(leg, {}).get("missing_dates")
@@ -1029,6 +1052,9 @@ class DailyUpdateFoundation:
                 set(_calendar_dates(self.authority_dir, target))
                 | set(day for day in _paired_complete_dates(self.raw_store, target) if day > plan["operating_calendar_frontier"])
             )
+            market_authority_as_of = max(operating_dates, default=None)
+            if market_authority_as_of is None:
+                raise DailyUpdateFoundationError("BLOCKED_NO_MARKET_AUTHORITY_DATE")
             extension_dates = [day for day in operating_dates if day > plan["operating_calendar_frontier"]]
             with tempfile.TemporaryDirectory(prefix="daily_update_authority_") as temporary:
                 stage_dir = Path(temporary)
@@ -1044,13 +1070,13 @@ class DailyUpdateFoundation:
                     common_tickers = load_effective_common_adjusted_population(
                         staged_pit_path,
                         etf_acceptance_tickers=ETF_VALIDATED_ACCEPTANCE_TICKERS,
-                        identity_as_of=target,
+                        identity_as_of=market_authority_as_of,
                     )
                     previous_pit_path = self.authority_dir / DEFAULT_MERGED_PIT_PATH.name
                     if previous_pit_path.exists():
-                        population_added = self._pit_population(staged_pit_path, target) - self._pit_population(previous_pit_path, target)
-                        staged_identity_keys = self._pit_identity_keys(staged_pit_path, target)
-                        previous_identity_keys = self._pit_identity_keys(previous_pit_path, target)
+                        population_added = self._pit_population(staged_pit_path, market_authority_as_of) - self._pit_population(previous_pit_path, market_authority_as_of)
+                        staged_identity_keys = self._pit_identity_keys(staged_pit_path, market_authority_as_of)
+                        previous_identity_keys = self._pit_identity_keys(previous_pit_path, market_authority_as_of)
                         identity_added = {
                             ticker
                             for ticker, _isu_cd, _market in staged_identity_keys - previous_identity_keys
@@ -1061,7 +1087,7 @@ class DailyUpdateFoundation:
                 }
                 current_identities = self._active_pit_identities(
                     staged_pit_path,
-                    target,
+                    market_authority_as_of,
                     sorted(managed_universe),
                 )
 
@@ -1086,24 +1112,58 @@ class DailyUpdateFoundation:
                 leg_results["pit_authority"]["population_added_tickers"] = sorted(population_added)
                 leg_results["pit_authority"]["identity_added_tickers"] = sorted(identity_added)
                 if extension is not None and hasattr(self.common_adjusted_updater, "refresh_with_extension"):
-                    leg_results["common_adjusted"] = self.common_adjusted_updater.refresh_with_extension(
-                        common_tickers,
-                        manifest.leg_boundaries["common_adjusted"],
-                        target,
-                        extension,
-                        workdir=stage_dir,
-                    )
+                    try:
+                        leg_results["common_adjusted"] = self.common_adjusted_updater.refresh_with_extension(
+                            common_tickers,
+                            manifest.leg_boundaries["common_adjusted"],
+                            target,
+                            extension,
+                            market_authority_as_of=market_authority_as_of,
+                            workdir=stage_dir,
+                        )
+                    except TypeError as exc:
+                        if "unexpected keyword argument" not in str(exc):
+                            raise
+                        leg_results["common_adjusted"] = self.common_adjusted_updater.refresh_with_extension(
+                            common_tickers,
+                            manifest.leg_boundaries["common_adjusted"],
+                            target,
+                            extension,
+                            workdir=stage_dir,
+                        )
                 else:
-                    leg_results["common_adjusted"] = self.common_adjusted_updater.refresh(
-                        common_tickers,
+                    leg_results["common_adjusted"] = self._call_refresh(
+                        self.common_adjusted_updater,
                         manifest.leg_boundaries["common_adjusted"],
                         target,
+                        market_authority_as_of=market_authority_as_of,
                     )
                 if (
                     leg_results["common_adjusted"].get("failures")
                     or leg_results["common_adjusted"].get("blocked")
                 ):
                     raise DailyUpdateFoundationError("BLOCKED_COMMON_ADJUSTED_AUTHORITY")
+                common_adjusted_result = dict(leg_results["common_adjusted"])
+                leg_results["common_adjusted"] = common_adjusted_result
+                expected_common_tickers = {
+                    normalize_ticker(ticker)
+                    for ticker in common_adjusted_result.get("expected_tickers", ())
+                }
+                accounted_common_tickers = {
+                    normalize_ticker(ticker)
+                    for ticker in common_adjusted_result.get("updated", ())
+                }
+                accounted_common_tickers.update(
+                    normalize_ticker(item.get("ticker"))
+                    for item in common_adjusted_result.get("skipped", ())
+                    if isinstance(item, Mapping) and item.get("ticker")
+                )
+                if accounted_common_tickers == expected_common_tickers:
+                    # COMMON raw was already validated through the requested target, including
+                    # finalized paired NO_DATA; adjusted rows themselves still end on a trading day.
+                    common_adjusted_result["new_boundary"] = max(
+                        str(common_adjusted_result.get("new_boundary", "")), target
+                    )
                 leg_results["etf_adjusted"] = self.etf_adjusted_updater.refresh(
                     manifest.leg_boundaries["etf_adjusted"], target
                 )
@@ -1122,6 +1182,34 @@ class DailyUpdateFoundation:
                     leg_results["market_index"] = dict(self.market_index_refresh(target))
                 else:
                     leg_results["market_index"] = _leg_summary("SKIPPED", reason="INDEX_REFRESH_NOT_BOUND")
+
+                etf_raw_result = dict(leg_results["etf_raw"])
+                leg_results["etf_raw"] = etf_raw_result
+                if not etf_raw_result.get("failures") and not etf_raw_result.get("missing_dates"):
+                    # COMMON raw already proved every requested date terminal (including paired
+                    # NO_DATA); ETF raw only needs actual KOSPI trading dates in that interval.
+                    etf_raw_result["new_boundary"] = target
+                etf_adjusted_result = dict(leg_results["etf_adjusted"])
+                leg_results["etf_adjusted"] = etf_adjusted_result
+                expected_etf_tickers = {
+                    normalize_ticker(ticker) for ticker in etf_adjusted_result.get("expected_tickers", ())
+                }
+                accounted_etf_tickers = {
+                    normalize_ticker(ticker) for ticker in etf_adjusted_result.get("updated", ())
+                }
+                accounted_etf_tickers.update(
+                    normalize_ticker(item.get("ticker"))
+                    for item in etf_adjusted_result.get("skipped", ())
+                    if isinstance(item, Mapping) and item.get("ticker")
+                )
+                if (
+                    not etf_adjusted_result.get("failures")
+                    and not etf_adjusted_result.get("blocked")
+                    and accounted_etf_tickers == expected_etf_tickers
+                ):
+                    # Its actual rows stop at the last trading session; this leg boundary records
+                    # that target coverage was checked against the terminal COMMON raw calendar.
+                    etf_adjusted_result["new_boundary"] = target
 
                 new_boundaries = {
                     leg: str(leg_results[leg].get("new_boundary", manifest.leg_boundaries[leg]))
@@ -1156,6 +1244,7 @@ class DailyUpdateFoundation:
                     )
                     return {
                         "target_as_of": target,
+                        "market_authority_as_of": market_authority_as_of,
                         "final_status": "PASS" if update_observed else "NOOP",
                         "status": "VALIDATED_NO_PROMOTION" if update_observed else "NO_ADVANCE",
                         "certified_through": old_boundary,
@@ -1189,6 +1278,7 @@ class DailyUpdateFoundation:
                 validate_merged_authority_coherence(staged_manifest, self.authority_dir)
                 return {
                     "target_as_of": target,
+                    "market_authority_as_of": market_authority_as_of,
                     "final_status": "PASS",
                     "status": "PROMOTED",
                     "certified_through": new_certified,
@@ -1202,6 +1292,7 @@ class DailyUpdateFoundation:
         except Exception as exc:  # noqa: BLE001 - normalize expected and unexpected failures alike
             return {
                 "target_as_of": target,
+                "market_authority_as_of": market_authority_as_of,
                 "final_status": "BLOCKED" if isinstance(exc, (DailyUpdateFoundationError, RollingAuthorityError)) else "FAILED",
                 "status": "BLOCKED" if isinstance(exc, (DailyUpdateFoundationError, RollingAuthorityError)) else "FAILED",
                 "certified_through": old_boundary,

@@ -2939,8 +2939,9 @@ class RollingAdjustedPriceUpdater:
 
     When a production raw store is supplied, required sessions in the rolling delta are aligned to
     usable ticker observations in that store; the PIT/calendar resolver remains the fallback and
-    authority-status gate. The updater fails closed unless handed a PIT/calendar authority whose
-    frontier already covers ``target_as_of`` -- see the module docstring and
+    authority-status gate. Requested dates are kept as run metadata, while PIT identity and market
+    coverage are bounded by the last actual trading date on or before the request. The updater
+    fails closed unless the PIT/calendar authority covers that market date -- see the module docstring and
     :class:`InsufficientPitFrontierError`. This class never falls back to the frozen E2E defaults
     (``survivorship_safe_denominator_freeze/v01/pit_common_denominator_v01.json``); callers must pass
     ``pit_path``/``historical_calendar_path`` explicitly.
@@ -2976,17 +2977,54 @@ class RollingAdjustedPriceUpdater:
             raise RollingAuthorityError("PIT_OR_CALENDAR_ARTIFACT_EMPTY")
         return min(max(dates), max(pit_ends))
 
+    @staticmethod
+    def _resolve_market_authority_date(
+        requested_as_of: str,
+        calendar_dates: Sequence[str],
+        *,
+        supplied: str | None = None,
+    ) -> str:
+        dates = _normalise_session_dates(calendar_dates)
+        if supplied is not None:
+            market_date = str(supplied)
+            if market_date > requested_as_of:
+                raise RollingAuthorityError(
+                    f"MARKET_AUTHORITY_DATE_EXCEEDS_REQUESTED_AS_OF:{market_date}:{requested_as_of}"
+                )
+            return market_date
+        applicable = [day for day in dates if day <= requested_as_of]
+        if not applicable:
+            raise RollingAuthorityError(
+                f"NO_MARKET_AUTHORITY_DATE_ON_OR_BEFORE_REQUESTED_AS_OF:{requested_as_of}"
+            )
+        return max(applicable)
+
+    def _market_authority_date(
+        self,
+        requested_as_of: str,
+        *,
+        calendar_path: Path | None = None,
+        supplied: str | None = None,
+    ) -> str:
+        authority_path = Path(calendar_path or self.historical_calendar_path)
+        calendar = json.loads(authority_path.read_text(encoding="utf-8"))
+        return self._resolve_market_authority_date(
+            requested_as_of,
+            calendar.get("trading_dates", []),
+            supplied=supplied,
+        )
+
     def _production_raw_authority(
         self,
         current_boundary: str,
-        target_as_of: str,
+        market_authority_as_of: str,
     ) -> ProductionRawCoverageAuthority | None:
-        if self.production_raw_store is None or target_as_of <= current_boundary:
+        if self.production_raw_store is None or market_authority_as_of <= current_boundary:
             return None
         return _load_production_raw_coverage_authority(
             self.production_raw_store,
             start_date=_next_day(current_boundary),
-            end_date=target_as_of,
+            end_date=market_authority_as_of,
         )
 
     @staticmethod
@@ -3069,7 +3107,18 @@ class RollingAdjustedPriceUpdater:
                 expected.update(observed_dates.intersection(covered_dates))
         return resolution, sorted(expected)
 
-    def plan(self, tickers: Sequence[str], current_boundary: str, target_as_of: str) -> dict[str, Any]:
+    def plan(
+        self,
+        tickers: Sequence[str],
+        current_boundary: str,
+        target_as_of: str,
+        *,
+        market_authority_as_of: str | None = None,
+    ) -> dict[str, Any]:
+        market_authority_as_of = self._market_authority_date(
+            target_as_of,
+            supplied=market_authority_as_of,
+        )
         intervals_by_ticker: dict[str, list[dict[str, Any]]] = {}
         raw_pit = json.loads(self.pit_path.read_text(encoding="utf-8"))
         for interval in raw_pit.get("intervals", []):
@@ -3078,10 +3127,10 @@ class RollingAdjustedPriceUpdater:
                 intervals_by_ticker.setdefault(str(ticker).zfill(6), []).append(interval)
         records: list[dict[str, Any]] = []
         blocked: list[dict[str, Any]] = []
-        production_raw_coverage = self._production_raw_authority(current_boundary, target_as_of)
+        production_raw_coverage = self._production_raw_authority(current_boundary, market_authority_as_of)
         for ticker in tickers:
             normalized = str(ticker).zfill(6)
-            identity = resolve_current_identity(normalized, target_as_of, intervals_by_ticker)
+            identity = resolve_current_identity(normalized, market_authority_as_of, intervals_by_ticker)
             if identity.status != "RESOLVED" or identity.interval is None:
                 record = {
                     "ticker": normalized,
@@ -3093,7 +3142,7 @@ class RollingAdjustedPriceUpdater:
                 blocked.append(record)
                 continue
             start = str(identity.interval["effective_from"])
-            if str(identity.interval.get("effective_to", "")) < target_as_of:
+            if str(identity.interval.get("effective_to", "")) < market_authority_as_of:
                 records.append({
                     "ticker": normalized,
                     "missing_dates": [],
@@ -3113,7 +3162,7 @@ class RollingAdjustedPriceUpdater:
                 normalized,
                 start,
                 current_boundary,
-                target_as_of,
+                market_authority_as_of,
                 current_identity=identity.interval,
                 pit_path=self.pit_path,
                 historical_calendar_path=self.historical_calendar_path,
@@ -3174,6 +3223,7 @@ class RollingAdjustedPriceUpdater:
             "leg": "common_adjusted",
             "current_boundary": current_boundary,
             "target_as_of": target_as_of,
+            "market_authority_as_of": market_authority_as_of,
             "missing_dates": missing_dates,
             "missing_date_count": len(missing_dates),
             "ticker_records": records,
@@ -3181,7 +3231,13 @@ class RollingAdjustedPriceUpdater:
         }
 
     def refresh(
-        self, tickers: Sequence[str], current_boundary: str, target_as_of: str, requested_start: str | None = None
+        self,
+        tickers: Sequence[str],
+        current_boundary: str,
+        target_as_of: str,
+        requested_start: str | None = None,
+        *,
+        market_authority_as_of: str | None = None,
     ) -> dict[str, Any]:
         """``requested_start=None`` (the default -- directive ROLLING_AUTHORITY_HARDENING_V01
         section 18-21) means EVERY ticker's own fetch lower bound is resolved independently from
@@ -3195,15 +3251,22 @@ class RollingAdjustedPriceUpdater:
         first-time/backfill population load where every ticker's PIT identity already starts at (or
         the caller explicitly wants) that literal date.
         """
+        market_date = self._market_authority_date(target_as_of, supplied=market_authority_as_of)
         frontier = self._frontier()
-        if target_as_of > frontier:
+        if market_date > frontier:
             raise InsufficientPitFrontierError(
-                f"PIT/calendar frontier is {frontier}; cannot roll COMMON adjusted-price data to "
-                f"{target_as_of} without a new survivorship-safe PIT extension, which this updater "
+                f"PIT/calendar frontier is {frontier}; cannot roll COMMON adjusted-price data through "
+                f"market-authority date {market_date} for requested_as_of={target_as_of} without a new survivorship-safe PIT extension, which this updater "
                 "does not generate on its own."
             )
         return self._refresh_against(
-            tickers, current_boundary, target_as_of, requested_start, self.pit_path, self.historical_calendar_path
+            tickers,
+            current_boundary,
+            target_as_of,
+            market_date,
+            requested_start,
+            self.pit_path,
+            self.historical_calendar_path,
         )
 
     def refresh_with_extension(
@@ -3214,17 +3277,26 @@ class RollingAdjustedPriceUpdater:
         extension: PitExtensionResult,
         *,
         requested_start: str | None = None,
+        market_authority_as_of: str | None = None,
         workdir: Path,
     ) -> dict[str, Any]:
         """Same as :meth:`refresh`, but against a validated :class:`PitExtensionResult` instead of
         ``self.pit_path``/``self.historical_calendar_path`` (BLOCKER A, directive section 13). The
         frozen artifacts on disk are never touched -- the merged intervals/calendar are materialized
         to ``workdir`` only for the duration of this call."""
-        if target_as_of > extension.extension_end:
+        market_date = self._resolve_market_authority_date(
+            target_as_of,
+            extension.merged_calendar_dates,
+            supplied=market_authority_as_of,
+        )
+        if market_date > extension.extension_end:
             raise InsufficientPitFrontierError(
                 f"Extension frontier is {extension.extension_end}; cannot roll COMMON adjusted-price "
-                f"data to {target_as_of} without a further PIT extension."
+                f"data through market-authority date {market_date} for requested_as_of={target_as_of} "
+                "without a further PIT extension."
             )
+        if market_date not in _normalise_session_dates(extension.merged_calendar_dates):
+            raise RollingAuthorityError(f"MARKET_AUTHORITY_DATE_NOT_IN_TRADING_CALENDAR:{market_date}")
         workdir = Path(workdir)
         workdir.mkdir(parents=True, exist_ok=True)
         ext_pit_path = workdir / "extended_pit_common_denominator.json"
@@ -3236,7 +3308,13 @@ class RollingAdjustedPriceUpdater:
             json.dumps({"trading_dates": list(extension.merged_calendar_dates)}, ensure_ascii=False), encoding="utf-8"
         )
         return self._refresh_against(
-            tickers, current_boundary, target_as_of, requested_start, ext_pit_path, ext_calendar_path
+            tickers,
+            current_boundary,
+            target_as_of,
+            market_date,
+            requested_start,
+            ext_pit_path,
+            ext_calendar_path,
         )
 
     def _refresh_against(
@@ -3244,6 +3322,7 @@ class RollingAdjustedPriceUpdater:
         tickers: Sequence[str],
         current_boundary: str,
         target_as_of: str,
+        market_authority_as_of: str,
         requested_start: str | None,
         pit_path: Path,
         historical_calendar_path: Path,
@@ -3265,12 +3344,12 @@ class RollingAdjustedPriceUpdater:
         results, failures, skipped, blocked, restatement_validation = [], [], [], [], []
         covered_dates: set[str] = set()
         updated_date_count = 0
-        production_raw_coverage = self._production_raw_authority(current_boundary, target_as_of)
+        production_raw_coverage = self._production_raw_authority(current_boundary, market_authority_as_of)
         for ticker in tickers:
             normalized = str(ticker).zfill(6)
             current_identity = None
             if requested_start is None or self.production_raw_store is not None:
-                identity = resolve_current_identity(ticker, target_as_of, intervals_by_ticker or {})
+                identity = resolve_current_identity(ticker, market_authority_as_of, intervals_by_ticker or {})
                 if requested_start is None and identity.status != "RESOLVED":
                     skipped.append({"ticker": normalized, "reason": f"IDENTITY_{identity.status}"})
                     continue
@@ -3285,7 +3364,7 @@ class RollingAdjustedPriceUpdater:
 
             if (
                 current_identity is not None
-                and str(current_identity.get("effective_to", "")) < target_as_of
+                and str(current_identity.get("effective_to", "")) < market_authority_as_of
             ):
                 skipped.append({
                     "ticker": normalized,
@@ -3303,7 +3382,7 @@ class RollingAdjustedPriceUpdater:
                 normalized,
                 ticker_requested_start,
                 current_boundary,
-                target_as_of,
+                market_authority_as_of,
                 current_identity=current_identity,
                 pit_path=pit_path,
                 historical_calendar_path=historical_calendar_path,
@@ -3365,7 +3444,7 @@ class RollingAdjustedPriceUpdater:
                     # explicit historical override) rather than clipping the provider's
                     # response window to the sparse expected-session calendar. The calendar
                     # remains the independent set used to validate required observations.
-                    request_ranges = [(ticker_requested_start, target_as_of)]
+                    request_ranges = [(ticker_requested_start, market_authority_as_of)]
                 else:
                     request_ranges = _session_ranges(missing_dates, expected_dates)
                 for request_start, request_end in request_ranges:
@@ -3423,15 +3502,16 @@ class RollingAdjustedPriceUpdater:
                 failures.append(
                     {"ticker": normalized, "error_type": type(exc).__name__, "error_message": str(exc)}
                 )
-        # The boundary only advances to target_as_of when every ticker actually reached it -- a
-        # skip or failure means this leg did not fully cover target_as_of, so it must report the
-        # unchanged current_boundary rather than let the coordinator assume full coverage.
+        # This updater reports its actual covered-session boundary. The Daily Update foundation
+        # may advance the request-completion boundary after the common-raw leg validates terminal
+        # coverage through the requested date.
         new_boundary = current_boundary
         if not failures and not blocked and len(results) + len(skipped) == len(tickers):
             new_boundary = max(covered_dates, default=current_boundary)
         return {
             "leg": "common_adjusted",
             "expected_tickers": [str(ticker).zfill(6) for ticker in tickers],
+            "market_authority_as_of": market_authority_as_of,
             "updated": results,
             "skipped": skipped,
             "blocked": blocked,
