@@ -1,6 +1,6 @@
 # Pattern B PROGRESSED / Previous E-T Candidate V1
 
-상태: **HOLD — 공식 전략 채택 보류.** 전략 규칙과 무결성은 검증했지만, 공통 기준의 포트폴리오 MDD·회전율 및 장기 비용 적용을 확인할 산출물이 부족해. 후보 규칙은 동결 상태로 보존하며 production 전략이 아니야.
+> 역사적 상태: 공식 승격 전 당시 판정은 `HOLD`였다. 이 문서는 승격 전 후보와 당시 검증 이력을 보존한다. 현재 공식 전략은 [B Select Core V1](PATTERN_B_SELECT_CORE_V01.md) (`PATTERN_B_SELECT_CORE_V01`)이며, 규칙은 이 후보와 동일하다.
 
 ## 식별자
 

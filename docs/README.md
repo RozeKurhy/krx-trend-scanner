@@ -46,6 +46,7 @@ Pattern A FAST와 강하게 결합되어 있으므로 해당 패턴 아래에서
 - **Pattern A FAST** — 의미와 생애주기는 [FAST 명세](patterns/pattern_a_fast/spec/README.md)를 따른다.
 - **Pattern B** — 공식 패턴 규격은 [Pattern B 공식 규격](patterns/pattern_b/spec/production_authority.md)을 따른다.
 - **A FAST Core V2** — 일반 종목 전략 규칙은 [V2 계약](patterns/pattern_a_fast/strategy/version_02/README.md)의 `PATTERN_A_FAST_FINAL_STRATEGY_V02`다.
+- **B Select Core V1** — Pattern B와 Pattern A Stage를 결합한 공식 전략은 [B Select Core V1 문서](patterns/pattern_b/strategy/PATTERN_B_SELECT_CORE_V01.md)의 `PATTERN_B_SELECT_CORE_V01`이다. 기본 전략·CONTROL은 A FAST Core V2로 유지한다.
 - **Fundamentals V1** — 기준은 [Fundamentals 안내](fundamentals/README.md)와 해당 영역의 기준 문서에서 확인한다.
 - **Stock Report v0.5** — 보고서 계약은 v0.2 기반 계약 위에 버전별 추가분을 쌓은 구조다. [Stock Report 안내](reporting/README.md)의 읽는 순서를 따른다.
 - **패턴 채택 절차** — 연구 후보 패턴의 공식 채택·보류·종료는 [패턴 생애주기와 공식 채택 기준](patterns/pattern_lifecycle.md)을 따른다.
