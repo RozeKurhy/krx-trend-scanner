@@ -1,0 +1,156 @@
+from __future__ import annotations
+
+import pandas as pd
+
+from scripts import run_pattern_b_progressed_previous_et_only_realistic_portfolio_v02 as runner
+from scripts import run_p2_1_realistic_portfolio_v01 as portfolio
+
+
+def test_observed_mdd_excludes_whole_unresolved_equity_days() -> None:
+    rows = [
+        {"date": "2024-01-02", "equity": 200_000_000.0},
+        {"date": "2024-01-03", "equity": None},
+        {"date": "2024-01-04", "equity": 100_000_000.0},
+    ]
+
+    result = runner.summarize_valuation(
+        rows,
+        [{"date": "2024-01-03", "skip_reason": "MISSING_EXACT_DAILY_MARK"}],
+        {"effective_end": "2024-01-04"},
+    )
+
+    assert result["mdd_type"] == "OBSERVED_BELOW_90_COVERAGE"
+    assert result["coverage_pct"] == 200.0 / 3.0
+    assert result["mdd_pct"] == -50.0
+    assert result["missing_days"] == 1
+    assert result["unresolved_marks"] == 1
+    assert result["missing_span_count"] == 1
+    assert result["max_consecutive_missing_days"] == 1
+    assert result["peak_date"] == "2024-01-02"
+    assert result["trough_date"] == "2024-01-04"
+
+
+def test_ninety_percent_coverage_is_observed_not_exact() -> None:
+    rows = [
+        {"date": f"2024-01-{day:02d}", "equity": None if day == 3 else 200_000_000.0}
+        for day in range(1, 11)
+    ]
+
+    result = runner.summarize_valuation(rows, [], {"effective_end": "2024-01-10"})
+
+    assert result["coverage_pct"] == 90.0
+    assert result["mdd_type"] == "OBSERVED"
+
+
+def test_relative_mdd_equal_to_five_percentage_points_fails() -> None:
+    input_audit = {
+        "source_hashes_verified": True,
+        "frozen_source_hashes_verified": True,
+        "exclusion_leakage_zero": True,
+        "duplicate_input_key_count": 0,
+        "post_cutoff_entry_count": 0,
+        "lookahead_entry_count": 0,
+        "identity_overlap_violation_count": 0,
+        "repository_v2_silent_inner_drop_count": 0,
+        "execution_price_audit": {"missing_exact_opens": 0, "price_mismatch_count": 0},
+    }
+    metrics = {
+        "cash_conservation_pass": True,
+        "position_cap": None,
+        "cumulative_return_pct": 10.0,
+        "CAGR_pct": 2.0,
+        "final_equity": 220_000_000.0,
+    }
+    costs = {"mismatch_count": 0, "coverage_complete": True}
+
+    gates, evidence = runner.gate_status(
+        window_id="P2-1",
+        metrics=metrics,
+        valuation={"coverage_pct": 100.0, "mdd_pct": -40.0},
+        v2_reference={"mdd_pct": -35.0},
+        input_audit=input_audit,
+        cost_audit=costs,
+        unresolved_execution_event_count=0,
+    )
+
+    assert gates == {"A": "PASS", "B": "PASS", "C": "PASS", "D": "FAIL", "E": "PASS"}
+    assert evidence["relative_mdd_deterioration_pp"] == 5.0
+
+
+def test_execution_date_uses_first_later_session_with_an_exact_open() -> None:
+    dates = pd.to_datetime(["2024-01-04", "2024-01-05", "2024-01-08", "2024-01-09"])
+    frame = pd.DataFrame(
+        {"open": [100.0, None, 101.0, 102.0], "close": [100.0, None, 101.0, 102.0]},
+        index=dates,
+    )
+    record = {
+        "pair_id": "p1",
+        "ticker": "000001",
+        "isu_cd": "KR7000000001",
+        "market": "KOSPI",
+        "entry_signal_date": "2024-01-04",
+        "entry_execution_date": "2024-01-08",
+        "trade_status": "OPEN_AT_CUTOFF",
+    }
+
+    result = runner.verify_next_session_execution_dates(
+        [record],
+        {"000001": frame},
+        [day.strftime("%Y-%m-%d") for day in dates],
+        {
+            "effective_end": "2024-01-08",
+            "execution_support": "2024-01-09",
+        },
+    )
+
+    assert result["status"] == "PASS"
+    assert result["checked_entry_count"] == 1
+
+
+def test_official_portfolio_replay_applies_zero_sell_tax() -> None:
+    dates = pd.to_datetime(["2024-01-04", "2024-01-05", "2024-01-08"])
+    frame = pd.DataFrame(
+        {
+            "open": [100.0, 100.0, 110.0],
+            "high": [100.0, 100.0, 110.0],
+            "low": [100.0, 100.0, 110.0],
+            "close": [100.0, 100.0, 110.0],
+        },
+        index=dates,
+    )
+    record = {
+        "pair_id": "p1",
+        "trade_id": "t1",
+        "ticker": "000001",
+        "isu_cd": "KR7000000001",
+        "market": "KOSPI",
+        "entry_signal_date": "2024-01-04",
+        "entry_execution_date": "2024-01-05",
+        "entry_market_cap": 1,
+        "entry_price": 100.0,
+        "exit_signal_date": "2024-01-05",
+        "exit_execution_date": "2024-01-08",
+        "exit_price": 110.0,
+        "trade_status": "REALIZED",
+    }
+    prior_schedule = portfolio.SELL_TAX_SCHEDULE
+
+    replay = runner.run_replay(
+        [record],
+        {"000001": frame},
+        [day.strftime("%Y-%m-%d") for day in dates],
+        {
+            "effective_start": "2024-01-04",
+            "effective_end": "2024-01-05",
+            "execution_support": "2024-01-08",
+        },
+        "TEST_ZERO_TAX_V02",
+    )
+
+    exits = [event for event in replay["events"] if event["event_type"] == "EXIT"]
+    assert len(exits) == 1
+    assert exits[0]["event_status"] == "EXECUTED"
+    assert exits[0]["sell_tax"] == 0.0
+    assert replay["metrics"]["total_sell_tax_krw"] == 0.0
+    assert replay["metrics"]["cash_conservation_pass"] is True
+    assert portfolio.SELL_TAX_SCHEDULE == prior_schedule
