@@ -1,0 +1,160 @@
+{
+  "schema": "official_strategy_battle_preflight_v01",
+  "created_at_utc": "2026-09-28T11:20:03.772002+00:00",
+  "status": "PASS",
+  "base_head": "265bd02ea0630d615fef6ad8e99659b4d18b130d",
+  "origin_main": "265bd02ea0630d615fef6ad8e99659b4d18b130d",
+  "base_worktree_clean_before_runner": true,
+  "strategy_ids": [
+    "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01"
+  ],
+  "windows": {
+    "P1": [
+      "2014-01-02",
+      "2026-08-31",
+      "2026-09-01"
+    ],
+    "P2-1": [
+      "2021-01-04",
+      "2025-05-30",
+      "2025-06-02"
+    ],
+    "P2-2": [
+      "2021-01-04",
+      "2026-08-31",
+      "2026-09-01"
+    ],
+    "P3-1": [
+      "2022-01-03",
+      "2025-05-30",
+      "2025-06-02"
+    ],
+    "P3-2": [
+      "2022-01-03",
+      "2026-08-31",
+      "2026-09-01"
+    ]
+  },
+  "worker_count": 10,
+  "permanent_exclusion_count": 166,
+  "permanent_exclusion_policy_path": "src/trend_scanner/universe/permanent_identity_exclusions.py",
+  "permanent_exclusion_policy_sha256": "859f058177b08eccb15b7f6fe1edd54f0c3143ba469309457f62c22b1eb26b33",
+  "pit_authority": {
+    "path": "data/market/rolling_authority/merged_pit_intervals.json",
+    "sha256": "ff783168c56a4772a681e34b97b17d8855f28d1c13df25094bd65cedbc80cd26",
+    "content_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
+    "pit_frontier": "2026-09-21",
+    "common_interval_count": 3208
+  },
+  "v2_source_preflight": {
+    "P1": {
+      "source_rows_after_exact_exclusions": 4652,
+      "source_sha256": "0edcb9b87ccdc1e290c3431fb6e7e395bda910cf6dd69fa2d94426b7011eaeb0",
+      "certification_status": "PASS",
+      "certification_verdict": "P1_CERTIFIED_PASS_WITH_AUTHORITATIVE_EXCLUSIONS"
+    },
+    "P2-1": {
+      "source_rows_after_exact_exclusions": 1700,
+      "source_sha256": "47d49cfba42bb7d3f278f81227671f68ab7dc96a34b42a3976f591c2c5a8c790",
+      "certification_status": "PASS",
+      "certification_verdict": "P2_1_CERTIFIED_PASS_WITH_AUTHORITATIVE_EXCLUSIONS"
+    },
+    "P2-2": {
+      "source_rows_after_exact_exclusions": 2257,
+      "source_sha256": "b58b27d326b79625bbdce775ab155d52486a11b1bcccfe2acf203d55a1b675f1",
+      "certification_status": "COMPLETE",
+      "certification_verdict": "PROMISING"
+    },
+    "P3-1": {
+      "source_rows_after_exact_exclusions": 1100,
+      "source_sha256": "333caeae854f69981d6ab3dd2d235eb798c25c7e1086ba7d4ea7d3da109c5b1e",
+      "certification_status": "COMPLETE",
+      "certification_verdict": "P3_1_REPLAY_PASS"
+    },
+    "P3-2": {
+      "source_rows_after_exact_exclusions": 1685,
+      "source_sha256": "b905b601f36195e8a1666454f90f442e65c653857cda5e4fdc79a362b2776e16",
+      "certification_status": "COMPLETE",
+      "certification_verdict": "P3_2_REPLAY_PASS"
+    }
+  },
+  "pattern_b_source_preflight": {
+    "P1": {
+      "portfolio_source_records": 483,
+      "allowed_frozen_signals": 485,
+      "source_hashes": {
+        "summary.json": "58aca7e7f35fd9051785ab02fd66bdceaa10f87d384919dc62ece53e1ad4c6af",
+        "metadata.json": "8e0908436ccf4488468500b2d36ffdedf3c1c7202056692dee23aa2869596614",
+        "previous_stage_audit.csv": "ffe1d8a916d5c916950b0df9a0be497b18055dca791e00347ad6fcd5e4c2382f",
+        "test_trade_ledger.csv": "032daae185ec0aa3adbb4ed8c0ec3f8eba61d0d30ee050929095eefc5e46c7c4"
+      },
+      "authoritative_signal_linkage_status": "PASS"
+    },
+    "P2-1": {
+      "portfolio_source_records": 215,
+      "allowed_frozen_signals": 216,
+      "source_hashes": {
+        "summary.json": "7ba2884973c37a742a58c94cdd3d439c8181e9deb7b333d79342907f41c459d3",
+        "metadata.json": "dd652b8dd0ca77068960565646b63f78f4d20c2691ccc836fd96116cd37e23ac",
+        "previous_stage_audit.csv": "55eb9184a1f6700e4cfec3b9f8948e28ae1b219dd4a5405a3547d907eae4ee22",
+        "test_trade_ledger.csv": "6ca597173665f42390f22beac8196f8a24f03b628a0e4ab86943c87a7cf0074f"
+      },
+      "authoritative_signal_linkage_status": "PASS"
+    },
+    "P2-2": {
+      "portfolio_source_records": 319,
+      "allowed_frozen_signals": 321,
+      "source_hashes": {
+        "summary.json": "5a82d5d331442479d7b79d28f0be97b605767ad2a787b6673edfe605a4584317",
+        "metadata.json": "ab24512d275458affb823b226ee8416ee897ed64ea233fbeb428f4b3f9dbb5b0",
+        "previous_stage_audit.csv": "7695e3089243bc45962bee689337427bb576c7be8b3adbc19124808b0a3a0b3c",
+        "test_trade_ledger.csv": "26284b8305ed8db39b49baeffa372d47904bab2c4cb30041888abf6cfebbaa59"
+      },
+      "authoritative_signal_linkage_status": "PASS"
+    },
+    "P3-1": {
+      "portfolio_source_records": 178,
+      "allowed_frozen_signals": 179,
+      "source_hashes": {
+        "summary.json": "8956e32c08365ede45abde8640001c22b2d7b4d7d0938743c220d61f1c0eee65",
+        "metadata.json": "8e72c530015fa160158d129ccf02c1aad7c428e7a1a78fe8791e21acba5571f4",
+        "previous_stage_audit.csv": "ddf868fbf475bbd8f966951c3b730bde1ab50fefeb5a2f9317d16502877e0105",
+        "test_trade_ledger.csv": "ca2df3a4cd29799dd6d05c0ab1c6ef3f7c0628d5bf494cb8e9b7a8abe2321612"
+      },
+      "authoritative_signal_linkage_status": "PASS"
+    },
+    "P3-2": {
+      "portfolio_source_records": 282,
+      "allowed_frozen_signals": 284,
+      "source_hashes": {
+        "summary.json": "7fbb739bcd210b05d259ebe898675124fca66f043af2a1a3a6d990f0fbbecaea",
+        "metadata.json": "88f9be74ca388e0827bb56ed60b3d5b9b71e4aea4a36073fa1bc6e6714c2c3c7",
+        "previous_stage_audit.csv": "5dd1b45cea5c44b6633f15e9e48ff876942fe03ea6548158bda07042412954b8",
+        "test_trade_ledger.csv": "87f60245c14fbec9740ea9f77e950dfad03c09db0a8079e20af22646999a5271"
+      },
+      "authoritative_signal_linkage_status": "PASS"
+    }
+  },
+  "shared_portfolio": {
+    "initial_capital_krw": 200000000.0,
+    "per_position_buy_budget_krw": 5000000,
+    "commission_rate": 0.00015,
+    "buy_slippage_rate": 0.001,
+    "sell_slippage_rate": 0.001,
+    "sell_tax_rate": 0.0,
+    "position_cap": null,
+    "partial_fill": false,
+    "pyramiding": false,
+    "same_exact_identity_duplicate_holding": false,
+    "entry_order": "ticker, exact ISU_CD, entry_signal_date, entry_execution_date"
+  },
+  "pit_market_cap_policy": {
+    "entry_date_field": "entry_signal_date",
+    "threshold_krw": 1000000000000,
+    "authority": "exact market/date KRX raw stock partition + exact PIT COMMON ticker/ISU_CD/market interval",
+    "nearest_current_proxy_or_fill_allowed": false,
+    "missing_status": "MISSING_EXACT_PIT_MARKET_CAP"
+  },
+  "output_path": "artifacts/strategy_battles/fast_v2_vs_pattern_b_v01"
+}

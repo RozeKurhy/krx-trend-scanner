@@ -1,0 +1,138 @@
+{
+  "costs": {
+    "buy_commission_rate": 0.00015,
+    "buy_slippage_rate": 0.001,
+    "sell_commission_rate": 0.00015,
+    "sell_slippage_rate": 0.001,
+    "sell_tax_applied_krw": 0.0,
+    "sell_tax_or_transaction_tax_applied_to_official_path": false
+  },
+  "display_name": "Pattern B E/T PROGRESSED Candidate V1",
+  "frozen_rule": {
+    "entry": "Pattern B DEPRESSED AND current Pattern A Stage PROGRESSED AND previous authoritative Pattern A Stage in {EARLY_TREND, TRANSITION}",
+    "exit": "Pattern B NORMAL observed while held, then next exact KRX session open",
+    "strategy_rule_changed": false
+  },
+  "portfolio": {
+    "cash_shortage_is_gate": false,
+    "cash_shortage_status": "SKIPPED_CASH_UNAVAILABLE",
+    "initial_capital_krw": 200000000.0,
+    "partial_fill": false,
+    "per_position_total_buy_budget_krw": 5000000.0,
+    "portfolio_aware_signal_stream": "all frozen allowed candidate signals remain in chronological stream; actual active identity and current cash determine each execution; cash-skipped identities remain flat and later signals are reevaluated",
+    "position_cap": null,
+    "sale_proceeds_settlement": "next exact KRX session; unavailable to same-open entries",
+    "same_open_exit_reentry": false,
+    "within_day_order": "ticker, exact ISU_CD, entry_signal_date, entry_execution_date",
+    "workers": 10,
+    "entry_market_cap_priority_for_cash_allocation": false,
+    "market_cap_filter": null
+  },
+  "run_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_REALISTIC_PORTFOLIO_V02",
+  "sources": {
+    "candidate_signal_history": "artifacts/patterns/pattern_b/progressed_previous_pattern_a_stage_v01/candidate_signal_stage_history.csv",
+    "candidate_signal_history_sha256": "44c75dc3954419b8cba52f7c8ab1462d14ecbb6a692fec53e408ac755d8ce5b5",
+    "candidate_stage_linkage": "artifacts/patterns/pattern_b/depressed_entry_pattern_a_state_v01/signal_stage_path_trade_linkage.csv",
+    "candidate_stage_linkage_sha256": "d4d898ab41246c023c84f82868ef47d95a42024c2acc3bc60eadbaede2ddc02b",
+    "current_permanent_exclusion_count": 166,
+    "current_permanent_exclusion_policy_path": "src/trend_scanner/universe/permanent_identity_exclusions.py",
+    "current_permanent_exclusion_policy_sha256": "859f058177b08eccb15b7f6fe1edd54f0c3143ba469309457f62c22b1eb26b33",
+    "execution_price_audit": {
+      "checked_entries_and_realized_exits": 178,
+      "missing_exact_opens": 0,
+      "next_session_execution_audit": {
+        "checked_entry_count": 178,
+        "checked_realized_exit_count": 142,
+        "status": "PASS",
+        "violation_count": 0,
+        "violations": []
+      },
+      "next_session_execution_violation_count": 0,
+      "price_mismatch_count": 0,
+      "terminal_exact_close_count": 36,
+      "terminal_unresolved_source_count": 0
+    },
+    "frozen_authoritative_signal_linkage_audit": {
+      "candidate_signal_stage_history_expected_sha256": "44c75dc3954419b8cba52f7c8ab1462d14ecbb6a692fec53e408ac755d8ce5b5",
+      "candidate_signal_stage_history_sha256": "44c75dc3954419b8cba52f7c8ab1462d14ecbb6a692fec53e408ac755d8ce5b5",
+      "candidate_signals_checked": 179,
+      "history_metadata_sha256": "f552b462d9d45309fea168cf0e46f26e71837aa5fefb487e19b51d59add1a1d0",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "raw_linkage_metadata_sha256": "7801f64a55bcc2516454ff784fea187e60876373958dca6381238afc46c3e52c",
+      "raw_linkage_signals_checked": 179,
+      "raw_linkage_unique_signal_count": 20076,
+      "raw_signal_stage_path_trade_linkage_expected_sha256": "d4d898ab41246c023c84f82868ef47d95a42024c2acc3bc60eadbaede2ddc02b",
+      "raw_signal_stage_path_trade_linkage_sha256": "d4d898ab41246c023c84f82868ef47d95a42024c2acc3bc60eadbaede2ddc02b",
+      "stage_history_signals_checked": 179,
+      "stage_history_unique_signal_count": 835,
+      "status": "PASS"
+    },
+    "historical_candidate_runner_code_hash_checks": {
+      "scripts/run_pattern_b_progressed_previous_stage_early_transition_only_5window_v01.py": {
+        "actual_sha256": "9a267006c8ed81c83a4a29a11d750c9932dbe31137a34a2c5d64b1feaefd2cdd",
+        "expected_sha256": "1de6bff08463198402737577af00ddcd01212f392d34cf587b3626da5b9eba0a",
+        "status": "RUN_SOURCE_UNTRACKED_AT_START"
+      },
+      "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": {
+        "actual_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+        "expected_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+        "status": "PASS"
+      }
+    },
+    "historical_window_source_dir": "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_5window_v01/p3_1",
+    "historical_window_source_sha256": {
+      "metadata.json": "8e72c530015fa160158d129ccf02c1aad7c428e7a1a78fe8791e21acba5571f4",
+      "previous_stage_audit.csv": "ddf868fbf475bbd8f966951c3b730bde1ab50fefeb5a2f9317d16502877e0105",
+      "summary.json": "8956e32c08365ede45abde8640001c22b2d7b4d7d0938743c220d61f1c0eee65",
+      "test_trade_ledger.csv": "ca2df3a4cd29799dd6d05c0ab1c6ef3f7c0628d5bf494cb8e9b7a8abe2321612"
+    },
+    "market_cap_priority_audit": {
+      "common_entry_order": "ticker, exact ISU_CD, entry_signal_date, entry_execution_date",
+      "covered_attempts": null,
+      "same_day_allocation_uses_market_cap": false,
+      "source": "none; cap filter is not applied in Battle A",
+      "threshold_krw": null
+    },
+    "repository_loader_unavailable_ticker_count": 0,
+    "repository_v2_silent_inner_drop_count": 0
+  },
+  "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+  "valuation": {
+    "approved_same_date_exchange_status_carry": "only when common rule evidence authorizes it; audit required",
+    "coverage_formula": "valid whole-portfolio equity trading days / total effective-window trading days",
+    "daily_mark": "exact Repository V2 close; if any held position cannot be marked, the whole portfolio equity day is unresolved",
+    "exact_coverage_pct": 100.0,
+    "mdd_thresholds_pct": {
+      "P1": -55.0,
+      "P2-1": -40.0,
+      "P2-2": -40.0,
+      "P3-1": -40.0,
+      "P3-2": -40.0
+    },
+    "observed_coverage_max_exclusive_pct": 100.0,
+    "observed_coverage_min_pct": 90.0,
+    "unresolved_equity_day_policy": "exclude the entire day from Observed MDD; no missing-position omission, zero fill, nearest date, interpolation, or arbitrary carry",
+    "v2_relative_mdd_limit_pp": 5.0
+  },
+  "window": {
+    "authority_metadata": {
+      "authority_version": "ROLLING_MARKET_DATA_V01",
+      "calendar_built_against_certified_through": "2026-09-18",
+      "calendar_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+      "calendar_frontier": "2026-09-21",
+      "certified_through": "2026-09-21"
+    },
+    "authority_source": "ROLLING_AUTHORITY_MERGED_CALENDAR_V01",
+    "calendar_range": [
+      "2022-01-01",
+      "2025-05-31"
+    ],
+    "effective_end": "2025-05-30",
+    "effective_start": "2022-01-03",
+    "execution_support": "2025-06-02",
+    "support_policy": "only an exit signal dated on or before effective_end may fill on execution_support; entries after effective_end are not filled",
+    "window_id": "P3-1"
+  },
+  "battle_id": "battle_a_all_universe"
+}

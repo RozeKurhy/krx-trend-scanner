@@ -1,0 +1,98 @@
+{
+  "schema": "official_strategy_battle_validation_v01",
+  "status": "CHECK_REQUIRED",
+  "execution_status": "COMPLETE",
+  "checks": {
+    "expected_result_count": 20,
+    "actual_result_count": 20,
+    "all_universe_five_windows_two_strategies": true,
+    "pit_mcap_battle_five_windows_two_strategies": true,
+    "permanent_exclusion_count": 166,
+    "permanent_exclusion_policy_sha256": "859f058177b08eccb15b7f6fe1edd54f0c3143ba469309457f62c22b1eb26b33",
+    "worker_count_10": true,
+    "valuation_mdd_classified_by_coverage": true,
+    "valuation_coverage_at_least_90_pct_all": false,
+    "valuation_check_required_results_below_90_pct": [
+      {
+        "battle_id": "battle_a_all_universe",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        "window_id": "P1",
+        "coverage_pct": 52.33344061795945,
+        "mdd_type": "OBSERVED_BELOW_90_COVERAGE"
+      },
+      {
+        "battle_id": "battle_a_all_universe",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        "window_id": "P2-2",
+        "coverage_pct": 5.191059841384282,
+        "mdd_type": "OBSERVED_BELOW_90_COVERAGE"
+      },
+      {
+        "battle_id": "battle_b_pit_mcap_1t",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        "window_id": "P3-1",
+        "coverage_pct": 36.57074340527578,
+        "mdd_type": "OBSERVED_BELOW_90_COVERAGE"
+      },
+      {
+        "battle_id": "battle_b_pit_mcap_1t",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        "window_id": "P3-2",
+        "coverage_pct": 26.777875329236178,
+        "mdd_type": "OBSERVED_BELOW_90_COVERAGE"
+      }
+    ],
+    "market_cap_preflight_pass": true,
+    "entry_order_shared": "ticker, exact ISU_CD, entry_signal_date, entry_execution_date",
+    "strategy_rule_mutation": false,
+    "posthoc_trade_selection": false,
+    "cash_based_signal_regeneration": false,
+    "position_cap": null,
+    "artifact_evidence": {
+      "v2_cost_audit_formula_mismatch_count": 0,
+      "pattern_b_cost_audit_mismatch_count": 0,
+      "cost_audit_mismatch_zero": true,
+      "v2_frozen_execution_date_price_mismatch_count": 0,
+      "v2_calendar_next_session_deviation_count": 9,
+      "v2_calendar_next_session_deviation_audit_file": "artifacts/strategy_battles/fast_v2_vs_pattern_b_v01/v2_calendar_next_session_deviations.csv",
+      "v2_frozen_execution_date_price_parity_all_pass": true,
+      "pattern_b_next_session_execution_violation_count": 0,
+      "pattern_b_next_session_execution_all_pass": true,
+      "v2_entry_exclusion_leakage_count": 0,
+      "pattern_b_entry_exclusion_leakage_count": 0,
+      "exact_identity_exclusion_leakage_zero": true,
+      "pattern_b_identity_lifecycle_violation_count": 0,
+      "pattern_b_source_linkage_violation_count": 0,
+      "cash_conservation_violation_count": 0,
+      "cash_conservation_all_pass": true,
+      "pattern_b_position_cap_violation_count": 0,
+      "v2_position_cap_violation_count": 0,
+      "no_hidden_position_cap_all_pass": true,
+      "worker_count_violation_count": 0,
+      "worker_count_10_all_pass": true,
+      "strategy_freeze_violation_count": 0,
+      "strategy_rules_frozen": true,
+      "battle_b_exact_pit_market_cap_coverage_pass": true,
+      "battle_b_executed_entries_exact_pit_ge_1t_parity_violation_count": 0,
+      "battle_b_entry_market_cap_exact_date_parity": true,
+      "structural_checks_pass": true,
+      "required_structural_checks": [
+        "cost_audit_mismatch_zero",
+        "exact_identity_exclusion_leakage_zero",
+        "cash_conservation_all_pass",
+        "v2_frozen_execution_date_price_parity_all_pass",
+        "pattern_b_next_session_execution_all_pass",
+        "no_hidden_position_cap_all_pass",
+        "worker_count_10_all_pass",
+        "strategy_rules_frozen",
+        "battle_b_entry_market_cap_exact_date_parity"
+      ]
+    }
+  },
+  "notes": [
+    "Costs, next-session execution, exact permanent-exclusion leakage, cash conservation, identity lifecycle and no-cap evidence are independently reconciled from per-window audit files.",
+    "Battle B executed entries were matched by exact strategy, window, ticker, ISU_CD and entry signal date to the exact-date PIT KRX raw cap audit.",
+    "Coverage below 90% is reported as CHECK_REQUIRED; those days were not repaired, filled, or used as exact valuation evidence.",
+    "High cash-shortage rates and low returns are reported without changing the frozen signal stream or strategy rules."
+  ]
+}
