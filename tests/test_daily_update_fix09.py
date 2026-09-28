@@ -30,6 +30,45 @@ def _raw_frame(day: str, ticker: str) -> pd.DataFrame:
     )
 
 
+def _empty_raw_frame() -> pd.DataFrame:
+    return pd.DataFrame(
+        {column: pd.Series(dtype="object") for column in RAW_COLUMNS},
+        columns=list(RAW_COLUMNS),
+    )
+
+
+def test_first_common_raw_run_accepts_complete_and_finalized_no_data_coverage(tmp_path):
+    raw = KrxRawStockStore(tmp_path / "raw")
+    days = ["2026-09-22", "2026-09-23", "2026-09-24", "2026-09-25"]
+
+    class Runner:
+        def __init__(self):
+            self.calls = []
+
+        def run(self, start, end, **_kwargs):
+            self.calls.append((start, end))
+            for day in days:
+                for market, ticker in (("KOSPI", "005930"), ("KOSDAQ", "000660")):
+                    frame = _raw_frame(day, ticker) if day in days[:2] else _empty_raw_frame()
+                    raw.save_snapshot(market, day, frame, f"/sto/{market.lower()}")
+            return {"status": "READY", "blockers": [], "krx_open_api_attempt_count": 8}
+
+    runner = Runner()
+    result = RollingRawMarketUpdater(runner, raw).refresh(
+        "2026-09-21", "2026-09-25", required_dates=days
+    )
+
+    assert runner.calls == [(days[0], days[-1])]
+    assert result["runner_result"]["blockers"] == []
+    assert result["missing_dates"] == []
+    assert result["missing_date_count"] == 0
+    assert result["new_boundary"] == max(days)
+    assert result["updated_dates"] == days
+    assert result["physical_write_count"] == 8
+    assert result["production_write_performed"] is True
+    assert all(raw.is_finalized_no_data(market, day) for day in days[2:] for market in ("KOSPI", "KOSDAQ"))
+
+
 def test_common_raw_blocker_fails_before_any_downstream_call(tmp_path):
     foundation, _raw, authority, _common_raw, etf_raw, common_adjusted, etf_adjusted = _foundation(
         tmp_path,

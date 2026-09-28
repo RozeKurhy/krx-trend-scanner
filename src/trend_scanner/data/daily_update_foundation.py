@@ -223,11 +223,11 @@ class DailyUpdateFoundation:
         manifest, authority = self._load_state(target)
         known_dates = authority["calendar_dates"]
         finalized_no_data = set(_paired_no_data_dates(self.raw_store, target))
-        tail_candidates = [
-            day for day in _candidate_tail(known_dates, target)
-            if day not in finalized_no_data
-        ]
-        required_candidates = sorted(set(known_dates) | set(tail_candidates))
+        candidate_tail = _candidate_tail(known_dates, target)
+        tail_candidates = [day for day in candidate_tail if day not in finalized_no_data]
+        # Keep terminal NO_DATA dates in raw coverage, but only paired COMPLETE
+        # observations may become operating trading-calendar extension candidates.
+        required_candidates = sorted(set(known_dates) | set(candidate_tail))
         etf_required_dates = _etf_raw_required_dates(required_candidates, target)
         complete_raw = sorted(
             set(_paired_complete_dates(self.raw_store, target)) | finalized_no_data

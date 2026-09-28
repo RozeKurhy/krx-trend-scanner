@@ -13,7 +13,11 @@ from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.corporate_action_detector import CorporateActionSnapshot
 from trend_scanner.data.corporate_action_refresh import CorporateActionRefreshService
 from trend_scanner.data.corporate_action_state_store import CorporateActionStateStore
-from trend_scanner.data.daily_update_foundation import DailyUpdateFoundation, DailyUpdateFoundationError
+from trend_scanner.data.daily_update_foundation import (
+    DailyUpdateFoundation,
+    DailyUpdateFoundationError,
+    _paired_complete_dates,
+)
 from trend_scanner.data.krx_historical_instrument_acquisition import (
     load_bounded_basic_info_snapshots,
 )
@@ -278,8 +282,12 @@ def test_paired_no_data_is_terminal_and_second_common_raw_run_is_noop(tmp_path):
 
     updater = RollingRawMarketUpdater(Runner(), raw)
     result = updater.refresh("2026-08-21", day, required_dates=[day])
+    assert Runner.calls == 0
+    assert result["missing_dates"] == []
+    assert result["missing_date_count"] == 0
     assert result["updated_date_count"] == 0
     assert result["physical_write_count"] == 0
+    assert result["new_boundary"] == day
     assert result["runner_result"]["status"] == "IDEMPOTENT_NOOP"
 
 
@@ -289,7 +297,24 @@ def test_weekday_paired_no_data_does_not_extend_operating_calendar(tmp_path):
     raw = KrxRawStockStore(tmp_path / "raw")
     for day in ("2026-08-21", "2026-08-24"):
         for market in ("KOSPI", "KOSDAQ"):
-            raw.save_snapshot(market, day, _empty_raw_frame(), f"/sto/{market.lower()}")
+            frame = _empty_raw_frame()
+            if day == "2026-08-21":
+                frame = pd.DataFrame(
+                    [{
+                        "date": pd.Timestamp(day),
+                        "ticker": "000001",
+                        "open": 100,
+                        "high": 110,
+                        "low": 90,
+                        "close": 105,
+                        "volume": 1000,
+                        "trading_value": 2000,
+                        "market_cap": 3000,
+                        "listed_shares": 4000,
+                    }],
+                    columns=list(RAW_COLUMNS),
+                )
+            raw.save_snapshot(market, day, frame, f"/sto/{market.lower()}")
 
     class NoopPlan:
         def plan(self, *_args, **_kwargs):
@@ -308,8 +333,9 @@ def test_weekday_paired_no_data_does_not_extend_operating_calendar(tmp_path):
     )
     plan = foundation.plan("2026-08-24")
     assert plan["authority_extension_candidates"] == []
-    assert plan["required_candidate_dates"] == ["2026-08-21"]
+    assert plan["required_candidate_dates"] == ["2026-08-21", "2026-08-24"]
     assert plan["common_raw"]["missing_dates"] == []
+    assert _paired_complete_dates(raw, "2026-08-24") == ["2026-08-21"]
 
 
 def test_staged_pit_population_includes_new_common_and_excludes_etf_scope(tmp_path):

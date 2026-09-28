@@ -1357,23 +1357,7 @@ class RollingRawMarketUpdater:
             and self._finalized_no_data("KOSPI", day)
             and self._finalized_no_data("KOSDAQ", day)
         ]
-        if sessions and not known_missing and not blocked_no_data:
-            complete = self._complete_paired_dates(target_as_of)
-            return {
-                "leg": "common_raw",
-                "runner_result": {"status": "IDEMPOTENT_NOOP", "krx_open_api_attempt_count": 0},
-                "required_dates": sessions,
-                "missing_dates": [],
-                "missing_date_count": 0,
-                "blocked_no_data_dates": [],
-                "updated_date_count": 0,
-                "updated_dates": [],
-                "physical_write_count": 0,
-                "production_write_performed": False,
-                "new_boundary": max(complete, default=current_boundary),
-            }
-        if sessions and not known_missing and blocked_no_data:
-            complete = self._complete_paired_dates(target_as_of)
+        if sessions and not known_missing:
             return {
                 "leg": "common_raw",
                 "runner_result": {"status": "IDEMPOTENT_NOOP", "krx_open_api_attempt_count": 0},
@@ -1385,7 +1369,7 @@ class RollingRawMarketUpdater:
                 "updated_dates": [],
                 "physical_write_count": 0,
                 "production_write_performed": False,
-                "new_boundary": max(complete, default=current_boundary),
+                "new_boundary": max(sessions),
             }
 
         # A FAILED manifest is retryable evidence, not a reason to walk every
@@ -1479,6 +1463,15 @@ class RollingRawMarketUpdater:
             result["retry_required_failed_dates"] = failed_required
         states = self._paired_manifest_states(target_as_of)
         complete = self._complete_paired_dates(target_as_of)
+        terminal_coverage = set(complete)
+        terminal_coverage.update(
+            day
+            for day, pair in states.items()
+            if pair.get("KOSPI") == "NO_DATA"
+            and pair.get("KOSDAQ") == "NO_DATA"
+            and self._finalized_no_data("KOSPI", day)
+            and self._finalized_no_data("KOSDAQ", day)
+        )
         terminal_statuses = {"COMPLETE", "NO_DATA"}
         updated_dates = sorted(
             day
@@ -1498,19 +1491,17 @@ class RollingRawMarketUpdater:
             and pair.get(market) in terminal_statuses
         )
         if sessions:
-            missing_after = _missing_session_dates(
-                sessions,
-                [day for day in sessions if states.get(day, {}).get("KOSPI") == "COMPLETE" and states.get(day, {}).get("KOSDAQ") == "COMPLETE"],
-            )
-            new_boundary = max((day for day in complete if day <= target_as_of), default=current_boundary) if not missing_after else current_boundary
+            missing_after = [day for day in sessions if day not in terminal_coverage]
+            new_boundary = max(sessions) if not missing_after else current_boundary
         else:
+            missing_after = []
             new_boundary = max(complete, default=current_boundary)
         return {
             "leg": "common_raw",
             "runner_result": result,
             "required_dates": sessions,
-            "missing_dates": known_missing,
-            "missing_date_count": len(known_missing),
+            "missing_dates": missing_after,
+            "missing_date_count": len(missing_after),
             "blocked_no_data_dates": blocked_no_data,
             "updated_date_count": len(updated_dates),
             "updated_dates": updated_dates,
