@@ -163,5 +163,5 @@
 
 ## 공식 전략 공통 채택 기준 재심사
 
-- 2026-09-28 V02 portfolio-only 재심사: `HOLD` (다섯 기간 모두 E `FAIL`; 미해결 평가값으로 D/F `CHECK_REQUIRED`).
+- 2026-09-28 V02 portfolio-only 재심사(당시 A~F 기준): `HOLD` (다섯 기간 모두 당시 E[현금 부족] `FAIL`; 미해결 평가값으로 D[포트폴리오 MDD]/F[당시 결과 유효성] `CHECK_REQUIRED`). 이후 현금 부족률은 공식 채택 필수 기준에서 제외됐으며, 원본 결과와 판정은 당시 기준의 역사 기록으로 보존한다. 현재 기준의 D/E 미해결은 남아 있으므로 이 문서 수정만으로 현재 채택을 새로 판정하지 않는다.
 - 상세 결과: [V02 재심사 보고서](../../../../../artifacts/patterns/pattern_a_fast/strategy/v2_official_adoption_revalidation_v02/report.md).
