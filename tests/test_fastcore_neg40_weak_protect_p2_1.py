@@ -1,4 +1,5 @@
 import ast
+import csv
 import json
 from pathlib import Path
 from types import SimpleNamespace
@@ -17,6 +18,25 @@ from scripts.run_fastcore_neg40_weak_protect_p2_1 import (
     _pct,
 )
 from trend_scanner.universe.permanent_identity_exclusions import apply_permanent_identity_exclusions
+
+
+PATTERN_B_V02_STRUCTURAL_EXCLUSION_SCOPE = "Pattern B V02 structural closure 2026-09-28"
+PATTERN_B_V02_STRUCTURAL_DIAGNOSTIC = (
+    Path(__file__).resolve().parents[1]
+    / "artifacts/patterns/pattern_b/"
+    / "progressed_previous_stage_early_transition_only_realistic_portfolio_v02_gap_diagnostic_v01/"
+    / "identity_classification.csv"
+)
+
+
+def _pattern_b_v02_structural_authority() -> dict[tuple[str, str], str]:
+    with PATTERN_B_V02_STRUCTURAL_DIAGNOSTIC.open(encoding="utf-8", newline="") as handle:
+        rows = csv.DictReader(handle)
+        return {
+            (row["ticker"].zfill(6), row["isu_cd"].upper()): row["classification"]
+            for row in rows
+            if row["classification"] in {"RAW_DATA_GAP", "CORPORATE_ACTION_OR_IDENTITY_BREAK"}
+        }
 
 
 def test_official_backtest_callers_pass_the_complete_window_contract_explicitly():
@@ -337,6 +357,7 @@ def test_p1_final_closure_v02_permanent_exclusions_are_exact_pairs_and_preserve_
         | P1_UNAVAILABLE_12_IDENTITIES
         | P1_FINAL_CLOSURE_V02_IDENTITIES
         | V2_MDD_RAW_DATA_GAP_CLOSURE_IDENTITIES
+        | set(_pattern_b_v02_structural_authority())
     )
 
     segments = [
@@ -375,14 +396,20 @@ def test_v2_mdd_raw_data_gap_permanent_exclusions_are_exact_pairs_and_preserve_t
 
     assert registered == V2_MDD_RAW_DATA_GAP_CLOSURE_IDENTITIES
     assert len(registered) == 66
-    assert len(policy) == 109
+    new_structural = {
+        identity
+        for identity, metadata in policy.items()
+        if metadata.get("approval_scope") == PATTERN_B_V02_STRUCTURAL_EXCLUSION_SCOPE
+    }
+    assert len(set(policy) - new_structural) == 109
+    assert len(policy) == 166
     assert len(policy) == len(set(policy))
     assert all(
         isinstance(identity, tuple)
         and len(identity) == 2
         and len(identity[0]) == 6
         and identity[0].isdigit()
-        and identity[1].startswith(("KR", "KY"))
+        and identity[1].startswith(("KR", "KY", "HK"))
         for identity in policy
     )
 
@@ -418,6 +445,63 @@ def test_v2_mdd_raw_data_gap_permanent_exclusions_are_exact_pairs_and_preserve_t
 
     assert kept == [ticker_reuse]
     assert {(item["ticker"], item["isu_cd"]) for item in exclusions} == registered
+
+
+def test_pattern_b_v02_structural_exclusions_match_diagnostic_exact_pairs():
+    policy = runner.PERMANENT_IDENTITY_EXCLUSIONS
+    authority = _pattern_b_v02_structural_authority()
+    registered = {
+        identity
+        for identity, metadata in policy.items()
+        if metadata.get("approval_scope") == PATTERN_B_V02_STRUCTURAL_EXCLUSION_SCOPE
+    }
+
+    with PATTERN_B_V02_STRUCTURAL_DIAGNOSTIC.open(encoding="utf-8", newline="") as handle:
+        all_diagnostic_rows = list(csv.DictReader(handle))
+    all_diagnostic_pairs = {
+        (row["ticker"].zfill(6), row["isu_cd"].upper())
+        for row in all_diagnostic_rows
+    }
+    legacy = (
+        PREEXISTING_PERMANENT_IDENTITY_EXCLUSIONS
+        | P1_UNAVAILABLE_12_IDENTITIES
+        | P1_FINAL_CLOSURE_V02_IDENTITIES
+        | V2_MDD_RAW_DATA_GAP_CLOSURE_IDENTITIES
+    )
+
+    assert len(all_diagnostic_rows) == len(all_diagnostic_pairs) == 81
+    assert len(authority) == 57
+    assert {name: sum(value == name for value in authority.values()) for name in set(authority.values())} == {
+        "RAW_DATA_GAP": 49,
+        "CORPORATE_ACTION_OR_IDENTITY_BREAK": 8,
+    }
+    assert registered == set(authority)
+    assert set(authority).isdisjoint(legacy)
+    assert set(policy) == legacy | set(authority)
+    assert len(legacy) == 109
+    assert len(policy) == 166
+    assert len(policy) == len(set(policy))
+
+    policy_path = (
+        Path(__file__).resolve().parents[1]
+        / "src/trend_scanner/universe/permanent_identity_exclusions.py"
+    )
+    module = ast.parse(policy_path.read_text(encoding="utf-8"))
+    assignment = next(
+        node for node in module.body
+        if isinstance(node, ast.AnnAssign)
+        and getattr(node.target, "id", "") == "PERMANENT_IDENTITY_EXCLUSIONS"
+    )
+    literal_keys = [ast.literal_eval(key) for key in assignment.value.keys]
+    assert len(literal_keys) == len(set(literal_keys)) == 166
+
+    for identity, failure_class in authority.items():
+        metadata = policy[identity]
+        assert metadata["failure_class"] == failure_class
+        assert metadata["approved_date"] == "2026-09-28"
+        assert metadata["approval_scope"] == PATTERN_B_V02_STRUCTURAL_EXCLUSION_SCOPE
+        assert metadata["policy_version"] == "permanent_identity_exclusions_v01"
+        assert metadata["reason"].startswith("user-approved permanent exclusion for historical")
 
 
 def test_p3_2_saved_raw_recognition_filters_both_sides_without_mutating_raw_sources():
