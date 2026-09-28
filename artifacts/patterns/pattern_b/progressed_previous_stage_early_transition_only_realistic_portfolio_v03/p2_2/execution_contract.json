@@ -1,0 +1,595 @@
+{
+  "costs": {
+    "buy_commission_rate": 0.00015,
+    "buy_slippage_rate": 0.001,
+    "sell_commission_rate": 0.00015,
+    "sell_slippage_rate": 0.001,
+    "sell_tax_applied_krw": 0.0,
+    "sell_tax_or_transaction_tax_applied_to_official_path": false
+  },
+  "display_name": "Pattern B E/T PROGRESSED Candidate V1",
+  "frozen_rule": {
+    "entry": "Pattern B DEPRESSED AND current Pattern A Stage PROGRESSED AND previous authoritative Pattern A Stage in {EARLY_TREND, TRANSITION}",
+    "exit": "Pattern B NORMAL observed while held, then next exact KRX session open",
+    "strategy_rule_changed": false
+  },
+  "portfolio": {
+    "cash_shortage_is_gate": false,
+    "cash_shortage_status": "SKIPPED_CASH_UNAVAILABLE",
+    "initial_capital_krw": 200000000.0,
+    "partial_fill": false,
+    "per_position_total_buy_budget_krw": 5000000.0,
+    "portfolio_aware_signal_stream": "all frozen allowed candidate signals remain in chronological stream; actual active identity and current cash determine each execution; cash-skipped identities remain flat and later signals are reevaluated",
+    "position_cap": null,
+    "sale_proceeds_settlement": "next exact KRX session; unavailable to same-open entries",
+    "same_open_exit_reentry": false,
+    "within_day_order": "release previously settled proceeds; exits; buys ordered by exact signal-date KRX market cap descending then ticker and pair id",
+    "workers": 10
+  },
+  "run_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_REALISTIC_PORTFOLIO_V02",
+  "sources": {
+    "candidate_signal_history": "artifacts/patterns/pattern_b/progressed_previous_pattern_a_stage_v01/candidate_signal_stage_history.csv",
+    "candidate_signal_history_sha256": "44c75dc3954419b8cba52f7c8ab1462d14ecbb6a692fec53e408ac755d8ce5b5",
+    "candidate_stage_linkage": "artifacts/patterns/pattern_b/depressed_entry_pattern_a_state_v01/signal_stage_path_trade_linkage.csv",
+    "candidate_stage_linkage_sha256": "d4d898ab41246c023c84f82868ef47d95a42024c2acc3bc60eadbaede2ddc02b",
+    "current_permanent_exclusion_count": 166,
+    "current_permanent_exclusion_policy_path": "src/trend_scanner/universe/permanent_identity_exclusions.py",
+    "current_permanent_exclusion_policy_sha256": "859f058177b08eccb15b7f6fe1edd54f0c3143ba469309457f62c22b1eb26b33",
+    "execution_price_audit": {
+      "checked_entries_and_realized_exits": 319,
+      "missing_exact_opens": 0,
+      "next_session_execution_audit": {
+        "checked_entry_count": 319,
+        "checked_realized_exit_count": 270,
+        "status": "PASS",
+        "violation_count": 0,
+        "violations": []
+      },
+      "next_session_execution_violation_count": 0,
+      "price_mismatch_count": 0,
+      "terminal_exact_close_count": 49,
+      "terminal_unresolved_source_count": 0
+    },
+    "frozen_authoritative_signal_linkage_audit": {
+      "candidate_signal_stage_history_expected_sha256": "44c75dc3954419b8cba52f7c8ab1462d14ecbb6a692fec53e408ac755d8ce5b5",
+      "candidate_signal_stage_history_sha256": "44c75dc3954419b8cba52f7c8ab1462d14ecbb6a692fec53e408ac755d8ce5b5",
+      "candidate_signals_checked": 321,
+      "history_metadata_sha256": "f552b462d9d45309fea168cf0e46f26e71837aa5fefb487e19b51d59add1a1d0",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "raw_linkage_metadata_sha256": "7801f64a55bcc2516454ff784fea187e60876373958dca6381238afc46c3e52c",
+      "raw_linkage_signals_checked": 321,
+      "raw_linkage_unique_signal_count": 20076,
+      "raw_signal_stage_path_trade_linkage_expected_sha256": "d4d898ab41246c023c84f82868ef47d95a42024c2acc3bc60eadbaede2ddc02b",
+      "raw_signal_stage_path_trade_linkage_sha256": "d4d898ab41246c023c84f82868ef47d95a42024c2acc3bc60eadbaede2ddc02b",
+      "stage_history_signals_checked": 321,
+      "stage_history_unique_signal_count": 835,
+      "status": "PASS"
+    },
+    "historical_candidate_runner_code_hash_checks": {
+      "scripts/run_pattern_b_progressed_previous_stage_early_transition_only_5window_v01.py": {
+        "actual_sha256": "9a267006c8ed81c83a4a29a11d750c9932dbe31137a34a2c5d64b1feaefd2cdd",
+        "expected_sha256": "1de6bff08463198402737577af00ddcd01212f392d34cf587b3626da5b9eba0a",
+        "status": "RUN_SOURCE_UNTRACKED_AT_START"
+      },
+      "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": {
+        "actual_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+        "expected_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+        "status": "PASS"
+      }
+    },
+    "historical_window_source_dir": "artifacts/patterns/pattern_b/progressed_previous_stage_early_transition_only_5window_v01/p2_2",
+    "historical_window_source_sha256": {
+      "metadata.json": "ab24512d275458affb823b226ee8416ee897ed64ea233fbeb428f4b3f9dbb5b0",
+      "previous_stage_audit.csv": "7695e3089243bc45962bee689337427bb576c7be8b3adbc19124808b0a3a0b3c",
+      "summary.json": "5a82d5d331442479d7b79d28f0be97b605767ad2a787b6673edfe605a4584317",
+      "test_trade_ledger.csv": "26284b8305ed8db39b49baeffa372d47904bab2c4cb30041888abf6cfebbaa59"
+    },
+    "market_cap_priority_audit": {
+      "partition_count": 66,
+      "partitions": {
+        "KOSDAQ:2021-03-31": {
+          "content_sha256": "1cea9ba5e583b2d745a59244d3389fb32b029c303ab3e8a48dfd2a6c5a36a6bd",
+          "file_path": "market=KOSDAQ/year=2021/2021-03-31.parquet",
+          "file_sha256": "847b2850e75da0f9874e425248661856bf99862e3725099b0fb34fc0dca21e9b",
+          "row_count": 1496,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2021-05-31": {
+          "content_sha256": "0dd3bfeec04e1e553a2728b83e1facee3b151b343d258955210e42ee25b124d3",
+          "file_path": "market=KOSDAQ/year=2021/2021-05-31.parquet",
+          "file_sha256": "cf734efd5e18655c03f614d4f01876d62285f237ecd27d0743077a1bef446330",
+          "row_count": 1508,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2021-08-31": {
+          "content_sha256": "af4ac3fae58245c0660d1d3c407aaf487404edb7dfdc619704cb0e0fb1dfe3fd",
+          "file_path": "market=KOSDAQ/year=2021/2021-08-31.parquet",
+          "file_sha256": "10bfd4bf5f191aca98387aa44c0a8cf72da9bfe66cbfc40dcb1e4228f9dec3a8",
+          "row_count": 1510,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2021-09-30": {
+          "content_sha256": "b3bb08046ac2d5186b0c1ee84da1040bf482657fb684bae99b7dceb9ae186aea",
+          "file_path": "market=KOSDAQ/year=2021/2021-09-30.parquet",
+          "file_sha256": "dc80220165808aa2953d824153e9b54a968bf8789cf69686207a009cdd3d166d",
+          "row_count": 1515,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2021-11-30": {
+          "content_sha256": "84e9c1262343003a39c9df60e9ccebe4448f5bdc7363924663a77761e06121b7",
+          "file_path": "market=KOSDAQ/year=2021/2021-11-30.parquet",
+          "file_sha256": "37557b87fe5aa7698ad29cc348c0e461e965eef0a8863d82e384ed0a993813a1",
+          "row_count": 1531,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2022-02-28": {
+          "content_sha256": "d40b8b1fb103a04e46b967a07f228ea714429603496091640f0aa68fe4cc467a",
+          "file_path": "market=KOSDAQ/year=2022/2022-02-28.parquet",
+          "file_sha256": "44d218380af5d7484ef7895bf3f9c1612f70b07a3d7e5880219c585eec8d35a5",
+          "row_count": 1549,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2022-03-31": {
+          "content_sha256": "a2791e12202eeb814ae4e59498fe879c39acdad17fa19e330eafdd8336abff05",
+          "file_path": "market=KOSDAQ/year=2022/2022-03-31.parquet",
+          "file_sha256": "58c7bb8aaff92e3861ab9427d87518b7feead3234ffebe610609c86f0c3dd747",
+          "row_count": 1556,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2022-05-31": {
+          "content_sha256": "521f003ca0a24580eb6548e50c3863e8a3af5a3c14b439c96464c4882da7cbda",
+          "file_path": "market=KOSDAQ/year=2022/2022-05-31.parquet",
+          "file_sha256": "1cac3cb0d3e988375f9931c104238c0b1337351d04e4093bfcf9cf03a710f762",
+          "row_count": 1556,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2022-06-30": {
+          "content_sha256": "14c815dcdfeb1b755b26e0bb3059249b49b5815897448104b8ac78b5311a9671",
+          "file_path": "market=KOSDAQ/year=2022/2022-06-30.parquet",
+          "file_sha256": "6bac2a8376058a957d9df07da944e6e5bd1f3a80f23f050e9fe02daf0ce76f9c",
+          "row_count": 1565,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2022-08-31": {
+          "content_sha256": "e68bef2d6b118e16701f536a7e73018dd78675443a4ac7bded2f5fb4ddc19d61",
+          "file_path": "market=KOSDAQ/year=2022/2022-08-31.parquet",
+          "file_sha256": "28bd39e57509dcde08c2a40772208838d9044a77212870cf0f446b48b8b6c513",
+          "row_count": 1581,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2022-09-30": {
+          "content_sha256": "ff6156b5ddd5c29aa229e0d33a50e48b61ad682fcae3fbafa2f1fa2a21151194",
+          "file_path": "market=KOSDAQ/year=2022/2022-09-30.parquet",
+          "file_sha256": "11e3f234ec87a42d60b6cfdde05063455603a18b616c589175e2486ece14ff2a",
+          "row_count": 1586,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2022-10-31": {
+          "content_sha256": "f8b8c3e8b0f09cfa261a64060cbb7a0bd7bc708331a2b7a618c697d33ac46be8",
+          "file_path": "market=KOSDAQ/year=2022/2022-10-31.parquet",
+          "file_sha256": "97d86287269056e4f75c9f50bb435dc007bb3388278483ce7409b987b45bbb26",
+          "row_count": 1599,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2023-01-31": {
+          "content_sha256": "d9c280cea527fbbc20b16cefc153950ab298ca4a2de65b28d8b1a399f884ebda",
+          "file_path": "market=KOSDAQ/year=2023/2023-01-31.parquet",
+          "file_sha256": "4eeeda0acf86c0578722f0c0c2f1b0139f89529a64bd803afbe872ea700632a9",
+          "row_count": 1618,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2023-02-28": {
+          "content_sha256": "c226378abff147c90108ceb9163077d27654c5c2d58c2fe904e62be327f730e3",
+          "file_path": "market=KOSDAQ/year=2023/2023-02-28.parquet",
+          "file_sha256": "07936e47b48410afa52e57bd106569d9fbe61b78fbb60875ae9f2f5c4f788d8c",
+          "row_count": 1625,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2023-03-31": {
+          "content_sha256": "7303d2537379e60d8b3e59d7667e70a87efdb1066c82434d686e4f27ab863322",
+          "file_path": "market=KOSDAQ/year=2023/2023-03-31.parquet",
+          "file_sha256": "217ece262c797de3d99eb41a09d46ce312d4b0794ef27631a5fe3487ca19c875",
+          "row_count": 1633,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2023-06-30": {
+          "content_sha256": "431afbf54ecc5345545be8932e9014b6e2eae0a9ad60162e3265ed556e0e9704",
+          "file_path": "market=KOSDAQ/year=2023/2023-06-30.parquet",
+          "file_sha256": "b28eb0193c616795676344fadef4e3f16b83220c7ce40043c9f3bb5f5ea74048",
+          "row_count": 1651,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2023-07-31": {
+          "content_sha256": "c980851ea8242967acdd4cf27e17a5a6138b653ad7dcb0f9f7450897931e79be",
+          "file_path": "market=KOSDAQ/year=2023/2023-07-31.parquet",
+          "file_sha256": "a772876cf63d72bf93308d3093d10e086e218b98d566c0f8d66154606e6dc7c4",
+          "row_count": 1660,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2023-08-31": {
+          "content_sha256": "e330717c819e4135482fe1bc3374cb6432050bbb821ef9f046dd6f4b911a0c9e",
+          "file_path": "market=KOSDAQ/year=2023/2023-08-31.parquet",
+          "file_sha256": "829edb3e63a8955aca77c100613026f7426bae10f689b2b6ea1154821ee596a2",
+          "row_count": 1670,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2023-10-31": {
+          "content_sha256": "7612681c1d8b26c66b74da00dfae1dcb899267d529073b5a2645bf9717b7e8b6",
+          "file_path": "market=KOSDAQ/year=2023/2023-10-31.parquet",
+          "file_sha256": "554eea3357a5a863485dd4ac7040591a0544889b65f68f9911f48838023b66f5",
+          "row_count": 1682,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2024-01-31": {
+          "content_sha256": "a33d6c823276609767d7982fe22be1cde186854c635b4fdea46d7d24f39b5262",
+          "file_path": "market=KOSDAQ/year=2024/2024-01-31.parquet",
+          "file_sha256": "9c06a5240b5d745d16d38bad9e0f9b649cffa6c3d4199b0fe6cf5e03a804226e",
+          "row_count": 1705,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2024-04-30": {
+          "content_sha256": "bb5fc2c16490e5e98d7a76eb93dad4c1e92ea6e0646a2c183e2b1acbb0bf6660",
+          "file_path": "market=KOSDAQ/year=2024/2024-04-30.parquet",
+          "file_sha256": "36ec6e4076d747f0d2c6a6891ac6364721b64f48912b3996e46cf1b61bd42b6d",
+          "row_count": 1725,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2024-05-31": {
+          "content_sha256": "c81cc625750a4082b83e5f393b99d5e69e919eae8459072de94eafde21fd510a",
+          "file_path": "market=KOSDAQ/year=2024/2024-05-31.parquet",
+          "file_sha256": "4dae0fb2cef97f13e5ff99bdd2e297da5fa95022f5ee08ed83894774634890e4",
+          "row_count": 1732,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2024-07-31": {
+          "content_sha256": "73ecab075229fcab7bb57666223408b8fe08602cdc8d580ba6207705ff8b698a",
+          "file_path": "market=KOSDAQ/year=2024/2024-07-31.parquet",
+          "file_sha256": "934268e52e5a83ccdbae5e7b283453ac9df464b99ef5cc1a5380ea178a0f25d1",
+          "row_count": 1742,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2024-09-30": {
+          "content_sha256": "dbf3d0db71567d9f836e455a97fc369b4e6494733d1ec17059e1d884c6edeab4",
+          "file_path": "market=KOSDAQ/year=2024/2024-09-30.parquet",
+          "file_sha256": "dd656b1092f21665de49c90061a8ce8c7409038c3a67ec5653ef75bac027d816",
+          "row_count": 1755,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2024-10-31": {
+          "content_sha256": "951e99791c1231644464f2edd906ff9bcd479a828294ac86ba40ee503dc906fa",
+          "file_path": "market=KOSDAQ/year=2024/2024-10-31.parquet",
+          "file_sha256": "a2fcfc4b53d5b7e05df8c25cb07656c50c64ad90d6a0183343e552c5212494d2",
+          "row_count": 1764,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2024-12-30": {
+          "content_sha256": "644c4a10ce8a295db4cf47d69e43977792c426cab0bf1446c85c26d7c396747b",
+          "file_path": "market=KOSDAQ/year=2024/2024-12-30.parquet",
+          "file_sha256": "3586f4d52c219c7a7b366e8263dcc989ab3a37733102e9ba7110600c9aafef36",
+          "row_count": 1784,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2025-02-28": {
+          "content_sha256": "41a4398a17cf48245dcaffc87eb2d96ca7bd30ab954a1e7348b40be92d1d50ae",
+          "file_path": "market=KOSDAQ/year=2025/2025-02-28.parquet",
+          "file_sha256": "0d51bedb84c28a894bfda1dcd1f8897d1de1adf8685f20a73e7c30134c880a0d",
+          "row_count": 1791,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2025-03-31": {
+          "content_sha256": "9bb8531bbf9661bcda3241b48bd680dcfb34bfc268b01d3f2e916cae5b54e505",
+          "file_path": "market=KOSDAQ/year=2025/2025-03-31.parquet",
+          "file_sha256": "abffd33c867363ffa985c40698a511a2f0f9c49e7e95285e7e9c9b9a8e8ab5a5",
+          "row_count": 1794,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2025-04-30": {
+          "content_sha256": "36be06823754183bda486e906a0ecf3260992d4f2933576b5f755e821edb91de",
+          "file_path": "market=KOSDAQ/year=2025/2025-04-30.parquet",
+          "file_sha256": "90082d6978a3c25478bd3cd1b9009d54586a3c718237b12922a3e9ace50a2387",
+          "row_count": 1796,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2025-06-30": {
+          "content_sha256": "563356ee6495b8576ba3662f1bee4065387129d3932380414d2cb43df450f67f",
+          "file_path": "market=KOSDAQ/year=2025/2025-06-30.parquet",
+          "file_sha256": "cf7e95d1dda2500fe546f594bc9885089b7562a8191a73886b452fd65669809a",
+          "row_count": 1796,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2025-07-31": {
+          "content_sha256": "619c491ca0752410142efcd143521bfdcc6fdbb2fa665eda0a1ac63e064ad46c",
+          "file_path": "market=KOSDAQ/year=2025/2025-07-31.parquet",
+          "file_sha256": "97e18ef329cd3ca845fa51ce3c184dc60c8b17277a32865d968ede42e78f744a",
+          "row_count": 1798,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2025-10-31": {
+          "content_sha256": "eba8818905867ada7e4615f042c46b3c2c25efc73003bc69071e611eed5789c7",
+          "file_path": "market=KOSDAQ/year=2025/2025-10-31.parquet",
+          "file_sha256": "23814aa80ce95cfa49f32a8f6030c79fdc33021a42f9bd9a42def3a3569456c9",
+          "row_count": 1801,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2025-12-30": {
+          "content_sha256": "aeacba6a7dda76af1a6d12ec8aa012a000c532999e598cc383192c2f6839a70c",
+          "file_path": "market=KOSDAQ/year=2025/2025-12-30.parquet",
+          "file_sha256": "37cd696f397d3ac1c58ec1ff98d1ee324810b03bc6c2c1af5796b59283d9f292",
+          "row_count": 1830,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2026-03-31": {
+          "content_sha256": "f23ec65e3cb35de219feae38b9a1c74035911194da477c4ce54d782ee6afce97",
+          "file_path": "market=KOSDAQ/year=2026/2026-03-31.parquet",
+          "file_sha256": "f4f52a6459b74079f87dd27fe9c5d4431003aa81292797ef894344545e027c24",
+          "row_count": 1822,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2026-04-30": {
+          "content_sha256": "bc3427a9a28fb7af95c72f722e218664c0588e7af481e5bf6a209d9ede0dad4c",
+          "file_path": "market=KOSDAQ/year=2026/2026-04-30.parquet",
+          "file_sha256": "4d37058f661269b71c4bc2e111fbeded70ae7957806c15886c75cd244e76d3c9",
+          "row_count": 1823,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2026-06-30": {
+          "content_sha256": "814aebd9969d16f92f04208b26b0e090065c915d8d923803d704f3e91082edc7",
+          "file_path": "market=KOSDAQ/year=2026/2026-06-30.parquet",
+          "file_sha256": "09ba624363d5cfae1423c12a15d8a6f50ced054afb76d7a3aaf87585f68d0c2f",
+          "row_count": 1824,
+          "status": "COMPLETE"
+        },
+        "KOSDAQ:2026-07-31": {
+          "content_sha256": "f80bda009afedb69c27dcdbde32515f4b4148560bf0c70d8dd4318c3f2b6065c",
+          "file_path": "market=KOSDAQ/year=2026/2026-07-31.parquet",
+          "file_sha256": "b72d11f0abb01d0956f64771e83ee2eb672c88b36f33e2345656dd9ec68e656e",
+          "row_count": 1820,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2021-03-31": {
+          "content_sha256": "d9c2baec7f2db23cc031034e206a1ff326f6267a088d58ddbd5819f49d0165c3",
+          "file_path": "market=KOSPI/year=2021/2021-03-31.parquet",
+          "file_sha256": "1100074e67db3d7ee5e73fa56f7cc2c0860bebecbc46191ae1b3b2f1f1156a69",
+          "row_count": 923,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2021-09-30": {
+          "content_sha256": "0dbfeca48d73034b0515b981e73c234e9a9c644e7b5f025b881fbe89c7d86d28",
+          "file_path": "market=KOSPI/year=2021/2021-09-30.parquet",
+          "file_sha256": "018421e80572e39e0721c3be6473116ea27494d1bedd75fa69e9aaaa95a3f9cf",
+          "row_count": 938,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2021-11-30": {
+          "content_sha256": "661c2b1749b594904e08a836a4d8cd174bded0df8db5a26ebc1f155d71167ad0",
+          "file_path": "market=KOSPI/year=2021/2021-11-30.parquet",
+          "file_sha256": "c8dea8b1e98d5f583f9613be8bc6541e5a920cee44fc8dcec5a14da54599b79d",
+          "row_count": 941,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2021-12-30": {
+          "content_sha256": "b4e08558d39e8b3d537f941e29ae37832feeb3527714cc248922cc1ac7b2dafa",
+          "file_path": "market=KOSPI/year=2021/2021-12-30.parquet",
+          "file_sha256": "661c6eb4b080f584fefc46d65f0dd0074615026f6d631e30c8b0560e0528989a",
+          "row_count": 943,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2022-02-28": {
+          "content_sha256": "eebcfcfe31d439298cff0b1405e1b16ac72edcb39d6ecec1e3b3381631665de5",
+          "file_path": "market=KOSPI/year=2022/2022-02-28.parquet",
+          "file_sha256": "de32d13d2bcac77a49a73ce5be7c9253f98ef7b46fdc633b8c4783afe79da38b",
+          "row_count": 940,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2022-05-31": {
+          "content_sha256": "934350dcd9476900ed6e0cf1e99f25a39e9900c7b255dce6ee2ede2e75345fcc",
+          "file_path": "market=KOSPI/year=2022/2022-05-31.parquet",
+          "file_sha256": "c2d2ebb63dff0e44b8d0c2a54a3e660999e4a45968835a9a1628f30fcfce033b",
+          "row_count": 941,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2022-06-30": {
+          "content_sha256": "916a60b2782d57f67900c55e41be8e46c7469522f94604d98f2b9f7465565fde",
+          "file_path": "market=KOSPI/year=2022/2022-06-30.parquet",
+          "file_sha256": "adcdae6964c63411d326876965baf3c857d7e0cfa80d80ba433f7c4e7097be58",
+          "row_count": 941,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2022-08-31": {
+          "content_sha256": "b5a2bb4b2115999b624cdc2d3c773a1b342fd5a33f64c2122a8a85d438f77b0f",
+          "file_path": "market=KOSPI/year=2022/2022-08-31.parquet",
+          "file_sha256": "601fd279fb2ab38c24cd1f02927c2d63f26ece7a76e2f7c9b144cc3ae202bdbc",
+          "row_count": 939,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2022-09-30": {
+          "content_sha256": "b1a69e21f38152f07fc1e8b349e4fe3a24debaaa7b34262b826dcda8c2df3b7c",
+          "file_path": "market=KOSPI/year=2022/2022-09-30.parquet",
+          "file_sha256": "722436819e86c2f9a71031bcd1df516ba4dbde59661918fc2bf34edb1a8bbe15",
+          "row_count": 939,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2022-10-31": {
+          "content_sha256": "4cacb639b2a2d51a5512a07fa829b876348f9745e3eb4749897f71d27c6e3b46",
+          "file_path": "market=KOSPI/year=2022/2022-10-31.parquet",
+          "file_sha256": "a4ee329bcd7d2f90cd55124747650ae8960851541457483a748339ca84998655",
+          "row_count": 940,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2023-01-31": {
+          "content_sha256": "56492b9f684e580f1195673b372f9aa7c9db8f19f8f4d081e13ed83581175261",
+          "file_path": "market=KOSPI/year=2023/2023-01-31.parquet",
+          "file_sha256": "64bddb6bbce81ed58b45d0b374399dc3aea6418d2fc871bfda4379f6a93ff33c",
+          "row_count": 945,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2023-02-28": {
+          "content_sha256": "be6062e987aa92e7e6ee3b2c4a592e50f2b7164ffead2f32edd9e5792d9fe3de",
+          "file_path": "market=KOSPI/year=2023/2023-02-28.parquet",
+          "file_sha256": "302671e4447d19c7e4cf4a9adb97cc519faf7a8aa12f7f47ffdc1551ad95f5bc",
+          "row_count": 943,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2023-03-31": {
+          "content_sha256": "cacb0b7428813810d3f21559737eca01d4b98f1feddc87b0b4abccca664183f0",
+          "file_path": "market=KOSPI/year=2023/2023-03-31.parquet",
+          "file_sha256": "0124b223e90b1581ad640073e1b7c243c7e61b1432715d4414d98ce663a4c73d",
+          "row_count": 946,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2023-07-31": {
+          "content_sha256": "e6b6ad8e1db29b6837741eb65636437eea6452aa1e1095c2470ef3900e846135",
+          "file_path": "market=KOSPI/year=2023/2023-07-31.parquet",
+          "file_sha256": "4c70c42256e146c6d4bdee20b83499b364e74ec44993700ea77959f3570f4d6b",
+          "row_count": 949,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2023-10-31": {
+          "content_sha256": "b4a6f7fddbc518ba8ce347d19019bb703df451d14d40492f8e44ec992da29209",
+          "file_path": "market=KOSPI/year=2023/2023-10-31.parquet",
+          "file_sha256": "d4c2fb76a2037c12acda40bd9d9988027cbcd22e9efcf29e1fb4faa31275282f",
+          "row_count": 952,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2023-11-30": {
+          "content_sha256": "6861c424b943e849f9e1fe7ccca3a43e698c8dd9a505af922c17b98de0bb72c3",
+          "file_path": "market=KOSPI/year=2023/2023-11-30.parquet",
+          "file_sha256": "8d850b9a7be5ffa7d1e7872018467d122dcdd8ee8d58480cb070665f733a4baa",
+          "row_count": 952,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2024-01-31": {
+          "content_sha256": "e11e01674cb118b852afe7db338089ad01b0f9bad50cd1ee735b05d633595758",
+          "file_path": "market=KOSPI/year=2024/2024-01-31.parquet",
+          "file_sha256": "c5309298fe6aa6679ca02b9a3035d96714bc5bbe33eca928d4ff51539c8ed069",
+          "row_count": 953,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2024-02-29": {
+          "content_sha256": "2f3be1d123af92bb2a5d307647dc009b53210b7d1eabc7448affbd80c7288be9",
+          "file_path": "market=KOSPI/year=2024/2024-02-29.parquet",
+          "file_sha256": "d6c97229f8cd15631690b97c192474c53fb48db0194bc8417709cc8595921a0a",
+          "row_count": 954,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2024-04-30": {
+          "content_sha256": "f744637d4f81c9bd0287a7bc63a999373dfa66f190112a5a8793b0a3de3d5e10",
+          "file_path": "market=KOSPI/year=2024/2024-04-30.parquet",
+          "file_sha256": "cacb571fef43103cb0190c4b8611f58ac23df65c62694976758014e49a36c3f6",
+          "row_count": 953,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2024-07-31": {
+          "content_sha256": "6b08f718d5cc1ecb5c61693b105a8840a87516b7472d154edabcbfa874ed13a6",
+          "file_path": "market=KOSPI/year=2024/2024-07-31.parquet",
+          "file_sha256": "4d56d01a85f0ea28b63225bb480be4f4b32492989e2dbb9a72203bfa7a2c2118",
+          "row_count": 957,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2024-09-30": {
+          "content_sha256": "3fb81b9cac79aceb139a8972d5b64370c120d3fe7b004d726d57f155d1770112",
+          "file_path": "market=KOSPI/year=2024/2024-09-30.parquet",
+          "file_sha256": "b0a2fd3cdf1c1b77af0f14d43985701cf67891ccd348254de6319197724ead14",
+          "row_count": 959,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2024-10-31": {
+          "content_sha256": "f828a2bfef2f685552165855805725c699a6c8a9b06329af47bec1c510cd3ff0",
+          "file_path": "market=KOSPI/year=2024/2024-10-31.parquet",
+          "file_sha256": "d4b86642c01227150edf7cb595bed0f1a5ee544d4c793b27ef891226b83f4526",
+          "row_count": 958,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2024-12-30": {
+          "content_sha256": "3c265e26cb8726fcf4574de2803f77eec07699c5aaa2507356e59b482f1a46f0",
+          "file_path": "market=KOSPI/year=2024/2024-12-30.parquet",
+          "file_sha256": "77c686db17f63a6485a1c1bd8faea65e91ec5bc074b8cd1dff34242b763803d2",
+          "row_count": 961,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2025-03-31": {
+          "content_sha256": "7eb1b417eedcb9ad92e746ac6f3f0dc86ac10797e57005fa1333e5baec7ab4fa",
+          "file_path": "market=KOSPI/year=2025/2025-03-31.parquet",
+          "file_sha256": "a288f1318f5490213eede08bb856ff2e6789920a598f4bce95655de6b76e2bea",
+          "row_count": 963,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2025-04-30": {
+          "content_sha256": "ded3137c8eeb23edcbacf63f9bc72d63db3f207342263f7766aff31ec7bf3739",
+          "file_path": "market=KOSPI/year=2025/2025-04-30.parquet",
+          "file_sha256": "8a895d41391d055530fd11554dc61cc9f94202b99979a6d495c9212192847cc3",
+          "row_count": 962,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2025-05-30": {
+          "content_sha256": "a10a32a4ae8889a083112f2050c4c95971d1456f21c65bd86b8de374a2bec45c",
+          "file_path": "market=KOSPI/year=2025/2025-05-30.parquet",
+          "file_sha256": "de60896abd29e8a467bff52f5a4652c17e136e6a7e20ab73d5e4e0329def402c",
+          "row_count": 962,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2025-12-30": {
+          "content_sha256": "0dbaff26a42c1ca5e6cf12a1501de4d68bb7f77f93b906932fd5af255c57d4f9",
+          "file_path": "market=KOSPI/year=2025/2025-12-30.parquet",
+          "file_sha256": "091d56b348744e6a2596219c7b3324f8817f1fc9758aa3d0e3a4cd4a61c5130a",
+          "row_count": 958,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2026-06-30": {
+          "content_sha256": "e2a8cef73efaadfda1970e8713e07f0c30ccccc2746992ad21515142183e0088",
+          "file_path": "market=KOSPI/year=2026/2026-06-30.parquet",
+          "file_sha256": "4cc3ed6438c0bc85aa78dee2d9e24826c41690cf873f194ef9e8520947b2e151",
+          "row_count": 945,
+          "status": "COMPLETE"
+        },
+        "KOSPI:2026-07-31": {
+          "content_sha256": "5998ac48b49ca4f3eac3e9586bac0d7b019d0612039ce29e1181fba4e34b05e2",
+          "file_path": "market=KOSPI/year=2026/2026-07-31.parquet",
+          "file_sha256": "3ea3e9ba5fd881124e4a1dfa67ce177a4766e284f955600afca36757f06a1f87",
+          "row_count": 943,
+          "status": "COMPLETE"
+        }
+      }
+    },
+    "repository_loader_unavailable_ticker_count": 0,
+    "repository_v2_silent_inner_drop_count": 0
+  },
+  "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+  "valuation": {
+    "approved_same_date_exchange_status_carry": "only when common rule evidence authorizes it; audit required",
+    "coverage_formula": "valid whole-portfolio equity trading days / total effective-window trading days",
+    "daily_mark": "exact Repository V2 close; if any held position cannot be marked, the whole portfolio equity day is unresolved",
+    "exact_coverage_pct": 100.0,
+    "mdd_thresholds_pct": {
+      "P1": -55.0,
+      "P2-1": -40.0,
+      "P2-2": -40.0,
+      "P3-1": -40.0,
+      "P3-2": -40.0
+    },
+    "observed_coverage_max_exclusive_pct": 100.0,
+    "observed_coverage_min_pct": 90.0,
+    "unresolved_equity_day_policy": "exclude the entire day from Observed MDD; no missing-position omission, zero fill, nearest date, interpolation, or arbitrary carry",
+    "v2_relative_mdd_limit_pp": 5.0
+  },
+  "window": {
+    "authority_metadata": {
+      "authority_version": "ROLLING_MARKET_DATA_V01",
+      "calendar_built_against_certified_through": "2026-09-18",
+      "calendar_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+      "calendar_frontier": "2026-09-21",
+      "certified_through": "2026-09-21"
+    },
+    "authority_source": "ROLLING_AUTHORITY_MERGED_CALENDAR_V01",
+    "calendar_range": [
+      "2021-01-01",
+      "2026-08-31"
+    ],
+    "effective_end": "2026-08-31",
+    "effective_start": "2021-01-04",
+    "execution_support": "2026-09-01",
+    "support_policy": "only an exit signal dated on or before effective_end may fill on execution_support; entries after effective_end are not filled",
+    "window_id": "P2-2"
+  }
+}
