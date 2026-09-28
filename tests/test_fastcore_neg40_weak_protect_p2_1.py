@@ -216,6 +216,75 @@ P1_FINAL_CLOSURE_V02_IDENTITIES = {
     ("130960", "KR7130960008"),
 }
 
+V2_MDD_RAW_DATA_GAP_CLOSURE_IDENTITIES = {
+    ("000100", "KR7000100008"),
+    ("000210", "KR7000210005"),
+    ("000220", "KR7000220004"),
+    ("000370", "KR7000370007"),
+    ("000440", "KR7000440008"),
+    ("000480", "KR7000480004"),
+    ("001060", "KR7001060003"),
+    ("001070", "KR7001070002"),
+    ("001540", "KR7001540004"),
+    ("001790", "KR7001790005"),
+    ("002240", "KR7002240000"),
+    ("002320", "KR7002320000"),
+    ("002420", "KR7002420008"),
+    ("002720", "KR7002720001"),
+    ("002790", "KR7002790004"),
+    ("002840", "KR7002840007"),
+    ("002900", "KR7002900009"),
+    ("003000", "KR7003000007"),
+    ("003120", "KR7003120003"),
+    ("003220", "KR7003220001"),
+    ("003300", "KR7003300001"),
+    ("003490", "KR7003490000"),
+    ("003550", "KR7003550001"),
+    ("003670", "KR7003670007"),
+    ("003920", "KR7003920006"),
+    ("004140", "KR7004140000"),
+    ("004800", "KR7004800009"),
+    ("004990", "KR7004990008"),
+    ("005420", "KR7005420005"),
+    ("005440", "KR7005440003"),
+    ("005880", "KR7005880000"),
+    ("005930", "KR7005930003"),
+    ("005990", "KR7005990007"),
+    ("006220", "KR7006220008"),
+    ("006400", "KR7006400006"),
+    ("006730", "KR7006730006"),
+    ("007340", "KR7007340003"),
+    ("007390", "KR7007390008"),
+    ("007690", "KR7007690001"),
+    ("008060", "KR7008060006"),
+    ("009180", "KR7009180001"),
+    ("010060", "KR7010060002"),
+    ("011170", "KR7011170008"),
+    ("012320", "KR7012320008"),
+    ("013520", "KR7013520002"),
+    ("017670", "KR7017670001"),
+    ("018500", "KR7018500009"),
+    ("020150", "KR7020150009"),
+    ("025880", "KR7025880006"),
+    ("028300", "KR7028300002"),
+    ("032560", "KR7032560005"),
+    ("033290", "KR7033290008"),
+    ("036480", "KR7036480002"),
+    ("038540", "KR7038540001"),
+    ("045970", "KR7045970001"),
+    ("051630", "KR7051630002"),
+    ("067570", "KR7067570002"),
+    ("069140", "KR7069140002"),
+    ("070300", "KR7070300009"),
+    ("088980", "KR7088980008"),
+    ("099190", "KR7099190001"),
+    ("099320", "KR7099320004"),
+    ("119850", "KR7119850006"),
+    ("138070", "KR7138070008"),
+    ("181710", "KR7181710005"),
+    ("900140", "KYG5307W1015"),
+}
+
 
 def test_p1_unavailable_12_permanent_exclusions_are_exact_pairs():
     registered = {
@@ -267,6 +336,7 @@ def test_p1_final_closure_v02_permanent_exclusions_are_exact_pairs_and_preserve_
         PREEXISTING_PERMANENT_IDENTITY_EXCLUSIONS
         | P1_UNAVAILABLE_12_IDENTITIES
         | P1_FINAL_CLOSURE_V02_IDENTITIES
+        | V2_MDD_RAW_DATA_GAP_CLOSURE_IDENTITIES
     )
 
     segments = [
@@ -293,6 +363,61 @@ def test_p1_final_closure_v02_permanent_exclusions_are_exact_pairs_and_preserve_
     assert kept == [ticker_reuse]
     assert {(item["ticker"], item["isu_cd"]) for item in exclusions} == registered
     assert all(item["approval_scope"] == "P1 final exclusion closure V02" for item in exclusions)
+
+
+def test_v2_mdd_raw_data_gap_permanent_exclusions_are_exact_pairs_and_preserve_ticker_reuse():
+    policy = runner.PERMANENT_IDENTITY_EXCLUSIONS
+    registered = {
+        identity
+        for identity, metadata in policy.items()
+        if metadata.get("approval_scope") == "V2 official adoption MDD closure 2026-09-28"
+    }
+
+    assert registered == V2_MDD_RAW_DATA_GAP_CLOSURE_IDENTITIES
+    assert len(registered) == 66
+    assert len(policy) == 109
+    assert len(policy) == len(set(policy))
+    assert all(
+        isinstance(identity, tuple)
+        and len(identity) == 2
+        and len(identity[0]) == 6
+        and identity[0].isdigit()
+        and identity[1].startswith(("KR", "KY"))
+        for identity in policy
+    )
+
+    for identity in registered:
+        metadata = policy[identity]
+        assert metadata["reason"] == (
+            "user-approved permanent exclusion for unresolved Repository V2 daily valuation RAW_DATA_GAP"
+        )
+        assert metadata["failure_class"] == "MDD_RAW_DATA_GAP"
+        assert metadata["approved_date"] == "2026-09-28"
+        assert metadata["policy_version"] == "permanent_identity_exclusions_v01"
+
+    segments = [
+        IdentitySegment(
+            ticker=ticker,
+            isu_cd=isu_cd,
+            market="KOSPI",
+            effective_from=pd.Timestamp("2010-01-04"),
+            effective_to=pd.Timestamp("2026-08-31"),
+        )
+        for ticker, isu_cd in sorted(registered)
+    ]
+    ticker_reuse = IdentitySegment(
+        ticker="000100",
+        isu_cd="KR7999990001",
+        market="KOSPI",
+        effective_from=pd.Timestamp("2026-09-01"),
+        effective_to=pd.Timestamp("2026-09-30"),
+    )
+    segments.append(ticker_reuse)
+
+    kept, exclusions = apply_permanent_identity_exclusions(segments)
+
+    assert kept == [ticker_reuse]
+    assert {(item["ticker"], item["isu_cd"]) for item in exclusions} == registered
 
 
 def test_p3_2_saved_raw_recognition_filters_both_sides_without_mutating_raw_sources():
