@@ -160,3 +160,8 @@
 - **기존 V3 후보·하락 방어 연구 문서**: 역사적 기록으로 보존
 
 최종 연구 상태와 관련 산출물 색인은 [A FAST Core V2 개선 연구 종료 기록](../../research/v2_improvement_research_closure_20260927.md)을 따른다.
+
+## 공식 전략 공통 채택 기준 재심사
+
+- 2026-09-28 V02 portfolio-only 재심사: `HOLD` (다섯 기간 모두 E `FAIL`; 미해결 평가값으로 D/F `CHECK_REQUIRED`).
+- 상세 결과: [V02 재심사 보고서](../../../../../artifacts/patterns/pattern_a_fast/strategy/v2_official_adoption_revalidation_v02/report.md).
