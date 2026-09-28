@@ -1,0 +1,69 @@
+{
+  "authoritative_signal_linkage_check": {
+    "candidate_signal_stage_history_expected_sha256": "44c75dc3954419b8cba52f7c8ab1462d14ecbb6a692fec53e408ac755d8ce5b5",
+    "candidate_signal_stage_history_sha256": "44c75dc3954419b8cba52f7c8ab1462d14ecbb6a692fec53e408ac755d8ce5b5",
+    "candidate_signals_checked": 299,
+    "history_metadata_sha256": "f552b462d9d45309fea168cf0e46f26e71837aa5fefb487e19b51d59add1a1d0",
+    "mismatch_count": 0,
+    "mismatches": [],
+    "raw_linkage_metadata_sha256": "7801f64a55bcc2516454ff784fea187e60876373958dca6381238afc46c3e52c",
+    "raw_linkage_signals_checked": 299,
+    "raw_linkage_unique_signal_count": 20076,
+    "raw_signal_stage_path_trade_linkage_expected_sha256": "d4d898ab41246c023c84f82868ef47d95a42024c2acc3bc60eadbaede2ddc02b",
+    "raw_signal_stage_path_trade_linkage_sha256": "d4d898ab41246c023c84f82868ef47d95a42024c2acc3bc60eadbaede2ddc02b",
+    "stage_history_signals_checked": 299,
+    "stage_history_unique_signal_count": 835,
+    "status": "PASS"
+  },
+  "current_allowed_signal_count": 299,
+  "current_exclusion_count": 109,
+  "current_filled_signal_count": 297,
+  "duplicate_input_key_count": 0,
+  "exclusion_leakage_count": 0,
+  "exclusion_leakage_zero": true,
+  "execution_price_audit": {
+    "checked_entries_and_realized_exits": 297,
+    "missing_exact_opens": 0,
+    "next_session_execution_audit": {
+      "checked_entry_count": 297,
+      "checked_realized_exit_count": 244,
+      "status": "PASS",
+      "violation_count": 0,
+      "violations": []
+    },
+    "next_session_execution_violation_count": 0,
+    "price_mismatch_count": 0,
+    "terminal_exact_close_count": 50,
+    "terminal_unresolved_source_count": 3
+  },
+  "frozen_source_hashes_verified": true,
+  "historical_runner_code_hash_checks": {
+    "scripts/run_pattern_b_progressed_previous_stage_early_transition_only_5window_v01.py": {
+      "actual_sha256": "9a267006c8ed81c83a4a29a11d750c9932dbe31137a34a2c5d64b1feaefd2cdd",
+      "expected_sha256": "1de6bff08463198402737577af00ddcd01212f392d34cf587b3626da5b9eba0a",
+      "status": "RUN_SOURCE_UNTRACKED_AT_START"
+    },
+    "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": {
+      "actual_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+      "expected_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+      "status": "PASS"
+    }
+  },
+  "historical_runner_code_hash_mismatch_count": 1,
+  "identity_lifecycle_audit": {
+    "executed_entries": 210,
+    "executed_exits": 173,
+    "open_identity_count_after_support": 37,
+    "violation_count": 0,
+    "violations": []
+  },
+  "identity_overlap_violation_count": 0,
+  "lookahead_entry_count": 0,
+  "post_cutoff_entry_count": 0,
+  "repository_v2_silent_inner_drop_count": 0,
+  "source_allowed_signal_count": 312,
+  "source_filled_signal_count": 310,
+  "source_hashes_verified": true,
+  "window_current_excluded_fill_count": 13,
+  "window_current_excluded_signal_count": 13
+}

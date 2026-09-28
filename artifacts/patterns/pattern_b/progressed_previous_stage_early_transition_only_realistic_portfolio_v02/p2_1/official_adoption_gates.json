@@ -1,0 +1,29 @@
+{
+  "cash_shortage_is_gate": false,
+  "gate_evidence": {
+    "reasons": {
+      "A": "Frozen authorities, PIT/stage linkage, current exclusions, lifecycle and cash conservation passed.",
+      "B": {
+        "cost_coverage_complete": true,
+        "mismatch_count": 0,
+        "sell_tax_applied_krw": 0.0
+      },
+      "C": "Terminal equity does not support a complete return and CAGR calculation.",
+      "D": "MDD evidence is unavailable or valuation coverage is below 90%.",
+      "E": [
+        "VALUATION_COVERAGE_BELOW_90_PERCENT",
+        "TERMINAL_EQUITY_UNRESOLVED",
+        "RETURN_OR_CAGR_UNAVAILABLE"
+      ]
+    },
+    "relative_mdd_deterioration_pp": null
+  },
+  "gates": {
+    "A": "PASS",
+    "B": "PASS",
+    "C": "CHECK_REQUIRED",
+    "D": "CHECK_REQUIRED",
+    "E": "CHECK_REQUIRED"
+  },
+  "window_id": "P2-1"
+}
