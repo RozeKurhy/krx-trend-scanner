@@ -176,3 +176,9 @@
 | P2-2 | -34.54% | Observed | 99.78% |
 | P3-1 | -37.34% | Exact | 100.00% |
 | P3-2 | -38.46% | Exact | 100.00% |
+
+### 최신 공식 A~E 재판정 (2026-09-28)
+
+- 저장된 V2 portfolio 결과에 최신 공식 채택 기준을 적용한 판정은 `OFFICIAL_STRATEGY_ADOPTED`다. 다섯 기간 A~E 25개 gate가 모두 PASS했다.
+- 재판정 중 백테스트·신호 생성·evaluator를 재실행하지 않았다. 기존 MDD closure V02의 당시 `HOLD`와 원본 산출물은 역사 기록으로 보존했다.
+- 상세 결과와 원본 근거 파일 SHA-256: [최신 공식 기준 재판정 보고서](../../../../../artifacts/patterns/pattern_a_fast/strategy/v2_official_adoption_readjudication_v03/report.md).

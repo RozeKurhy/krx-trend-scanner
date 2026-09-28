@@ -77,6 +77,79 @@ def test_relative_mdd_equal_to_five_percentage_points_fails() -> None:
     assert evidence["relative_mdd_deterioration_pp"] == 5.0
 
 
+def _mdd_gates(candidate_mdd: float | None, v2_mdd: float | None) -> dict[str, str]:
+    input_audit = {
+        "source_hashes_verified": True,
+        "frozen_source_hashes_verified": True,
+        "exclusion_leakage_zero": True,
+        "duplicate_input_key_count": 0,
+        "post_cutoff_entry_count": 0,
+        "lookahead_entry_count": 0,
+        "identity_overlap_violation_count": 0,
+        "repository_v2_silent_inner_drop_count": 0,
+        "execution_price_audit": {"missing_exact_opens": 0, "price_mismatch_count": 0},
+    }
+    metrics = {
+        "cash_conservation_pass": True,
+        "position_cap": None,
+        "cumulative_return_pct": 1.0,
+        "CAGR_pct": 1.0,
+        "final_equity": 202_000_000.0,
+    }
+    gates, _ = runner.gate_status(
+        window_id="P2-1",
+        metrics=metrics,
+        valuation={"coverage_pct": 100.0, "mdd_pct": candidate_mdd},
+        v2_reference={"mdd_pct": v2_mdd},
+        input_audit=input_audit,
+        cost_audit={"mismatch_count": 0, "coverage_complete": True},
+        unresolved_execution_event_count=0,
+    )
+    return gates
+
+
+def _relative_mdd_result(candidate_mdd: float | None, v2_mdd: float | None) -> dict[str, object]:
+    gates = _mdd_gates(candidate_mdd, v2_mdd)
+    return runner.compare_to_v2(
+        "P2-1",
+        {"mdd_pct": candidate_mdd},
+        {},
+        {},
+        gates,
+        {"mdd_pct": v2_mdd},
+    )
+
+
+def test_compare_to_v2_relative_mdd_fails_at_exact_five_point_limit() -> None:
+    result = _relative_mdd_result(candidate_mdd=-40.0, v2_mdd=-35.0)
+
+    assert result["mdd_deterioration_pp"] == 5.0
+    assert result["relative_mdd_gate"] == "FAIL"
+
+
+def test_compare_to_v2_reports_relative_failure_when_absolute_gate_also_fails() -> None:
+    result = _relative_mdd_result(candidate_mdd=-40.5, v2_mdd=-33.0)
+
+    assert result["mdd_deterioration_pp"] == 7.5
+    assert result["relative_mdd_gate"] == "FAIL"
+    assert _mdd_gates(candidate_mdd=-40.5, v2_mdd=-33.0)["D"] == "FAIL"
+
+
+def test_compare_to_v2_relative_pass_is_independent_of_absolute_gate_failure() -> None:
+    result = _relative_mdd_result(candidate_mdd=-40.5, v2_mdd=-38.5)
+
+    assert result["mdd_deterioration_pp"] == 2.0
+    assert result["relative_mdd_gate"] == "PASS"
+    assert _mdd_gates(candidate_mdd=-40.5, v2_mdd=-38.5)["D"] == "FAIL"
+
+
+def test_compare_to_v2_requires_both_mdds_for_relative_gate() -> None:
+    for candidate_mdd, v2_mdd in [(None, -35.0), (-40.0, None)]:
+        result = _relative_mdd_result(candidate_mdd, v2_mdd)
+
+        assert result["relative_mdd_gate"] == "CHECK_REQUIRED"
+
+
 def test_execution_date_uses_first_later_session_with_an_exact_open() -> None:
     dates = pd.to_datetime(["2024-01-04", "2024-01-05", "2024-01-08", "2024-01-09"])
     frame = pd.DataFrame(

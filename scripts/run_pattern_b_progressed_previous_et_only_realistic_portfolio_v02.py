@@ -1279,7 +1279,25 @@ def compare_to_v2(
     candidate_gates: Mapping[str, str],
     v2: Mapping[str, Any],
 ) -> dict[str, Any]:
-    deterioration = float(v2["mdd_pct"]) - float(candidate_metrics["mdd_pct"]) if candidate_metrics.get("mdd_pct") is not None else None
+    candidate_mdd = candidate_metrics.get("mdd_pct")
+    v2_mdd = v2.get("mdd_pct")
+    deterioration = None
+    if candidate_mdd is not None and v2_mdd is not None:
+        try:
+            candidate_mdd_value = float(candidate_mdd)
+            v2_mdd_value = float(v2_mdd)
+        except (TypeError, ValueError):
+            pass
+        else:
+            if math.isfinite(candidate_mdd_value) and math.isfinite(v2_mdd_value):
+                deterioration = v2_mdd_value - candidate_mdd_value
+    relative_mdd_gate = (
+        "CHECK_REQUIRED"
+        if deterioration is None
+        else "FAIL"
+        if deterioration >= RELATIVE_MDD_LIMIT_PP
+        else "PASS"
+    )
     return {
         "window_id": window_id,
         "candidate_total_return_pct": candidate_metrics.get("cumulative_return_pct"),
@@ -1296,10 +1314,10 @@ def compare_to_v2(
         "v2_mdd_pct": v2.get("mdd_pct"),
         "v2_mdd_type": v2.get("mdd_type"),
         "v2_coverage_pct": v2.get("coverage_pct"),
-        "mdd_delta_pp_candidate_minus_v2": candidate_metrics.get("mdd_pct") - v2.get("mdd_pct") if candidate_metrics.get("mdd_pct") is not None else None,
+        "mdd_delta_pp_candidate_minus_v2": candidate_mdd - v2_mdd if candidate_mdd is not None and v2_mdd is not None else None,
         "mdd_deterioration_pp": deterioration,
         "relative_mdd_limit_pp": RELATIVE_MDD_LIMIT_PP,
-        "relative_mdd_gate": candidate_gates.get("D"),
+        "relative_mdd_gate": relative_mdd_gate,
         "candidate_ending_equity_krw": candidate_metrics.get("ending_equity_krw"),
         "v2_ending_equity_krw": v2.get("ending_equity_krw"),
         "candidate_cash_shortage_skip_rate_pct": candidate_cash.get("cash_shortage_skip_rate_pct"),
