@@ -1,6 +1,6 @@
 {
   "schema": "official_strategy_battle_run_status_v02",
-  "status": "CHECK_REQUIRED",
+  "status": "PASS",
   "execution_status": "COMPLETE",
   "battle_a_status": "COMPLETE",
   "battle_b_status": "COMPLETE",
@@ -11,5 +11,27 @@
   "expected_results": 30,
   "base_head": "a4bc4f6895a3550746cac07450bef79210753cd8",
   "worker_count": 10,
-  "valuation_check_required_count": 5
+  "valuation_check_required_count": 0,
+  "latest_replay_scope": {
+    "battle_id": "battle_c_kospi_only",
+    "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "windows": [
+      "P1",
+      "P2-1",
+      "P2-2",
+      "P3-1",
+      "P3-2"
+    ],
+    "starting_head": "0fb7104955aba136ec95b45baf3c59cb33758eeb",
+    "ending_head": "0fb7104955aba136ec95b45baf3c59cb33758eeb",
+    "retained_baseline_exclusion_count": 173,
+    "current_exclusion_count": 174,
+    "retained_096300_candidate_attempt_count": 6,
+    "retained_096300_candidate_executed_count": 0,
+    "retained_096300_candidates_all_skipped_for_cash": true,
+    "battle_a_replayed": false,
+    "battle_b_replayed": false,
+    "pattern_b_replayed": false,
+    "pattern_b_battle_c_metrics_source": "existing V02 battle_c_kospi_only/pattern_b/battle_window_metrics.csv"
+  }
 }

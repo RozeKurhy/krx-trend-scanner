@@ -1,13 +1,6 @@
 {
   "schema": "battle_c_exact_pit_market_authority_preflight_v02",
   "status": "PASS",
-  "pit_authority": {
-    "path": "data/market/rolling_authority/merged_pit_intervals.json",
-    "sha256": "ff783168c56a4772a681e34b97b17d8855f28d1c13df25094bd65cedbc80cd26",
-    "content_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
-    "pit_frontier": "2026-09-21",
-    "common_interval_count": 3208
-  },
   "summary": {
     "status": "PASS",
     "market_authority_missing": 0,
@@ -16,8 +9,8 @@
       {
         "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
         "window_id": "P1",
-        "candidate_count": 4638,
-        "kospi_eligible_attempts": 2046,
+        "candidate_count": 4636,
+        "kospi_eligible_attempts": 2044,
         "non_kospi_rejected_attempts": 2592,
         "market_authority_missing": 0,
         "market_authority_ambiguous": 0,
@@ -26,8 +19,8 @@
       {
         "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
         "window_id": "P2-1",
-        "candidate_count": 1700,
-        "kospi_eligible_attempts": 794,
+        "candidate_count": 1699,
+        "kospi_eligible_attempts": 793,
         "non_kospi_rejected_attempts": 906,
         "market_authority_missing": 0,
         "market_authority_ambiguous": 0,
@@ -36,8 +29,8 @@
       {
         "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
         "window_id": "P2-2",
-        "candidate_count": 2249,
-        "kospi_eligible_attempts": 1033,
+        "candidate_count": 2248,
+        "kospi_eligible_attempts": 1032,
         "non_kospi_rejected_attempts": 1216,
         "market_authority_missing": 0,
         "market_authority_ambiguous": 0,
@@ -46,8 +39,8 @@
       {
         "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
         "window_id": "P3-1",
-        "candidate_count": 1098,
-        "kospi_eligible_attempts": 485,
+        "candidate_count": 1097,
+        "kospi_eligible_attempts": 484,
         "non_kospi_rejected_attempts": 613,
         "market_authority_missing": 0,
         "market_authority_ambiguous": 0,
@@ -56,8 +49,8 @@
       {
         "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
         "window_id": "P3-2",
-        "candidate_count": 1683,
-        "kospi_eligible_attempts": 746,
+        "candidate_count": 1682,
+        "kospi_eligible_attempts": 745,
         "non_kospi_rejected_attempts": 937,
         "market_authority_missing": 0,
         "market_authority_ambiguous": 0,
@@ -174,5 +167,7 @@
       "policy": "entry_signal_date exact ticker + ISU_CD active PIT COMMON interval; authoritative market only"
     }
   },
-  "policy": "entry_signal_date exact ticker + ISU_CD active PIT COMMON interval; KOSPI only; no market-cap filter"
+  "authority_source": "data/market/rolling_authority/merged_pit_intervals.json",
+  "filter": "authoritative PIT market == KOSPI at entry_signal_date; exact ticker + ISU_CD",
+  "market_cap_filter": false
 }

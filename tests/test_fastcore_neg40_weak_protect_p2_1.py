@@ -30,6 +30,7 @@ P2_1_GLOBAL_LIFECYCLE_EXCLUSIONS = {
     ("225330", "KR7225330000"),
     ("282690", "KR7282690007"),
 }
+BATTLE_C_UNRESOLVED_LIQUIDATION_EXCLUSION = ("096300", "KR7096300009")
 PATTERN_B_V02_STRUCTURAL_DIAGNOSTIC = (
     Path(__file__).resolve().parents[1]
     / "artifacts/patterns/pattern_b/"
@@ -411,8 +412,8 @@ def test_v2_mdd_raw_data_gap_permanent_exclusions_are_exact_pairs_and_preserve_t
         for identity, metadata in policy.items()
         if metadata.get("approval_scope") == PATTERN_B_V02_STRUCTURAL_EXCLUSION_SCOPE
     }
-    assert len(set(policy) - new_structural) == 116
-    assert len(policy) == 173
+    assert len(set(policy) - new_structural) == 117
+    assert len(policy) == 174
     assert len(policy) == len(set(policy))
     assert all(
         isinstance(identity, tuple)
@@ -478,6 +479,7 @@ def test_pattern_b_v02_structural_exclusions_match_diagnostic_exact_pairs():
         | P1_FINAL_CLOSURE_V02_IDENTITIES
         | V2_MDD_RAW_DATA_GAP_CLOSURE_IDENTITIES
         | P2_1_GLOBAL_LIFECYCLE_EXCLUSIONS
+        | {BATTLE_C_UNRESOLVED_LIQUIDATION_EXCLUSION}
     )
 
     assert len(all_diagnostic_rows) == len(all_diagnostic_pairs) == 81
@@ -489,8 +491,8 @@ def test_pattern_b_v02_structural_exclusions_match_diagnostic_exact_pairs():
     assert registered == set(authority)
     assert set(authority).isdisjoint(legacy)
     assert set(policy) == legacy | set(authority)
-    assert len(legacy) == 116
-    assert len(policy) == 173
+    assert len(legacy) == 117
+    assert len(policy) == 174
     assert len(policy) == len(set(policy))
 
     policy_path = (
@@ -504,7 +506,7 @@ def test_pattern_b_v02_structural_exclusions_match_diagnostic_exact_pairs():
         and getattr(node.target, "id", "") == "PERMANENT_IDENTITY_EXCLUSIONS"
     )
     literal_keys = [ast.literal_eval(key) for key in assignment.value.keys]
-    assert len(literal_keys) == len(set(literal_keys)) == 173
+    assert len(literal_keys) == len(set(literal_keys)) == 174
 
     for identity in P2_1_GLOBAL_LIFECYCLE_EXCLUSIONS:
         metadata = policy[identity]
@@ -512,6 +514,13 @@ def test_pattern_b_v02_structural_exclusions_match_diagnostic_exact_pairs():
         assert metadata["approved_date"] == "2026-09-28"
         assert metadata["policy_version"] == "permanent_identity_exclusions_v01"
         assert "P2-1 raw-only lifecycle successor-resolution class" in metadata["reason"]
+
+    liquidation = policy[BATTLE_C_UNRESOLVED_LIQUIDATION_EXCLUSION]
+    assert liquidation["approval_scope"] == "GLOBAL permanent identity exclusion"
+    assert liquidation["failure_class"] == "LIQUIDATION_UNRESOLVED"
+    assert liquidation["evidence_id"] == "KRX-LIFECYCLE-KR7096300009"
+    assert liquidation["approved_date"] == "2026-09-29"
+    assert "final distribution and payment/closure dates unavailable" in liquidation["reason"]
 
     for identity, failure_class in authority.items():
         metadata = policy[identity]

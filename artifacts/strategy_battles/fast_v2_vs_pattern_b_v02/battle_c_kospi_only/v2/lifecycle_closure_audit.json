@@ -1,0 +1,315 @@
+{
+  "schema": "battle_c_v2_096300_lifecycle_closure_v01",
+  "created_at_utc": "2026-09-28T21:10:40.766042+00:00",
+  "start_head": "0fb7104955aba136ec95b45baf3c59cb33758eeb",
+  "end_head": "0fb7104955aba136ec95b45baf3c59cb33758eeb",
+  "target_identity": {
+    "ticker": "096300",
+    "isu_cd": "KR7096300009",
+    "evidence_id": "KRX-LIFECYCLE-KR7096300009"
+  },
+  "exclusions_before_after": [
+    173,
+    174
+  ],
+  "replay_scope": {
+    "battle_id": "battle_c_kospi_only",
+    "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "windows": [
+      "P1",
+      "P2-1",
+      "P2-2",
+      "P3-1",
+      "P3-2"
+    ],
+    "starting_head": "0fb7104955aba136ec95b45baf3c59cb33758eeb",
+    "ending_head": "0fb7104955aba136ec95b45baf3c59cb33758eeb",
+    "retained_baseline_exclusion_count": 173,
+    "current_exclusion_count": 174,
+    "retained_096300_candidate_attempt_count": 6,
+    "retained_096300_candidate_executed_count": 0,
+    "retained_096300_candidates_all_skipped_for_cash": true,
+    "battle_a_replayed": false,
+    "battle_b_replayed": false,
+    "pattern_b_replayed": false,
+    "pattern_b_battle_c_metrics_source": "existing V02 battle_c_kospi_only/pattern_b/battle_window_metrics.csv"
+  },
+  "source_checks": {
+    "P1": {
+      "source_sha256": "0edcb9b87ccdc1e290c3431fb6e7e395bda910cf6dd69fa2d94426b7011eaeb0",
+      "source_rows": 4983,
+      "rows_after_current_exclusions": 4636,
+      "096300_raw_source_rows_excluded": 2,
+      "previous_096300_missing_mark_rows": 892,
+      "previous_coverage_pct": 63.340843257161254
+    },
+    "P2-1": {
+      "source_sha256": "47d49cfba42bb7d3f278f81227671f68ab7dc96a34b42a3976f591c2c5a8c790",
+      "source_rows": 1801,
+      "rows_after_current_exclusions": 1699,
+      "096300_raw_source_rows_excluded": 1,
+      "previous_096300_missing_mark_rows": 587,
+      "previous_coverage_pct": 45.4713493530499
+    },
+    "P2-2": {
+      "source_sha256": "b58b27d326b79625bbdce775ab155d52486a11b1bcccfe2acf203d55a1b675f1",
+      "source_rows": 2424,
+      "rows_after_current_exclusions": 2248,
+      "096300_raw_source_rows_excluded": 1,
+      "previous_096300_missing_mark_rows": 892,
+      "previous_coverage_pct": 35.47224224945926
+    },
+    "P3-1": {
+      "source_sha256": "333caeae854f69981d6ab3dd2d235eb798c25c7e1086ba7d4ea7d3da109c5b1e",
+      "source_rows": 1174,
+      "rows_after_current_exclusions": 1097,
+      "096300_raw_source_rows_excluded": 1,
+      "previous_096300_missing_mark_rows": 587,
+      "previous_coverage_pct": 29.136690647482016
+    },
+    "P3-2": {
+      "source_sha256": "b905b601f36195e8a1666454f90f442e65c653857cda5e4fdc79a362b2776e16",
+      "source_rows": 1805,
+      "rows_after_current_exclusions": 1682,
+      "096300_raw_source_rows_excluded": 1,
+      "previous_096300_missing_mark_rows": 892,
+      "previous_coverage_pct": 21.334503950834065
+    }
+  },
+  "c_v2_checks": {
+    "status": "PASS",
+    "replayed_window_count": 5,
+    "worker_count": 10,
+    "permanent_exclusion_count": 174,
+    "096300_exact_identity_entry_attempts": 0,
+    "executed_non_kospi_entries": 0,
+    "executed_entry_pit_market_audit_mismatches": 0,
+    "cost_formula_mismatches": 0,
+    "frozen_execution_date_or_price_mismatches": 0,
+    "cash_conservation_failures": 0,
+    "worker_count_failures": 0,
+    "no_position_cap": true,
+    "no_market_cap_filter": true,
+    "strategy_freeze_pass": true,
+    "market_authority_preflight": {
+      "status": "PASS",
+      "market_authority_missing": 0,
+      "market_authority_ambiguous": 0,
+      "by_strategy_window": [
+        {
+          "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+          "window_id": "P1",
+          "candidate_count": 4636,
+          "kospi_eligible_attempts": 2044,
+          "non_kospi_rejected_attempts": 2592,
+          "market_authority_missing": 0,
+          "market_authority_ambiguous": 0,
+          "status": "PASS"
+        },
+        {
+          "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+          "window_id": "P2-1",
+          "candidate_count": 1699,
+          "kospi_eligible_attempts": 793,
+          "non_kospi_rejected_attempts": 906,
+          "market_authority_missing": 0,
+          "market_authority_ambiguous": 0,
+          "status": "PASS"
+        },
+        {
+          "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+          "window_id": "P2-2",
+          "candidate_count": 2248,
+          "kospi_eligible_attempts": 1032,
+          "non_kospi_rejected_attempts": 1216,
+          "market_authority_missing": 0,
+          "market_authority_ambiguous": 0,
+          "status": "PASS"
+        },
+        {
+          "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+          "window_id": "P3-1",
+          "candidate_count": 1097,
+          "kospi_eligible_attempts": 484,
+          "non_kospi_rejected_attempts": 613,
+          "market_authority_missing": 0,
+          "market_authority_ambiguous": 0,
+          "status": "PASS"
+        },
+        {
+          "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+          "window_id": "P3-2",
+          "candidate_count": 1682,
+          "kospi_eligible_attempts": 745,
+          "non_kospi_rejected_attempts": 937,
+          "market_authority_missing": 0,
+          "market_authority_ambiguous": 0,
+          "status": "PASS"
+        },
+        {
+          "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+          "window_id": "P1",
+          "candidate_count": 483,
+          "kospi_eligible_attempts": 164,
+          "non_kospi_rejected_attempts": 319,
+          "market_authority_missing": 0,
+          "market_authority_ambiguous": 0,
+          "status": "PASS"
+        },
+        {
+          "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+          "window_id": "P2-1",
+          "candidate_count": 215,
+          "kospi_eligible_attempts": 70,
+          "non_kospi_rejected_attempts": 145,
+          "market_authority_missing": 0,
+          "market_authority_ambiguous": 0,
+          "status": "PASS"
+        },
+        {
+          "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+          "window_id": "P2-2",
+          "candidate_count": 319,
+          "kospi_eligible_attempts": 101,
+          "non_kospi_rejected_attempts": 218,
+          "market_authority_missing": 0,
+          "market_authority_ambiguous": 0,
+          "status": "PASS"
+        },
+        {
+          "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+          "window_id": "P3-1",
+          "candidate_count": 178,
+          "kospi_eligible_attempts": 58,
+          "non_kospi_rejected_attempts": 120,
+          "market_authority_missing": 0,
+          "market_authority_ambiguous": 0,
+          "status": "PASS"
+        },
+        {
+          "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+          "window_id": "P3-2",
+          "candidate_count": 282,
+          "kospi_eligible_attempts": 89,
+          "non_kospi_rejected_attempts": 193,
+          "market_authority_missing": 0,
+          "market_authority_ambiguous": 0,
+          "status": "PASS"
+        }
+      ],
+      "policy": "entry_signal_date exact ticker + ISU_CD active PIT COMMON interval; authoritative market only",
+      "allowed_signal_summary": {
+        "status": "PASS",
+        "market_authority_missing": 0,
+        "market_authority_ambiguous": 0,
+        "by_strategy_window": [
+          {
+            "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+            "window_id": "P1",
+            "candidate_count": 485,
+            "kospi_eligible_attempts": 165,
+            "non_kospi_rejected_attempts": 320,
+            "market_authority_missing": 0,
+            "market_authority_ambiguous": 0,
+            "status": "PASS"
+          },
+          {
+            "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+            "window_id": "P2-1",
+            "candidate_count": 216,
+            "kospi_eligible_attempts": 71,
+            "non_kospi_rejected_attempts": 145,
+            "market_authority_missing": 0,
+            "market_authority_ambiguous": 0,
+            "status": "PASS"
+          },
+          {
+            "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+            "window_id": "P2-2",
+            "candidate_count": 321,
+            "kospi_eligible_attempts": 102,
+            "non_kospi_rejected_attempts": 219,
+            "market_authority_missing": 0,
+            "market_authority_ambiguous": 0,
+            "status": "PASS"
+          },
+          {
+            "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+            "window_id": "P3-1",
+            "candidate_count": 179,
+            "kospi_eligible_attempts": 59,
+            "non_kospi_rejected_attempts": 120,
+            "market_authority_missing": 0,
+            "market_authority_ambiguous": 0,
+            "status": "PASS"
+          },
+          {
+            "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+            "window_id": "P3-2",
+            "candidate_count": 284,
+            "kospi_eligible_attempts": 90,
+            "non_kospi_rejected_attempts": 194,
+            "market_authority_missing": 0,
+            "market_authority_ambiguous": 0,
+            "status": "PASS"
+          }
+        ],
+        "policy": "entry_signal_date exact ticker + ISU_CD active PIT COMMON interval; authoritative market only"
+      }
+    },
+    "window_execution_counts": {
+      "P1": {
+        "executed_entries": 552,
+        "executed_exits": 509
+      },
+      "P2-1": {
+        "executed_entries": 281,
+        "executed_exits": 243
+      },
+      "P2-2": {
+        "executed_entries": 313,
+        "executed_exits": 281
+      },
+      "P3-1": {
+        "executed_entries": 178,
+        "executed_exits": 151
+      },
+      "P3-2": {
+        "executed_entries": 214,
+        "executed_exits": 190
+      }
+    },
+    "coverage": [
+      {
+        "window_id": "P1",
+        "coverage_pct": 92.05020920502092,
+        "mdd_type": "OBSERVED"
+      },
+      {
+        "window_id": "P2-1",
+        "coverage_pct": 99.63031423290202,
+        "mdd_type": "OBSERVED"
+      },
+      {
+        "window_id": "P2-2",
+        "coverage_pct": 99.78370583994231,
+        "mdd_type": "OBSERVED"
+      },
+      {
+        "window_id": "P3-1",
+        "coverage_pct": 99.40047961630695,
+        "mdd_type": "OBSERVED"
+      },
+      {
+        "window_id": "P3-2",
+        "coverage_pct": 99.56101843722564,
+        "mdd_type": "OBSERVED"
+      }
+    ],
+    "all_windows_coverage_at_least_90_pct": true
+  },
+  "validation_status": "PASS",
+  "no_extra_replay_or_repair": true,
+  "report_reconciled_at_utc": "2026-09-28T21:12:06.322862+00:00",
+  "report_reconciliation_replayed_portfolios": false
+}

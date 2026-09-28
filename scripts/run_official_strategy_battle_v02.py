@@ -46,7 +46,8 @@ BATTLE_IDS = (
     "battle_b_pit_mcap_1t",
     "battle_c_kospi_only",
 )
-EXPECTED_EXCLUSION_COUNT = 173
+EXPECTED_EXCLUSION_COUNT = 174
+NEW_GLOBAL_LIFECYCLE_EXCLUSION = ("096300", "KR7096300009")
 P2_1_GLOBAL_LIFECYCLE_EXCLUSIONS = {
     ("008560", "KR7008560005"),
     ("023890", "KR7023890007"),
@@ -439,6 +440,10 @@ def static_preflight() -> dict[str, Any]:
         for key in P2_1_GLOBAL_LIFECYCLE_EXCLUSIONS
     ):
         raise RuntimeError("P2_1_GLOBAL_LIFECYCLE_PROMOTION_SCOPE_MISMATCH")
+    if NEW_GLOBAL_LIFECYCLE_EXCLUSION not in PERMANENT_IDENTITY_EXCLUSIONS:
+        raise RuntimeError("BATTLE_C_LIQUIDATION_LIFECYCLE_PROMOTION_MISSING")
+    if PERMANENT_IDENTITY_EXCLUSIONS[NEW_GLOBAL_LIFECYCLE_EXCLUSION].get("approval_scope") != "GLOBAL permanent identity exclusion":
+        raise RuntimeError("BATTLE_C_LIQUIDATION_LIFECYCLE_PROMOTION_SCOPE_MISMATCH")
     if v2.WORKERS != EXPECTED_WORKERS or pattern_b.WORKERS != EXPECTED_WORKERS or pattern_b_v01.WORKERS != EXPECTED_WORKERS:
         raise RuntimeError("WORKER_COUNT_NOT_10")
     exclusions = current_exclusion_pairs()
@@ -484,8 +489,8 @@ def static_preflight() -> dict[str, Any]:
         "windows": WINDOW_BOUNDS,
         "worker_count": EXPECTED_WORKERS,
         "permanent_exclusion_count": len(exclusions),
-        "permanent_exclusion_expected_before": 166,
-        "permanent_exclusion_new_exact": sorted([list(item) for item in P2_1_GLOBAL_LIFECYCLE_EXCLUSIONS]),
+        "permanent_exclusion_expected_before": 173,
+        "permanent_exclusion_new_exact": [list(NEW_GLOBAL_LIFECYCLE_EXCLUSION)],
         "permanent_exclusion_expected_after": EXPECTED_EXCLUSION_COUNT,
         "permanent_exclusion_exact_duplicates": 0,
         "permanent_exclusion_normalization_collisions": 0,
@@ -1790,14 +1795,16 @@ def validation_record(
         "actual_result_count": len(rows),
         "results_by_battle": counts,
         "30_of_30_complete": complete,
-        "permanent_exclusion_count_before": 166,
-        "permanent_exclusion_new_exact_count": 7,
+        "permanent_exclusion_count_before": 173,
+        "permanent_exclusion_new_exact_count": 1,
         "permanent_exclusion_count_after": len(exclusions),
         "permanent_exclusion_policy_sha256": sha256(ROOT / "src/trend_scanner/universe/permanent_identity_exclusions.py"),
         "permanent_exclusion_exact_duplicate_count": 0,
         "permanent_exclusion_normalization_collision_count": len(PERMANENT_IDENTITY_EXCLUSIONS) - len(exclusions),
         "permanent_exclusion_ticker_only_count": 0,
         "all_seven_exact_global_exclusions_present": P2_1_GLOBAL_LIFECYCLE_EXCLUSIONS <= exclusions,
+        "new_096300_exact_global_exclusion_present": NEW_GLOBAL_LIFECYCLE_EXCLUSION in exclusions
+        and PERMANENT_IDENTITY_EXCLUSIONS[NEW_GLOBAL_LIFECYCLE_EXCLUSION].get("approval_scope") == "GLOBAL permanent identity exclusion",
         "worker_count_10": v2.WORKERS == EXPECTED_WORKERS and pattern_b.WORKERS == EXPECTED_WORKERS and pattern_b_v01.WORKERS == EXPECTED_WORKERS,
         "valuation_mdd_classified_by_coverage": all(
             row.get("coverage_pct") is not None
@@ -1820,6 +1827,7 @@ def validation_record(
         complete
         and len(exclusions) == EXPECTED_EXCLUSION_COUNT
         and checks["all_seven_exact_global_exclusions_present"]
+        and checks["new_096300_exact_global_exclusion_present"]
         and checks["worker_count_10"]
         and checks["valuation_mdd_classified_by_coverage"]
         and cap_ok and market_ok
@@ -1860,12 +1868,24 @@ def render_final_report(
         "# V2 vs Pattern B 3-Way Portfolio Battle V02",
         "",
         f"- 실행 상태: **{validation['execution_status']}**; 검증: **{validation['status']}**.",
-        f"- 결과: **{validation['checks']['actual_result_count']}/30**; worker: **{EXPECTED_WORKERS}**; permanent exclusions: **166 → 173** exact pairs.",
+        f"- 결과: **{validation['checks']['actual_result_count']}/30**; worker: **{EXPECTED_WORKERS}**; permanent exclusions: **{validation['checks']['permanent_exclusion_count_before']} → {validation['checks']['permanent_exclusion_count_after']}** exact pairs.",
         f"- 기준 HEAD: `{battle_results.get('base_head')}`; same-day entry order: `{COMMON_ENTRY_ORDER}`.",
         "- 초기자본 2억원, 종목별 500만원 예산, 재투자, position cap 없음, 정수주, partial fill/pyramiding 없음, commission 0.015%, slippage 0.1%, sell tax 0%.",
         "- Coverage 90% 미만은 CHECK_REQUIRED로 남기고 수정·보간·재실행하지 않았어.",
         "",
     ]
+    replay_scope = validation.get("replay_scope")
+    if replay_scope:
+        lines.extend([
+            f"- 이번 closure 재실행 범위: **{replay_scope.get('battle_id')} / {replay_scope.get('strategy_id')} / {len(replay_scope.get('windows', []))}개 window**; Battle A/B와 Pattern B는 기존 산출물을 유지했어.",
+            f"- 재실행 당시 HEAD: `{replay_scope.get('starting_head')}` → `{replay_scope.get('ending_head')}`; 기존 비교 baseline 제외 수: **{replay_scope.get('retained_baseline_exclusion_count')}**.",
+        ])
+        retained_attempts = replay_scope.get("retained_096300_candidate_attempt_count", 0)
+        if retained_attempts:
+            lines.append(
+                f"- 보존한 이전 Battle A/B V2 산출물의 096300 진입 시도 {retained_attempts}건은 모두 현금 부족으로 미체결이었고, 체결은 0건이야."
+            )
+        lines.append("")
     battle_titles = {
         "battle_a_all_universe": "Battle A — 전체 universe",
         "battle_b_pit_mcap_1t": "Battle B — entry-date exact PIT 시총 ≥ 1조원",
@@ -1918,12 +1938,18 @@ def render_final_report(
             )
         lines.append("")
     evidence = validation["checks"].get("artifact_evidence", {})
+    exclusion_scope_label = evidence.get("exclusion_leakage_scope")
+    exclusion_line = (
+        f"- exclusion leakage ({exclusion_scope_label}): {evidence.get('v2_entry_exclusion_leakage_count', 0)} (V2) / {evidence.get('pattern_b_entry_exclusion_leakage_count', 0)} (Pattern B); cash conservation: {evidence.get('cash_conservation_all_pass')}; no position cap: {evidence.get('no_hidden_position_cap_all_pass')}."
+        if exclusion_scope_label
+        else f"- exclusion leakage: {evidence.get('v2_entry_exclusion_leakage_count', 0)} (V2) / {evidence.get('pattern_b_entry_exclusion_leakage_count', 0)} (Pattern B); cash conservation: {evidence.get('cash_conservation_all_pass')}; no position cap: {evidence.get('no_hidden_position_cap_all_pass')}."
+    )
     lines.extend([
         "## 검증",
         "",
         f"- 구조 검증: **{'PASS' if evidence.get('structural_checks_pass') else 'CHECK_REQUIRED/FAIL'}**; 비용 mismatch {evidence.get('v2_cost_audit_formula_mismatch_count', 0)} (V2) / {evidence.get('pattern_b_cost_audit_mismatch_count', 0)} (Pattern B).",
         f"- frozen V2 date/price mismatch: {evidence.get('v2_frozen_execution_date_price_mismatch_count', 0)}; calendar deviation: {evidence.get('v2_calendar_next_session_deviation_count', 0)} (원 schedule 유지); Pattern B next-session violation: {evidence.get('pattern_b_next_session_execution_violation_count', 0)}.",
-        f"- exclusion leakage: {evidence.get('v2_entry_exclusion_leakage_count', 0)} (V2) / {evidence.get('pattern_b_entry_exclusion_leakage_count', 0)} (Pattern B); cash conservation: {evidence.get('cash_conservation_all_pass')}; no position cap: {evidence.get('no_hidden_position_cap_all_pass')}.",
+        exclusion_line,
         f"- Battle B exact PIT cap parity: {evidence.get('battle_b_entry_market_cap_exact_date_parity')}; Battle C executed KOSPI PIT parity: {evidence.get('battle_c_executed_entry_exact_pit_market_parity')}.",
         f"- Coverage <90%: {len(validation['checks'].get('valuation_check_required_results_below_90_pct', []))} result(s); status **{validation['status']}**.",
         f"- Output: `{OUTPUT_REL.as_posix()}/`.",

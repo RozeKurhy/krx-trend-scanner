@@ -1212,6 +1212,16 @@ PERMANENT_IDENTITY_EXCLUSIONS: dict[tuple[str, str], dict[str, str]] = {
         "approved_date": "2026-09-28",
         "policy_version": "permanent_identity_exclusions_v01",
     },
+    # User-approved promotion of the exact identity with unresolved final
+    # liquidation settlement evidence; no terminal value is imputed.
+    ("096300", "KR7096300009"): {
+        "reason": "user-approved global permanent exclusion for unresolved liquidation lifecycle; final distribution and payment/closure dates unavailable",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "failure_class": "LIQUIDATION_UNRESOLVED",
+        "evidence_id": "KRX-LIFECYCLE-KR7096300009",
+        "approved_date": "2026-09-29",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
 
 }
 

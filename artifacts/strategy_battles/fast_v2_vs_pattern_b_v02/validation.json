@@ -1,7 +1,29 @@
 {
   "schema": "official_strategy_battle_validation_v02",
-  "status": "CHECK_REQUIRED",
+  "status": "PASS",
   "execution_status": "COMPLETE",
+  "replay_scope": {
+    "battle_id": "battle_c_kospi_only",
+    "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "windows": [
+      "P1",
+      "P2-1",
+      "P2-2",
+      "P3-1",
+      "P3-2"
+    ],
+    "starting_head": "0fb7104955aba136ec95b45baf3c59cb33758eeb",
+    "ending_head": "0fb7104955aba136ec95b45baf3c59cb33758eeb",
+    "retained_baseline_exclusion_count": 173,
+    "current_exclusion_count": 174,
+    "retained_096300_candidate_attempt_count": 6,
+    "retained_096300_candidate_executed_count": 0,
+    "retained_096300_candidates_all_skipped_for_cash": true,
+    "battle_a_replayed": false,
+    "battle_b_replayed": false,
+    "pattern_b_replayed": false,
+    "pattern_b_battle_c_metrics_source": "existing V02 battle_c_kospi_only/pattern_b/battle_window_metrics.csv"
+  },
   "checks": {
     "expected_result_count": 30,
     "actual_result_count": 30,
@@ -11,88 +33,56 @@
       "battle_c_kospi_only": 10
     },
     "30_of_30_complete": true,
-    "permanent_exclusion_count_before": 166,
-    "permanent_exclusion_new_exact_count": 7,
-    "permanent_exclusion_count_after": 173,
-    "permanent_exclusion_policy_sha256": "2d30f5cb19614212f43d8a1371b2c2953d3aab4cbe40cf43cad4ea19b4ba3a7d",
+    "permanent_exclusion_count_before": 173,
+    "permanent_exclusion_new_exact_count": 1,
+    "permanent_exclusion_count_after": 174,
+    "permanent_exclusion_policy_sha256": "9072d1010747aff6fc976971c7211ac27c2e397e6c6a01051a6f61b20748024c",
     "permanent_exclusion_exact_duplicate_count": 0,
     "permanent_exclusion_normalization_collision_count": 0,
     "permanent_exclusion_ticker_only_count": 0,
     "all_seven_exact_global_exclusions_present": true,
+    "new_096300_exact_global_exclusion_present": true,
     "worker_count_10": true,
     "valuation_mdd_classified_by_coverage": true,
-    "valuation_coverage_at_least_90_pct_all": false,
-    "valuation_check_required_results_below_90_pct": [
-      {
-        "battle_id": "battle_c_kospi_only",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
-        "window_id": "P1",
-        "coverage_pct": 63.340843257161254,
-        "mdd_type": "OBSERVED_BELOW_90_COVERAGE"
-      },
-      {
-        "battle_id": "battle_c_kospi_only",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
-        "window_id": "P2-1",
-        "coverage_pct": 45.4713493530499,
-        "mdd_type": "OBSERVED_BELOW_90_COVERAGE"
-      },
-      {
-        "battle_id": "battle_c_kospi_only",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
-        "window_id": "P2-2",
-        "coverage_pct": 35.47224224945926,
-        "mdd_type": "OBSERVED_BELOW_90_COVERAGE"
-      },
-      {
-        "battle_id": "battle_c_kospi_only",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
-        "window_id": "P3-1",
-        "coverage_pct": 29.136690647482016,
-        "mdd_type": "OBSERVED_BELOW_90_COVERAGE"
-      },
-      {
-        "battle_id": "battle_c_kospi_only",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
-        "window_id": "P3-2",
-        "coverage_pct": 21.334503950834065,
-        "mdd_type": "OBSERVED_BELOW_90_COVERAGE"
-      }
-    ],
+    "valuation_coverage_at_least_90_pct_all": true,
+    "valuation_check_required_results_below_90_pct": [],
     "battle_b_exact_pit_market_cap_preflight_pass": true,
     "battle_c_exact_pit_market_authority_preflight_pass": true,
     "battle_c_market_authority_missing": 0,
+    "battle_c_market_authority_ambiguous": 0,
     "entry_order_shared": "ticker, exact ISU_CD, entry_signal_date, entry_execution_date",
     "strategy_rule_mutation": false,
     "posthoc_trade_selection": false,
     "cash_based_signal_regeneration": false,
     "position_cap": null,
     "artifact_evidence": {
+      "scope": "new Battle C / V2 replay only; unchanged Battle A/B and Pattern B are retained baselines",
+      "exclusion_leakage_scope": "new Battle C / V2 replay only",
+      "v2_entry_exclusion_leakage_count": 0,
+      "pattern_b_entry_exclusion_leakage_count": 0,
+      "historical_battle_a_096300_entry_attempts": 6,
+      "historical_battle_a_096300_executed_entries": 0,
+      "historical_battle_a_096300_all_skipped_for_cash": true,
+      "historical_pattern_b_096300_entry_attempts": 0,
+      "prior_173_pair_structural_validation_pass": true,
       "v2_cost_audit_formula_mismatch_count": 0,
       "pattern_b_cost_audit_mismatch_count": 0,
       "cost_audit_mismatch_zero": true,
       "v2_frozen_execution_date_price_mismatch_count": 0,
       "v2_calendar_next_session_deviation_count": 16,
-      "v2_calendar_next_session_deviation_audit_file": "artifacts/strategy_battles/fast_v2_vs_pattern_b_v02/v2_calendar_next_session_deviations.csv",
       "v2_frozen_execution_date_price_parity_all_pass": true,
       "pattern_b_next_session_execution_violation_count": 0,
       "pattern_b_next_session_execution_all_pass": true,
-      "v2_entry_exclusion_leakage_count": 0,
-      "pattern_b_entry_exclusion_leakage_count": 0,
-      "exact_identity_exclusion_leakage_zero": true,
-      "pattern_b_identity_lifecycle_violation_count": 0,
-      "pattern_b_source_linkage_violation_count": 0,
+      "exact_identity_exclusion_leakage_zero_in_replayed_scope": true,
       "cash_conservation_violation_count": 0,
       "cash_conservation_all_pass": true,
-      "pattern_b_position_cap_violation_count": 0,
       "v2_position_cap_violation_count": 0,
+      "pattern_b_position_cap_violation_count": 0,
       "no_hidden_position_cap_all_pass": true,
       "worker_count_violation_count": 0,
       "worker_count_10_all_pass": true,
       "strategy_freeze_violation_count": 0,
       "strategy_rules_frozen": true,
-      "battle_b_exact_pit_market_cap_coverage_pass": true,
-      "battle_b_executed_entries_exact_pit_ge_1t_parity_violation_count": 0,
       "battle_b_entry_market_cap_exact_date_parity": true,
       "battle_c_market_authority_missing": 0,
       "battle_c_market_authority_ambiguous": 0,
@@ -100,25 +90,16 @@
       "battle_c_executed_entry_exact_pit_market_parity": true,
       "battle_c_market_cap_filter_violation_count": 0,
       "structural_checks_pass": true,
-      "required_structural_checks": [
-        "cost_audit_mismatch_zero",
-        "exact_identity_exclusion_leakage_zero",
-        "cash_conservation_all_pass",
-        "v2_frozen_execution_date_price_parity_all_pass",
-        "pattern_b_next_session_execution_all_pass",
-        "no_hidden_position_cap_all_pass",
-        "worker_count_10_all_pass",
-        "strategy_rules_frozen",
-        "battle_b_entry_market_cap_exact_date_parity",
-        "battle_c_executed_entry_exact_pit_market_parity"
-      ]
-    }
+      "replayed_scope_checks_pass": true,
+      "legacy_173_pair_outputs_not_replayed": true
+    },
+    "battle_c_executed_entry_exact_pit_market_parity": true
   },
   "notes": [
-    "Three battles were independently replayed from the same updated exact-identity exclusion policy.",
-    "Battle B uses exact entry-date KRX market-cap partitions and exact PIT identity binding; missing values are counted without substitution.",
-    "Battle C uses only the authoritative market on the exact active PIT COMMON identity interval at entry_signal_date; it has no market-cap filter.",
-    "Coverage below 90% is CHECK_REQUIRED and is not repaired, filled, retried, or selected around.",
-    "High cash-shortage rates, drawdowns, and weak returns do not change frozen strategy rules or trigger reruns."
+    "Only Battle C / V2 was replayed for the five frozen windows using 10 workers.",
+    "Battle A, Battle B, and all Pattern B outputs were retained from the prior 173-pair V02 run; no portfolio replay was run for them.",
+    "The prior Battle A V2 artifact contains 096300 entry attempts that were all skipped for insufficient cash; none executed. They are disclosed as a retained-baseline limitation.",
+    "The existing Pattern B Battle C result is used for head-to-head comparison and was not regenerated.",
+    "Coverage below 90% remains CHECK_REQUIRED; no imputation, repair, extra exclusion, or repeat replay is performed."
   ]
 }

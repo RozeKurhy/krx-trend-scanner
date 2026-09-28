@@ -1,10 +1,14 @@
 # V2 vs Pattern B 3-Way Portfolio Battle V02
 
-- 실행 상태: **COMPLETE**; 검증: **CHECK_REQUIRED**.
-- 결과: **30/30**; worker: **10**; permanent exclusions: **166 → 173** exact pairs.
-- 기준 HEAD: `a4bc4f6895a3550746cac07450bef79210753cd8`; same-day entry order: `ticker, exact ISU_CD, entry_signal_date, entry_execution_date`.
+- 실행 상태: **COMPLETE**; 검증: **PASS**.
+- 결과: **30/30**; worker: **10**; permanent exclusions: **173 → 174** exact pairs.
+- 기준 HEAD: `0fb7104955aba136ec95b45baf3c59cb33758eeb`; same-day entry order: `ticker, exact ISU_CD, entry_signal_date, entry_execution_date`.
 - 초기자본 2억원, 종목별 500만원 예산, 재투자, position cap 없음, 정수주, partial fill/pyramiding 없음, commission 0.015%, slippage 0.1%, sell tax 0%.
 - Coverage 90% 미만은 CHECK_REQUIRED로 남기고 수정·보간·재실행하지 않았어.
+
+- 이번 closure 재실행 범위: **battle_c_kospi_only / PATTERN_A_FAST_FINAL_STRATEGY_V02 / 5개 window**; Battle A/B와 Pattern B는 기존 산출물을 유지했어.
+- 재실행 당시 HEAD: `0fb7104955aba136ec95b45baf3c59cb33758eeb` → `0fb7104955aba136ec95b45baf3c59cb33758eeb`; 기존 비교 baseline 제외 수: **173**.
+- 보존한 이전 Battle A/B V2 산출물의 096300 진입 시도 6건은 모두 현금 부족으로 미체결이었고, 체결은 0건이야.
 
 ## Battle A — 전체 universe
 
@@ -30,11 +34,11 @@
 
 | Window | Return V2 / B | Δ pp | CAGR V2 / B | MDD V2 / B | Coverage V2 / B | Eligible V2 / B | Executed / closed (V2 · B) | Cash skip % V2 / B | Positive % V2 / B | Median % V2 / B | +50 / +100 V2 / B | Turnover KRW V2 / B | Avg util % V2 / B |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| P1 | — / 43.02 | — | — / 2.87 | -46.27 (OBSERVED_BELOW_90_COVERAGE) / -10.59 (EXACT) | 63.34 / 100.00 | 2046 / 164 | 553 / 511 · 164 / 156 | 72.97 / 0.00 | 23.29 / 79.49 | -15.61 / 9.88 | 63 / 10 · 26 / 2 | 5379157351 / 1691312185 | 91.93 / 12.27 |
-| P2-1 | — / 13.98 | — | — / 3.02 | -27.02 (OBSERVED_BELOW_90_COVERAGE) / -10.66 (EXACT) | 45.47 / 100.00 | 794 / 70 | 279 / 241 · 70 / 62 | 64.86 / 0.00 | 24.48 / 79.03 | -15.58 / 12.45 | 20 / 5 · 5 / 0 | 2572528478 / 704807161 | 75.59 / 18.60 |
-| P2-2 | — / 23.22 | — | — / 3.76 | -26.96 (OBSERVED_BELOW_90_COVERAGE) / -10.66 (EXACT) | 35.47 / 100.00 | 1033 / 101 | 323 / 291 · 101 / 93 | 68.73 / 0.00 | 26.12 / 79.57 | -15.51 / 10.92 | 34 / 6 · 14 / 0 | 3096986260 / 1023324304 | 77.33 / 16.96 |
-| P3-1 | — / 14.41 | — | — / 4.04 | -24.62 (OBSERVED_BELOW_90_COVERAGE) / -8.64 (EXACT) | 29.14 / 100.00 | 485 / 58 | 178 / 151 · 58 / 52 | 63.30 / 0.00 | 13.91 / 78.85 | -15.98 / 14.44 | 8 / 5 · 1 / 0 | 1570931886 / 588500308 | 59.28 / 20.72 |
-| P3-2 | — / 23.94 | — | — / 4.72 | -24.62 (OBSERVED_BELOW_90_COVERAGE) / -8.64 (EXACT) | 21.33 / 100.00 | 746 / 89 | 210 / 183 · 89 / 82 | 71.85 / 0.00 | 18.58 / 80.49 | -15.74 / 11.89 | 17 / 6 · 7 / 0 | 1929905283 / 905724686 | 59.28 / 18.03 |
+| P1 | 67.92 / 43.02 | -24.90 | 4.18 / 2.87 | -46.27 (OBSERVED) / -10.59 (EXACT) | 92.05 / 100.00 | 2044 / 164 | 552 / 508 · 164 / 156 | 72.99 / 0.00 | 23.62 / 79.49 | -15.62 / 9.88 | 67 / 10 · 29 / 2 | 5373229435 / 1691312185 | 92.80 / 12.27 |
+| P2-1 | 22.65 / 13.98 | -8.67 | 4.75 / 3.02 | -31.26 (OBSERVED) / -10.66 (EXACT) | 99.63 / 100.00 | 793 / 70 | 281 / 243 · 70 / 62 | 64.56 / 0.00 | 24.69 / 79.03 | -15.61 / 12.45 | 20 / 5 · 6 / 0 | 2595745286 / 704807161 | 86.02 / 18.60 |
+| P2-2 | 38.98 / 23.22 | -15.76 | 5.99 / 3.76 | -32.52 (OBSERVED) / -10.66 (EXACT) | 99.78 / 100.00 | 1032 / 101 | 313 / 281 · 101 / 93 | 69.67 / 0.00 | 25.62 / 79.57 | -15.55 / 10.92 | 33 / 6 · 14 / 0 | 2996619843 / 1023324304 | 88.00 / 16.96 |
+| P3-1 | -14.27 / 14.41 | 28.68 | -4.42 / 4.04 | -35.55 (OBSERVED) / -8.64 (EXACT) | 99.40 / 100.00 | 484 / 58 | 178 / 151 · 58 / 52 | 63.22 / 0.00 | 13.91 / 78.85 | -15.94 / 14.44 | 8 / 5 · 1 / 0 | 1571743053 / 588500308 | 84.50 / 20.72 |
+| P3-2 | 2.96 / 23.94 | 20.97 | 0.63 / 4.72 | -35.84 (OBSERVED) / -8.64 (EXACT) | 99.56 / 100.00 | 745 / 89 | 214 / 190 · 89 / 82 | 71.28 / 0.00 | 18.95 / 80.49 | -15.74 / 11.89 | 19 / 6 · 8 / 0 | 1988019055 / 905724686 | 86.25 / 18.03 |
 
 ## PIT authority 사전검수
 
@@ -57,11 +61,11 @@
 
 | Strategy | Window | Candidates | KOSPI eligible | Non-KOSPI rejected | Authority missing | Status |
 |---|---|---:|---:|---:|---:|---|
-| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P1 | 4638 | 2046 | 2592 | 0 | PASS |
-| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P2-1 | 1700 | 794 | 906 | 0 | PASS |
-| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P2-2 | 2249 | 1033 | 1216 | 0 | PASS |
-| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P3-1 | 1098 | 485 | 613 | 0 | PASS |
-| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P3-2 | 1683 | 746 | 937 | 0 | PASS |
+| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P1 | 4636 | 2044 | 2592 | 0 | PASS |
+| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P2-1 | 1699 | 793 | 906 | 0 | PASS |
+| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P2-2 | 2248 | 1032 | 1216 | 0 | PASS |
+| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P3-1 | 1097 | 484 | 613 | 0 | PASS |
+| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P3-2 | 1682 | 745 | 937 | 0 | PASS |
 | PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01 | P1 | 483 | 164 | 319 | 0 | PASS |
 | PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01 | P2-1 | 215 | 70 | 145 | 0 | PASS |
 | PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01 | P2-2 | 319 | 101 | 218 | 0 | PASS |
@@ -84,11 +88,11 @@ B−A는 PIT 시총 ≥1조 filter 효과, C−A는 KOSPI-only 효과야. 각 �
 
 | Strategy | Window | Return Δ B−A / C−A | CAGR Δ B−A / C−A | MDD Δ B−A / C−A | Trades Δ B−A / C−A | Positive rate Δ B−A / C−A | Median Δ B−A / C−A | +50 Δ B−A / C−A | +100 Δ B−A / C−A | Cash skip Δ B−A / C−A | Avg util Δ B−A / C−A |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P1 | -29.45 / — | -1.28 / — | 4.94 / 8.34 | -286 / -148 | 2.38 / -0.62 | 0.13 / 0.03 | -28 / -24 | -15 / -8 | -43.25 / -11.91 | -7.60 / -3.12 |
-| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P2-1 | -25.54 / — | -4.54 / — | 11.89 / 9.23 | -175 / -91 | 2.49 / -0.13 | 0.29 / 0.15 | -23 / -16 | -8 / -8 | -41.14 / -13.37 | -9.02 / -16.84 |
-| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P2-2 | -29.84 / — | -3.31 / — | 8.77 / 8.02 | -211 / -132 | 3.08 / -0.62 | 0.42 / 0.10 | -24 / -25 | -13 / -12 | -38.00 / -11.04 | -7.31 / -15.08 |
-| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P3-1 | 7.59 / — | 1.95 / — | 24.34 / 14.02 | -74 / -61 | 6.25 / -2.92 | 0.27 / -0.12 | -6 / -10 | -1 / -4 | -48.45 / -14.93 | -15.49 / -30.18 |
-| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P3-2 | 28.83 / — | 4.36 / — | 22.01 / 14.02 | -80 / -93 | 7.76 / -3.81 | 0.37 / -0.04 | 3 / -19 | 1 / -7 | -45.71 / -10.15 | -13.98 / -31.30 |
+| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P1 | -29.45 / -37.96 | -1.28 / -1.69 | 4.94 / 8.34 | -286 / -149 | 2.38 / -0.28 | 0.13 / 0.02 | -28 / -20 | -15 / -5 | -43.25 / -11.89 | -7.60 / -2.24 |
+| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P2-1 | -25.54 / -28.08 | -4.54 / -5.02 | 11.89 / 5.00 | -175 / -89 | 2.49 / 0.08 | 0.29 / 0.13 | -23 / -16 | -8 / -7 | -41.14 / -13.67 | -9.02 / -6.41 |
+| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P2-2 | -29.84 / -52.40 | -3.31 / -6.17 | 8.77 / 2.46 | -211 / -142 | 3.08 / -1.11 | 0.42 / 0.06 | -24 / -26 | -13 / -12 | -38.00 / -10.10 | -7.31 / -4.41 |
+| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P3-1 | 7.59 / -31.01 | 1.95 / -9.08 | 24.34 / 3.09 | -74 / -61 | 6.25 / -2.92 | 0.27 / -0.07 | -6 / -10 | -1 / -4 | -48.45 / -15.01 | -15.49 / -4.96 |
+| PATTERN_A_FAST_FINAL_STRATEGY_V02 | P3-2 | 28.83 / -39.50 | 4.36 / -7.27 | 22.01 / 2.80 | -80 / -89 | 7.76 / -3.45 | 0.37 / -0.04 | 3 / -17 | 1 / -6 | -45.71 / -10.72 | -13.98 / -4.33 |
 | PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01 | P1 | -87.46 / -52.62 | -4.82 / -2.58 | 16.68 / 9.71 | -431 / -300 | 4.10 / 0.25 | 0.16 / -2.20 | -21 / -13 | -4 / -3 | -3.93 / -3.93 | -25.99 / -15.56 |
 | PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01 | P2-1 | -24.96 / -13.47 | -5.11 / -2.65 | 17.23 / 9.84 | -183 / -125 | 0.89 / -0.08 | -6.82 / -0.21 | -9 / -6 | -2 / -3 | -9.30 / -9.30 | -43.69 / -27.56 |
 | PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01 | P2-2 | -21.78 / -5.91 | -3.36 / -0.86 | 22.44 / 15.42 | -231 / -156 | 10.57 / 3.18 | 2.05 / -0.34 | -11 / -7 | -2 / -3 | -19.44 / -19.44 | -42.81 / -28.61 |
@@ -99,7 +103,7 @@ B−A는 PIT 시총 ≥1조 filter 효과, C−A는 KOSPI-only 효과야. 각 �
 
 - 구조 검증: **PASS**; 비용 mismatch 0 (V2) / 0 (Pattern B).
 - frozen V2 date/price mismatch: 0; calendar deviation: 16 (원 schedule 유지); Pattern B next-session violation: 0.
-- exclusion leakage: 0 (V2) / 0 (Pattern B); cash conservation: True; no position cap: True.
+- exclusion leakage (new Battle C / V2 replay only): 0 (V2) / 0 (Pattern B); cash conservation: True; no position cap: True.
 - Battle B exact PIT cap parity: True; Battle C executed KOSPI PIT parity: True.
-- Coverage <90%: 5 result(s); status **CHECK_REQUIRED**.
+- Coverage <90%: 0 result(s); status **PASS**.
 - Output: `artifacts/strategy_battles/fast_v2_vs_pattern_b_v02/`.
