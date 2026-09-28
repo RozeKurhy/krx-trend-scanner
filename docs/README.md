@@ -32,7 +32,7 @@
 | [relative_strength/](relative_strength/sector_rs_ranking_v01.md) | 업종 내 상대강도 순위 계산과 산출물 계약 |
 | [reporting/](reporting/README.md) | 패턴·전략·펀더멘털 결과를 모은 종목 보고서 문서 |
 | [strategies/](strategies/README.md) | 패턴 결과를 매매 규칙으로 연결하는 전략과 독립 전략 |
-| [validation/](validation/) | 이전 문서 경로 호환 안내와 영역 공통 현재 기준 문서 |
+| [validation/](validation/) | 백테스트 공통 실행 원칙과 공식 전략 공통 채택 기준, 이전 경로 호환 안내 |
 | [web/](web/README.md) | 웹 화면에 제공하는 정적 데이터·전달 계약 |
 
 `patterns/`에는 Pattern A, Pattern A FAST, Pattern B가 있다.
