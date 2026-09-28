@@ -262,6 +262,51 @@ def current_exclusion_keys() -> set[tuple[str, str]]:
     }
 
 
+def validate_preflight_handoff(
+    *,
+    preflight: Mapping[str, Any],
+    status_output: str,
+    output_entries: Sequence[str],
+    current_head: str,
+    origin_main: str,
+    official_criteria_sha256: str,
+    common_rules_sha256: str,
+    exclusion_policy_sha256: str,
+    exclusion_identity_count: int,
+    workers: int,
+) -> list[str]:
+    errors: list[str] = []
+    expected_status = f"?? {OUTPUT_ROOT.as_posix()}/preflight.json"
+    if status_output.splitlines() != [expected_status]:
+        errors.append("WORKTREE_CHANGED_OUTSIDE_PREFLIGHT")
+    if sorted(output_entries) != ["preflight.json"]:
+        errors.append("UNEXPECTED_PREFLIGHT_OUTPUT_CONTENTS")
+    if current_head != origin_main:
+        errors.append("HEAD_DIFFERS_FROM_ORIGIN_MAIN")
+    if preflight.get("status") != "PASS":
+        errors.append("PREFLIGHT_STATUS_NOT_PASS")
+    if preflight.get("starting_head") != current_head:
+        errors.append("PREFLIGHT_HEAD_MISMATCH")
+    if preflight.get("starting_origin_main") != origin_main:
+        errors.append("PREFLIGHT_ORIGIN_MAIN_MISMATCH")
+    if preflight.get("starting_worktree_status") != "":
+        errors.append("PREFLIGHT_DID_NOT_START_CLEAN")
+    if preflight.get("official_criteria_sha256") != official_criteria_sha256:
+        errors.append("OFFICIAL_CRITERIA_SHA256_MISMATCH")
+    if preflight.get("common_rules_sha256") != common_rules_sha256:
+        errors.append("COMMON_RULES_SHA256_MISMATCH")
+    if preflight.get("permanent_exclusion_policy_sha256") != exclusion_policy_sha256:
+        errors.append("EXCLUSION_POLICY_SHA256_MISMATCH")
+    if preflight.get("permanent_exclusion_identity_count") != exclusion_identity_count:
+        errors.append("EXCLUSION_IDENTITY_COUNT_MISMATCH")
+    if preflight.get("workers") != workers:
+        errors.append("WORKER_COUNT_MISMATCH")
+    frozen = preflight.get("frozen_source_hashes_verified_by_window", {})
+    if set(frozen) != set(WINDOW_IDS) or not all(frozen.get(window_id) is True for window_id in WINDOW_IDS):
+        errors.append("FROZEN_SOURCE_HASH_VERIFICATION_FAILED")
+    return errors
+
+
 def load_window_inputs(window_id: str) -> dict[str, Any]:
     """Verify the frozen V01 signal/path inputs, then apply current exclusions."""
     loaded = v01.load_window_inputs(window_id)
@@ -1343,16 +1388,31 @@ def run_full() -> dict[str, Any]:
     preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
     if preflight.get("status") != "PASS" or not preflight.get("estimated_runtime_within_two_hours"):
         raise RuntimeError("V02_PREFLIGHT_NOT_CLEAR_FOR_FULL_RUN")
-    for wid in WINDOW_IDS:
-        if (out_root / wid.lower().replace("-", "_")).exists():
-            raise RuntimeError(f"V02_WINDOW_OUTPUT_ALREADY_EXISTS_NO_AUTOMATIC_RETRY:{wid}")
-
-    start_head = preflight["starting_head"]
-    expected_current_head = __import__("subprocess").check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-    if start_head != expected_current_head:
-        raise RuntimeError(f"START_HEAD_CHANGED_AFTER_PREFLIGHT:{start_head}:{expected_current_head}")
-    if __import__("subprocess").check_output(["git", "status", "--short"], cwd=ROOT, text=True).strip():
-        raise RuntimeError("WORKTREE_CHANGED_AFTER_PREFLIGHT")
+    start_head = __import__("subprocess").check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    origin_main = __import__("subprocess").check_output(
+        ["git", "rev-parse", "origin/main"], cwd=ROOT, text=True
+    ).strip()
+    status_output = __import__("subprocess").check_output(
+        ["git", "status", "--short", "--untracked-files=all"], cwd=ROOT, text=True
+    )
+    output_entries = sorted(path.name for path in out_root.iterdir())
+    exclusion_identity_count = len(current_exclusion_keys())
+    if exclusion_identity_count != len(PERMANENT_IDENTITY_EXCLUSIONS):
+        raise RuntimeError("CURRENT_PERMANENT_EXCLUSION_NORMALIZATION_COLLISION")
+    handoff_errors = validate_preflight_handoff(
+        preflight=preflight,
+        status_output=status_output,
+        output_entries=output_entries,
+        current_head=start_head,
+        origin_main=origin_main,
+        official_criteria_sha256=sha256(ROOT / OFFICIAL_CRITERIA_PATH),
+        common_rules_sha256=sha256(ROOT / COMMON_RULES_PATH),
+        exclusion_policy_sha256=sha256(ROOT / EXCLUSION_POLICY_PATH),
+        exclusion_identity_count=exclusion_identity_count,
+        workers=WORKERS,
+    )
+    if handoff_errors:
+        raise RuntimeError(f"V02_PREFLIGHT_HANDOFF_INVALID:{','.join(handoff_errors)}")
 
     intervals, trading_dates, market_authority = pattern_b_base._load_authorities(ROOT)
     cap_lookup = v01.ExactMarketCapPriority()

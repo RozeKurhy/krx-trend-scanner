@@ -6,6 +6,97 @@ from scripts import run_pattern_b_progressed_previous_et_only_realistic_portfoli
 from scripts import run_p2_1_realistic_portfolio_v01 as portfolio
 
 
+def _valid_handoff_case() -> dict[str, object]:
+    head = "a" * 40
+    preflight = {
+        "status": "PASS",
+        "starting_head": head,
+        "starting_origin_main": head,
+        "starting_worktree_status": "",
+        "official_criteria_sha256": "criteria-hash",
+        "common_rules_sha256": "rules-hash",
+        "permanent_exclusion_policy_sha256": "exclusion-hash",
+        "permanent_exclusion_identity_count": 109,
+        "workers": 10,
+        "frozen_source_hashes_verified_by_window": {window_id: True for window_id in runner.WINDOW_IDS},
+    }
+    return {
+        "preflight": preflight,
+        "status_output": f"?? {runner.OUTPUT_ROOT.as_posix()}/preflight.json",
+        "output_entries": ["preflight.json"],
+        "current_head": head,
+        "origin_main": head,
+        "official_criteria_sha256": "criteria-hash",
+        "common_rules_sha256": "rules-hash",
+        "exclusion_policy_sha256": "exclusion-hash",
+        "exclusion_identity_count": 109,
+        "workers": 10,
+    }
+
+
+def test_preflight_handoff_accepts_only_current_pass_preflight() -> None:
+    case = _valid_handoff_case()
+
+    assert runner.validate_preflight_handoff(**case) == []
+
+
+def test_preflight_handoff_rejects_extra_output_file() -> None:
+    case = _valid_handoff_case()
+    case["output_entries"] = ["preflight.json", "unexpected.csv"]
+
+    assert "UNEXPECTED_PREFLIGHT_OUTPUT_CONTENTS" in runner.validate_preflight_handoff(**case)
+
+
+def test_preflight_handoff_rejects_window_output_directory() -> None:
+    case = _valid_handoff_case()
+    case["output_entries"] = ["p1", "preflight.json"]
+
+    assert "UNEXPECTED_PREFLIGHT_OUTPUT_CONTENTS" in runner.validate_preflight_handoff(**case)
+
+
+def test_preflight_handoff_rejects_untracked_file_outside_output_root() -> None:
+    case = _valid_handoff_case()
+    case["status_output"] += "\n?? unrelated.csv"
+
+    assert "WORKTREE_CHANGED_OUTSIDE_PREFLIGHT" in runner.validate_preflight_handoff(**case)
+
+
+def test_preflight_handoff_rejects_tracked_modification() -> None:
+    case = _valid_handoff_case()
+    case["status_output"] += "\n M scripts/source.py"
+
+    assert "WORKTREE_CHANGED_OUTSIDE_PREFLIGHT" in runner.validate_preflight_handoff(**case)
+
+
+def test_preflight_handoff_rejects_head_change() -> None:
+    case = _valid_handoff_case()
+    case["current_head"] = "b" * 40
+
+    errors = runner.validate_preflight_handoff(**case)
+    assert "HEAD_DIFFERS_FROM_ORIGIN_MAIN" in errors
+    assert "PREFLIGHT_HEAD_MISMATCH" in errors
+
+
+def test_preflight_handoff_rejects_stale_provenance() -> None:
+    case = _valid_handoff_case()
+    preflight = case["preflight"]
+    assert isinstance(preflight, dict)
+    preflight["official_criteria_sha256"] = "stale"
+    preflight["common_rules_sha256"] = "stale"
+    preflight["permanent_exclusion_policy_sha256"] = "stale"
+    preflight["permanent_exclusion_identity_count"] = 108
+    preflight["workers"] = 9
+    preflight["frozen_source_hashes_verified_by_window"]["P1"] = False
+
+    errors = runner.validate_preflight_handoff(**case)
+    assert "OFFICIAL_CRITERIA_SHA256_MISMATCH" in errors
+    assert "COMMON_RULES_SHA256_MISMATCH" in errors
+    assert "EXCLUSION_POLICY_SHA256_MISMATCH" in errors
+    assert "EXCLUSION_IDENTITY_COUNT_MISMATCH" in errors
+    assert "WORKER_COUNT_MISMATCH" in errors
+    assert "FROZEN_SOURCE_HASH_VERIFICATION_FAILED" in errors
+
+
 def test_observed_mdd_excludes_whole_unresolved_equity_days() -> None:
     rows = [
         {"date": "2024-01-02", "equity": 200_000_000.0},
