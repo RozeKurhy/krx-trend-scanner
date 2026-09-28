@@ -1168,6 +1168,50 @@ PERMANENT_IDENTITY_EXCLUSIONS: dict[tuple[str, str], dict[str, str]] = {
         "approved_date": "2026-09-28",
         "policy_version": "permanent_identity_exclusions_v01",
     },
+    # User-approved promotion of the previously certified P2-1 raw-only
+    # lifecycle successor-resolution class to the shared global universe.
+    ("008560", "KR7008560005"): {
+        "reason": "user-approved global permanent exclusion for previously certified P2-1 raw-only lifecycle successor-resolution class",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "approved_date": "2026-09-28",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
+    ("023890", "KR7023890007"): {
+        "reason": "user-approved global permanent exclusion for previously certified P2-1 raw-only lifecycle successor-resolution class",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "approved_date": "2026-09-28",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
+    ("043290", "KR7043290006"): {
+        "reason": "user-approved global permanent exclusion for previously certified P2-1 raw-only lifecycle successor-resolution class",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "approved_date": "2026-09-28",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
+    ("046140", "KR7046140000"): {
+        "reason": "user-approved global permanent exclusion for previously certified P2-1 raw-only lifecycle successor-resolution class",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "approved_date": "2026-09-28",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
+    ("213090", "KR7213090004"): {
+        "reason": "user-approved global permanent exclusion for previously certified P2-1 raw-only lifecycle successor-resolution class",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "approved_date": "2026-09-28",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
+    ("225330", "KR7225330000"): {
+        "reason": "user-approved global permanent exclusion for previously certified P2-1 raw-only lifecycle successor-resolution class",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "approved_date": "2026-09-28",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
+    ("282690", "KR7282690007"): {
+        "reason": "user-approved global permanent exclusion for previously certified P2-1 raw-only lifecycle successor-resolution class",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "approved_date": "2026-09-28",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
 
 }
 

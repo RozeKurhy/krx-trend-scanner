@@ -1,0 +1,829 @@
+{
+  "CAGR_pct": 4.716184794116196,
+  "average_capital_utilization_pct": 18.0346844075743,
+  "average_cash_ratio_pct": 81.9653155924257,
+  "average_concurrent_positions": 9.892010535557507,
+  "average_holding_trading_days": 131.91463414634146,
+  "cash_conservation_pass": true,
+  "cash_drag_pct": 81.9653155924257,
+  "cash_shortage_skipped_entries": 0,
+  "cost_audit": {
+    "coverage_complete": true,
+    "executed_cost_event_count": 171,
+    "mismatch_count": 0,
+    "sell_tax_applied_krw": 0.0
+  },
+  "coverage_pct": 100.0,
+  "cumulative_return_pct": 23.93843332506802,
+  "current_allowed_signal_count": 90,
+  "current_exclusion_filtered_count": 28,
+  "diagnostics": {
+    "annual_performance": [
+      {
+        "annual_return_pct": -0.23291649598714548,
+        "ending_equity_krw": 199534167.0080257,
+        "year": 2022
+      },
+      {
+        "annual_return_pct": 6.02351243357977,
+        "ending_equity_krw": 211553132.36699396,
+        "year": 2023
+      },
+      {
+        "annual_return_pct": 7.192596957644115,
+        "ending_equity_krw": 226769296.52942318,
+        "year": 2024
+      },
+      {
+        "annual_return_pct": 2.074252566329937,
+        "ending_equity_krw": 231473064.4823331,
+        "year": 2025
+      },
+      {
+        "annual_return_pct": 7.142642502139296,
+        "ending_equity_krw": 248006357.96705252,
+        "year": 2026
+      }
+    ],
+    "average_cash_utilization_pct": 18.0346844075743,
+    "average_concurrent_positions": 9.892010535557507,
+    "deep_arrival_candidate_diagnostic": {
+      "deep_arrival_count": 63,
+      "deep_arrival_rate_of_filled_pct": 20.322580645161292,
+      "deep_mean_mae_pct": -58.61746728389524,
+      "deep_median_mae_pct": -60.90415913200724,
+      "deep_open_count": 20,
+      "deep_realized_count": 43,
+      "deep_realized_mean_gross_pct": -16.41629993868191,
+      "deep_realized_median_gross_pct": -18.711656441717793,
+      "deep_realized_win_rate_pct": 20.930232558139537
+    },
+    "deep_arrival_note": "Candidate-level stored diagnostic; exact portfolio-executed DEEP membership was not present in the frozen source ledger.",
+    "maximum_cash_utilization_pct": 52.688512814875054,
+    "maximum_concurrent_positions": 24,
+    "mean_holding_krx_sessions": 131.91463414634146,
+    "median_holding_krx_sessions": 42.0,
+    "median_net_trade_return_pct": 11.88647181721102,
+    "open_at_cutoff_count": 7,
+    "open_at_cutoff_exact_mark_count": 7,
+    "open_at_cutoff_unresolved_count": 0,
+    "open_trades": [
+      {
+        "net_return_pct": -69.3426499419499,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_001380_KR7001380005_2025-04-30_0001",
+        "status": "OPEN_AT_CUTOFF_EXACT_CLOSE",
+        "ticker": "001380"
+      },
+      {
+        "net_return_pct": -7.614244696909128,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_010820_KR7010820009_2026-06-30_0001",
+        "status": "OPEN_AT_CUTOFF_EXACT_CLOSE",
+        "ticker": "010820"
+      },
+      {
+        "net_return_pct": -7.364609110960043,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_011690_KR7011690005_2026-06-30_0001",
+        "status": "OPEN_AT_CUTOFF_EXACT_CLOSE",
+        "ticker": "011690"
+      },
+      {
+        "net_return_pct": -26.74152199024596,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_025620_KR7025620006_2026-06-30_0001",
+        "status": "OPEN_AT_CUTOFF_EXACT_CLOSE",
+        "ticker": "025620"
+      },
+      {
+        "net_return_pct": -9.433993664328884,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_100090_KR7100090000_2026-06-30_0001",
+        "status": "OPEN_AT_CUTOFF_EXACT_CLOSE",
+        "ticker": "100090"
+      },
+      {
+        "net_return_pct": 13.425099677161883,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_000650_KR7000650002_2026-07-31_0001",
+        "status": "OPEN_AT_CUTOFF_EXACT_CLOSE",
+        "ticker": "000650"
+      },
+      {
+        "net_return_pct": 9.523154750581156,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_077970_KR7077970002_2026-07-31_0001",
+        "status": "OPEN_AT_CUTOFF_EXACT_CLOSE",
+        "ticker": "077970"
+      }
+    ],
+    "p90_holding_krx_sessions": 490.9000000000001,
+    "positive_trade_rate_pct": 80.48780487804879,
+    "realized_trade_count": 82,
+    "realized_trades": [
+      {
+        "net_pnl_krw": -2780438.4918215987,
+        "net_return_pct": -55.63175944262472,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_001360_KR7001360007_2022-02-28_0001",
+        "ticker": "001360"
+      },
+      {
+        "net_pnl_krw": 308535.6180585008,
+        "net_return_pct": 6.171145896714275,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_001620_KR7001620004_2022-02-28_0001",
+        "ticker": "001620"
+      },
+      {
+        "net_pnl_krw": 3082726.7281655017,
+        "net_return_pct": 61.68400225374303,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_002410_KR7002410009_2022-02-28_0001",
+        "ticker": "002410"
+      },
+      {
+        "net_pnl_krw": -1494283.4270755993,
+        "net_return_pct": -29.886720906081727,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_015020_KR7015020001_2022-02-28_0001",
+        "ticker": "015020"
+      },
+      {
+        "net_pnl_krw": 1046777.1899220003,
+        "net_return_pct": 20.93959337971951,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_017550_KR7017550005_2022-02-28_0001",
+        "ticker": "017550"
+      },
+      {
+        "net_pnl_krw": 2483320.1272015497,
+        "net_return_pct": 49.674487479499845,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_019490_KR7019490002_2022-02-28_0001",
+        "ticker": "019490"
+      },
+      {
+        "net_pnl_krw": 911880.5911645005,
+        "net_return_pct": 18.238144466050375,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_069730_KR7069730000_2022-02-28_0001",
+        "ticker": "069730"
+      },
+      {
+        "net_pnl_krw": 188284.4050000012,
+        "net_return_pct": 3.766069556476364,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_073240_KR7073240004_2022-02-28_0001",
+        "ticker": "073240"
+      },
+      {
+        "net_pnl_krw": -721099.0935644992,
+        "net_return_pct": -14.42299511601667,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_001620_KR7001620004_2022-05-31_0002",
+        "ticker": "001620"
+      },
+      {
+        "net_pnl_krw": -1772975.1093796492,
+        "net_return_pct": -35.50550524400039,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_008600_KR7008600009_2022-05-31_0001",
+        "ticker": "008600"
+      },
+      {
+        "net_pnl_krw": 29657.71977819968,
+        "net_return_pct": 0.5933542124621943,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_093240_KR7093240000_2022-05-31_0001",
+        "ticker": "093240"
+      },
+      {
+        "net_pnl_krw": 443400.2783100009,
+        "net_return_pct": 8.876280410371743,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_108670_KR7108670001_2022-05-31_0001",
+        "ticker": "108670"
+      },
+      {
+        "net_pnl_krw": -342260.24067399837,
+        "net_return_pct": -6.8486411037272,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_003850_KR7003850005_2022-06-30_0001",
+        "ticker": "003850"
+      },
+      {
+        "net_pnl_krw": 1133817.9219899997,
+        "net_return_pct": 22.722109053595943,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_006660_KR7006660005_2022-06-30_0001",
+        "ticker": "006660"
+      },
+      {
+        "net_pnl_krw": 699436.8712595003,
+        "net_return_pct": 14.003418269031897,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_007860_KR7007860000_2022-06-30_0001",
+        "ticker": "007860"
+      },
+      {
+        "net_pnl_krw": -944623.9798822496,
+        "net_return_pct": -18.898404843227837,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_009270_KR7009270000_2022-06-30_0001",
+        "ticker": "009270"
+      },
+      {
+        "net_pnl_krw": 204325.23240000103,
+        "net_return_pct": 4.108101805838471,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_011000_KR7011000007_2022-06-30_0001",
+        "ticker": "011000"
+      },
+      {
+        "net_pnl_krw": 1441446.6019407501,
+        "net_return_pct": 28.831361603885437,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_025890_KR7025890005_2022-06-30_0001",
+        "ticker": "025890"
+      },
+      {
+        "net_pnl_krw": 516611.50930500124,
+        "net_return_pct": 10.337831158446411,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_192400_KR7192400000_2022-06-30_0001",
+        "ticker": "192400"
+      },
+      {
+        "net_pnl_krw": -2502513.1265849997,
+        "net_return_pct": -50.076641729824786,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_011090_KR7011090008_2022-08-31_0001",
+        "ticker": "011090"
+      },
+      {
+        "net_pnl_krw": -885978.9313249988,
+        "net_return_pct": -17.72137358344957,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_002460_KR7002460004_2022-09-30_0001",
+        "ticker": "002460"
+      },
+      {
+        "net_pnl_krw": 1727760.6774367513,
+        "net_return_pct": 34.569166875540716,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_003530_KR7003530003_2022-09-30_0001",
+        "ticker": "003530"
+      },
+      {
+        "net_pnl_krw": 1057067.4329655012,
+        "net_return_pct": 21.16769399578631,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_004980_KR7004980009_2022-09-30_0001",
+        "ticker": "004980"
+      },
+      {
+        "net_pnl_krw": 228042.20597000048,
+        "net_return_pct": 4.562722337741684,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_006360_KR7006360002_2022-09-30_0001",
+        "ticker": "006360"
+      },
+      {
+        "net_pnl_krw": 120790.19486000016,
+        "net_return_pct": 2.4219656054947243,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_009470_KR7009470006_2022-09-30_0001",
+        "ticker": "009470"
+      },
+      {
+        "net_pnl_krw": 171724.96451300103,
+        "net_return_pct": 3.4352943451884945,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_012800_KR7012800009_2022-09-30_0001",
+        "ticker": "012800"
+      },
+      {
+        "net_pnl_krw": 875765.4357405007,
+        "net_return_pct": 17.5208020384925,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_013360_KR7013360003_2022-09-30_0001",
+        "ticker": "013360"
+      },
+      {
+        "net_pnl_krw": 1743519.2898037499,
+        "net_return_pct": 34.87461645987867,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_014160_KR7014160006_2022-09-30_0001",
+        "ticker": "014160"
+      },
+      {
+        "net_pnl_krw": -604647.726577499,
+        "net_return_pct": -12.099509970472393,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_014790_KR7014790000_2022-09-30_0001",
+        "ticker": "014790"
+      },
+      {
+        "net_pnl_krw": 1946113.8084775014,
+        "net_return_pct": 38.93627704839084,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_025890_KR7025890005_2022-09-30_0002",
+        "ticker": "025890"
+      },
+      {
+        "net_pnl_krw": 754003.732954001,
+        "net_return_pct": 15.095477231533023,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_023810_KR7023810005_2022-10-31_0001",
+        "ticker": "023810"
+      },
+      {
+        "net_pnl_krw": 2985248.102527,
+        "net_return_pct": 59.729130617964174,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_030210_KR7030210009_2022-10-31_0001",
+        "ticker": "030210"
+      },
+      {
+        "net_pnl_krw": 2320129.475145001,
+        "net_return_pct": 46.40403764191624,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_058430_KR7058430000_2022-10-31_0001",
+        "ticker": "058430"
+      },
+      {
+        "net_pnl_krw": 482665.9122080002,
+        "net_return_pct": 9.654624773564368,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_006880_KR7006880009_2023-01-31_0001",
+        "ticker": "006880"
+      },
+      {
+        "net_pnl_krw": -1311700.6112639992,
+        "net_return_pct": -26.3472026220471,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_249420_KR7249420001_2023-01-31_0001",
+        "ticker": "249420"
+      },
+      {
+        "net_pnl_krw": 304314.86342400033,
+        "net_return_pct": 6.089047631866216,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_005870_KR7005870001_2023-02-28_0001",
+        "ticker": "005870"
+      },
+      {
+        "net_pnl_krw": 1662388.7213700004,
+        "net_return_pct": 33.254804965520975,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_010660_KR7010660009_2023-02-28_0001",
+        "ticker": "010660"
+      },
+      {
+        "net_pnl_krw": 2012220.405655251,
+        "net_return_pct": 40.250822258582595,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_090080_KR7090080003_2023-02-28_0001",
+        "ticker": "090080"
+      },
+      {
+        "net_pnl_krw": 743431.6663670009,
+        "net_return_pct": 14.87833281408533,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_006880_KR7006880009_2023-03-31_0002",
+        "ticker": "006880"
+      },
+      {
+        "net_pnl_krw": 699057.6827039998,
+        "net_return_pct": 13.984110093584082,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_010660_KR7010660009_2023-07-31_0002",
+        "ticker": "010660"
+      },
+      {
+        "net_pnl_krw": 796364.6063170014,
+        "net_return_pct": 15.929192612667833,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_042670_KR7042670000_2023-10-31_0001",
+        "ticker": "042670"
+      },
+      {
+        "net_pnl_krw": 3441774.438084499,
+        "net_return_pct": 68.87459738748049,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_008110_KR7008110009_2023-11-30_0001",
+        "ticker": "008110"
+      },
+      {
+        "net_pnl_krw": 1734938.8222599998,
+        "net_return_pct": 34.80789127048041,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_011330_KR7011330008_2023-11-30_0001",
+        "ticker": "011330"
+      },
+      {
+        "net_pnl_krw": 1074416.0382656017,
+        "net_return_pct": 21.580063122805864,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_001470_KR7001470004_2024-01-31_0001",
+        "ticker": "001470"
+      },
+      {
+        "net_pnl_krw": -139754.6847626986,
+        "net_return_pct": -2.795688102112988,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_004920_KR7004920005_2024-01-31_0001",
+        "ticker": "004920"
+      },
+      {
+        "net_pnl_krw": 445991.30869999994,
+        "net_return_pct": 8.923499481108498,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_042660_KR7042660001_2024-01-31_0001",
+        "ticker": "042660"
+      },
+      {
+        "net_pnl_krw": 2581391.2373760007,
+        "net_return_pct": 51.730740825265734,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_010120_KR7010120004_2024-02-29_0001",
+        "ticker": "010120"
+      },
+      {
+        "net_pnl_krw": 1364530.22664,
+        "net_return_pct": 27.29309574248351,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_004100_KR7004100004_2024-04-30_0001",
+        "ticker": "004100"
+      },
+      {
+        "net_pnl_krw": 404208.7564240005,
+        "net_return_pct": 8.094086970575324,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_084690_KR7084690007_2024-04-30_0001",
+        "ticker": "084690"
+      },
+      {
+        "net_pnl_krw": -295556.42265999876,
+        "net_return_pct": -5.912852086337432,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_000680_KR7000680009_2024-07-31_0001",
+        "ticker": "000680"
+      },
+      {
+        "net_pnl_krw": -107356.4944000002,
+        "net_return_pct": -2.1508576737166685,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_011330_KR7011330008_2024-07-31_0002",
+        "ticker": "011330"
+      },
+      {
+        "net_pnl_krw": -1489548.7719699992,
+        "net_return_pct": -29.88585761747542,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_006110_KR7006110001_2024-09-30_0001",
+        "ticker": "006110"
+      },
+      {
+        "net_pnl_krw": 2810595.562548752,
+        "net_return_pct": 56.24153797157264,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_010100_KR7010100006_2024-09-30_0001",
+        "ticker": "010100"
+      },
+      {
+        "net_pnl_krw": -227756.6424899986,
+        "net_return_pct": -4.587517425453777,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_003960_KR7003960002_2024-10-31_0001",
+        "ticker": "003960"
+      },
+      {
+        "net_pnl_krw": 873002.5078250011,
+        "net_return_pct": 17.471440142474997,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_084690_KR7084690007_2024-10-31_0002",
+        "ticker": "084690"
+      },
+      {
+        "net_pnl_krw": 953409.9449000014,
+        "net_return_pct": 19.080637952645894,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_009470_KR7009470006_2024-12-30_0002",
+        "ticker": "009470"
+      },
+      {
+        "net_pnl_krw": 1771013.1826750012,
+        "net_return_pct": 35.580960072962434,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_009470_KR7009470006_2025-03-31_0003",
+        "ticker": "009470"
+      },
+      {
+        "net_pnl_krw": -833583.8359574992,
+        "net_return_pct": -16.68121550955614,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_010770_KR7010770006_2025-05-30_0001",
+        "ticker": "010770"
+      },
+      {
+        "net_pnl_krw": 2576186.7810975006,
+        "net_return_pct": 51.53463077489373,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_009470_KR7009470006_2025-12-30_0004",
+        "ticker": "009470"
+      },
+      {
+        "net_pnl_krw": 94145.0028610006,
+        "net_return_pct": 1.8850952679020736,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_000050_KR7000050005_2026-06-30_0001",
+        "ticker": "000050"
+      },
+      {
+        "net_pnl_krw": 372896.5522215003,
+        "net_return_pct": 7.468212928824585,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_000320_KR7000320002_2026-06-30_0001",
+        "ticker": "000320"
+      },
+      {
+        "net_pnl_krw": 285222.8945499994,
+        "net_return_pct": 5.7299924036616945,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_001530_KR7001530005_2026-06-30_0001",
+        "ticker": "001530"
+      },
+      {
+        "net_pnl_krw": 562720.0882289996,
+        "net_return_pct": 11.262127126265824,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_004310_KR7004310009_2026-06-30_0001",
+        "ticker": "004310"
+      },
+      {
+        "net_pnl_krw": 198546.0315000005,
+        "net_return_pct": 4.068060228220831,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_005490_KR7005490008_2026-06-30_0001",
+        "ticker": "005490"
+      },
+      {
+        "net_pnl_krw": 356558.7972690016,
+        "net_return_pct": 7.136929005245901,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_015860_KR7015860000_2026-06-30_0001",
+        "ticker": "015860"
+      },
+      {
+        "net_pnl_krw": 180723.79346419964,
+        "net_return_pct": 3.615686241594882,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_016880_KR7016880007_2026-06-30_0001",
+        "ticker": "016880"
+      },
+      {
+        "net_pnl_krw": 616122.4582480006,
+        "net_return_pct": 12.335035138196387,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_017900_KR7017900002_2026-06-30_0001",
+        "ticker": "017900"
+      },
+      {
+        "net_pnl_krw": 208432.8730000006,
+        "net_return_pct": 4.232261736435765,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_058650_KR7058650003_2026-06-30_0001",
+        "ticker": "058650"
+      },
+      {
+        "net_pnl_krw": 368201.05700000096,
+        "net_return_pct": 7.444899940640984,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_103140_KR7103140000_2026-06-30_0001",
+        "ticker": "103140"
+      },
+      {
+        "net_pnl_krw": 634309.1969000008,
+        "net_return_pct": 13.310514376175975,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_298020_KR7298020009_2026-06-30_0001",
+        "ticker": "298020"
+      },
+      {
+        "net_pnl_krw": 570961.4924650006,
+        "net_return_pct": 11.437908496225656,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_377300_KR7377300009_2026-06-30_0001",
+        "ticker": "377300"
+      },
+      {
+        "net_pnl_krw": 1256326.17038,
+        "net_return_pct": 25.285783566750457,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_001430_KR7001430008_2026-07-31_0001",
+        "ticker": "001430"
+      },
+      {
+        "net_pnl_krw": 1427907.4661499998,
+        "net_return_pct": 28.68598240362165,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_001440_KR7001440007_2026-07-31_0001",
+        "ticker": "001440"
+      },
+      {
+        "net_pnl_krw": 321641.4570249999,
+        "net_return_pct": 6.439399540126941,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_001500_KR7001500008_2026-07-31_0001",
+        "ticker": "001500"
+      },
+      {
+        "net_pnl_krw": 1078464.88293075,
+        "net_return_pct": 21.57191456246598,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_003530_KR7003530003_2026-07-31_0002",
+        "ticker": "003530"
+      },
+      {
+        "net_pnl_krw": 827154.218432501,
+        "net_return_pct": 16.624658382171475,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_004020_KR7004020004_2026-07-31_0001",
+        "ticker": "004020"
+      },
+      {
+        "net_pnl_krw": 619746.699194001,
+        "net_return_pct": 12.395092467708823,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_010580_KR7010580009_2026-07-31_0001",
+        "ticker": "010580"
+      },
+      {
+        "net_pnl_krw": 1327005.2010000004,
+        "net_return_pct": 26.616078300675017,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_011070_KR7011070000_2026-07-31_0001",
+        "ticker": "011070"
+      },
+      {
+        "net_pnl_krw": 1603991.9370004013,
+        "net_return_pct": 32.08659660348723,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_014910_KR7014910004_2026-07-31_0001",
+        "ticker": "014910"
+      },
+      {
+        "net_pnl_krw": 782479.9912320003,
+        "net_return_pct": 15.650652308821408,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_032350_KR7032350001_2026-07-31_0001",
+        "ticker": "032350"
+      },
+      {
+        "net_pnl_krw": 1961142.9612350008,
+        "net_return_pct": 39.224868721785114,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_033240_KR7033240003_2026-07-31_0001",
+        "ticker": "033240"
+      },
+      {
+        "net_pnl_krw": 415391.3866025014,
+        "net_return_pct": 8.322001164646226,
+        "pair_id": "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_078000_KR7078000007_2026-07-31_0001",
+        "ticker": "078000"
+      }
+    ],
+    "tail_counts": {
+      "+100": 0,
+      "+30": 17,
+      "+50": 6,
+      "-30": 3,
+      "-40": 2,
+      "-50": 2,
+      "-60": 0
+    },
+    "ticker_net_pnl_concentration": {
+      "top5_loser_contribution_to_negative_pnl_pct": 61.016844436761374,
+      "top5_tickers_by_net_pnl_krw": [
+        {
+          "net_pnl_krw": 5421400.103532503,
+          "ticker": "009470"
+        },
+        {
+          "net_pnl_krw": 3441774.438084499,
+          "ticker": "008110"
+        },
+        {
+          "net_pnl_krw": 3387560.4104182515,
+          "ticker": "025890"
+        },
+        {
+          "net_pnl_krw": 3082726.7281655017,
+          "ticker": "002410"
+        },
+        {
+          "net_pnl_krw": 2985248.102527,
+          "ticker": "030210"
+        }
+      ],
+      "top5_winner_contribution_to_positive_pnl_pct": 26.463564840228553,
+      "top_ticker_positive_pnl_share_pct": 7.831860150976791
+    },
+    "turnover_krw": 905724685.7609999,
+    "turnover_multiple_initial_capital": 4.528623428805,
+    "unresolved_terminal_max_initial_cost_exposure_krw": 0,
+    "unresolved_terminal_max_initial_cost_exposure_pct": 0,
+    "unresolved_terminal_positions": []
+  },
+  "effective_end": "2026-08-31",
+  "effective_start": "2022-01-03",
+  "ending_equity_krw": 247876866.65013605,
+  "execution_support": "2026-09-01",
+  "final_equity": 247876866.65013605,
+  "final_equity_at_effective_close": 248006357.96705252,
+  "gate_evidence": {
+    "reasons": {
+      "A": "Frozen authorities, PIT/stage linkage, current exclusions, lifecycle and cash conservation passed.",
+      "B": {
+        "cost_coverage_complete": true,
+        "mismatch_count": 0,
+        "sell_tax_applied_krw": 0.0
+      },
+      "C": "Net total return and CAGR are both positive.",
+      "D": {
+        "absolute_limit_pct": -40.0,
+        "absolute_pass": true,
+        "candidate_minus_control_deterioration_pp": -15.982940257204792,
+        "relative_limit_pp": 5.0,
+        "relative_pass": true,
+        "v2_reference_mdd_pct": -24.620166897782948
+      },
+      "E": "Observed valuation gaps are within coverage policy; no other material validity issue was found."
+    },
+    "relative_mdd_deterioration_pp": -15.982940257204792
+  },
+  "gates": {
+    "A": "PASS",
+    "B": "PASS",
+    "C": "PASS",
+    "D": "PASS",
+    "E": "PASS"
+  },
+  "initial_capital_krw": 200000000.0,
+  "input_audit": {
+    "authoritative_signal_linkage_check": {
+      "candidate_signal_stage_history_expected_sha256": "44c75dc3954419b8cba52f7c8ab1462d14ecbb6a692fec53e408ac755d8ce5b5",
+      "candidate_signal_stage_history_sha256": "44c75dc3954419b8cba52f7c8ab1462d14ecbb6a692fec53e408ac755d8ce5b5",
+      "candidate_signals_checked": 284,
+      "history_metadata_sha256": "f552b462d9d45309fea168cf0e46f26e71837aa5fefb487e19b51d59add1a1d0",
+      "mismatch_count": 0,
+      "mismatches": [],
+      "raw_linkage_metadata_sha256": "7801f64a55bcc2516454ff784fea187e60876373958dca6381238afc46c3e52c",
+      "raw_linkage_signals_checked": 284,
+      "raw_linkage_unique_signal_count": 20076,
+      "raw_signal_stage_path_trade_linkage_expected_sha256": "d4d898ab41246c023c84f82868ef47d95a42024c2acc3bc60eadbaede2ddc02b",
+      "raw_signal_stage_path_trade_linkage_sha256": "d4d898ab41246c023c84f82868ef47d95a42024c2acc3bc60eadbaede2ddc02b",
+      "stage_history_signals_checked": 284,
+      "stage_history_unique_signal_count": 835,
+      "status": "PASS"
+    },
+    "current_allowed_signal_count": 90,
+    "current_exclusion_count": 173,
+    "current_filled_signal_count": 89,
+    "duplicate_input_key_count": 0,
+    "exclusion_leakage_count": 0,
+    "exclusion_leakage_zero": true,
+    "execution_price_audit": {
+      "checked_entries_and_realized_exits": 89,
+      "missing_exact_opens": 0,
+      "next_session_execution_audit": {
+        "checked_entry_count": 89,
+        "checked_realized_exit_count": 82,
+        "status": "PASS",
+        "violation_count": 0,
+        "violations": []
+      },
+      "next_session_execution_violation_count": 0,
+      "price_mismatch_count": 0,
+      "terminal_exact_close_count": 7,
+      "terminal_unresolved_source_count": 0
+    },
+    "frozen_source_hashes_verified": true,
+    "historical_runner_code_hash_checks": {
+      "scripts/run_pattern_b_progressed_previous_stage_early_transition_only_5window_v01.py": {
+        "actual_sha256": "9a267006c8ed81c83a4a29a11d750c9932dbe31137a34a2c5d64b1feaefd2cdd",
+        "expected_sha256": "1de6bff08463198402737577af00ddcd01212f392d34cf587b3626da5b9eba0a",
+        "status": "RUN_SOURCE_UNTRACKED_AT_START"
+      },
+      "scripts/run_pattern_b_progressed_weak_exclusion_p1_simple_v01.py": {
+        "actual_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+        "expected_sha256": "cc77dd7ff473feb44db7da6f1bb6599c2c125770a52a20aac6866c4fdb775058",
+        "status": "PASS"
+      }
+    },
+    "historical_runner_code_hash_mismatch_count": 1,
+    "identity_lifecycle_audit": {
+      "executed_entries": 89,
+      "executed_exits": 82,
+      "open_identity_count_after_support": 7,
+      "violation_count": 0,
+      "violations": []
+    },
+    "identity_overlap_violation_count": 0,
+    "lookahead_entry_count": 0,
+    "post_cutoff_entry_count": 0,
+    "repository_v2_silent_inner_drop_count": 0,
+    "source_allowed_signal_count": 312,
+    "source_filled_signal_count": 310,
+    "source_hashes_verified": true,
+    "window_current_excluded_fill_count": 28,
+    "window_current_excluded_signal_count": 28
+  },
+  "max_consecutive_missing_days": 0,
+  "maximum_capital_utilization_pct": 52.688512814875054,
+  "maximum_concurrent_positions": 24,
+  "mdd_pct": -8.637226640578156,
+  "mdd_peak_date": "2022-04-04",
+  "mdd_recovered": true,
+  "mdd_recovery_date": "2022-11-30",
+  "mdd_trough_date": "2022-10-13",
+  "mdd_type": "EXACT",
+  "median_holding_trading_days": 42.0,
+  "missing_days": 0,
+  "missing_span_count": 0,
+  "observed_days": 1139,
+  "open_at_effective_cutoff_count": 24,
+  "open_at_effective_cutoff_ids": [
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_000320_KR7000320002_2026-06-30_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_000650_KR7000650002_2026-07-31_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_001380_KR7001380005_2025-04-30_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_001430_KR7001430008_2026-07-31_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_001440_KR7001440007_2026-07-31_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_001500_KR7001500008_2026-07-31_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_003530_KR7003530003_2026-07-31_0002",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_004020_KR7004020004_2026-07-31_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_004310_KR7004310009_2026-06-30_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_005490_KR7005490008_2026-06-30_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_010580_KR7010580009_2026-07-31_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_010820_KR7010820009_2026-06-30_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_011070_KR7011070000_2026-07-31_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_011690_KR7011690005_2026-06-30_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_014910_KR7014910004_2026-07-31_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_015860_KR7015860000_2026-06-30_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_017900_KR7017900002_2026-06-30_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_025620_KR7025620006_2026-06-30_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_032350_KR7032350001_2026-07-31_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_033240_KR7033240003_2026-07-31_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_077970_KR7077970002_2026-07-31_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_078000_KR7078000007_2026-07-31_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_100090_KR7100090000_2026-06-30_0001",
+    "PATTERN_B_PROGRESSED_PREVIOUS_STAGE_EARLY_TRANSITION_ONLY_5WINDOW_V01_P3_2_NEW_TEST_377300_KR7377300009_2026-06-30_0001"
+  ],
+  "open_at_effective_cutoff_market_value_krw": 129130262.0,
+  "peak_date": "2022-04-04",
+  "pending_sale_proceeds_at_support_krw": 99043540.68308355,
+  "position_cap": null,
+  "profit_krw": 47876866.65013605,
+  "realized_return_ge_pos_100_count": 0,
+  "realized_return_ge_pos_50_count": 6,
+  "realized_return_le_neg_30_count": 3,
+  "realized_return_le_neg_40_count": 2,
+  "realized_return_le_neg_50_count": 2,
+  "realized_return_le_neg_60_count": 0,
+  "realized_trade_count": 82,
+  "recovered": true,
+  "recovery_date": "2022-11-30",
+  "slippage_impact_krw": 905743.6469999477,
+  "source_allowed_signal_count": 312,
+  "source_filled_trade_count": 310,
+  "total_buy_notional_krw": 443834595.204,
+  "total_commissions_krw": 135858.70286414996,
+  "total_days": 1139,
+  "total_sell_notional_krw": 461890090.5569999,
+  "total_sell_tax_krw": 0.0,
+  "trade_count": 89,
+  "trough_date": "2022-10-13",
+  "turnover_krw": 905724685.7609999,
+  "turnover_multiple": 4.528623428805,
+  "turnover_pct_initial_capital": 452.8623428805,
+  "unresolved_count": 0,
+  "unresolved_execution_event_count": 0,
+  "unresolved_marks": 0,
+  "win_rate_pct": 80.48780487804878,
+  "worker_count": 10
+}

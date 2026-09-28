@@ -5,11 +5,16 @@ import scripts.run_fastcore_neg40_weak_protect_p2_1 as runner
 from trend_scanner.universe.permanent_identity_exclusions import PERMANENT_IDENTITY_EXCLUSIONS
 
 
-def test_closure_exclusions_are_exact_identities_outside_the_shared_registry():
+def test_closure_exclusions_are_exact_identities_promoted_to_global_shared_registry():
     keys = set(closure.P2_1_LIFECYCLE_CLOSURE_EXCLUSIONS)
     assert len(keys) == 7
     assert all(len(ticker) == 6 and isu.startswith("KR") and len(isu) == 12 for ticker, isu in keys)
-    assert not keys & set(PERMANENT_IDENTITY_EXCLUSIONS)
+    assert keys <= set(PERMANENT_IDENTITY_EXCLUSIONS)
+    assert all(
+        PERMANENT_IDENTITY_EXCLUSIONS[key]["approval_scope"] == "GLOBAL permanent identity exclusion"
+        and PERMANENT_IDENTITY_EXCLUSIONS[key]["approved_date"] == "2026-09-28"
+        for key in keys
+    )
     assert ("096300", "KR7096300009") not in keys
     assert closure.EXPECTED_REGISTRY_RAW_IDENTITIES <= set(PERMANENT_IDENTITY_EXCLUSIONS)
 

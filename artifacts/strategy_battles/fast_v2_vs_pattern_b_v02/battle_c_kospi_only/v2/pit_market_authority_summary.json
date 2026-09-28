@@ -1,0 +1,58 @@
+{
+  "status": "PASS",
+  "market_authority_missing": 0,
+  "market_authority_ambiguous": 0,
+  "by_strategy_window": [
+    {
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "window_id": "P1",
+      "candidate_count": 4638,
+      "kospi_eligible_attempts": 2046,
+      "non_kospi_rejected_attempts": 2592,
+      "market_authority_missing": 0,
+      "market_authority_ambiguous": 0,
+      "status": "PASS"
+    },
+    {
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "window_id": "P2-1",
+      "candidate_count": 1700,
+      "kospi_eligible_attempts": 794,
+      "non_kospi_rejected_attempts": 906,
+      "market_authority_missing": 0,
+      "market_authority_ambiguous": 0,
+      "status": "PASS"
+    },
+    {
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "window_id": "P2-2",
+      "candidate_count": 2249,
+      "kospi_eligible_attempts": 1033,
+      "non_kospi_rejected_attempts": 1216,
+      "market_authority_missing": 0,
+      "market_authority_ambiguous": 0,
+      "status": "PASS"
+    },
+    {
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "window_id": "P3-1",
+      "candidate_count": 1098,
+      "kospi_eligible_attempts": 485,
+      "non_kospi_rejected_attempts": 613,
+      "market_authority_missing": 0,
+      "market_authority_ambiguous": 0,
+      "status": "PASS"
+    },
+    {
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "window_id": "P3-2",
+      "candidate_count": 1683,
+      "kospi_eligible_attempts": 746,
+      "non_kospi_rejected_attempts": 937,
+      "market_authority_missing": 0,
+      "market_authority_ambiguous": 0,
+      "status": "PASS"
+    }
+  ],
+  "policy": "entry_signal_date exact ticker + ISU_CD active PIT COMMON interval; authoritative market only"
+}

@@ -257,14 +257,17 @@ def read_and_filter_raw(
     )
 
     source_identities = identity_pairs(control)
-    registry_hits = source_identities & set(PERMANENT_IDENTITY_EXCLUSIONS)
+    closure_keys = set(P2_1_LIFECYCLE_CLOSURE_EXCLUSIONS)
+    # Keep this historical recertifier's original accounting split: these
+    # seven pairs were a separate raw-only closure class when V01 was sealed,
+    # even though they have since been promoted into the shared global policy.
+    registry_hits = source_identities & (set(PERMANENT_IDENTITY_EXCLUSIONS) - closure_keys)
     require(
         registry_hits == EXPECTED_REGISTRY_RAW_IDENTITIES,
         f"registry identities in P2-1 raw changed: {sorted(registry_hits ^ EXPECTED_REGISTRY_RAW_IDENTITIES)}",
     )
-    closure_keys = set(P2_1_LIFECYCLE_CLOSURE_EXCLUSIONS)
     require(closure_keys <= source_identities, "a closure exclusion does not appear in frozen P2-1 raw")
-    require(not (closure_keys & set(PERMANENT_IDENTITY_EXCLUSIONS)), "closure exclusion overlaps the registry")
+    require(closure_keys <= set(PERMANENT_IDENTITY_EXCLUSIONS), "a promoted closure identity is missing from the shared registry")
     policy_keys = registry_hits | closure_keys
 
     control_mask = identity_series(control).isin(policy_keys)

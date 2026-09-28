@@ -1,0 +1,178 @@
+{
+  "schema": "battle_c_exact_pit_market_authority_preflight_v02",
+  "status": "PASS",
+  "pit_authority": {
+    "path": "data/market/rolling_authority/merged_pit_intervals.json",
+    "sha256": "ff783168c56a4772a681e34b97b17d8855f28d1c13df25094bd65cedbc80cd26",
+    "content_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
+    "pit_frontier": "2026-09-21",
+    "common_interval_count": 3208
+  },
+  "summary": {
+    "status": "PASS",
+    "market_authority_missing": 0,
+    "market_authority_ambiguous": 0,
+    "by_strategy_window": [
+      {
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        "window_id": "P1",
+        "candidate_count": 4638,
+        "kospi_eligible_attempts": 2046,
+        "non_kospi_rejected_attempts": 2592,
+        "market_authority_missing": 0,
+        "market_authority_ambiguous": 0,
+        "status": "PASS"
+      },
+      {
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        "window_id": "P2-1",
+        "candidate_count": 1700,
+        "kospi_eligible_attempts": 794,
+        "non_kospi_rejected_attempts": 906,
+        "market_authority_missing": 0,
+        "market_authority_ambiguous": 0,
+        "status": "PASS"
+      },
+      {
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        "window_id": "P2-2",
+        "candidate_count": 2249,
+        "kospi_eligible_attempts": 1033,
+        "non_kospi_rejected_attempts": 1216,
+        "market_authority_missing": 0,
+        "market_authority_ambiguous": 0,
+        "status": "PASS"
+      },
+      {
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        "window_id": "P3-1",
+        "candidate_count": 1098,
+        "kospi_eligible_attempts": 485,
+        "non_kospi_rejected_attempts": 613,
+        "market_authority_missing": 0,
+        "market_authority_ambiguous": 0,
+        "status": "PASS"
+      },
+      {
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        "window_id": "P3-2",
+        "candidate_count": 1683,
+        "kospi_eligible_attempts": 746,
+        "non_kospi_rejected_attempts": 937,
+        "market_authority_missing": 0,
+        "market_authority_ambiguous": 0,
+        "status": "PASS"
+      },
+      {
+        "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+        "window_id": "P1",
+        "candidate_count": 483,
+        "kospi_eligible_attempts": 164,
+        "non_kospi_rejected_attempts": 319,
+        "market_authority_missing": 0,
+        "market_authority_ambiguous": 0,
+        "status": "PASS"
+      },
+      {
+        "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+        "window_id": "P2-1",
+        "candidate_count": 215,
+        "kospi_eligible_attempts": 70,
+        "non_kospi_rejected_attempts": 145,
+        "market_authority_missing": 0,
+        "market_authority_ambiguous": 0,
+        "status": "PASS"
+      },
+      {
+        "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+        "window_id": "P2-2",
+        "candidate_count": 319,
+        "kospi_eligible_attempts": 101,
+        "non_kospi_rejected_attempts": 218,
+        "market_authority_missing": 0,
+        "market_authority_ambiguous": 0,
+        "status": "PASS"
+      },
+      {
+        "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+        "window_id": "P3-1",
+        "candidate_count": 178,
+        "kospi_eligible_attempts": 58,
+        "non_kospi_rejected_attempts": 120,
+        "market_authority_missing": 0,
+        "market_authority_ambiguous": 0,
+        "status": "PASS"
+      },
+      {
+        "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+        "window_id": "P3-2",
+        "candidate_count": 282,
+        "kospi_eligible_attempts": 89,
+        "non_kospi_rejected_attempts": 193,
+        "market_authority_missing": 0,
+        "market_authority_ambiguous": 0,
+        "status": "PASS"
+      }
+    ],
+    "policy": "entry_signal_date exact ticker + ISU_CD active PIT COMMON interval; authoritative market only",
+    "allowed_signal_summary": {
+      "status": "PASS",
+      "market_authority_missing": 0,
+      "market_authority_ambiguous": 0,
+      "by_strategy_window": [
+        {
+          "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+          "window_id": "P1",
+          "candidate_count": 485,
+          "kospi_eligible_attempts": 165,
+          "non_kospi_rejected_attempts": 320,
+          "market_authority_missing": 0,
+          "market_authority_ambiguous": 0,
+          "status": "PASS"
+        },
+        {
+          "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+          "window_id": "P2-1",
+          "candidate_count": 216,
+          "kospi_eligible_attempts": 71,
+          "non_kospi_rejected_attempts": 145,
+          "market_authority_missing": 0,
+          "market_authority_ambiguous": 0,
+          "status": "PASS"
+        },
+        {
+          "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+          "window_id": "P2-2",
+          "candidate_count": 321,
+          "kospi_eligible_attempts": 102,
+          "non_kospi_rejected_attempts": 219,
+          "market_authority_missing": 0,
+          "market_authority_ambiguous": 0,
+          "status": "PASS"
+        },
+        {
+          "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+          "window_id": "P3-1",
+          "candidate_count": 179,
+          "kospi_eligible_attempts": 59,
+          "non_kospi_rejected_attempts": 120,
+          "market_authority_missing": 0,
+          "market_authority_ambiguous": 0,
+          "status": "PASS"
+        },
+        {
+          "strategy_id": "PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01",
+          "window_id": "P3-2",
+          "candidate_count": 284,
+          "kospi_eligible_attempts": 90,
+          "non_kospi_rejected_attempts": 194,
+          "market_authority_missing": 0,
+          "market_authority_ambiguous": 0,
+          "status": "PASS"
+        }
+      ],
+      "policy": "entry_signal_date exact ticker + ISU_CD active PIT COMMON interval; authoritative market only"
+    }
+  },
+  "policy": "entry_signal_date exact ticker + ISU_CD active PIT COMMON interval; KOSPI only; no market-cap filter"
+}
