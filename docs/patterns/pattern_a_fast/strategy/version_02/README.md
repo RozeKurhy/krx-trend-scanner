@@ -165,3 +165,4 @@
 
 - 2026-09-28 V02 portfolio-only 재심사(당시 A~F 기준): `HOLD` (다섯 기간 모두 당시 E[현금 부족] `FAIL`; 미해결 평가값으로 D[포트폴리오 MDD]/F[당시 결과 유효성] `CHECK_REQUIRED`). 이후 현금 부족률은 공식 채택 필수 기준에서 제외됐으며, 원본 결과와 판정은 당시 기준의 역사 기록으로 보존한다. 현재 기준의 D/E 미해결은 남아 있으므로 이 문서 수정만으로 현재 채택을 새로 판정하지 않는다.
 - 상세 결과: [V02 재심사 보고서](../../../../../artifacts/patterns/pattern_a_fast/strategy/v2_official_adoption_revalidation_v02/report.md).
+- 2026-09-28 MDD closure V02: 승인된 RAW_DATA_GAP 66개를 공통 영구 제외한 뒤 재평가한 결과는 `HOLD`. 신규 미해결 평가값이 남았고 P3-1/P3-2는 MDD 기준을 통과하지 못했다. [MDD closure V02 결과](../../../../../artifacts/patterns/pattern_a_fast/strategy/v2_official_adoption_revalidation_mdd_closure_v02/report.md).

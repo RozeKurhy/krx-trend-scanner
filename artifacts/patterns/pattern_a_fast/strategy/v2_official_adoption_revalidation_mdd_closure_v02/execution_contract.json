@@ -1,0 +1,131 @@
+{
+  "schema": "pattern_a_fast_v2_official_adoption_mdd_closure_execution_contract_v02",
+  "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "mode": "EXISTING_STRATEGY_LEDGER_PORTFOLIO_ONLY",
+  "entry_signal_regeneration": false,
+  "strategy_evaluation_rerun": false,
+  "initial_capital_krw": 200000000.0,
+  "per_trade_total_buy_cash_budget_krw": 5000000.0,
+  "buy_commission_rate": 0.00015,
+  "sell_commission_rate": 0.00015,
+  "buy_slippage_rate": 0.001,
+  "sell_slippage_rate": 0.001,
+  "sell_tax_rate": 0.0,
+  "max_concurrent_positions": null,
+  "partial_fill": false,
+  "cash_shortage_policy": "SKIPPED_CASH_UNAVAILABLE_FULL_ORDER; decide this frozen CONTROL row once; do not regenerate signals or replay strategy state",
+  "one_open_position_per_ticker": true,
+  "pyramiding": false,
+  "same_open_exit_reentry": false,
+  "same_session_order": [
+    "release prior-session settled sale proceeds",
+    "normal exits sorted ticker then stable signal id",
+    "corporate lifecycle event",
+    "entries sorted ticker then (ISU_CD, signal date, execution date, trade id)"
+  ],
+  "sale_proceeds_release": "next normal trading session after sell execution; remains a pending asset until release",
+  "buy_share_formula": "floor(5000000 / (reference_open * 1.001 * 1.00015))",
+  "buy_fill_formula": "reference_open * 1.001",
+  "sell_fill_formula": "reference_open * 0.999",
+  "costs": "All executed buy/sell commission and slippage reflected; tax excluded at 0%.",
+  "valuation": "Repository V2 exact session close; missing close may carry the prior valid adjusted close only when a same-date/same-market COMPLETE KRX raw partition has the exact ticker row satisfying NON_TRADING_PLACEHOLDER_V01. Carry is daily valuation/MDD only and is fully audited.",
+  "cutoff": "End-date close for all official metrics; next session is execution support for pre-cutoff exits only and is excluded from metrics and new entries.",
+  "cash_shortage_denominator": "Pre-fixed CONTROL rows with valid in-window execution date, matching exact open, at least one affordable whole share, and no non-cash execution blocker; each row is counted at most once.",
+  "cash_shortage_numerator": "Only full orders skipped for insufficient available cash.",
+  "signal_population": "Only the certified frozen CONTROL ledger after current permanent-identity exclusions; no post-skip rows are synthesized or added.",
+  "price_frame_workers": 10,
+  "portfolio_event_order": "Deterministic sequential application of daily cash and trade events.",
+  "valuation_carry_audit": "valuation_carry_audit_<window>.csv records raw manifest/partition/file/content hashes, exact row values, placeholder predicate, prior adjusted close and age, and valuation-only usage flags.",
+  "mdd": "Daily cutoff equity against the running prior/high-water peak; initial capital is the starting peak.",
+  "cagr": "((ending equity / initial capital) ** (365.25 / elapsed calendar days) - 1) * 100.",
+  "portfolio_universe_filter": [
+    "COMMON_PERMANENT_EXACT_IDENTITY_EXCLUSIONS",
+    "CURRENT_STATUS_SUSPENDED_DELISTED_FALLBACK"
+  ],
+  "permanent_exclusion_policy_modified": true,
+  "permanent_exclusion_policy_version": "permanent_identity_exclusions_v01",
+  "permanent_exclusion_policy_total_count": 109,
+  "permanent_exclusion_delta_count": 66,
+  "permanent_exclusion_delta_scope": "V2 official adoption MDD closure 2026-09-28",
+  "permanent_exclusion_delta_path": "artifacts/patterns/pattern_a_fast/strategy/v2_official_adoption_revalidation_mdd_closure_v02/permanent_exclusion_delta.csv",
+  "current_status_fallback_is_separate_from_permanent_policy": true,
+  "current_status_fallback_promotion_approved": false,
+  "fallback_filter_identity_count": 138,
+  "fallback_filter_exact_identity_key": [
+    "ticker",
+    "ISU_CD"
+  ],
+  "fallback_filter_evidence": "Current KRX listed-equity identity master absence, plus the two listed explicit KRX current-status notices in fallback_exclusions.csv. Zero volume or stale cache alone is not sufficient evidence.",
+  "survivorship_bias_fallback_used": true,
+  "survivorship_bias_acknowledged": "This filter excludes identities based on current status, so historical results are survivorship biased and are not represented as an unbiased historical simulation.",
+  "unresolved_remaining_path": "artifacts/patterns/pattern_a_fast/strategy/v2_official_adoption_revalidation_mdd_closure_v02/unresolved_remaining.csv",
+  "unresolved_remaining_identity_count": 15,
+  "unresolved_daily_mark_count": 195,
+  "unresolved_trade_event_count": 0,
+  "new_raw_data_gap_identity_count": 15,
+  "new_raw_data_gap_mark_count": 195,
+  "new_raw_data_gap_identities": [
+    {
+      "ticker": "000520",
+      "ISU_CD": "KR7000520007"
+    },
+    {
+      "ticker": "002820",
+      "ISU_CD": "KR7002820009"
+    },
+    {
+      "ticker": "003690",
+      "ISU_CD": "KR7003690005"
+    },
+    {
+      "ticker": "004150",
+      "ISU_CD": "KR7004150009"
+    },
+    {
+      "ticker": "006120",
+      "ISU_CD": "KR7006120000"
+    },
+    {
+      "ticker": "007070",
+      "ISU_CD": "KR7007070006"
+    },
+    {
+      "ticker": "030530",
+      "ISU_CD": "KR7030530000"
+    },
+    {
+      "ticker": "033310",
+      "ISU_CD": "KR7033310004"
+    },
+    {
+      "ticker": "035200",
+      "ISU_CD": "KR7035200005"
+    },
+    {
+      "ticker": "053450",
+      "ISU_CD": "KR7053450003"
+    },
+    {
+      "ticker": "063160",
+      "ISU_CD": "KR7063160006"
+    },
+    {
+      "ticker": "086900",
+      "ISU_CD": "KR7086900008"
+    },
+    {
+      "ticker": "117670",
+      "ISU_CD": "KR7117670000"
+    },
+    {
+      "ticker": "128940",
+      "ISU_CD": "KR7128940004"
+    },
+    {
+      "ticker": "138080",
+      "ISU_CD": "KR7138080007"
+    }
+  ],
+  "automatic_follow_up_exclusion_or_rerun": false,
+  "post_run_finalization_mode": "SAVED_PORTFOLIO_OUTPUTS_NO_REPLAY"
+}
