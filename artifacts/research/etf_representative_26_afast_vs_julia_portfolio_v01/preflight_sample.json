@@ -1,0 +1,204 @@
+{
+  "cost_slippage_contract": {
+    "actual": {
+      "ETF_sell_tax_rate": 0.0,
+      "buy_fee_rate": 0.00015,
+      "buy_slippage_rate": 0.001,
+      "sell_fee_rate": 0.00015,
+      "sell_slippage_rate": 0.001
+    },
+    "constants_match": true,
+    "expected": {
+      "ETF_sell_tax_rate": 0.0,
+      "buy_fee_rate": 0.00015,
+      "buy_slippage_rate": 0.001,
+      "sell_fee_rate": 0.00015,
+      "sell_slippage_rate": 0.001
+    },
+    "formula_sample": {
+      "buy": {
+        "cash_sufficient": true,
+        "fee": 749.2484999999998,
+        "fill_price": 10009.999999999998,
+        "notional": 4994989.999999999,
+        "shares": 499,
+        "total_cost": 4995739.248499999
+      },
+      "sell": {
+        "fee": 149.85,
+        "fill_price": 9990.0,
+        "notional": 999000.0,
+        "proceeds": 998850.15,
+        "tax": 0.0
+      }
+    },
+    "formulas_match": true,
+    "passed": true
+  },
+  "sample_count": 5,
+  "sample_tickers": [
+    {
+      "a_fast_ready_date": "2017-01-06",
+      "category": "MARKET_DOMESTIC",
+      "checks": {
+        "common_start_formula": true,
+        "no_trade_session_policy": true,
+        "normal_evaluable_status": true,
+        "raw_prices_and_execution": true
+      },
+      "common_evaluable_start": "2017-01-06",
+      "eligible_signal_date_count": 2364,
+      "errors": [],
+      "exact_cutoff_close": true,
+      "exact_support_open": true,
+      "julia_ready_date": "2017-01-06",
+      "listing_anniversary_ready_date": "2004-10-14",
+      "listing_date": "2002-10-14",
+      "name": "KODEX 200",
+      "pass": true,
+      "raw_no_trade_rows_seen": 0,
+      "raw_session_gaps": 0,
+      "reason": null,
+      "status": "EVALUABLE",
+      "strict_no_trade_rows_excluded": 0,
+      "technical_input_no_trade_rows": 0,
+      "ticker": "069500",
+      "trade_counts": {
+        "JULIA_STRATEGY_V00": 2,
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02": 4
+      },
+      "volume_20d_ready_date": "2014-01-29"
+    },
+    {
+      "a_fast_ready_date": "2017-01-06",
+      "category": "SECTOR_DOMESTIC",
+      "checks": {
+        "common_start_formula": true,
+        "no_trade_session_policy": true,
+        "normal_evaluable_status": true,
+        "raw_prices_and_execution": true
+      },
+      "common_evaluable_start": "2017-01-06",
+      "eligible_signal_date_count": 2054,
+      "errors": [],
+      "exact_cutoff_close": true,
+      "exact_support_open": true,
+      "julia_ready_date": "2017-01-06",
+      "listing_anniversary_ready_date": "2008-06-27",
+      "listing_date": "2006-06-27",
+      "name": "KODEX 반도체",
+      "pass": true,
+      "raw_no_trade_rows_seen": 0,
+      "raw_session_gaps": 0,
+      "reason": null,
+      "status": "EVALUABLE",
+      "strict_no_trade_rows_excluded": 0,
+      "technical_input_no_trade_rows": 0,
+      "ticker": "091160",
+      "trade_counts": {
+        "JULIA_STRATEGY_V00": 3,
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02": 3
+      },
+      "volume_20d_ready_date": "2014-01-29"
+    },
+    {
+      "a_fast_ready_date": "2017-01-06",
+      "category": "FOREIGN_MARKET",
+      "checks": {
+        "common_start_formula": true,
+        "no_trade_session_policy": true,
+        "normal_evaluable_status": true,
+        "raw_prices_and_execution": true
+      },
+      "common_evaluable_start": "2017-01-06",
+      "eligible_signal_date_count": 2053,
+      "errors": [],
+      "exact_cutoff_close": true,
+      "exact_support_open": true,
+      "julia_ready_date": "2017-01-06",
+      "listing_anniversary_ready_date": "2012-10-18",
+      "listing_date": "2010-10-18",
+      "name": "TIGER 미국나스닥100",
+      "pass": true,
+      "raw_no_trade_rows_seen": 2,
+      "raw_session_gaps": 0,
+      "reason": null,
+      "status": "EVALUABLE",
+      "strict_no_trade_rows_excluded": 2,
+      "technical_input_no_trade_rows": 0,
+      "ticker": "133690",
+      "trade_counts": {
+        "JULIA_STRATEGY_V00": 3,
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02": 3
+      },
+      "volume_20d_ready_date": "2014-01-29"
+    },
+    {
+      "a_fast_ready_date": null,
+      "category": "COMMODITY_RESOURCE",
+      "checks": {
+        "common_start_formula": true,
+        "no_trade_session_policy": true,
+        "normal_evaluable_status": true,
+        "raw_prices_and_execution": true
+      },
+      "common_evaluable_start": null,
+      "eligible_signal_date_count": 0,
+      "errors": [],
+      "exact_cutoff_close": true,
+      "exact_support_open": true,
+      "julia_ready_date": null,
+      "listing_anniversary_ready_date": "2027-06-24",
+      "listing_date": "2025-06-24",
+      "name": "TIGER KRX금현물",
+      "pass": true,
+      "raw_no_trade_rows_seen": 0,
+      "raw_session_gaps": 0,
+      "reason": "LESS_THAN_TWO_YEARS_LISTED_AT_CUTOFF;A_FAST_JULIA_NOT_READY_BY_CUTOFF",
+      "status": "NOT_EVALUABLE",
+      "strict_no_trade_rows_excluded": 0,
+      "technical_input_no_trade_rows": 0,
+      "ticker": "0072R0",
+      "trade_counts": {
+        "JULIA_STRATEGY_V00": 0,
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02": 0
+      },
+      "volume_20d_ready_date": "2025-07-21"
+    },
+    {
+      "a_fast_ready_date": "2019-11-29",
+      "category": "COMMODITY_RESOURCE",
+      "checks": {
+        "common_start_formula": true,
+        "no_trade_session_policy": true,
+        "normal_evaluable_status": true,
+        "raw_prices_and_execution": true
+      },
+      "common_evaluable_start": "2019-11-29",
+      "eligible_signal_date_count": 1649,
+      "errors": [],
+      "exact_cutoff_close": true,
+      "exact_support_open": true,
+      "julia_ready_date": "2019-11-29",
+      "listing_anniversary_ready_date": "2018-12-27",
+      "listing_date": "2016-12-27",
+      "name": "KODEX WTI원유선물(H)",
+      "pass": true,
+      "raw_no_trade_rows_seen": 0,
+      "raw_session_gaps": 0,
+      "reason": null,
+      "status": "EVALUABLE",
+      "strict_no_trade_rows_excluded": 0,
+      "technical_input_no_trade_rows": 0,
+      "ticker": "261220",
+      "trade_counts": {
+        "JULIA_STRATEGY_V00": 1,
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02": 4
+      },
+      "volume_20d_ready_date": "2017-01-24"
+    }
+  ],
+  "validation_passed": true,
+  "verdict": "SAMPLE_PASS",
+  "worker_count": 5
+}

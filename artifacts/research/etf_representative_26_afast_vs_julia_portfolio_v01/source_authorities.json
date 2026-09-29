@@ -1,0 +1,36 @@
+{
+  "existing_v03_427_baseline_replayed": false,
+  "fixed_selection_authority": "User-provided fixed 26-ETF list in w.md (2026-09-23 snapshot); not dynamically reselected.",
+  "identity_and_listing_source": "artifacts/research/etf_current_survivors_raw_price_three_strategy_simple_backtest_v03/current_etf_universe_2026-09-29.csv",
+  "krx_calendar_sha256": "78cff0957e5bc55d3d330e7a88d39134d14b20866f3a05add9c9bc7f1df41113",
+  "price_source": "KRX_RAW_ETF_OHLCV",
+  "raw_data_audit": {
+    "other_invalid_ohlc_rows": 0,
+    "raw_rewrite_count": 0,
+    "raw_rows_after_listing": 67254,
+    "strict_no_trade_session_rows": 59,
+    "synthetic_or_forward_filled_rows": 0,
+    "technical_input_no_trade_row_count": 0,
+    "zero_volume_rows_in_raw_eligibility_source": 59
+  },
+  "raw_price_limitation": true,
+  "raw_store_manifest_sha256": "50d64008e052c6824564ab25e67c366f7aafe2d8869b6ac3149f921bb34cb27a",
+  "raw_store_relative_path": "data/market/raw/krx_stocks/v01",
+  "runtime": {
+    "lifecycle_wall_seconds": 17.6,
+    "portfolio_wall_seconds": 1.099,
+    "raw_database_build_seconds": 25.337,
+    "total_wall_seconds": 18.879,
+    "worker_count": 10
+  },
+  "score_contract_sha256": "be0dc21c3764aeb147a3565e65850fc179ecc91e5700e8221932f12ce28ae501",
+  "stage_contract_sha256": "231cb43e2830017a72a9e8ba8d29296749f8a323e211266035d80cf841b70cf7",
+  "strategy_ids": [
+    "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "JULIA_STRATEGY_V00"
+  ],
+  "survivorship_bias": true,
+  "v03_427_metrics_sha256": "30022b838325b5bc403a9b94492f17224e860605a5337e279e4c9d38f1d6b4d4",
+  "v03_427_summary_path": "artifacts/research/etf_v06_afast_vs_julia_realistic_portfolio_battle_v03/summary.md",
+  "verdict": "ETF_REPRESENTATIVE_26_AFAST_VS_JULIA_REALISTIC_PORTFOLIO_COMPLETE"
+}

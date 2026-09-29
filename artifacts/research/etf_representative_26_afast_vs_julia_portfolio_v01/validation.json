@@ -1,0 +1,100 @@
+{
+  "candidate_ledger_sealed": true,
+  "candidate_lifecycle_attempt_count": 1,
+  "candidate_required_price_missing": [],
+  "candidate_required_price_missing_count": 0,
+  "candidate_required_raw_session_gap_count": 0,
+  "candidate_trade_count": 115,
+  "candidate_trade_count_by_strategy": {
+    "JULIA_STRATEGY_V00": 42,
+    "PATTERN_A_FAST_FINAL_STRATEGY_V02": 73
+  },
+  "candidate_trade_ledger_sha256": "25e77711847a2bf60a06be5506af49de4641c27ef3462cbe328fe418467e79ee",
+  "cash_conservation_error_count": 0,
+  "common_start_formula_mismatch_count": 0,
+  "duplicate_result_ticker_count": 0,
+  "eligibility_mismatch_count": 0,
+  "execution_price_mismatch_count": 0,
+  "execution_timing_mismatch_count": 0,
+  "fixed_universe_count": 26,
+  "fixed_universe_group_counts": {
+    "COMMODITY_RESOURCE": 4,
+    "FOREIGN_MARKET": 4,
+    "MARKET_DOMESTIC": 2,
+    "SECTOR_DOMESTIC": 16
+  },
+  "fixed_universe_identities_exact": true,
+  "fixed_universe_identity_count": 26,
+  "full_candidate_result_count": 26,
+  "future_fallback_count": 0,
+  "invalid_not_evaluable_count": 0,
+  "leverage_usage_krw": 0.0,
+  "missing_result_tickers": [],
+  "nearest_date_fallback_count": 0,
+  "negative_cash_count": 0,
+  "no_trade_session_mismatch_count": 0,
+  "no_trade_session_rows_kept_in_volume_eligibility": 59,
+  "non_evaluable_etfs": [
+    {
+      "common_evaluable_start": null,
+      "name": "TIGER KRX금현물",
+      "reason": "LESS_THAN_TWO_YEARS_LISTED_AT_CUTOFF;A_FAST_JULIA_NOT_READY_BY_CUTOFF",
+      "ticker": "0072R0"
+    },
+    {
+      "common_evaluable_start": null,
+      "name": "KODEX 방산TOP10",
+      "reason": "LESS_THAN_TWO_YEARS_LISTED_AT_CUTOFF;A_FAST_JULIA_NOT_READY_BY_CUTOFF",
+      "ticker": "0080G0"
+    },
+    {
+      "common_evaluable_start": null,
+      "name": "KODEX AI전력핵심설비",
+      "reason": "A_FAST_JULIA_NOT_READY_BY_CUTOFF",
+      "ticker": "487240"
+    }
+  ],
+  "not_evaluable_count": 3,
+  "passed": true,
+  "portfolio_battle_attempt_count": 1,
+  "portfolio_price_coverage": {
+    "authority_universe_ticker_count": 26,
+    "candidate_required_price_coverage_missing": [],
+    "candidate_required_price_coverage_missing_count": 0,
+    "candidate_required_raw_session_gap_count": 0,
+    "candidate_tickers_without_candidate_trades": 0,
+    "candidate_trade_ticker_count": 23,
+    "checked": true,
+    "portfolio_price_requested_ticker_count": 23,
+    "price_requested_for_zero_candidate_etf_count": 0,
+    "zero_candidate_etf_count": 3
+  },
+  "portfolio_strategy_replay_count": 2,
+  "position_notional_over_5m_count": 0,
+  "post_cutoff_new_entry_count": 0,
+  "process_error_count": 0,
+  "process_errors": [],
+  "raw_data_audit": {
+    "other_invalid_ohlc_rows": 0,
+    "raw_rewrite_count": 0,
+    "raw_rows_after_listing": 67254,
+    "strict_no_trade_session_rows": 59,
+    "synthetic_or_forward_filled_rows": 0,
+    "technical_input_no_trade_row_count": 0,
+    "zero_volume_rows_in_raw_eligibility_source": 59
+  },
+  "raw_invalid_ohlc_count": 0,
+  "raw_rewrite_count": 0,
+  "raw_session_gap_count": 0,
+  "same_day_ordering_mismatch_count": 0,
+  "sample_ticker_count": 5,
+  "sample_verdict": "SAMPLE_PASS",
+  "synthetic_or_forward_filled_rows": 0,
+  "terminal_contract_mismatch_count": 0,
+  "theoretical_initial_capital_deployment_ceiling_krw": 130000000.0,
+  "theoretical_initial_capital_deployment_ceiling_pct": 65.0,
+  "unauthorized_etf_count": 0,
+  "unauthorized_etfs": [],
+  "unknown_etf_count": 0,
+  "verdict": "ETF_REPRESENTATIVE_26_AFAST_VS_JULIA_REALISTIC_PORTFOLIO_COMPLETE"
+}
