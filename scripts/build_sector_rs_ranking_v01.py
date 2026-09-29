@@ -14,6 +14,14 @@ import numpy as np
 import pandas as pd
 
 from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2
+from trend_scanner.data.market_calendar import (
+    load_rolling_production_market_calendar,
+    resolve_reference_market_date,
+)
+from trend_scanner.data.rolling_market_data_refresh import (
+    DEFAULT_ROLLING_AUTHORITY_DIR,
+    load_rolling_authority,
+)
 from trend_scanner.data.sector_membership import (
     load_sector_mapping_exact_snapshot,
     resolve_sector_membership_snapshot_for_target,
@@ -324,36 +332,53 @@ def _validate_output(frame: pd.DataFrame, target_common: pd.DataFrame, as_of: st
 def build_sector_rs_ranking(
     *,
     as_of: str,
+    reference_market_date: str | None = None,
     output_dir: Path = DEFAULT_OUTPUT_DIR,
 ) -> dict[str, Any]:
-    """Build the target-date within-sector ranking parquet and metadata."""
+    """Build a requested-date artifact from one exact certified market date."""
 
     _install_network_guard()
-    as_of = _normalise_as_of(as_of)
-    target_common = load_local_target_universe(as_of, repo_root=ROOT)
+    requested_as_of = _normalise_as_of(as_of)
+    manifest = load_rolling_authority(ROOT / DEFAULT_ROLLING_AUTHORITY_DIR)
+    if requested_as_of > manifest.certified_through:
+        raise ValueError("TARGET_BEYOND_PHASE1_CERTIFIED_BOUNDARY")
+    if reference_market_date is None:
+        calendar = load_rolling_production_market_calendar(ROOT)
+        resolved_reference = resolve_reference_market_date(requested_as_of, calendar)
+    else:
+        resolved_reference = _normalise_as_of(reference_market_date)
+    if (
+        resolved_reference > requested_as_of
+        or resolved_reference > str(manifest.merged_calendar_frontier or resolved_reference)
+    ):
+        raise ValueError("REFERENCE_MARKET_DATE_OUTSIDE_PHASE1_AUTHORITY")
+
+    target_common = load_local_target_universe(resolved_reference, repo_root=ROOT)
     selected_membership, membership_effective_date, membership_path, _membership_meta = (
-        resolve_sector_membership_snapshot_for_target(as_of, repo_root=ROOT)
+        resolve_sector_membership_snapshot_for_target(resolved_reference, repo_root=ROOT)
     )
     membership, reconciliation = _reconcile_target_common_membership(
         target_common,
         selected_membership,
     )
     sector_index = pd.read_parquet(SECTOR_INDEX_PATH)
-    _validate_sector_index(sector_index, as_of)
+    _validate_sector_index(sector_index, resolved_reference)
 
-    base = _compute_rows(as_of, membership, sector_index, membership_effective_date)
+    base = _compute_rows(resolved_reference, membership, sector_index, membership_effective_date)
     ranking = compute_within_sector_rs_ranking(base)
-    validation = _validate_output(ranking, target_common, as_of)
+    validation = _validate_output(ranking, target_common, resolved_reference)
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    parquet_path = output_dir / f"sector_rs_ranking_{as_of.replace('-', '')}.parquet"
-    meta_path = output_dir / f"sector_rs_ranking_{as_of.replace('-', '')}_meta.json"
+    parquet_path = output_dir / f"sector_rs_ranking_{requested_as_of.replace('-', '')}.parquet"
+    meta_path = output_dir / f"sector_rs_ranking_{requested_as_of.replace('-', '')}_meta.json"
     ranking.to_parquet(parquet_path, index=False)
 
     membership_counts = membership["resolution_status"].value_counts().to_dict()
     meta: dict[str, Any] = {
         "schema_version": "SECTOR_RS_RANKING_V01",
-        "as_of": as_of,
+        "as_of": resolved_reference,
+        "requested_as_of": requested_as_of,
+        "reference_market_date": resolved_reference,
         "membership_effective_date": membership_effective_date,
         "membership_population": int(len(selected_membership)),
         "target_common_population": int(len(target_common)),
@@ -367,7 +392,7 @@ def build_sector_rs_ranking(
             "display_price_return": {
                 "latest_close": "exact close at as_of; no nearest/future fallback",
                 "sector_stock_return": "(stock_close_as_of / stock_close_at_sector_anchor) - 1",
-                "as_of": as_of,
+                "as_of": resolved_reference,
             },
         },
         "scope": {
@@ -410,6 +435,9 @@ def build_sector_rs_ranking(
     return {
         "parquet": str(parquet_path.relative_to(ROOT)),
         "meta": str(meta_path.relative_to(ROOT)),
+        "requested_as_of": requested_as_of,
+        "reference_market_date": resolved_reference,
+        "as_of": resolved_reference,
         **validation,
     }
 

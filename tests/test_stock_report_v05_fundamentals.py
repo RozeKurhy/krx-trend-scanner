@@ -276,11 +276,25 @@ def test_reference_market_date_param_defaults_to_canonical_as_of():
     assert report.header.reference_market_date == "2026-08-14"
 
 
-def test_reference_market_date_param_overrides_display_field_only():
+def test_reference_market_date_param_overrides_display_field_only(monkeypatch):
     """Phase 4B: reference_market_date를 명시하면 header/report의 시장 거래일 표기에만
     그 값을 쓰고, requested_as_of(identity/전략 기준)는 as_of를 그대로 유지해야 한다."""
+    from trend_scanner.reporting import stock_report
+
     report_default, _, _ = generate_stock_report(
         ticker="001540", as_of="2026-08-14", repo_root=ROOT, save_artifacts=False,
+    )
+    original_sector_builder = stock_report.build_sector_relative_strength_section
+    sector_dates: list[str] = []
+
+    def capture_sector_reference_date(**kwargs):
+        sector_dates.append(str(kwargs["requested_as_of"]))
+        return original_sector_builder(**kwargs)
+
+    monkeypatch.setattr(
+        stock_report,
+        "build_sector_relative_strength_section",
+        capture_sector_reference_date,
     )
     report_explicit, _, _ = generate_stock_report(
         ticker="001540", as_of="2026-08-14", repo_root=ROOT, save_artifacts=False,
@@ -290,6 +304,7 @@ def test_reference_market_date_param_overrides_display_field_only():
     assert report_explicit.reference_market_date == "2026-08-13"
     assert report_explicit.header.requested_as_of == "2026-08-14"
     assert report_explicit.header.reference_market_date == "2026-08-13"
+    assert sector_dates == ["2026-08-13"]
     # identity/전략 판정(A FAST Core strategy_id 등)은 reference_market_date와 무관하다.
     assert report_explicit.a_fast_core.strategy_id == report_default.a_fast_core.strategy_id
     assert report_explicit.asset_type == report_default.asset_type

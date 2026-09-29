@@ -166,6 +166,14 @@ def load_relative_strength_section(
         # Phase 12 CSV instead of pandas' default float shortening.
         frame = pd.read_csv(artifact_path, dtype={"ticker": str}, float_precision="round_trip")
         frame["ticker"] = frame["ticker"].astype(str).str.strip().str.zfill(6)
+        if "requested_as_of" in frame and not frame["requested_as_of"].astype(str).eq(clean_as_of).all():
+            raise ValueError("Market RS requested_as_of does not match the requested artifact")
+        if (
+            "reference_market_date" in frame
+            and "as_of" in frame
+            and not frame["reference_market_date"].astype(str).eq(frame["as_of"].astype(str)).all()
+        ):
+            raise ValueError("Market RS row as_of does not match reference_market_date")
     except Exception:
         return _empty_section(
             applicability="DATA_UNAVAILABLE",
@@ -194,6 +202,20 @@ def load_relative_strength_section(
         )
 
     row = matches.iloc[0].to_dict()
+    source_as_of = (
+        _as_str(row.get("reference_market_date"))
+        or _as_str(row.get("as_of"))
+        or clean_as_of
+    )
+    if source_as_of > clean_as_of:
+        return _empty_section(
+            applicability="DATA_UNAVAILABLE",
+            data_status="DATA_UNAVAILABLE",
+            explanation="시장 RS 관측일이 요청 기준일 이후라 snapshot을 사용할 수 없습니다.",
+            source_as_of=source_as_of,
+            source_artifact=relative_artifact,
+            source_sha256=source_sha,
+        )
     status = _as_str(row.get("market_rs_data_status")) or "DATA_UNAVAILABLE"
     values = {field: _as_float(row.get(field)) for field in RS_FIELDS}
     return RelativeStrengthSection(
@@ -209,7 +231,7 @@ def load_relative_strength_section(
         market_anchor_date_6m=_as_str(row.get("market_anchor_date_6m")),
         market_anchor_date_12m=_as_str(row.get("market_anchor_date_12m")),
         explanation=_narrative(row),
-        source_as_of=clean_as_of,
+        source_as_of=source_as_of,
         source_artifact=relative_artifact,
         source_sha256=source_sha,
         phase12_closure_sha=PHASE12_CLOSURE_SHA,

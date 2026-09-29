@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
@@ -204,6 +205,7 @@ def _load_builder_module():
 
 def test_3f_consumer_records_selected_prior_membership_snapshot(tmp_path: Path, monkeypatch) -> None:
     _write_snapshot(tmp_path, "2026-09-17")
+    _write_snapshot(tmp_path, "2026-09-24")
     _write_target_universe(
         tmp_path,
         [
@@ -215,7 +217,7 @@ def test_3f_consumer_records_selected_prior_membership_snapshot(tmp_path: Path, 
     sector_index_path = tmp_path / "sector_index_daily.parquet"
     pd.DataFrame(
         {
-            "date": ["2026-09-18"] * 46,
+            "date": ["2026-09-23"] * 46,
             "index_code": [f"S{index:03d}" for index in range(46)],
             "close": [100.0] * 46,
         }
@@ -223,6 +225,14 @@ def test_3f_consumer_records_selected_prior_membership_snapshot(tmp_path: Path, 
 
     builder = _load_builder_module()
     monkeypatch.setattr(builder, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        builder,
+        "load_rolling_authority",
+        lambda _directory: SimpleNamespace(
+            certified_through="2026-09-25",
+            merged_calendar_frontier="2026-09-23",
+        ),
+    )
     monkeypatch.setattr(builder, "SECTOR_INDEX_PATH", sector_index_path)
     monkeypatch.setattr(builder, "SECTOR_INDEX_SOURCE", str(sector_index_path.relative_to(tmp_path)))
     monkeypatch.setattr(builder, "_install_network_guard", lambda: None)
@@ -269,15 +279,29 @@ def test_3f_consumer_records_selected_prior_membership_snapshot(tmp_path: Path, 
 
     monkeypatch.setattr(builder, "_compute_rows", fake_compute_rows)
     output_dir = tmp_path / "output"
-    builder.build_sector_rs_ranking(as_of="2026-09-18", output_dir=output_dir)
+    requested_as_of = "2026-09-25"
+    reference_market_date = "2026-09-23"
+    original_load_universe = builder.load_local_target_universe
+
+    def capture_population_date(effective_date: str, **kwargs):
+        captured["population_as_of"] = str(effective_date)
+        return original_load_universe(effective_date, **kwargs)
+
+    monkeypatch.setattr(builder, "load_local_target_universe", capture_population_date)
+    builder.build_sector_rs_ranking(
+        as_of=requested_as_of,
+        reference_market_date=reference_market_date,
+        output_dir=output_dir,
+    )
 
     assert captured == {
-        "as_of": "2026-09-18",
+        "as_of": reference_market_date,
         "membership_effective_date": "2026-09-17",
         "sector_index_rows": 46,
+        "population_as_of": reference_market_date,
     }
     meta = json.loads(
-        (output_dir / "sector_rs_ranking_20260918_meta.json").read_text(encoding="utf-8")
+        (output_dir / "sector_rs_ranking_20260925_meta.json").read_text(encoding="utf-8")
     )
     assert meta["membership_effective_date"] == "2026-09-17"
     assert meta["membership_population"] == 2
@@ -285,8 +309,12 @@ def test_3f_consumer_records_selected_prior_membership_snapshot(tmp_path: Path, 
     assert meta["target_common_missing_from_membership"] == 1
     assert meta["membership_not_in_target_common"] == 0
     assert meta["scope"]["type"] == "TARGET_PIT_COMMON_POPULATION"
+    assert meta["requested_as_of"] == requested_as_of
+    assert meta["reference_market_date"] == reference_market_date
+    assert meta["as_of"] == reference_market_date
     assert meta["source"]["membership"].endswith("sector_membership_20260917.parquet")
-    output = pd.read_parquet(output_dir / "sector_rs_ranking_20260918.parquet")
+    output = pd.read_parquet(output_dir / "sector_rs_ranking_20260925.parquet")
+    assert output["as_of"].astype(str).eq(reference_market_date).all()
     new_common = output.loc[output["ticker"].eq("000002")].iloc[0]
     assert new_common["membership_status"] == "UNMAPPED"
     assert new_common["sector_rs_data_status"] == "DATA_UNAVAILABLE"

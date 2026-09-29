@@ -17,9 +17,16 @@ FLOW_DIR = Path("artifacts/patterns/pattern_a/production/flow/source")
 
 
 class FakeCalendar:
-    def __init__(self, dates: list[str], *, authority_frontier: str | None = None):
+    def __init__(
+        self,
+        dates: list[str],
+        *,
+        authority_frontier: str | None = None,
+        certified_through: str | None = None,
+    ):
         self.trading_dates = pd.DatetimeIndex(dates)
         self.authority_frontier = authority_frontier or max(dates)
+        self.certified_through = certified_through or self.authority_frontier
 
 
 class FakeProvider:
@@ -67,7 +74,7 @@ def test_exact_target_noop_has_zero_fetch_and_zero_write(tmp_path: Path):
         target,
         repo_root=tmp_path,
         provider=provider,
-        calendar=FakeCalendar(["2026-09-04"]),
+        calendar=FakeCalendar(["2026-09-04"], certified_through=target),
     )
 
     assert result.status == NOOP_ALREADY_COMPLETE
@@ -173,7 +180,9 @@ def test_middle_gap_and_tail_gap_are_both_fetched(tmp_path: Path):
 def test_non_trading_target_publishes_exact_snapshot_then_noops(tmp_path: Path):
     _write_snapshot(tmp_path, "2026-09-11", _flow(["2026-09-10", "2026-09-11"]))
     provider = FakeProvider({})
-    calendar = FakeCalendar(["2026-09-10", "2026-09-11"])
+    calendar = FakeCalendar(
+        ["2026-09-10", "2026-09-11"], certified_through="2026-09-12"
+    )
 
     first = update_foreign_flow_snapshot(
         "2026-09-12",
@@ -198,7 +207,9 @@ def test_non_trading_target_publishes_exact_snapshot_then_noops(tmp_path: Path):
 def test_sunday_weekend_bridge_publishes_then_noops(tmp_path: Path):
     _write_snapshot(tmp_path, "2026-09-11", _flow(["2026-09-10", "2026-09-11"]))
     provider = FakeProvider({})
-    calendar = FakeCalendar(["2026-09-10", "2026-09-11"])
+    calendar = FakeCalendar(
+        ["2026-09-10", "2026-09-11"], certified_through="2026-09-13"
+    )
 
     first = update_foreign_flow_snapshot(
         "2026-09-13",
@@ -282,6 +293,7 @@ def test_authority_frontier_insufficient_blocks_before_fetch_or_target_write(tmp
         calendar=FakeCalendar(
             ["2026-09-17"],
             authority_frontier="2026-09-17",
+            certified_through="2026-09-17",
         ),
     )
 
@@ -293,6 +305,41 @@ def test_authority_frontier_insufficient_blocks_before_fetch_or_target_write(tmp
     assert provider.calls == []
     assert not (tmp_path / FLOW_DIR / "foreign_flow_daily_20260918.parquet").exists()
     assert not (tmp_path / FLOW_DIR / "foreign_flow_daily_20260918_meta.json").exists()
+
+
+def test_certified_non_trading_target_uses_reference_trading_date_only(tmp_path: Path):
+    _write_snapshot(tmp_path, "2026-09-22", _flow(["2026-09-22"]))
+    provider = FakeProvider({"2026-09-23": _flow(["2026-09-23"])})
+    calendar = FakeCalendar(
+        ["2026-09-22", "2026-09-23"],
+        authority_frontier="2026-09-23",
+        certified_through="2026-09-25",
+    )
+
+    result = update_foreign_flow_snapshot(
+        "2026-09-25",
+        repo_root=tmp_path,
+        provider=provider,
+        calendar=calendar,
+    )
+
+    assert result.status == PASS
+    assert result.target_as_of == "2026-09-25"
+    assert result.reference_market_date == "2026-09-23"
+    assert result.requested_trading_dates == ["2026-09-22", "2026-09-23"]
+    assert provider.calls == ["2026-09-23"]
+    assert result.date_max == "2026-09-23"
+    snapshot = pd.read_parquet(
+        tmp_path / FLOW_DIR / "foreign_flow_daily_20260925.parquet"
+    )
+    assert snapshot["date"].max() == "2026-09-23"
+    assert set(snapshot["date"]) == {"2026-09-22", "2026-09-23"}
+    meta = json.loads(
+        (tmp_path / FLOW_DIR / "foreign_flow_daily_20260925_meta.json").read_text()
+    )
+    assert meta["requested_as_of"] == "2026-09-25"
+    assert meta["reference_market_date"] == "2026-09-23"
+    assert meta["date_max"] == "2026-09-23"
 
 
 def test_exact_target_beyond_authority_frontier_is_not_noop_or_rewritten(tmp_path: Path):

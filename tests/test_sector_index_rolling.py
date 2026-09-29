@@ -205,6 +205,26 @@ def test_phase1_calendar_excludes_weekend(tmp_path: Path) -> None:
     assert "2026-09-06" not in result.required_trading_dates
 
 
+def test_certified_non_trading_target_requires_sector_dates_only_through_frontier(tmp_path: Path) -> None:
+    _prepare(
+        tmp_path,
+        ["2026-09-22", "2026-09-23"],
+        certified_through="2026-09-25",
+    )
+    updater = FakeUpdater()
+    result = update_sector_index_rolling(
+        "2026-09-25",
+        repo_root=tmp_path,
+        provider=updater,
+        calendar=FakeCalendar(["2026-09-22", "2026-09-23"]),
+    )
+
+    assert result.status == NOOP_ALREADY_COMPLETE
+    assert result.required_trading_dates == ["2026-09-22", "2026-09-23"]
+    assert result.cache_date_max == "2026-09-23"
+    assert updater.calls == []
+
+
 def test_only_missing_dates_are_updated_in_ascending_order(tmp_path: Path) -> None:
     _prepare(tmp_path, ["2026-09-01", "2026-09-03"])
     updater = FakeUpdater()

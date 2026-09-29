@@ -28,6 +28,10 @@ import pandas as pd
 
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.data.index_store import DEFAULT_INDEX_STORE_ROOT, IndexStore, MARKET_INDEX_FAMILY
+from trend_scanner.data.market_calendar import (
+    load_rolling_production_market_calendar,
+    resolve_reference_market_date,
+)
 from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_production_repository_v2
 from trend_scanner.data.rolling_market_data_refresh import (
     DEFAULT_MERGED_PIT_PATH,
@@ -60,6 +64,8 @@ OUTPUT_COLUMNS = (
     "ticker",
     "market",
     "as_of",
+    "requested_as_of",
+    "reference_market_date",
     "market_rs_data_status",
     "market_benchmark_name",
     "market_benchmark_code",
@@ -113,6 +119,7 @@ class MarketRsSnapshotResult:
     row_count: int
     ticker_count: int
     repository_ticker_loads: int
+    reference_market_date: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -170,7 +177,10 @@ class _AmbiguousIdentityError(RuntimeError):
 
 
 def _validate_existing_artifact(
-    path: Path, target_as_of: str, population_tickers: set[str]
+    path: Path,
+    requested_as_of: str,
+    reference_market_date: str,
+    population_tickers: set[str],
 ) -> tuple[str, str | None]:
     """Return (state, invalid_reason). state is NOT_EXISTS / VALID / INVALID."""
 
@@ -186,8 +196,12 @@ def _validate_existing_artifact(
     frame["ticker"] = frame["ticker"].astype(str).str.zfill(6)
     if frame["ticker"].duplicated().any():
         return "INVALID", "DUPLICATE_TICKER"
-    if not frame["as_of"].astype(str).eq(target_as_of).all():
+    if not frame["as_of"].astype(str).eq(reference_market_date).all():
         return "INVALID", "WRONG_AS_OF"
+    if not frame["requested_as_of"].astype(str).eq(requested_as_of).all():
+        return "INVALID", "WRONG_REQUESTED_AS_OF"
+    if not frame["reference_market_date"].astype(str).eq(reference_market_date).all():
+        return "INVALID", "WRONG_REFERENCE_MARKET_DATE"
     if not frame["market"].astype(str).isin(MARKET_INDEX_CODES).all():
         return "INVALID", "INVALID_MARKET"
     if set(frame["ticker"]) != population_tickers:
@@ -224,16 +238,33 @@ def _benchmark_exact_target_available(index_store: IndexStore, target_as_of: str
     return all(exact_target_available)
 
 
-def _rs_record(ticker: str, market: str, target_as_of: str, result_dict: dict[str, Any]) -> dict[str, Any]:
-    record: dict[str, Any] = {"ticker": ticker, "market": market, "as_of": target_as_of}
+def _rs_record(
+    ticker: str,
+    market: str,
+    requested_as_of: str,
+    reference_market_date: str,
+    result_dict: dict[str, Any],
+) -> dict[str, Any]:
+    record: dict[str, Any] = {
+        "ticker": ticker,
+        "market": market,
+        "as_of": reference_market_date,
+        "requested_as_of": requested_as_of,
+        "reference_market_date": reference_market_date,
+    }
     for column in OUTPUT_COLUMNS:
-        if column in ("ticker", "market", "as_of"):
+        if column in ("ticker", "market", "as_of", "requested_as_of", "reference_market_date"):
             continue
         record[column] = result_dict.get(column)
     return record
 
 
-def build_market_rs_snapshot(target_as_of: str, *, repo_root: Path = ROOT) -> MarketRsSnapshotResult:
+def build_market_rs_snapshot(
+    target_as_of: str,
+    *,
+    repo_root: Path = ROOT,
+    reference_market_date: str | None = None,
+) -> MarketRsSnapshotResult:
     target = str(target_as_of).strip()
     try:
         target = pd.Timestamp(target).strftime("%Y-%m-%d")
@@ -266,7 +297,35 @@ def build_market_rs_snapshot(target_as_of: str, *, repo_root: Path = ROOT) -> Ma
         )
 
     try:
-        population = _load_pit_common_population(repo_root, target)
+        if reference_market_date is None:
+            calendar = load_rolling_production_market_calendar(repo_root)
+            reference = resolve_reference_market_date(target, calendar)
+        else:
+            reference = pd.Timestamp(reference_market_date).strftime("%Y-%m-%d")
+    except Exception as exc:  # noqa: BLE001 - no market-date fallback is allowed
+        return MarketRsSnapshotResult(
+            status=BLOCKED,
+            reason=f"REFERENCE_MARKET_DATE_UNAVAILABLE:{type(exc).__name__}",
+            target_as_of=target,
+            output_path=None,
+            row_count=0,
+            ticker_count=0,
+            repository_ticker_loads=0,
+        )
+    if reference > target or reference > str(manifest.merged_calendar_frontier or reference):
+        return MarketRsSnapshotResult(
+            status=BLOCKED,
+            reason="REFERENCE_MARKET_DATE_OUTSIDE_PHASE1_AUTHORITY",
+            target_as_of=target,
+            output_path=None,
+            row_count=0,
+            ticker_count=0,
+            repository_ticker_loads=0,
+            reference_market_date=reference,
+        )
+
+    try:
+        population = _load_pit_common_population(repo_root, reference)
     except _AmbiguousIdentityError as exc:
         return MarketRsSnapshotResult(
             status=BLOCKED,
@@ -276,6 +335,7 @@ def build_market_rs_snapshot(target_as_of: str, *, repo_root: Path = ROOT) -> Ma
             row_count=0,
             ticker_count=0,
             repository_ticker_loads=0,
+            reference_market_date=reference,
         )
     except MarketRsSnapshotError as exc:
         return MarketRsSnapshotResult(
@@ -286,10 +346,16 @@ def build_market_rs_snapshot(target_as_of: str, *, repo_root: Path = ROOT) -> Ma
             row_count=0,
             ticker_count=0,
             repository_ticker_loads=0,
+            reference_market_date=reference,
         )
 
     population_tickers = {row["ticker"] for row in population}
-    artifact_state, invalid_reason = _validate_existing_artifact(output_path, target, population_tickers)
+    artifact_state, invalid_reason = _validate_existing_artifact(
+        output_path,
+        target,
+        reference,
+        population_tickers,
+    )
     if artifact_state == "VALID":
         return MarketRsSnapshotResult(
             status=NOOP_ALREADY_COMPLETE,
@@ -299,6 +365,7 @@ def build_market_rs_snapshot(target_as_of: str, *, repo_root: Path = ROOT) -> Ma
             row_count=len(population_tickers),
             ticker_count=len(population_tickers),
             repository_ticker_loads=0,
+            reference_market_date=reference,
         )
     if artifact_state == "INVALID":
         return MarketRsSnapshotResult(
@@ -309,11 +376,12 @@ def build_market_rs_snapshot(target_as_of: str, *, repo_root: Path = ROOT) -> Ma
             row_count=0,
             ticker_count=0,
             repository_ticker_loads=0,
+            reference_market_date=reference,
         )
 
     index_store = IndexStore(root=repo_root / DEFAULT_INDEX_STORE_ROOT)
     try:
-        if not _benchmark_exact_target_available(index_store, target):
+        if not _benchmark_exact_target_available(index_store, reference):
             return MarketRsSnapshotResult(
                 status=BLOCKED,
                 reason="MARKET_INDEX_TARGET_UNAVAILABLE",
@@ -322,9 +390,10 @@ def build_market_rs_snapshot(target_as_of: str, *, repo_root: Path = ROOT) -> Ma
                 row_count=0,
                 ticker_count=0,
                 repository_ticker_loads=0,
+                reference_market_date=reference,
             )
-        market_index_df = index_store.load_family(MARKET_INDEX_FAMILY, end=target)
-        repo_start = _repository_query_start(index_store, target)
+        market_index_df = index_store.load_family(MARKET_INDEX_FAMILY, end=reference)
+        repo_start = _repository_query_start(index_store, reference)
     except MarketDataError as exc:
         return MarketRsSnapshotResult(
             status=BLOCKED,
@@ -334,10 +403,11 @@ def build_market_rs_snapshot(target_as_of: str, *, repo_root: Path = ROOT) -> Ma
             row_count=0,
             ticker_count=0,
             repository_ticker_loads=0,
+            reference_market_date=reference,
         )
 
-    repository = build_production_repository_v2(repo_root, end=target)
-    loader = RepositoryV2DailyLoader(repository, start=repo_start, end=target)
+    repository = build_production_repository_v2(repo_root, end=reference)
+    loader = RepositoryV2DailyLoader(repository, start=repo_start, end=reference)
 
     try:
         records: list[dict[str, Any]] = []
@@ -346,14 +416,14 @@ def build_market_rs_snapshot(target_as_of: str, *, repo_root: Path = ROOT) -> Ma
             stock_df = loader.load(ticker)
             result = compute_relative_strength_features(
                 ticker=ticker,
-                as_of=target,
+                as_of=reference,
                 stock_df=stock_df,
                 market_index_df=market_index_df,
                 market=MarketType(market),
                 sector_index_df=None,
                 sector_mapping=None,
             )
-            records.append(_rs_record(ticker, market, target, result.to_dict()))
+            records.append(_rs_record(ticker, market, target, reference, result.to_dict()))
     except RollingAuthorityError as exc:
         return MarketRsSnapshotResult(
             status=BLOCKED,
@@ -363,6 +433,7 @@ def build_market_rs_snapshot(target_as_of: str, *, repo_root: Path = ROOT) -> Ma
             row_count=0,
             ticker_count=0,
             repository_ticker_loads=loader.load_count,
+            reference_market_date=reference,
         )
     except MarketDataError as exc:
         return MarketRsSnapshotResult(
@@ -373,6 +444,7 @@ def build_market_rs_snapshot(target_as_of: str, *, repo_root: Path = ROOT) -> Ma
             row_count=0,
             ticker_count=0,
             repository_ticker_loads=loader.load_count,
+            reference_market_date=reference,
         )
 
     frame = pd.DataFrame(records, columns=list(OUTPUT_COLUMNS))
@@ -383,7 +455,9 @@ def build_market_rs_snapshot(target_as_of: str, *, repo_root: Path = ROOT) -> Ma
     if (
         result_tickers != population_tickers
         or cross["ticker"].duplicated().any()
-        or not cross["as_of"].astype(str).eq(target).all()
+        or not cross["as_of"].astype(str).eq(reference).all()
+        or not cross["requested_as_of"].astype(str).eq(target).all()
+        or not cross["reference_market_date"].astype(str).eq(reference).all()
         or not cross["market"].astype(str).isin(MARKET_INDEX_CODES).all()
     ):
         return MarketRsSnapshotResult(
@@ -394,6 +468,7 @@ def build_market_rs_snapshot(target_as_of: str, *, repo_root: Path = ROOT) -> Ma
             row_count=len(cross),
             ticker_count=len(result_tickers),
             repository_ticker_loads=loader.load_count,
+            reference_market_date=reference,
         )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -418,6 +493,7 @@ def build_market_rs_snapshot(target_as_of: str, *, repo_root: Path = ROOT) -> Ma
         row_count=len(cross),
         ticker_count=len(result_tickers),
         repository_ticker_loads=loader.load_count,
+        reference_market_date=reference,
     )
 
 

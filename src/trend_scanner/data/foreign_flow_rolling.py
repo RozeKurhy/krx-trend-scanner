@@ -23,7 +23,10 @@ from trend_scanner.data.foreign_flow_provider import (
     ForeignFlowDataProvider,
     compute_file_sha256,
 )
-from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
+from trend_scanner.data.market_calendar import (
+    load_rolling_production_market_calendar,
+    resolve_reference_market_date,
+)
 from trend_scanner.data.rolling_market_data_refresh import (
     DEFAULT_ROLLING_AUTHORITY_DIR,
     load_rolling_authority,
@@ -64,6 +67,7 @@ class ForeignFlowRollingResult:
     row_count: int = 0
     date_min: str | None = None
     date_max: str | None = None
+    reference_market_date: str | None = None
 
     def __post_init__(self) -> None:
         self.requested_trading_dates = list(self.requested_trading_dates or [])
@@ -74,6 +78,8 @@ class ForeignFlowRollingResult:
         """Return a JSON-safe representation for the CLI and reports."""
         return {
             "target_as_of": self.target_as_of,
+            "requested_as_of": self.target_as_of,
+            "reference_market_date": self.reference_market_date,
             "status": self.status,
             "reason": self.reason,
             "seed_snapshot_as_of": self.seed_snapshot_as_of,
@@ -192,7 +198,7 @@ def _calendar_dates(calendar: Any) -> list[str]:
     return sorted({date.strftime("%Y-%m-%d") for date in parsed})
 
 
-def _load_calendar_and_frontier(repo_root: Path, calendar: Any | None) -> tuple[Any, str]:
+def _load_calendar_and_frontier(repo_root: Path, calendar: Any | None) -> tuple[Any, str, str]:
     """Load the calendar together with the authority boundary that covers it.
 
     The production calendar's trading-date list alone cannot distinguish an
@@ -209,10 +215,17 @@ def _load_calendar_and_frontier(repo_root: Path, calendar: Any | None) -> tuple[
                 frontier = metadata.get("authority_frontier") or metadata.get("calendar_frontier")
         if frontier is None:
             raise _BlockedInput("ROLLING_AUTHORITY_FRONTIER_UNAVAILABLE")
+        metadata = getattr(calendar, "metadata", {})
+        certified_through = getattr(calendar, "certified_through", None)
+        if certified_through is None and isinstance(metadata, dict):
+            certified_through = metadata.get("certified_through")
+        if certified_through is None:
+            certified_through = frontier
     else:
         try:
             manifest = load_rolling_authority(repo_root / DEFAULT_ROLLING_AUTHORITY_DIR)
             frontier = manifest.merged_calendar_frontier or manifest.certified_through
+            certified_through = manifest.certified_through
             resolved = load_rolling_production_market_calendar(repo_root)
         except Exception as exc:  # noqa: BLE001 - fail closed on authority read/validation errors
             raise _BlockedInput("ROLLING_AUTHORITY_FRONTIER_UNAVAILABLE") from exc
@@ -221,27 +234,31 @@ def _load_calendar_and_frontier(repo_root: Path, calendar: Any | None) -> tuple[
 
     try:
         normalised_frontier = _normalise_date(frontier)
+        normalised_certified_through = _normalise_date(certified_through)
     except Exception as exc:  # noqa: BLE001 - invalid authority is blocked
-        raise _BlockedInput("ROLLING_AUTHORITY_FRONTIER_INVALID") from exc
-    return resolved, normalised_frontier
+        raise _BlockedInput("ROLLING_AUTHORITY_BOUNDARY_INVALID") from exc
+    return resolved, normalised_frontier, normalised_certified_through
 
 
-def _validate_authority_frontier(*, target_as_of: str, authority_frontier: str) -> None:
-    if target_as_of <= authority_frontier:
-        return
-
-    bridge_dates = pd.date_range(
-        start=pd.Timestamp(authority_frontier) + pd.Timedelta(value=1, unit="D"),
-        end=pd.Timestamp(target_as_of),
-        freq="D",
-    )
-    if len(bridge_dates) > 0 and all(day.dayofweek >= 5 for day in bridge_dates):
-        return
-
-    raise _BlockedInput(
-        "ROLLING_AUTHORITY_FRONTIER_INSUFFICIENT:"
-        f"frontier={authority_frontier}:target={target_as_of}"
-    )
+def _validate_authority_frontier(
+    *,
+    target_as_of: str,
+    reference_market_date: str,
+    authority_frontier: str,
+    certified_through: str,
+) -> None:
+    if target_as_of > certified_through:
+        raise _BlockedInput(
+            "ROLLING_AUTHORITY_FRONTIER_INSUFFICIENT:"
+            f"frontier={authority_frontier}:target={target_as_of}"
+        )
+    if reference_market_date > target_as_of:
+        raise _BlockedInput("REFERENCE_MARKET_DATE_AFTER_TARGET")
+    if reference_market_date > authority_frontier:
+        raise _BlockedInput(
+            "ROLLING_AUTHORITY_FRONTIER_INSUFFICIENT:"
+            f"frontier={authority_frontier}:reference_market_date={reference_market_date}"
+        )
 
 
 def _required_trading_dates(calendar: Any, *, start_as_of: str, target_as_of: str) -> list[str]:
@@ -263,6 +280,7 @@ def _result(
     missing: list[str] | None = None,
     fetched: list[str] | None = None,
     frame: pd.DataFrame | None = None,
+    reference_market_date: str | None = None,
 ) -> ForeignFlowRollingResult:
     date_min = date_max = None
     row_count = 0
@@ -282,6 +300,7 @@ def _result(
         row_count=row_count,
         date_min=date_min,
         date_max=date_max,
+        reference_market_date=reference_market_date,
     )
 
 
@@ -290,6 +309,7 @@ def _publish_snapshot(
     repo_root: Path,
     output_path: Path,
     target_as_of: str,
+    reference_market_date: str,
     frame: pd.DataFrame,
     seed_snapshot_as_of: str,
     incremental_trading_dates: list[str],
@@ -297,8 +317,8 @@ def _publish_snapshot(
 ) -> None:
     """Validate in memory, then publish parquet and metadata without CSV output."""
     final_frame = _normalise_flow_rows(frame, context="FINAL")
-    if final_frame["date"].gt(target_as_of).any():
-        raise _BlockedInput("FINAL_DATE_AFTER_REQUESTED_AS_OF")
+    if final_frame["date"].gt(reference_market_date).any():
+        raise _BlockedInput("FINAL_DATE_AFTER_REFERENCE_MARKET_DATE")
     final_completed_dates = set(final_frame["date"].unique())
     missing_final = set(requested_trading_dates) - final_completed_dates
     if missing_final:
@@ -315,6 +335,7 @@ def _publish_snapshot(
         meta = {
             "source_name": "KRX_PYKRX_FOREIGN_FLOW",
             "requested_as_of": target_as_of,
+            "reference_market_date": reference_market_date,
             "seed_snapshot_as_of": seed_snapshot_as_of,
             "existing_cache_through": seed_snapshot_as_of,
             "incremental_trading_dates": list(incremental_trading_dates),
@@ -342,6 +363,7 @@ def update_foreign_flow_snapshot(
     repo_root: Path,
     provider: Any | None = None,
     calendar: Any | None = None,
+    reference_market_date: str | None = None,
 ) -> ForeignFlowRollingResult:
     """Incrementally publish one exact-date foreign-flow snapshot.
 
@@ -365,17 +387,36 @@ def update_foreign_flow_snapshot(
     # This gate must precede exact-target inspection: a stale exact file beyond
     # the official frontier is not evidence that the target is complete, and
     # must not be accepted as a zero-call NOOP.
+    resolved_reference_market_date: str | None = None
     try:
-        calendar, authority_frontier = _load_calendar_and_frontier(repo_root, calendar)
+        calendar, authority_frontier, certified_through = _load_calendar_and_frontier(repo_root, calendar)
+        if reference_market_date is not None:
+            supplied_reference = _normalise_date(reference_market_date)
+            if supplied_reference not in _calendar_dates(calendar) or supplied_reference > target:
+                raise _BlockedInput("REFERENCE_MARKET_DATE_AUTHORITY_MISMATCH")
+        else:
+            supplied_reference = resolve_reference_market_date(target, calendar)
+        resolved_reference_market_date = supplied_reference
         _validate_authority_frontier(
             target_as_of=target,
+            reference_market_date=supplied_reference,
             authority_frontier=authority_frontier,
+            certified_through=certified_through,
         )
+        resolved_reference_market_date = supplied_reference
     except _BlockedInput as exc:
         return _result(
             target_as_of=target,
             status=BLOCKED,
             reason=str(exc),
+            output_path=output_path,
+            reference_market_date=resolved_reference_market_date,
+        )
+    except Exception as exc:  # noqa: BLE001 - calendar resolution must fail closed
+        return _result(
+            target_as_of=target,
+            status=BLOCKED,
+            reason=f"ROLLING_MARKET_CALENDAR_UNAVAILABLE:{type(exc).__name__}",
             output_path=output_path,
         )
 
@@ -390,11 +431,15 @@ def update_foreign_flow_snapshot(
         except _BlockedInput:
             exact_frame = None
         if exact_frame is not None:
+            if exact_frame["date"].gt(resolved_reference_market_date).any():
+                exact_frame = None
+                exact_meta = None
+        if exact_frame is not None:
             try:
                 exact_requested_dates = _required_trading_dates(
                     calendar,
                     start_as_of=str(exact_frame["date"].min()),
-                    target_as_of=target,
+                    target_as_of=resolved_reference_market_date,
                 )
             except _BlockedInput as exc:
                 return _result(
@@ -404,6 +449,7 @@ def update_foreign_flow_snapshot(
                     output_path=output_path,
                     seed_snapshot_as_of=target,
                     frame=exact_frame,
+                    reference_market_date=resolved_reference_market_date,
                 )
             except Exception:
                 return _result(
@@ -413,6 +459,7 @@ def update_foreign_flow_snapshot(
                     output_path=output_path,
                     seed_snapshot_as_of=target,
                     frame=exact_frame,
+                    reference_market_date=resolved_reference_market_date,
                 )
 
             exact_completed_dates = set(exact_frame["date"].unique())
@@ -430,6 +477,7 @@ def update_foreign_flow_snapshot(
                     missing=[],
                     fetched=[],
                     frame=exact_frame,
+                    reference_market_date=resolved_reference_market_date,
                 )
 
     valid_candidates: list[tuple[str, Path, pd.DataFrame, dict[str, Any]]] = []
@@ -437,7 +485,7 @@ def update_foreign_flow_snapshot(
         valid_candidates.append((target, output_path, exact_frame, exact_meta or {}))
     else:
         for snapshot_as_of, snapshot_path in _find_snapshot_paths(source_dir):
-            if snapshot_as_of >= target:
+            if snapshot_as_of >= target or snapshot_as_of > resolved_reference_market_date:
                 continue
             try:
                 snapshot_frame, snapshot_meta = _load_valid_snapshot(
@@ -445,6 +493,8 @@ def update_foreign_flow_snapshot(
                     expected_as_of=snapshot_as_of,
                 )
             except _BlockedInput:
+                continue
+            if snapshot_frame["date"].gt(resolved_reference_market_date).any():
                 continue
             valid_candidates.append((snapshot_as_of, snapshot_path, snapshot_frame, snapshot_meta))
 
@@ -454,6 +504,7 @@ def update_foreign_flow_snapshot(
             status=BLOCKED,
             reason="NO_USABLE_SEED_SNAPSHOT",
             output_path=output_path,
+            reference_market_date=resolved_reference_market_date,
         )
 
     seed_as_of, _, seed_frame, _ = max(valid_candidates, key=lambda item: item[0])
@@ -463,7 +514,7 @@ def update_foreign_flow_snapshot(
         requested_dates = _required_trading_dates(
             calendar,
             start_as_of=seed_date_min,
-            target_as_of=target,
+            target_as_of=resolved_reference_market_date,
         )
     except _BlockedInput as exc:
         return _result(
@@ -472,6 +523,7 @@ def update_foreign_flow_snapshot(
             reason=str(exc),
             output_path=output_path,
             seed_snapshot_as_of=seed_as_of,
+            reference_market_date=resolved_reference_market_date,
         )
     except Exception:
         return _result(
@@ -480,6 +532,7 @@ def update_foreign_flow_snapshot(
             reason="ROLLING_MARKET_CALENDAR_UNAVAILABLE",
             output_path=output_path,
             seed_snapshot_as_of=seed_as_of,
+            reference_market_date=resolved_reference_market_date,
         )
 
     completed_dates = set(seed_frame["date"].unique())
@@ -504,6 +557,7 @@ def update_foreign_flow_snapshot(
                 requested=requested_dates,
                 missing=missing_dates,
                 fetched=fetched_dates,
+                reference_market_date=resolved_reference_market_date,
             )
         except Exception:
             return _result(
@@ -515,6 +569,7 @@ def update_foreign_flow_snapshot(
                 requested=requested_dates,
                 missing=missing_dates,
                 fetched=fetched_dates,
+                reference_market_date=resolved_reference_market_date,
             )
         fetched_frames.append(fetched_frame)
         fetched_dates.append(date)
@@ -529,6 +584,7 @@ def update_foreign_flow_snapshot(
             repo_root=repo_root,
             output_path=output_path,
             target_as_of=target,
+            reference_market_date=resolved_reference_market_date,
             frame=merged,
             seed_snapshot_as_of=seed_as_of,
             incremental_trading_dates=missing_dates,
@@ -544,6 +600,7 @@ def update_foreign_flow_snapshot(
             requested=requested_dates,
             missing=missing_dates,
             fetched=fetched_dates,
+            reference_market_date=resolved_reference_market_date,
         )
     except Exception:
         return _result(
@@ -555,6 +612,7 @@ def update_foreign_flow_snapshot(
             requested=requested_dates,
             missing=missing_dates,
             fetched=fetched_dates,
+            reference_market_date=resolved_reference_market_date,
         )
 
     return _result(
@@ -567,4 +625,5 @@ def update_foreign_flow_snapshot(
         missing=missing_dates,
         fetched=fetched_dates,
         frame=merged,
+        reference_market_date=resolved_reference_market_date,
     )

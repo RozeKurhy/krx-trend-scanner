@@ -22,6 +22,7 @@ from trend_scanner.data.daily_update_phase3 import (
     _fundamentals_runner,
     _load_script_module,
     _run_step,
+    _sector_membership_runner,
     _sector_rs_ranking_runner,
     compose_phase3_status,
 )
@@ -67,6 +68,53 @@ def test_coordinator_passes_one_target_and_keeps_sector_index_internal() -> None
     assert result.steps["sector_rs"].status == PASS
     assert result.steps["sector_rs"].details["sector_index"]["status"] == NOOP_ALREADY_COMPLETE
     assert "sector_index" not in result.steps
+    assert result.reference_market_date == "2026-09-17"
+
+
+def test_coordinator_resolves_once_and_threads_requested_and_reference_dates() -> None:
+    requested = "2026-09-25"
+    reference = "2026-09-23"
+    resolver_calls: list[str] = []
+    market_calls: list[tuple[str, str, str]] = []
+
+    def resolve(target: str) -> str:
+        resolver_calls.append(target)
+        return reference
+
+    def market_runner(name: str):
+        def run(target: str, *, reference_market_date: str) -> dict[str, str]:
+            market_calls.append((name, target, reference_market_date))
+            return {
+                "status": PASS if name in {"foreign_flow", "market_rs"} else NOOP_ALREADY_COMPLETE,
+                "requested_as_of": target,
+                "reference_market_date": reference_market_date,
+            }
+
+        return run
+
+    coordinator = Phase3Coordinator(
+        foreign_flow=market_runner("foreign_flow"),
+        fundamentals=_runner(NOOP_ALREADY_COMPLETE, [], "fundamentals"),
+        market_rs=market_runner("market_rs"),
+        sector_membership=market_runner("sector_membership"),
+        sector_index=market_runner("sector_index"),
+        sector_rs_ranking=market_runner("sector_rs"),
+        reference_market_date_resolver=resolve,
+    )
+
+    result = coordinator.execute(requested)
+
+    assert resolver_calls == [requested]
+    assert result.to_dict()["requested_as_of"] == requested
+    assert result.to_dict()["reference_market_date"] == reference
+    assert market_calls == [
+        ("foreign_flow", requested, reference),
+        ("market_rs", requested, reference),
+        ("sector_membership", requested, reference),
+        ("sector_index", requested, reference),
+        ("sector_rs", requested, reference),
+    ]
+    assert result.overall_status == PASS
 
 
 @pytest.mark.parametrize("dependency_status", [BLOCKED, FAILED])
@@ -87,6 +135,38 @@ def test_membership_dependency_stops_sector_index_and_ranking(dependency_status:
     assert result.steps["sector_rs"].status == dependency_status
     assert not any(call.startswith("sector_index:") for call in calls)
     assert not any(call.startswith("ranking:") for call in calls)
+
+
+def test_sector_membership_checks_reference_pit_population_and_requested_metadata(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requested = "2026-09-25"
+    reference = "2026-09-23"
+    membership = pd.DataFrame(
+        {"ticker": ["000001"], "market": ["KOSPI"]}
+    )
+    population = membership.copy()
+    calls: list[tuple[str, str]] = []
+
+    def resolve(date: str, *, repo_root: Path):
+        calls.append(("membership", date))
+        return membership, "2026-09-17", tmp_path / "membership.parquet", {}
+
+    def load_population(date: str, *, repo_root: Path):
+        calls.append(("population", date))
+        return population
+
+    monkeypatch.setattr(phase3, "resolve_sector_membership_snapshot_for_target", resolve)
+    monkeypatch.setattr(phase3, "load_local_target_universe", load_population)
+
+    result = _run_step(_sector_membership_runner(tmp_path), requested, reference)
+
+    assert result.status == NOOP_ALREADY_COMPLETE
+    assert calls == [("membership", reference), ("population", reference)]
+    assert result.details["requested_as_of"] == requested
+    assert result.details["target_common_as_of"] == reference
+    assert result.details["reference_market_date"] == reference
 
 
 @pytest.mark.parametrize("index_status", [BLOCKED, FAILED])
@@ -147,6 +227,8 @@ def test_sector_rs_noop_requires_current_membership_effective_date(
     (output_dir / f"sector_rs_ranking_{compact}_meta.json").write_text(
         json.dumps(
             {
+                "requested_as_of": target,
+                "reference_market_date": target,
                 "as_of": target,
                 "membership_effective_date": artifact_effective_date,
                 "scope": {"type": "TARGET_PIT_COMMON_POPULATION"},
@@ -171,7 +253,7 @@ def test_sector_rs_noop_requires_current_membership_effective_date(
         lambda *_args, **_kwargs: pytest.fail("invalid existing artifact must not rebuild"),
     )
 
-    result = _run_step(_sector_rs_ranking_runner(tmp_path), target)
+    result = _run_step(_sector_rs_ranking_runner(tmp_path), target, target)
 
     assert result.status == expected_status
     if expected_status == BLOCKED:

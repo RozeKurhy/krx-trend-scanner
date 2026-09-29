@@ -1215,12 +1215,11 @@ def generate_stock_report(
     )
 
     # 7c. Sector Relative Strength (independent local Repository V2 calculation)
-    # The exact membership snapshot for the requested date is loaded inside the
-    # builder. Market RS remains the exact-date authority CSV consumer above;
-    # the two sections are independent.
+    # Sector membership and every market observation use the resolved reference
+    # trading date. The report itself remains attached to canonical_as_of.
     sector_relative_strength_section = build_sector_relative_strength_section(
         ticker=clean_ticker,
-        requested_as_of=canonical_as_of,
+        requested_as_of=ref_market_date,
         asset_type=asset_type,
         market=market,
         stock_df=daily_slice,

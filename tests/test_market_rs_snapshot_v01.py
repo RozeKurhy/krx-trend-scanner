@@ -42,9 +42,26 @@ def _interval(ticker: str, market: str, effective_from: str, effective_to: str, 
     }
 
 
-def _patch_authority(monkeypatch: pytest.MonkeyPatch, certified_through: str) -> None:
+def _patch_authority(
+    monkeypatch: pytest.MonkeyPatch,
+    certified_through: str,
+    *,
+    calendar_frontier: str | None = None,
+) -> None:
     monkeypatch.setattr(
-        mrs, "load_rolling_authority", lambda directory: SimpleNamespace(certified_through=certified_through)
+        mrs,
+        "load_rolling_authority",
+        lambda directory: SimpleNamespace(
+            certified_through=certified_through,
+            merged_calendar_frontier=calendar_frontier or certified_through,
+        ),
+    )
+    monkeypatch.setattr(
+        mrs,
+        "load_rolling_production_market_calendar",
+        lambda _root: SimpleNamespace(
+            trading_dates=pd.bdate_range(end=certified_through, periods=300)
+        ),
     )
 
 
@@ -216,6 +233,44 @@ def test_t4_price_missing_common_ticker_row_preserved(tmp_path, monkeypatch):
     assert set(frame["ticker"]) == {"000001", "000002", "000003"}
     row_c = frame[frame["ticker"] == "000003"].iloc[0]
     assert row_c["market_rs_data_status"] == "DATA_UNAVAILABLE"
+
+
+def test_non_trading_requested_target_uses_reference_market_date_inputs(tmp_path, monkeypatch):
+    requested = "2026-09-25"
+    reference = "2026-09-23"
+    _patch_authority(monkeypatch, requested, calendar_frontier=reference)
+    monkeypatch.setattr(
+        mrs,
+        "load_rolling_production_market_calendar",
+        lambda _root: SimpleNamespace(trading_dates=pd.to_datetime(["2026-09-22", reference])),
+    )
+    _write_pit(
+        tmp_path,
+        [_interval("005930", "KOSPI", "2010-01-04", requested)],
+    )
+    _patch_index(
+        monkeypatch,
+        {
+            "1001": _bench_frame(reference, 20, "1001"),
+            "2001": _bench_frame(reference, 20, "2001"),
+        },
+    )
+    _patch_repository(monkeypatch, {"005930": _stock_frame(reference, 20)})
+
+    result = mrs.build_market_rs_snapshot(requested, repo_root=tmp_path)
+
+    assert result.status == mrs.PASS
+    assert result.target_as_of == requested
+    assert result.reference_market_date == reference
+    frame = _read_output(tmp_path, requested)
+    assert frame["as_of"].astype(str).tolist() == [reference]
+    assert frame["requested_as_of"].astype(str).tolist() == [requested]
+    assert frame["reference_market_date"].astype(str).tolist() == [reference]
+    assert frame["market_benchmark_last_observation_date"].astype(str).tolist() == [reference]
+    from trend_scanner.reporting.relative_strength_report import load_relative_strength_section
+
+    section = load_relative_strength_section("005930", requested, "COMMON", "KOSPI", tmp_path)
+    assert section.source_as_of == reference
 
 
 # ---------------------------------------------------------------------------
@@ -445,6 +500,8 @@ def test_t11_invalid_existing_artifact_blocks_without_overwrite(tmp_path, monkey
     stale.loc[0, "ticker"] = "000001"
     stale.loc[0, "market"] = "KOSPI"
     stale.loc[0, "as_of"] = target
+    stale.loc[0, "requested_as_of"] = target
+    stale.loc[0, "reference_market_date"] = target
     stale.to_csv(output_path, index=False)
     original_bytes = output_path.read_bytes()
 
