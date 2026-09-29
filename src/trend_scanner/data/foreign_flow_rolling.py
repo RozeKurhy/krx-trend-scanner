@@ -68,6 +68,7 @@ class ForeignFlowRollingResult:
     date_min: str | None = None
     date_max: str | None = None
     reference_market_date: str | None = None
+    diagnostic: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         self.requested_trading_dates = list(self.requested_trading_dates or [])
@@ -90,11 +91,149 @@ class ForeignFlowRollingResult:
             "row_count": int(self.row_count),
             "date_min": self.date_min,
             "date_max": self.date_max,
+            "diagnostic": dict(self.diagnostic) if self.diagnostic is not None else None,
         }
 
 
 class _BlockedInput(Exception):
     """Internal marker for an expected unavailable or invalid source."""
+
+
+def _exception_chain(error: BaseException) -> list[BaseException]:
+    chain: list[BaseException] = []
+    pending = [error]
+    seen: set[int] = set()
+    while pending:
+        current = pending.pop(0)
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        chain.append(current)
+        for linked in (
+            getattr(current, "__cause__", None),
+            getattr(current, "__context__", None),
+            getattr(current, "reason", None),
+        ):
+            if isinstance(linked, BaseException):
+                pending.append(linked)
+    return chain
+
+
+def _http_status(error: BaseException) -> int | None:
+    for current in _exception_chain(error):
+        candidates = [getattr(current, "code", None)]
+        response = getattr(current, "response", None)
+        if response is not None:
+            candidates.extend((getattr(response, "status_code", None), getattr(response, "status", None)))
+        for value in candidates:
+            if isinstance(value, int) and not isinstance(value, bool) and 100 <= value <= 599:
+                return value
+    return None
+
+
+def _foreign_flow_diagnostic(
+    date: str,
+    error: BaseException,
+    *,
+    candidate: Any = None,
+) -> dict[str, Any]:
+    if isinstance(candidate, dict):
+        failure_type = candidate.get("failure_type")
+        if failure_type not in {
+            "AUTH_REJECTED", "HTTP_ERROR", "TIMEOUT", "CONNECTION_ERROR", "EMPTY_RESULT",
+            "PARSE_ERROR", "RESPONSE_FORMAT_ERROR", "PROVIDER_ERROR",
+        }:
+            failure_type = "PROVIDER_ERROR"
+        exception_class = candidate.get("exception_class")
+        if not isinstance(exception_class, str) or not exception_class.isidentifier() or len(exception_class) > 80:
+            exception_class = type(error).__name__
+        http_status = candidate.get("http_status")
+        if not isinstance(http_status, int) or isinstance(http_status, bool) or not 100 <= http_status <= 599:
+            http_status = None
+        provider_error_code = candidate.get("provider_error_code")
+        if not isinstance(provider_error_code, str) or re.fullmatch(r"[A-Za-z0-9_-]{1,32}", provider_error_code) is None:
+            provider_error_code = None
+        return {
+            "component": "FOREIGN_FLOW",
+            "provider": "PYKRX",
+            "requested_date": date,
+            "failure_type": failure_type,
+            "exception_class": exception_class,
+            "http_status": http_status,
+            "timeout": candidate.get("timeout") if isinstance(candidate.get("timeout"), bool) else False,
+            "connection_failure": candidate.get("connection_failure") if isinstance(candidate.get("connection_failure"), bool) else False,
+            "response_present": candidate.get("response_present") if isinstance(candidate.get("response_present"), bool) else None,
+            "provider_error_code": provider_error_code,
+            "empty_result": candidate.get("empty_result") if isinstance(candidate.get("empty_result"), bool) else False,
+            "parsing_failure": candidate.get("parsing_failure") if isinstance(candidate.get("parsing_failure"), bool) else False,
+        }
+
+    chain = _exception_chain(error)
+    status = _http_status(error)
+    class_names = [type(item).__name__ for item in chain]
+    timeout = any("timeout" in name.lower() for name in class_names)
+    connection = any(
+        name in {"ConnectionError", "ConnectionResetError", "ConnectionAbortedError", "NewConnectionError"}
+        or (name == "URLError" and "HTTPError" not in class_names)
+        or "connectionerror" in name.lower()
+        for name in class_names
+    )
+    empty_result = False
+    parsing_failure = False
+    response_present: bool | None = None
+    if isinstance(error, _BlockedInput):
+        # _BlockedInput messages are created locally from a fixed set of tokens.
+        parts = str(error.args[0]).split(":") if error.args else []
+        if "EMPTY_RESPONSE" in parts:
+            failure_type = "EMPTY_RESULT"
+            empty_result = True
+            response_present = True
+        elif any(marker in parts for marker in ("INVALID_DATE", "INVALID_NUMERIC_VALUE")):
+            failure_type = "PARSE_ERROR"
+            parsing_failure = True
+            response_present = True
+        else:
+            failure_type = "RESPONSE_FORMAT_ERROR"
+            parsing_failure = any(marker in parts for marker in ("NON_DATAFRAME_RESPONSE", "MISSING_COLUMNS"))
+            response_present = True
+    elif timeout:
+        failure_type = "TIMEOUT"
+    elif status is not None:
+        failure_type = "HTTP_ERROR"
+        response_present = True
+    elif connection:
+        failure_type = "CONNECTION_ERROR"
+    elif any(name in {"ValueError", "TypeError", "JSONDecodeError", "UnicodeDecodeError"} for name in class_names[1:]):
+        failure_type = "PARSE_ERROR"
+        parsing_failure = True
+        response_present = True
+    else:
+        failure_type = "PROVIDER_ERROR"
+
+    exception_class = next(
+        (
+            name for name in class_names
+            if "timeout" in name.lower()
+            or name in {"HTTPError", "ConnectionError", "ConnectionResetError", "ConnectionAbortedError", "NewConnectionError", "URLError"}
+        ),
+        class_names[0] if class_names else "Exception",
+    )
+    if not isinstance(exception_class, str) or not exception_class.isidentifier() or len(exception_class) > 80:
+        exception_class = "Exception"
+    return {
+        "component": "FOREIGN_FLOW",
+        "provider": "PYKRX",
+        "requested_date": date,
+        "failure_type": failure_type,
+        "exception_class": exception_class,
+        "http_status": status,
+        "timeout": bool(timeout),
+        "connection_failure": bool(connection),
+        "response_present": response_present,
+        "provider_error_code": None,
+        "empty_result": bool(empty_result),
+        "parsing_failure": bool(parsing_failure),
+    }
 
 
 def _normalise_date(value: Any) -> str:
@@ -281,6 +420,7 @@ def _result(
     fetched: list[str] | None = None,
     frame: pd.DataFrame | None = None,
     reference_market_date: str | None = None,
+    diagnostic: dict[str, Any] | None = None,
 ) -> ForeignFlowRollingResult:
     date_min = date_max = None
     row_count = 0
@@ -301,6 +441,7 @@ def _result(
         date_min=date_min,
         date_max=date_max,
         reference_market_date=reference_market_date,
+        diagnostic=diagnostic,
     )
 
 
@@ -547,7 +688,7 @@ def update_foreign_flow_snapshot(
             fetched_frame = _normalise_flow_rows(fetched, context=f"FETCH:{date}")
             if set(fetched_frame["date"].unique()) != {date}:
                 raise _BlockedInput(f"FETCH:{date}:DATE_MISMATCH")
-        except (MarketDataError, _BlockedInput):
+        except (MarketDataError, _BlockedInput) as exc:
             return _result(
                 target_as_of=target,
                 status=BLOCKED,
@@ -558,8 +699,9 @@ def update_foreign_flow_snapshot(
                 missing=missing_dates,
                 fetched=fetched_dates,
                 reference_market_date=resolved_reference_market_date,
+                diagnostic=_foreign_flow_diagnostic(date, exc, candidate=getattr(exc, "diagnostic", None)),
             )
-        except Exception:
+        except Exception as exc:
             return _result(
                 target_as_of=target,
                 status=FAILED,
@@ -570,6 +712,7 @@ def update_foreign_flow_snapshot(
                 missing=missing_dates,
                 fetched=fetched_dates,
                 reference_market_date=resolved_reference_market_date,
+                diagnostic=_foreign_flow_diagnostic(date, exc, candidate=getattr(exc, "diagnostic", None)),
             )
         fetched_frames.append(fetched_frame)
         fetched_dates.append(date)

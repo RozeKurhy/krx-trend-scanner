@@ -68,6 +68,7 @@ class IndexPriceDataProvider:
         self._cached_market_df: pd.DataFrame | None = None
         self._cached_sector_df: pd.DataFrame | None = None
         self._cached_sector_mapping_raw_df: pd.DataFrame | None = None
+        self.last_sector_index_update_report: dict[str, Any] = {}
 
     def fetch_index_series(
         self,
@@ -243,11 +244,13 @@ class IndexPriceDataProvider:
             max_requests=max_requests,
             throttle_seconds=throttle_seconds,
         )
-        return builder.update(
+        result = builder.update(
             target_date=target_date,
             output_parquet=Path(output_parquet),
             output_meta=Path(output_meta),
-        ).dataframe
+        )
+        self.last_sector_index_update_report = dict(result.report)
+        return result.dataframe
 
     def build_sector_mapping(
         self,

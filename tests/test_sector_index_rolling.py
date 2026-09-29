@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 from types import SimpleNamespace
+from urllib.error import URLError
 
 import pandas as pd
 import pytest
@@ -15,9 +16,11 @@ from trend_scanner.data.krx_sector_index import KRX_NATIVE_SECTOR_INDEX_MAP, STA
 from trend_scanner.data.krx_openapi_client import (
     KrxOpenApiAuthorizationError,
     KrxOpenApiBudgetError,
+    KrxOpenApiClient,
     KrxOpenApiRateLimitError,
 )
 from trend_scanner.data.krx_openapi_quota import KrxOpenApiQuotaExceeded
+from trend_scanner.data.krx_sector_index import KrxSectorIndexCacheBuilder
 from trend_scanner.data.rolling_market_data_refresh import (
     ROLLING_AUTHORITY_VERSION,
     RollingAuthorityManifest,
@@ -40,15 +43,24 @@ class FakeCalendar:
 
 
 class FakeUpdater:
-    def __init__(self, *, materialize: set[str] | None = None, errors: dict[str, Exception] | None = None):
+    def __init__(
+        self,
+        *,
+        materialize: set[str] | None = None,
+        errors: dict[str, Exception] | None = None,
+        reports: dict[str, dict[str, object]] | None = None,
+    ):
         self.materialize = materialize
         self.errors = errors or {}
+        self.reports = reports or {}
+        self.last_sector_index_update_report: dict[str, object] = {}
         self.calls: list[str] = []
 
     def update_sector_index_cache(self, *, target_date: str, output_parquet: Path, output_meta: Path):
         self.calls.append(target_date)
         if target_date in self.errors:
             raise self.errors[target_date]
+        self.last_sector_index_update_report = self.reports.get(target_date, {})
         if self.materialize is not None and target_date not in self.materialize:
             return pd.read_parquet(output_parquet)
         current = pd.read_parquet(output_parquet)
@@ -288,6 +300,8 @@ def test_confirmed_trading_date_empty_response_is_not_silent_noop(tmp_path: Path
     assert result.status == BLOCKED
     assert result.reason == "REQUIRED_TRADING_DATE_NOT_MATERIALIZED"
     assert result.update_call_count == 1
+    assert result.to_dict()["diagnostic"]["failure_type"] == "EMPTY_RESULT"
+    assert result.to_dict()["diagnostic"]["empty_result"] is True
 
 
 def test_market_data_error_is_blocked(tmp_path: Path) -> None:
@@ -302,6 +316,7 @@ def test_market_data_error_is_blocked(tmp_path: Path) -> None:
     assert result.status == BLOCKED
     assert result.reason == "REQUIRED_TRADING_DATE_UPDATE_BLOCKED:2026-09-02"
     assert result.update_call_count == 1
+    assert result.to_dict()["diagnostic"]["failure_type"] == "PROVIDER_ERROR"
 
 
 def test_unexpected_exception_is_failed(tmp_path: Path) -> None:
@@ -318,9 +333,150 @@ def test_unexpected_exception_is_failed(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
+    ("error", "failure_type", "field"),
+    [
+        (TimeoutError("fixture-secret"), "TIMEOUT", "timeout"),
+        (URLError(TimeoutError("fixture-secret")), "TIMEOUT", "timeout"),
+        (ConnectionError("fixture-secret"), "CONNECTION_ERROR", "connection_failure"),
+    ],
+)
+def test_transport_failures_are_classified_without_exception_text(
+    tmp_path: Path,
+    error: Exception,
+    failure_type: str,
+    field: str,
+) -> None:
+    _prepare(tmp_path, ["2026-09-01"])
+    result = update_sector_index_rolling(
+        "2026-09-02",
+        repo_root=tmp_path,
+        provider=FakeUpdater(errors={"2026-09-02": error}),
+        calendar=FakeCalendar(["2026-09-01", "2026-09-02"]),
+    )
+
+    diagnostic = result.to_dict()["diagnostic"]
+    assert diagnostic["failure_type"] == failure_type
+    assert diagnostic[field] is True
+    assert "fixture-secret" not in str(result.to_dict())
+
+
+def test_sector_empty_api_result_is_reported_without_response_content(tmp_path: Path) -> None:
+    _prepare(tmp_path, ["2026-09-01"])
+    safe_diagnostic = {
+        "component": "SECTOR_INDEX",
+        "provider": "KRX_OPEN_API",
+        "requested_date": "2026-09-02",
+        "failure_type": "EMPTY_RESULT",
+        "exception_class": None,
+        "http_status": 200,
+        "timeout": False,
+        "connection_failure": False,
+        "response_present": True,
+        "provider_error_code": None,
+        "empty_result": True,
+        "parsing_failure": False,
+        "body": "fixture-secret must not survive sanitization",
+    }
+    updater = FakeUpdater(
+        materialize=set(),
+        reports={"2026-09-02": {"fetch_diagnostics": [safe_diagnostic]}},
+    )
+    result = update_sector_index_rolling(
+        "2026-09-02",
+        repo_root=tmp_path,
+        provider=updater,
+        calendar=FakeCalendar(["2026-09-01", "2026-09-02"]),
+    )
+
+    diagnostic = result.to_dict()["diagnostic"]
+    assert diagnostic["failure_type"] == "EMPTY_RESULT"
+    assert diagnostic["http_status"] == 200
+    assert "fixture-secret" not in str(result.to_dict())
+
+
+def test_client_parse_failure_is_forwarded_as_secret_safe_sector_diagnostic() -> None:
+    class RawResponse:
+        status = 200
+        headers = {"Content-Type": "application/json"}
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return b"not-json fixture-secret"
+
+    client = KrxOpenApiClient("test-only-key", opener=lambda request, timeout: RawResponse())
+    builder = KrxSectorIndexCacheBuilder(client=client)
+
+    with pytest.raises(MarketDataError) as exc_info:
+        builder._fetch_api("kospi_dd_trd", "2026-09-02")
+
+    diagnostic = exc_info.value.diagnostic
+    assert diagnostic["failure_type"] == "PARSE_ERROR"
+    assert diagnostic["exception_class"] == "JSONDecodeError"
+    assert diagnostic["http_status"] == 200
+    assert diagnostic["parsing_failure"] is True
+    assert "fixture-secret" not in str(diagnostic)
+
+
+@pytest.mark.parametrize(
+    ("failure", "failure_type", "field"),
+    [
+        (TimeoutError("fixture-secret"), "TIMEOUT", "timeout"),
+        (URLError(TimeoutError("fixture-secret")), "TIMEOUT", "timeout"),
+        (ConnectionError("fixture-secret"), "CONNECTION_ERROR", "connection_failure"),
+    ],
+)
+def test_krx_transport_errors_are_forwarded_without_error_text(
+    failure: Exception,
+    failure_type: str,
+    field: str,
+) -> None:
+    client = KrxOpenApiClient(
+        "test-only-key",
+        max_transient_retries=0,
+        opener=lambda request, timeout: (_ for _ in ()).throw(failure),
+    )
+    builder = KrxSectorIndexCacheBuilder(client=client)
+
+    with pytest.raises(MarketDataError) as exc_info:
+        builder._fetch_api("kospi_dd_trd", "2026-09-02")
+
+    diagnostic = exc_info.value.diagnostic
+    assert diagnostic["failure_type"] == failure_type
+    assert diagnostic[field] is True
+    assert diagnostic["response_present"] is False
+    assert "fixture-secret" not in str(diagnostic)
+
+
+def test_krx_http_status_is_forwarded_without_response_body() -> None:
+    class HttpErrorResponse:
+        http_status = 503
+        records = ()
+        records_key = None
+        response_present = True
+        parsing_failure = False
+        error_type = None
+
+    client = type("StubClient", (), {"fetch": lambda *_args, **_kwargs: HttpErrorResponse()})()
+    builder = KrxSectorIndexCacheBuilder(client=client)
+
+    with pytest.raises(MarketDataError) as exc_info:
+        builder._fetch_api("kospi_dd_trd", "2026-09-02")
+
+    diagnostic = exc_info.value.diagnostic
+    assert diagnostic["failure_type"] == "HTTP_ERROR"
+    assert diagnostic["http_status"] == 503
+    assert diagnostic["response_present"] is True
+
+
+@pytest.mark.parametrize(
     "error",
     [
-        KrxOpenApiAuthorizationError("unauthorized"),
+        KrxOpenApiAuthorizationError("unauthorized", http_status=403),
         KrxOpenApiRateLimitError("rate limited"),
         KrxOpenApiBudgetError("budget exhausted"),
         KrxOpenApiQuotaExceeded(
@@ -344,6 +500,9 @@ def test_known_krx_operational_blockers_are_blocked(tmp_path: Path, error: Excep
     )
     assert result.status == BLOCKED
     assert result.update_call_count == 1
+    if isinstance(error, KrxOpenApiAuthorizationError):
+        assert result.to_dict()["diagnostic"]["failure_type"] == "AUTH_REJECTED"
+        assert result.to_dict()["diagnostic"]["http_status"] == 403
 
 
 @pytest.mark.parametrize(

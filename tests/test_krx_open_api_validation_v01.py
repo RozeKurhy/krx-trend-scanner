@@ -83,9 +83,10 @@ def test_client_does_not_retry_authorization_or_rate_limit() -> None:
         raise HTTPError(request.full_url, 401, "unauthorized", {}, io.BytesIO(b'{"respCode":"401"}'))
 
     auth_client = KrxOpenApiClient("secret", opener=auth_opener)
-    with pytest.raises(KrxOpenApiAuthorizationError):
+    with pytest.raises(KrxOpenApiAuthorizationError) as auth_error:
         auth_client.fetch("/sto/stk_bydd_trd", "20260820")
     assert len(calls) == 1
+    assert auth_error.value.http_status == 401
     assert auth_client.audit[0]["http_status"] == 401
 
     calls.clear()

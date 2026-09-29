@@ -166,6 +166,44 @@ def _request_dates(start_date: str, end_date: str) -> tuple[str, ...]:
     return tuple(item.strftime("%Y-%m-%d") for item in pd.date_range(start, end, freq="B"))
 
 
+def _sector_fetch_diagnostic(
+    date_text: str,
+    *,
+    failure_type: str,
+    exception_class: str | None = None,
+    http_status: int | None = None,
+    timeout: bool = False,
+    connection_failure: bool = False,
+    response_present: bool | None = None,
+    empty_result: bool = False,
+    parsing_failure: bool = False,
+) -> dict[str, Any]:
+    safe_exception_class = (
+        exception_class
+        if isinstance(exception_class, str) and exception_class.isidentifier() and len(exception_class) <= 80
+        else None
+    )
+    safe_http_status = (
+        http_status
+        if isinstance(http_status, int) and not isinstance(http_status, bool) and 100 <= http_status <= 599
+        else None
+    )
+    return {
+        "component": "SECTOR_INDEX",
+        "provider": "KRX_OPEN_API",
+        "requested_date": date_text,
+        "failure_type": failure_type,
+        "exception_class": safe_exception_class,
+        "http_status": safe_http_status,
+        "timeout": bool(timeout),
+        "connection_failure": bool(connection_failure),
+        "response_present": response_present,
+        "provider_error_code": None,
+        "empty_result": bool(empty_result),
+        "parsing_failure": bool(parsing_failure),
+    }
+
+
 class KrxSectorIndexCacheBuilder:
     """Build and incrementally update the normalized native sector cache."""
 
@@ -182,6 +220,7 @@ class KrxSectorIndexCacheBuilder:
         self._quota = quota
         self._throttle_seconds = max(0.0, float(throttle_seconds))
         self._sleeper = sleeper
+        self.fetch_diagnostics: list[dict[str, Any]] = []
         if client is not None:
             self.client = client
         else:
@@ -204,10 +243,78 @@ class KrxSectorIndexCacheBuilder:
             self._sleeper(self._throttle_seconds)
         response = self.client.fetch(f"/idx/{api_id}", date_text, quota_endpoint_key=api_id)
         status = getattr(response, "http_status", 200)
+        response_present = bool(getattr(response, "response_present", True))
         if status != 200:
-            raise MarketDataError(f"KRX sector endpoint failed: {api_id} {date_text} HTTP_{status}")
+            raw_error_type = getattr(response, "error_type", None)
+            error_type = (
+                raw_error_type
+                if isinstance(raw_error_type, str) and raw_error_type.isidentifier() and len(raw_error_type) <= 80
+                else None
+            )
+            timeout = bool(error_type and "timeout" in error_type.lower())
+            connection_failure = bool(
+                error_type
+                and (
+                    "connection" in error_type.lower()
+                    or error_type == "URLError"
+                )
+            )
+            failure_type = "TIMEOUT" if timeout else "CONNECTION_ERROR" if connection_failure else "HTTP_ERROR"
+            error = MarketDataError(f"KRX sector endpoint failed: {api_id} {date_text} HTTP_{status}")
+            error.diagnostic = _sector_fetch_diagnostic(
+                date_text,
+                failure_type=failure_type,
+                exception_class=error_type,
+                http_status=status,
+                timeout=timeout,
+                connection_failure=connection_failure,
+                response_present=response_present,
+            )
+            raise error
+        if bool(getattr(response, "parsing_failure", False)):
+            error = MarketDataError("KRX sector endpoint returned an unreadable JSON response")
+            error.diagnostic = _sector_fetch_diagnostic(
+                date_text,
+                failure_type="PARSE_ERROR",
+                exception_class=getattr(response, "parse_exception_class", None),
+                http_status=status,
+                response_present=response_present,
+                parsing_failure=True,
+            )
+            raise error
+        if hasattr(response, "records_key") and getattr(response, "records_key") is None:
+            error = MarketDataError("KRX sector endpoint returned an unexpected response shape")
+            error.diagnostic = _sector_fetch_diagnostic(
+                date_text,
+                failure_type="RESPONSE_FORMAT_ERROR",
+                http_status=status,
+                response_present=response_present,
+                parsing_failure=True,
+            )
+            raise error
         rows = self._records(response)
+        if not rows:
+            self.fetch_diagnostics.append(
+                _sector_fetch_diagnostic(
+                    date_text,
+                    failure_type="EMPTY_RESULT",
+                    http_status=status,
+                    response_present=response_present,
+                    empty_result=True,
+                )
+            )
         return rows, not rows
+
+    @staticmethod
+    def _attach_response_format_diagnostic(error: MarketDataError, date_text: str) -> MarketDataError:
+        error.diagnostic = _sector_fetch_diagnostic(
+            date_text,
+            failure_type="RESPONSE_FORMAT_ERROR",
+            exception_class=type(error).__name__,
+            response_present=True,
+            parsing_failure=True,
+        )
+        return error
 
     @staticmethod
     def _normalize_snapshot(rows: Iterable[Mapping[str, Any]], *, date_text: str, api_id: str) -> list[dict[str, Any]]:
@@ -239,6 +346,7 @@ class KrxSectorIndexCacheBuilder:
         return normalized
 
     def _collect(self, request_dates: Iterable[str]) -> tuple[list[dict[str, Any]], list[str], dict[str, Any]]:
+        self.fetch_diagnostics = []
         request_dates_tuple = tuple(request_dates)
         rows: list[dict[str, Any]] = []
         trading_dates: list[str] = []
@@ -250,9 +358,19 @@ class KrxSectorIndexCacheBuilder:
                 non_trading_dates.append(date_text)
                 continue
             if kospi_empty != kosdaq_empty:
-                raise MarketDataError(f"partial API snapshot for date {date_text}")
-            date_rows = self._normalize_snapshot(kospi_rows, date_text=date_text, api_id=KOSPI_SECTOR_API)
-            date_rows.extend(self._normalize_snapshot(kosdaq_rows, date_text=date_text, api_id=KOSDAQ_SECTOR_API))
+                error = MarketDataError(f"partial API snapshot for date {date_text}")
+                error.diagnostic = _sector_fetch_diagnostic(
+                    date_text,
+                    failure_type="EMPTY_RESULT",
+                    response_present=True,
+                    empty_result=True,
+                )
+                raise error
+            try:
+                date_rows = self._normalize_snapshot(kospi_rows, date_text=date_text, api_id=KOSPI_SECTOR_API)
+                date_rows.extend(self._normalize_snapshot(kosdaq_rows, date_text=date_text, api_id=KOSDAQ_SECTOR_API))
+            except MarketDataError as exc:
+                raise self._attach_response_format_diagnostic(exc, date_text) from exc
             if len(date_rows) != len(KRX_NATIVE_SECTOR_INDEX_MAP):
                 raise MarketDataError(f"expected 46 sector rows, got {len(date_rows)} ({date_text})")
             rows.extend(date_rows)
@@ -369,7 +487,17 @@ class KrxSectorIndexCacheBuilder:
         rows, trading_dates, report = self._collect((target,))
         if not rows:
             existing = pd.read_parquet(output_parquet) if output_parquet.exists() else pd.DataFrame(columns=list(STANDARD_INDEX_COLUMNS))
-            return SectorCacheBuildResult(existing, tuple(), (target,), {**report, "idempotent_noop": True, "request_count": int(getattr(self.client, "request_count", 0))})
+            return SectorCacheBuildResult(
+                existing,
+                tuple(),
+                (target,),
+                {
+                    **report,
+                    "fetch_diagnostics": list(self.fetch_diagnostics),
+                    "idempotent_noop": True,
+                    "request_count": int(getattr(self.client, "request_count", 0)),
+                },
+            )
         new_rows = pd.DataFrame(rows, columns=list(STANDARD_INDEX_COLUMNS))
         existing = pd.read_parquet(output_parquet) if output_parquet.exists() else pd.DataFrame(columns=list(STANDARD_INDEX_COLUMNS))
         if not existing.empty:

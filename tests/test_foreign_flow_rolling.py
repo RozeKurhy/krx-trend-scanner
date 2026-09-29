@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 import json
+import io
 from pathlib import Path
+import sys
+from types import ModuleType, SimpleNamespace
+from urllib.error import HTTPError
 
 import pandas as pd
+import pytest
 
+from trend_scanner.data.errors import MarketDataError
+from trend_scanner.data.foreign_flow_provider import ForeignFlowDataProvider
 from trend_scanner.data.foreign_flow_rolling import (
     BLOCKED,
     NOOP_ALREADY_COMPLETE,
@@ -37,6 +44,16 @@ class FakeProvider:
     def fetch_date_batch(self, date: str) -> pd.DataFrame:
         self.calls.append(date)
         return self.responses[date].copy()
+
+
+class ErrorProvider:
+    def __init__(self, error: BaseException):
+        self.error = error
+        self.calls: list[str] = []
+
+    def fetch_date_batch(self, date: str) -> pd.DataFrame:
+        self.calls.append(date)
+        raise self.error
 
 
 def _flow(dates: list[str], *, ticker: str = "005930", base: float = 100.0) -> pd.DataFrame:
@@ -245,9 +262,108 @@ def test_empty_required_date_blocks_without_publishing_target(tmp_path: Path):
     )
 
     assert result.status == BLOCKED
+    assert result.to_dict()["diagnostic"]["failure_type"] == "EMPTY_RESULT"
+    assert result.to_dict()["diagnostic"]["empty_result"] is True
     assert provider.calls == ["2026-09-07"]
     assert not (tmp_path / FLOW_DIR / "foreign_flow_daily_20260908.parquet").exists()
     assert not (tmp_path / FLOW_DIR / "foreign_flow_daily_20260908_meta.json").exists()
+
+
+@pytest.mark.parametrize(
+    ("error", "failure_type", "field"),
+    [
+        (TimeoutError("fixture-secret"), "TIMEOUT", "timeout"),
+        (ConnectionError("fixture-secret"), "CONNECTION_ERROR", "connection_failure"),
+    ],
+)
+def test_transport_failures_are_classified_without_exception_text(
+    tmp_path: Path,
+    error: BaseException,
+    failure_type: str,
+    field: str,
+) -> None:
+    _write_snapshot(tmp_path, "2026-09-04", _flow(["2026-09-04"]))
+    result = update_foreign_flow_snapshot(
+        "2026-09-08",
+        repo_root=tmp_path,
+        provider=ErrorProvider(error),
+        calendar=FakeCalendar(["2026-09-04", "2026-09-07", "2026-09-08"]),
+    )
+
+    diagnostic = result.to_dict()["diagnostic"]
+    assert diagnostic["component"] == "FOREIGN_FLOW"
+    assert diagnostic["provider"] == "PYKRX"
+    assert diagnostic["requested_date"] == "2026-09-07"
+    assert diagnostic["failure_type"] == failure_type
+    assert diagnostic[field] is True
+    assert "fixture-secret" not in str(result.to_dict())
+
+
+def test_wrapped_http_failure_exposes_only_safe_status(tmp_path: Path) -> None:
+    _write_snapshot(tmp_path, "2026-09-04", _flow(["2026-09-04"]))
+    error = MarketDataError("private response text fixture-secret")
+    error.__cause__ = HTTPError(
+        "https://example.invalid/path?token=fixture-secret",
+        403,
+        "forbidden",
+        {},
+        io.BytesIO(b"private response body fixture-secret"),
+    )
+    result = update_foreign_flow_snapshot(
+        "2026-09-08",
+        repo_root=tmp_path,
+        provider=ErrorProvider(error),
+        calendar=FakeCalendar(["2026-09-04", "2026-09-07", "2026-09-08"]),
+    )
+
+    diagnostic = result.to_dict()["diagnostic"]
+    assert diagnostic["failure_type"] == "HTTP_ERROR"
+    assert diagnostic["http_status"] == 403
+    assert diagnostic["response_present"] is True
+    assert "fixture-secret" not in str(result.to_dict())
+
+
+def test_provider_failure_and_unexpected_response_are_safe(tmp_path: Path) -> None:
+    _write_snapshot(tmp_path, "2026-09-04", _flow(["2026-09-04"]))
+    error_result = update_foreign_flow_snapshot(
+        "2026-09-08",
+        repo_root=tmp_path,
+        provider=ErrorProvider(MarketDataError("private provider error fixture-secret")),
+        calendar=FakeCalendar(["2026-09-04", "2026-09-07", "2026-09-08"]),
+    )
+    assert error_result.to_dict()["diagnostic"]["failure_type"] == "PROVIDER_ERROR"
+    assert "fixture-secret" not in str(error_result.to_dict())
+
+    malformed_provider = FakeProvider({"2026-09-07": pd.DataFrame({"unexpected": [1]})})
+    malformed_result = update_foreign_flow_snapshot(
+        "2026-09-08",
+        repo_root=tmp_path,
+        provider=malformed_provider,
+        calendar=FakeCalendar(["2026-09-04", "2026-09-07", "2026-09-08"]),
+    )
+    assert malformed_result.to_dict()["diagnostic"]["failure_type"] == "RESPONSE_FORMAT_ERROR"
+    assert malformed_result.to_dict()["diagnostic"]["parsing_failure"] is True
+
+
+def test_pykrx_provider_marks_schema_failure_without_response_content(monkeypatch: pytest.MonkeyPatch) -> None:
+    dotenv_module = ModuleType("dotenv")
+    dotenv_module.load_dotenv = lambda: None
+    pykrx_module = ModuleType("pykrx")
+    pykrx_module.stock = SimpleNamespace(
+        get_market_net_purchases_of_equities_by_ticker=lambda *_args: pd.DataFrame({"unexpected": [1]}),
+    )
+    monkeypatch.setitem(sys.modules, "dotenv", dotenv_module)
+    monkeypatch.setitem(sys.modules, "pykrx", pykrx_module)
+
+    with pytest.raises(MarketDataError) as exc_info:
+        ForeignFlowDataProvider().fetch_date_batch("2026-09-23")
+
+    diagnostic = exc_info.value.diagnostic
+    assert diagnostic["component"] == "FOREIGN_FLOW"
+    assert diagnostic["provider"] == "PYKRX"
+    assert diagnostic["requested_date"] == "2026-09-23"
+    assert diagnostic["failure_type"] == "RESPONSE_FORMAT_ERROR"
+    assert diagnostic["parsing_failure"] is True
 
 
 def test_invalid_seed_duplicate_blocks_without_network_or_repair(tmp_path: Path):

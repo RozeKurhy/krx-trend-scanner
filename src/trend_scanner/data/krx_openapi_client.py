@@ -33,9 +33,17 @@ class KrxOpenApiError(RuntimeError):
 class KrxOpenApiAuthorizationError(KrxOpenApiError):
     """The service rejected the supplied credentials (401/403)."""
 
+    def __init__(self, message: str, *, http_status: int | None = None) -> None:
+        super().__init__(message)
+        self.http_status = http_status
+
 
 class KrxOpenApiRateLimitError(KrxOpenApiError):
     """The service returned 429; validation must stop without retrying."""
+
+    def __init__(self, message: str, *, http_status: int | None = None) -> None:
+        super().__init__(message)
+        self.http_status = http_status
 
 
 class KrxOpenApiBudgetError(KrxOpenApiError):
@@ -61,6 +69,9 @@ class KrxOpenApiResponse:
     error_type: str | None = None
     error_message: str | None = None
     headers: Mapping[str, str] = field(default_factory=dict)
+    response_present: bool = True
+    parsing_failure: bool = False
+    parse_exception_class: str | None = None
 
     @property
     def record_count(self) -> int:
@@ -78,11 +89,18 @@ def redact_headers(headers: Mapping[str, str]) -> dict[str, str]:
 
 
 def _parse_json(raw: bytes) -> dict[str, Any]:
+    payload, _parsing_failure, _exception_class = _parse_json_with_diagnostic(raw)
+    return payload
+
+
+def _parse_json_with_diagnostic(raw: bytes) -> tuple[dict[str, Any], bool, str | None]:
     try:
         value = json.loads(raw.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        return {}
-    return value if isinstance(value, dict) else {}
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        return {}, True, type(exc).__name__
+    if not isinstance(value, dict):
+        return {}, False, None
+    return value, False, None
 
 
 def _find_records(payload: Mapping[str, Any]) -> tuple[str | None, tuple[dict[str, Any], ...]]:
@@ -177,18 +195,38 @@ class KrxOpenApiClient:
                     raw = response.read()
                     status = int(response.status)
                     response_headers = dict(response.headers.items()) if response.headers else {}
-                payload = _parse_json(raw)
+                payload, parsing_failure, parse_exception_class = _parse_json_with_diagnostic(raw)
                 response_obj = self._make_response(
-                    url, status, payload, started, attempt, response_headers
+                    url,
+                    status,
+                    payload,
+                    started,
+                    attempt,
+                    response_headers,
+                    parsing_failure=parsing_failure,
+                    parse_exception_class=parse_exception_class,
                 )
             except HTTPError as exc:
                 raw = exc.read()
-                payload = _parse_json(raw)
+                payload, parsing_failure, parse_exception_class = _parse_json_with_diagnostic(raw)
                 response_obj = self._make_response(
-                    url, int(exc.code), payload, started, attempt, dict(exc.headers.items()) if exc.headers else {}
+                    url,
+                    int(exc.code),
+                    payload,
+                    started,
+                    attempt,
+                    dict(exc.headers.items()) if exc.headers else {},
+                    parsing_failure=parsing_failure,
+                    parse_exception_class=parse_exception_class,
                 )
             except (URLError, TimeoutError, OSError) as exc:
                 self.status_counts["transport_error"] += 1
+                transport_cause = getattr(exc, "reason", None)
+                transport_error_type = (
+                    type(transport_cause).__name__
+                    if isinstance(transport_cause, BaseException)
+                    else type(exc).__name__
+                )
                 response_obj = KrxOpenApiResponse(
                     url=url,
                     http_status=None,
@@ -198,8 +236,9 @@ class KrxOpenApiClient:
                     records=(),
                     elapsed_ms=int((monotonic() - started) * 1000),
                     attempt=attempt,
-                    error_type=type(exc).__name__,
-                    error_message=type(exc).__name__,
+                    error_type=transport_error_type,
+                    error_message=transport_error_type,
+                    response_present=False,
                 )
             last = response_obj
             self.audit.append(
@@ -224,13 +263,13 @@ class KrxOpenApiClient:
             status = response_obj.http_status
             if status == 401:
                 self.status_counts["401"] += 1
-                raise KrxOpenApiAuthorizationError("KRX Open API returned HTTP 401")
+                raise KrxOpenApiAuthorizationError("KRX Open API returned HTTP 401", http_status=401)
             if status == 403:
                 self.status_counts["403"] += 1
-                raise KrxOpenApiAuthorizationError("KRX Open API returned HTTP 403")
+                raise KrxOpenApiAuthorizationError("KRX Open API returned HTTP 403", http_status=403)
             if status == 429:
                 self.status_counts["429"] += 1
-                raise KrxOpenApiRateLimitError("KRX Open API returned HTTP 429")
+                raise KrxOpenApiRateLimitError("KRX Open API returned HTTP 429", http_status=429)
             if status is not None and 500 <= status <= 599:
                 self.status_counts["5xx"] += 1
                 if transient_seen < self.max_transient_retries:
@@ -256,6 +295,9 @@ class KrxOpenApiClient:
         started: float,
         attempt: int,
         headers: Mapping[str, str],
+        *,
+        parsing_failure: bool = False,
+        parse_exception_class: str | None = None,
     ) -> KrxOpenApiResponse:
         records_key, records = _find_records(payload)
         return KrxOpenApiResponse(
@@ -270,4 +312,6 @@ class KrxOpenApiClient:
             error_type=None,
             error_message=None,
             headers=redact_headers(headers),
+            parsing_failure=parsing_failure,
+            parse_exception_class=parse_exception_class,
         )

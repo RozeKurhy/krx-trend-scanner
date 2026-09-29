@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 import pandas as pd
@@ -71,6 +72,7 @@ class SectorIndexRollingResult:
     row_count: int = 0
     trading_date_count: int = 0
     sector_code_count: int = 0
+    diagnostic: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         self.required_trading_dates = list(self.required_trading_dates or [])
@@ -92,11 +94,157 @@ class SectorIndexRollingResult:
             "row_count": int(self.row_count),
             "trading_date_count": int(self.trading_date_count),
             "sector_code_count": int(self.sector_code_count),
+            "diagnostic": dict(self.diagnostic) if self.diagnostic is not None else None,
         }
 
 
 class _BlockedInput(Exception):
     """Internal marker for an expected unavailable or invalid input."""
+
+
+_DIAGNOSTIC_FAILURE_TYPES = frozenset({
+    "AUTH_REJECTED",
+    "AUTH_CONFIGURATION",
+    "RATE_LIMIT",
+    "REQUEST_BUDGET_EXHAUSTED",
+    "QUOTA_EXCEEDED",
+    "HTTP_ERROR",
+    "TIMEOUT",
+    "CONNECTION_ERROR",
+    "EMPTY_RESULT",
+    "PARSE_ERROR",
+    "RESPONSE_FORMAT_ERROR",
+    "PROVIDER_ERROR",
+})
+
+
+def _exception_chain(error: BaseException) -> list[BaseException]:
+    chain: list[BaseException] = []
+    pending = [error]
+    seen: set[int] = set()
+    while pending:
+        current = pending.pop(0)
+        if id(current) in seen:
+            continue
+        seen.add(id(current))
+        chain.append(current)
+        for linked in (
+            getattr(current, "__cause__", None),
+            getattr(current, "__context__", None),
+            getattr(current, "reason", None),
+        ):
+            if isinstance(linked, BaseException):
+                pending.append(linked)
+    return chain
+
+
+def _safe_diagnostic(
+    date: str,
+    *,
+    error: BaseException | None = None,
+    candidate: Any = None,
+) -> dict[str, Any]:
+    if isinstance(candidate, dict):
+        failure_type = candidate.get("failure_type")
+        exception_class = candidate.get("exception_class")
+        http_status = candidate.get("http_status")
+        timeout = candidate.get("timeout")
+        connection_failure = candidate.get("connection_failure")
+        response_present = candidate.get("response_present")
+        provider_error_code = candidate.get("provider_error_code")
+        empty_result = candidate.get("empty_result")
+        parsing_failure = candidate.get("parsing_failure")
+    else:
+        chain = _exception_chain(error) if error is not None else []
+        class_names = [type(item).__name__ for item in chain]
+        http_status = next(
+            (
+                value
+                for item in chain
+                for value in (
+                    getattr(item, "http_status", None),
+                    getattr(item, "code", None),
+                    getattr(getattr(item, "response", None), "status_code", None),
+                )
+                if isinstance(value, int) and not isinstance(value, bool) and 100 <= value <= 599
+            ),
+            None,
+        )
+        timeout = any("timeout" in name.lower() for name in class_names)
+        connection_failure = any(
+            name in {"ConnectionError", "ConnectionResetError", "ConnectionAbortedError", "NewConnectionError", "URLError"}
+            or "connectionerror" in name.lower()
+            for name in class_names
+        )
+        response_present = True if http_status is not None else None
+        empty_result = False
+        parsing_failure = False
+        if isinstance(error, ValueError) and _is_missing_auth_key_error(error):
+            failure_type = "AUTH_CONFIGURATION"
+        elif any(isinstance(item, KrxOpenApiAuthorizationError) for item in chain):
+            failure_type = "AUTH_REJECTED"
+        elif any(isinstance(item, KrxOpenApiRateLimitError) for item in chain):
+            failure_type = "RATE_LIMIT"
+        elif any(isinstance(item, KrxOpenApiBudgetError) for item in chain):
+            failure_type = "REQUEST_BUDGET_EXHAUSTED"
+        elif any(isinstance(item, KrxOpenApiQuotaExceeded) for item in chain):
+            failure_type = "QUOTA_EXCEEDED"
+        elif timeout:
+            failure_type = "TIMEOUT"
+        elif http_status is not None:
+            failure_type = "HTTP_ERROR"
+        elif connection_failure:
+            failure_type = "CONNECTION_ERROR"
+        elif any(name in {"JSONDecodeError", "UnicodeDecodeError"} for name in class_names):
+            failure_type = "PARSE_ERROR"
+            parsing_failure = True
+            response_present = True
+        else:
+            failure_type = "PROVIDER_ERROR"
+        exception_class = next(
+            (
+                name for name in class_names
+                if "timeout" in name.lower()
+                or name in {"HTTPError", "ConnectionError", "ConnectionResetError", "ConnectionAbortedError", "NewConnectionError", "URLError"}
+            ),
+            class_names[0] if class_names else None,
+        )
+        provider_error_code = None
+
+    if failure_type not in _DIAGNOSTIC_FAILURE_TYPES:
+        failure_type = "PROVIDER_ERROR"
+    if not isinstance(exception_class, str) or not exception_class.isidentifier() or len(exception_class) > 80:
+        exception_class = None
+    if not isinstance(http_status, int) or isinstance(http_status, bool) or not 100 <= http_status <= 599:
+        http_status = None
+    if not isinstance(provider_error_code, str) or re.fullmatch(r"[A-Za-z0-9_-]{1,32}", provider_error_code) is None:
+        provider_error_code = None
+    return {
+        "component": "SECTOR_INDEX",
+        "provider": "KRX_OPEN_API",
+        "requested_date": date,
+        "failure_type": failure_type,
+        "exception_class": exception_class,
+        "http_status": http_status,
+        "timeout": timeout if isinstance(timeout, bool) else False,
+        "connection_failure": connection_failure if isinstance(connection_failure, bool) else False,
+        "response_present": response_present if isinstance(response_present, bool) else None,
+        "provider_error_code": provider_error_code,
+        "empty_result": empty_result if isinstance(empty_result, bool) else False,
+        "parsing_failure": parsing_failure if isinstance(parsing_failure, bool) else False,
+    }
+
+
+def _diagnostic_from_report(report: Any, date: str) -> dict[str, Any] | None:
+    if not isinstance(report, dict):
+        return None
+    candidates = report.get("fetch_diagnostics")
+    if not isinstance(candidates, list):
+        return None
+    for candidate in candidates:
+        if isinstance(candidate, dict) and candidate.get("requested_date") == date:
+            return _safe_diagnostic(date, candidate=candidate)
+    return None
 
 
 def _is_missing_auth_key_error(error: ValueError) -> bool:
@@ -188,6 +336,7 @@ def _result(
     missing: list[str] | None = None,
     updated: list[str] | None = None,
     update_calls: int = 0,
+    diagnostic: dict[str, Any] | None = None,
 ) -> SectorIndexRollingResult:
     summary = _frame_summary(frame) if frame is not None else {}
     return SectorIndexRollingResult(
@@ -204,6 +353,7 @@ def _result(
         row_count=int(summary.get("row_count", 0)),
         trading_date_count=int(summary.get("trading_date_count", 0)),
         sector_code_count=int(summary.get("sector_code_count", 0)),
+        diagnostic=diagnostic,
     )
 
 
@@ -304,7 +454,7 @@ def update_sector_index_rolling(
                 output_parquet=cache_path,
                 output_meta=meta_path,
             )
-        except (MarketDataError, *_KNOWN_KRX_OPERATIONAL_BLOCKERS):
+        except (MarketDataError, *_KNOWN_KRX_OPERATIONAL_BLOCKERS) as exc:
             return _result(
                 target=target,
                 status=BLOCKED,
@@ -315,6 +465,7 @@ def update_sector_index_rolling(
                 missing=missing,
                 updated=updated,
                 update_calls=update_calls,
+                diagnostic=_safe_diagnostic(day, error=exc, candidate=getattr(exc, "diagnostic", None)),
             )
         except ValueError as exc:
             if _is_missing_auth_key_error(exc):
@@ -328,6 +479,7 @@ def update_sector_index_rolling(
                     missing=missing,
                     updated=updated,
                     update_calls=update_calls,
+                    diagnostic=_safe_diagnostic(day, error=exc),
                 )
             return _result(
                 target=target,
@@ -339,8 +491,9 @@ def update_sector_index_rolling(
                 missing=missing,
                 updated=updated,
                 update_calls=update_calls,
+                diagnostic=_safe_diagnostic(day, error=exc),
             )
-        except Exception:
+        except Exception as exc:
             return _result(
                 target=target,
                 status=FAILED,
@@ -351,6 +504,7 @@ def update_sector_index_rolling(
                 missing=missing,
                 updated=updated,
                 update_calls=update_calls,
+                diagnostic=_safe_diagnostic(day, error=exc),
             )
 
         try:
@@ -383,6 +537,17 @@ def update_sector_index_rolling(
                 update_calls=update_calls,
             )
         if day not in observed_dates:
+            diagnostic = _diagnostic_from_report(
+                getattr(updater, "last_sector_index_update_report", None),
+                day,
+            ) or _safe_diagnostic(
+                day,
+                candidate={
+                    "failure_type": "EMPTY_RESULT",
+                    "response_present": None,
+                    "empty_result": True,
+                },
+            )
             return _result(
                 target=target,
                 status=BLOCKED,
@@ -393,6 +558,7 @@ def update_sector_index_rolling(
                 missing=missing,
                 updated=updated,
                 update_calls=update_calls,
+                diagnostic=diagnostic,
             )
         updated.append(day)
 

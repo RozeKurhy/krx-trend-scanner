@@ -24,6 +24,30 @@ _STANDARD_FLOW_COLUMNS = (
 )
 
 
+def _mark_fetch_diagnostic(
+    error: MarketDataError,
+    date_text: str,
+    *,
+    failure_type: str,
+    parsing_failure: bool = False,
+) -> MarketDataError:
+    error.diagnostic = {
+        "component": "FOREIGN_FLOW",
+        "provider": "PYKRX",
+        "requested_date": date_text,
+        "failure_type": failure_type,
+        "exception_class": type(error).__name__,
+        "http_status": None,
+        "timeout": False,
+        "connection_failure": False,
+        "response_present": True,
+        "provider_error_code": None,
+        "empty_result": False,
+        "parsing_failure": bool(parsing_failure),
+    }
+    return error
+
+
 class ForeignFlowDataProvider:
     """KRX 원천 기반 외국인 수급 데이터 수집기."""
 
@@ -55,6 +79,14 @@ class ForeignFlowDataProvider:
                 f"외국인 수급 Batch Fetch 실패 (date={clean_date}): {exc}"
             ) from exc
 
+        if not isinstance(raw_df, pd.DataFrame):
+            raise _mark_fetch_diagnostic(
+                MarketDataError(f"KRX foreign flow response was not a DataFrame on {formatted_date}"),
+                formatted_date,
+                failure_type="RESPONSE_FORMAT_ERROR",
+                parsing_failure=True,
+            )
+
         if raw_df.empty:
             return pd.DataFrame(columns=list(_STANDARD_FLOW_COLUMNS))
 
@@ -62,8 +94,13 @@ class ForeignFlowDataProvider:
         required_cols = {"매수거래대금", "매도거래대금", "순매수거래대금"}
         if not required_cols.issubset(set(raw_df.columns)):
             missing = sorted(list(required_cols - set(raw_df.columns)))
-            raise MarketDataError(
-                f"KRX foreign flow response missing required columns {missing} on {formatted_date}"
+            raise _mark_fetch_diagnostic(
+                MarketDataError(
+                    f"KRX foreign flow response missing required columns {missing} on {formatted_date}"
+                ),
+                formatted_date,
+                failure_type="RESPONSE_FORMAT_ERROR",
+                parsing_failure=True,
             )
 
         rows = []
@@ -74,9 +111,15 @@ class ForeignFlowDataProvider:
                 sell_val = float(row["매도거래대금"])
                 net_buy_val = float(row["순매수거래대금"])
             except (ValueError, TypeError) as exc:
-                raise MarketDataError(
-                    f"Numeric coercion failure for ticker {ticker_str} on {formatted_date}: {exc}"
-                ) from exc
+                error = _mark_fetch_diagnostic(
+                    MarketDataError(
+                        f"Numeric coercion failure for ticker {ticker_str} on {formatted_date}: {exc}"
+                    ),
+                    formatted_date,
+                    failure_type="PARSE_ERROR",
+                    parsing_failure=True,
+                )
+                raise error from exc
 
             rows.append({
                 "date": formatted_date,
@@ -89,7 +132,12 @@ class ForeignFlowDataProvider:
         df = pd.DataFrame(rows)
         # Verify duplicate prevention contract
         if df.duplicated(subset=["date", "ticker"]).any():
-            raise MarketDataError(f"Duplicate ticker/date detected on {formatted_date}")
+            raise _mark_fetch_diagnostic(
+                MarketDataError(f"Duplicate ticker/date detected on {formatted_date}"),
+                formatted_date,
+                failure_type="RESPONSE_FORMAT_ERROR",
+                parsing_failure=True,
+            )
         return df
 
     def build_historical_cache(
