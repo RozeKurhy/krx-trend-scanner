@@ -1,0 +1,316 @@
+{
+  "verdict": "ETF_36_ZERO_OHLC_SENTINEL_CLEAN_ELIGIBILITY_CLOSURE_CHECK_REQUIRED",
+  "certified_backtest_verdict": "CHECK_REQUIRED",
+  "authority": {
+    "baseline_backtest_commit": "b5df1642f04fcf9804e9aeda4309c59bc3bac915",
+    "sentinel_audit_commit": "3a8703209d2856cfabcc61610f73ed5996bc8e58"
+  },
+  "scope": {
+    "universe_count": 36,
+    "affected_tickers": [
+      "133690",
+      "139230",
+      "140700",
+      "157490",
+      "160580",
+      "195980",
+      "228800",
+      "228810",
+      "241180",
+      "266410"
+    ],
+    "strategies": [
+      "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "JULIA_STRATEGY_V00"
+    ],
+    "window_ids": [
+      "P1",
+      "P2-1",
+      "P2-2",
+      "P3-1",
+      "P3-2"
+    ],
+    "replayed_ticker_count": 10,
+    "targeted_replay_window_count": 20,
+    "targeted_replay_trade_count": 63,
+    "baseline_trade_count": 521,
+    "certified_trade_count": 505,
+    "clean_ready_lookbacks": {
+      "features": [
+        {
+          "timeframe": "daily",
+          "feature": "pit.avg_volume_20d",
+          "required_history_bars": 20,
+          "input_class": "signal_input",
+          "source_ref": "scripts/run_etf_current_survivors_raw_price_three_strategy_simple_backtest_v03.py:_raw_eligibility rolling(20,min_periods=20)"
+        },
+        {
+          "timeframe": "daily",
+          "feature": "atr_14_pct",
+          "required_history_bars": 15,
+          "input_class": "signal_input",
+          "source_ref": "trend_scanner.research.pattern_a_fast_daily_features.atr_14_pct"
+        },
+        {
+          "timeframe": "daily",
+          "feature": "recent_5d_max_gap_abs_pct",
+          "required_history_bars": 6,
+          "input_class": "signal_input",
+          "source_ref": "trend_scanner.research.pattern_a_fast_daily_features.recent_5d_max_gap_abs_pct"
+        },
+        {
+          "timeframe": "monthly",
+          "feature": "pattern_a.distance_to_resistance",
+          "required_history_bars": 36,
+          "input_class": "signal_input",
+          "source_ref": "feature_report._window_high_low(monthly, 36)"
+        },
+        {
+          "timeframe": "monthly",
+          "feature": "pattern_a.range_36m",
+          "required_history_bars": 36,
+          "input_class": "signal_input",
+          "source_ref": "feature_report._range(monthly, 36)"
+        },
+        {
+          "timeframe": "monthly",
+          "feature": "pattern_a.range_position",
+          "required_history_bars": 36,
+          "input_class": "signal_input",
+          "source_ref": "feature_report._window_high_low(monthly, 36) + resistance.range_position"
+        },
+        {
+          "timeframe": "monthly",
+          "feature": "pattern_a.ma24_slope_acceleration",
+          "required_history_bars": 30,
+          "input_class": "signal_input",
+          "source_ref": "MA24 slope, periods=3, lag=3"
+        },
+        {
+          "timeframe": "monthly",
+          "feature": "pattern_a.ma24_slope",
+          "required_history_bars": 27,
+          "input_class": "signal_input",
+          "source_ref": "MA24 with three-month slope"
+        },
+        {
+          "timeframe": "monthly",
+          "feature": "pattern_a.avg_price_change_12m",
+          "required_history_bars": 24,
+          "input_class": "signal_input",
+          "source_ref": "feature_report._avg_price_change_12m"
+        },
+        {
+          "timeframe": "monthly",
+          "feature": "pattern_a.ma_spread",
+          "required_history_bars": 24,
+          "input_class": "signal_input",
+          "source_ref": "three monthly moving averages through MA24"
+        },
+        {
+          "timeframe": "monthly",
+          "feature": "range_position_24m",
+          "required_history_bars": 24,
+          "input_class": "signal_input",
+          "source_ref": "trend_scanner.research.pattern_a_fast_monthly_features.range_position_24m"
+        },
+        {
+          "timeframe": "monthly",
+          "feature": "monthly_down_month_ratio_12m",
+          "required_history_bars": 13,
+          "input_class": "signal_input",
+          "source_ref": "trend_scanner.research.pattern_a_fast_monthly_features.monthly_down_month_ratio_12m"
+        },
+        {
+          "timeframe": "weekly",
+          "feature": "close_vs_wma200_pct",
+          "required_history_bars": 200,
+          "input_class": "conditional_or_optional_signal_input",
+          "source_ref": "trend_scanner.research.pattern_a_fast_weekly_features.close_vs_wma200_pct"
+        },
+        {
+          "timeframe": "weekly",
+          "feature": "wma52_slope_1w",
+          "required_history_bars": 53,
+          "input_class": "signal_input",
+          "source_ref": "trend_scanner.research.pattern_a_fast_weekly_features.wma52_slope_1w"
+        },
+        {
+          "timeframe": "weekly",
+          "feature": "distance_to_prior_26w_high_pct",
+          "required_history_bars": 27,
+          "input_class": "signal_input",
+          "source_ref": "trend_scanner.research.pattern_a_fast_weekly_features.distance_to_prior_26w_high_pct"
+        },
+        {
+          "timeframe": "weekly",
+          "feature": "weeks_since_26w_close_breakout",
+          "required_history_bars": 27,
+          "input_class": "signal_input",
+          "source_ref": "trend_scanner.research.pattern_a_fast_weekly_features.weeks_since_26w_close_breakout"
+        },
+        {
+          "timeframe": "weekly",
+          "feature": "wma12_vs_wma26_pct",
+          "required_history_bars": 26,
+          "input_class": "signal_input",
+          "source_ref": "trend_scanner.research.pattern_a_fast_weekly_features.wma12_vs_wma26_pct"
+        },
+        {
+          "timeframe": "weekly",
+          "feature": "pattern_a.weekly_ma12_slope",
+          "required_history_bars": 16,
+          "input_class": "signal_input",
+          "source_ref": "weekly MA12 with four-week slope"
+        },
+        {
+          "timeframe": "weekly",
+          "feature": "higher_weekly_low_count_13w",
+          "required_history_bars": 13,
+          "input_class": "signal_input",
+          "source_ref": "trend_scanner.research.pattern_a_fast_weekly_features.higher_weekly_low_count_13w"
+        }
+      ],
+      "max_bars_by_timeframe": {
+        "weekly": 200,
+        "monthly": 36,
+        "daily": 20
+      },
+      "controlling_timeframe": "weekly",
+      "controlling_feature": "close_vs_wma200_pct",
+      "entry_path_notes": [
+        "close_vs_wma200_pct is optional for score availability but is consumed by the FAST stage EXTENDED/trigger rules; it is conservatively included.",
+        "Pattern A lifecycle history is used only to add reason_codes to a WEAK stage; WEAK is blocked from entry, so the unbounded explanation-only scan is outside the entry path."
+      ]
+    },
+    "raw_data_diagnostics": {
+      "raw_etf_partition_count_through_support": 3108,
+      "raw_etf_partition_files_scanned": 3108,
+      "raw_etf_partition_files_sha_verified": 3108,
+      "raw_partition_hash_error_count": 0,
+      "raw_etf_target_ticker_daily_rows": 28775,
+      "krx_calendar_session_count_through_support": 4102,
+      "krx_calendar_first_date": "2010-01-04",
+      "krx_calendar_last_date": "2026-09-01"
+    }
+  },
+  "counts": {
+    "clean_ready_ticker_count": 10,
+    "changed_target_span_count": 20,
+    "targeted_replay_span_count": 20,
+    "original_exposed_trade_identity_count": 12,
+    "original_exposed_unique_ticker_signal_event_count": 4,
+    "risk_dispositions_by_identity": {
+      "REPLACED_BY_LATER_ENTRY": 12
+    },
+    "risk_dispositions_by_unique_event": {
+      "REPLACED_BY_LATER_ENTRY": 4
+    },
+    "unaffected_etf_span_change_count": 0,
+    "revised_duplicate_trade_identity_count": 0,
+    "post_cutoff_new_entry_count": 0,
+    "support_after_exit_count": 0,
+    "mandatory_nonfinite_count": 0,
+    "realized_exit_nonfinite_count": 0,
+    "unexpected_nan_count": 0
+  },
+  "checks": {
+    "frozen_universe_36": true,
+    "affected_ticker_count_10": true,
+    "original_risk_identity_count_12": true,
+    "unique_original_risk_event_count_4": true,
+    "unaffected_etf_span_changes_0": true,
+    "raw_row_modification_0": true,
+    "strategy_source_changed_0": true,
+    "market_refetch_0": true,
+    "forty_day_recomputation_0": true,
+    "full_36_etf_5window_rerun_0": true,
+    "targeted_replay_only_affected_tickers": true,
+    "targeted_replay_error_count_0": true,
+    "revised_trade_identity_duplicates_0": true,
+    "mandatory_nan_inf_0": true,
+    "unexpected_nan_0": true,
+    "signal_path_clean_at_each_clean_ready": true,
+    "strategy_span_parity": true,
+    "validation_replay_contract": false,
+    "original_ledger_unchanged": true,
+    "original_spans_unchanged": true,
+    "original_universe_unchanged": true,
+    "raw_target_partition_hash_errors_0": true,
+    "revised_summary_rows_20": true,
+    "risk_closure_rows_12": true,
+    "no_unresolved_risk_disposition": true
+  },
+  "failed_checks": [
+    "validation_replay_contract"
+  ],
+  "replay_errors": [],
+  "existing_backtest_validation": {
+    "passed": false,
+    "errors": [
+      "OPEN_TRADE_HAS_REALIZED_EXIT_FIELDS"
+    ],
+    "checks": {
+      "span_pairs": true,
+      "strategy_start_end_parity": true,
+      "entry_before_comparison_start_count": 0,
+      "post_cutoff_entry_count": 0,
+      "not_evaluable_reason_missing_count": 0,
+      "unexpected_nan_or_inf_count": 0,
+      "expected_open_trade_missing_exit_price_count": 28,
+      "duplicate_trade_identity_count": 0,
+      "aggregate_float_tolerance_pp": 0.1,
+      "tax_pnl_application_count": 0
+    }
+  },
+  "authority_integrity": {
+    "before": {
+      "ledger_sha256": "4444e0d56566cf497802509faaf42e9340c9c6e01ebe9a5ff4ff74844396a7bc",
+      "span_sha256": "c560c600f0a4c385de090aed3db613f85f5af883fb976d2d3197c6266ec367af",
+      "universe_sha256": "a41e363c5e0ba398b5361a1bb3cb7057394c0a7a4b168f48321be26eb2686b3d",
+      "raw_manifest_sha256": "50d64008e052c6824564ab25e67c366f7aafe2d8869b6ac3149f921bb34cb27a",
+      "strategy_source_sha256": {
+        "src/trend_scanner/patterns/pattern_a_fast_evaluator.py": "ef06d9df9868526b62b21701a76893b44c393047e036da5f7abbf8239610d99a",
+        "src/trend_scanner/patterns/pattern_a_evaluator.py": "678bef9e9a786bf8c6321d7ad8f1f42c002a87c4bed3174843c9cadc92a0c0a7",
+        "src/trend_scanner/patterns/pattern_a_stage.py": "af881b94d33314855c2bf1a0b516a7e61a0b511fed5ae3597743f86fc247a435",
+        "src/trend_scanner/patterns/pattern_a_score.py": "5b9d1ccc84901609f9fea4db66e9ef7ff783e7f528f63febcfb741bf36fdd8d4",
+        "src/trend_scanner/research/pattern_a_fast_monthly_features.py": "ba2eca3d63047ccff67a37dee80275cb0ee8d18785215e18b6dcaa0b1f7a22cf",
+        "src/trend_scanner/research/pattern_a_fast_weekly_features.py": "ba730d46005a1a4f8b74323ba9b93985506bc831ed78a039891dae641880c3c9",
+        "src/trend_scanner/research/pattern_a_fast_daily_features.py": "0f96e2257477cc06231c54af1ddb8376f821e2567175715b19a6af6eaea50ade",
+        "src/trend_scanner/validation/feature_report.py": "eeafc564792d89e1f0fb810084d707cefe14aab9d893cb61a2f37115278341ac",
+        "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py": "a6e70b7bda6507f0913b7553fb8004cb9b2d96460eb4f4dabfc0ab82488351c8",
+        "src/trend_scanner/validation/julia_strategy_v00.py": "683c3f42c3292de42991ef6a5b9fe0c5b9e6d053a6f1587441d52d0d5bcd2f4b"
+      }
+    },
+    "after": {
+      "ledger_sha256": "4444e0d56566cf497802509faaf42e9340c9c6e01ebe9a5ff4ff74844396a7bc",
+      "span_sha256": "c560c600f0a4c385de090aed3db613f85f5af883fb976d2d3197c6266ec367af",
+      "universe_sha256": "a41e363c5e0ba398b5361a1bb3cb7057394c0a7a4b168f48321be26eb2686b3d",
+      "raw_manifest_sha256": "50d64008e052c6824564ab25e67c366f7aafe2d8869b6ac3149f921bb34cb27a",
+      "strategy_source_sha256": {
+        "src/trend_scanner/patterns/pattern_a_fast_evaluator.py": "ef06d9df9868526b62b21701a76893b44c393047e036da5f7abbf8239610d99a",
+        "src/trend_scanner/patterns/pattern_a_evaluator.py": "678bef9e9a786bf8c6321d7ad8f1f42c002a87c4bed3174843c9cadc92a0c0a7",
+        "src/trend_scanner/patterns/pattern_a_stage.py": "af881b94d33314855c2bf1a0b516a7e61a0b511fed5ae3597743f86fc247a435",
+        "src/trend_scanner/patterns/pattern_a_score.py": "5b9d1ccc84901609f9fea4db66e9ef7ff783e7f528f63febcfb741bf36fdd8d4",
+        "src/trend_scanner/research/pattern_a_fast_monthly_features.py": "ba2eca3d63047ccff67a37dee80275cb0ee8d18785215e18b6dcaa0b1f7a22cf",
+        "src/trend_scanner/research/pattern_a_fast_weekly_features.py": "ba730d46005a1a4f8b74323ba9b93985506bc831ed78a039891dae641880c3c9",
+        "src/trend_scanner/research/pattern_a_fast_daily_features.py": "0f96e2257477cc06231c54af1ddb8376f821e2567175715b19a6af6eaea50ade",
+        "src/trend_scanner/validation/feature_report.py": "eeafc564792d89e1f0fb810084d707cefe14aab9d893cb61a2f37115278341ac",
+        "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py": "a6e70b7bda6507f0913b7553fb8004cb9b2d96460eb4f4dabfc0ab82488351c8",
+        "src/trend_scanner/validation/julia_strategy_v00.py": "683c3f42c3292de42991ef6a5b9fe0c5b9e6d053a6f1587441d52d0d5bcd2f4b"
+      }
+    },
+    "strategy_source_changed_paths": [],
+    "raw_partition_hash_error_count": 0,
+    "raw_partition_hashes_after": {
+      "partition_count": 3108,
+      "hash_mismatch_count": 0
+    }
+  },
+  "execution": {
+    "market_refetch_count": 0,
+    "forty_day_recomputation_count": 0,
+    "full_36_etf_five_window_replay_count": 0,
+    "runtime_seconds": 41.417
+  }
+}
