@@ -967,7 +967,11 @@ def scan_pattern_a_universe(
         # 우회하던 fallback을 제거했다. Phase 4A 운영 계약은 "Phase 1~3 로컬 권위
         # 소비, 외부 PyKRX 조회 금지, 로컬 authority 부족 시 fail-closed"이므로
         # 여기서 조용히 네트워크로 넘어가지 않고 명시적으로 실패한다.
-        offline_univ = _default_offline_universe(repo_root, req_as_of_str)
+        # Rolling PIT intervals describe the market population on trading dates,
+        # so choose the roster at reference_market_date. Per-ticker PIT metadata
+        # below still uses req_as_of_str, which resolves to the latest eligible
+        # canonical snapshot on or before the requested date.
+        offline_univ = _default_offline_universe(repo_root, ref_market_date)
         if offline_univ is None:
             raise RuntimeError(
                 "PRODUCTION_SCANNER_LOCAL_UNIVERSE_UNAVAILABLE: "

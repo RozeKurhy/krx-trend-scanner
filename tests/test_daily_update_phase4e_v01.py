@@ -479,12 +479,20 @@ def test_non_trading_day_reference_authority_allows_noop(tmp_path: Path, monkeyp
     reference = "2026-09-18"  # Friday
     _write_scanner_fixture(tmp_path, target, reference)
     _patch_calendar(monkeypatch, "2026-09-17", reference)
+    authority_dates: list[str] = []
+
+    def fake_pit_common_tickers(root: Path, as_of: str) -> set[str]:
+        authority_dates.append(as_of)
+        return {"000001"}
+
+    monkeypatch.setattr(phase4e, "load_target_pit_common_tickers", fake_pit_common_tickers)
 
     result = phase4e._phase4a_noop_precheck(target, root=tmp_path)
 
     assert result is not None
     assert result["status"] == "NOOP_ALREADY_COMPLETE"
     assert result["reference_market_date"] == reference
+    assert authority_dates == [reference]
 
 
 def test_stale_reference_is_blocked_and_not_recomputed(

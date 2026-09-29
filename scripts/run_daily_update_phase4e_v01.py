@@ -175,7 +175,7 @@ def _phase4a_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
             f"expected {expected_reference_market_date}, got {summary['reference_market_date']}"
         )
     try:
-        expected_tickers = load_target_pit_common_tickers(root, target_as_of)
+        expected_tickers = load_target_pit_common_tickers(root, expected_reference_market_date)
     except FileNotFoundError:
         # Synthetic focused-test/legacy callers may provide only a scanner
         # artifact.  The real production root has this authority and therefore

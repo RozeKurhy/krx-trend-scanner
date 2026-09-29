@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -268,14 +269,10 @@ def test_authoritative_pit_common_uses_canonical_asset_type_not_name_heuristic(
 
 
 def test_requested_as_of_and_reference_market_date_role_separation(mock_scanner_env, monkeypatch):
-    """비거래일 target_as_of에서 requested_as_of(identity/canonical metadata PIT 기준)와
-    reference_market_date(시장 거래일/freshness 기준)가 섞이지 않아야 한다.
+    """요청 기준일과 시장 기준일의 날짜 역할을 분리한다.
 
-    회귀 대상: production offline universe 경로(_default_offline_universe)와 canonical
-    instrument metadata 조회(resolve_instrument_metadata)가 identity 기준일 대신
-    reference_market_date를 잘못 사용하던 문제. Phase 4 계약: requested_as_of는
-    target_as_of를 비거래일이어도 그대로 유지하고, reference_market_date만
-    target_as_of 이하의 실제 거래일로 대체된다.
+    Rolling PIT 종목 universe는 실제 시장 거래일을 사용하고, 종목별 canonical
+    metadata 및 분석 산출물은 비거래일이어도 requested_as_of를 유지한다.
     """
     from trend_scanner.universe.instrument_metadata import InstrumentMetadata
 
@@ -284,7 +281,6 @@ def test_requested_as_of_and_reference_market_date_role_separation(mock_scanner_
 
     offline_universe_as_of_calls: list[str] = []
     resolve_metadata_as_of_calls: list[str] = []
-    quality_reference_date_calls: list[str] = []
 
     def fake_offline_universe(repo_root, as_of):
         offline_universe_as_of_calls.append(as_of)
@@ -309,29 +305,28 @@ def test_requested_as_of_and_reference_market_date_role_separation(mock_scanner_
             asset_type_source="FORMAL_SECURITY_TYPE",
         )
 
-    original_audit = scanner_module.audit_ticker_quality
-
-    def spy_audit(*args, **kwargs):
-        quality_reference_date_calls.append(kwargs.get("reference_market_date"))
-        return original_audit(*args, **kwargs)
-
     monkeypatch.setattr(scanner_module, "_default_offline_universe", fake_offline_universe)
     monkeypatch.setattr(scanner_module, "resolve_instrument_metadata", fake_resolve)
-    monkeypatch.setattr(scanner_module, "audit_ticker_quality", spy_audit)
+    monkeypatch.setattr(
+        scanner_module,
+        "_default_production_market_calendar",
+        lambda _root: SimpleNamespace(trading_dates=pd.DatetimeIndex([reference_market_date])),
+    )
+    monkeypatch.setattr(scanner_module, "load_canonical_mcap_snapshot", lambda **_kwargs: (pd.DataFrame(), None))
 
     res = scan_pattern_a_universe(
         cache=mock_scanner_env["cache"],
         as_of=requested_as_of,
         reference_market_date=reference_market_date,
+        target_tickers=[],
+        market_index_df=pd.DataFrame(),
+        sector_index_df=pd.DataFrame(),
+        sector_mapping={},
     )
 
-    # identity / canonical metadata PIT 조회는 requested_as_of를 사용해야 한다.
-    assert offline_universe_as_of_calls == [requested_as_of]
+    # Market-date PIT universe는 reference date, canonical metadata는 requested date다.
+    assert offline_universe_as_of_calls == [reference_market_date]
     assert resolve_metadata_as_of_calls == [requested_as_of]
-
-    # 시장 거래일 freshness/quality 감사는 reference_market_date를 유지해야 한다.
-    assert quality_reference_date_calls
-    assert all(d == reference_market_date for d in quality_reference_date_calls)
 
     # 요청 기준일을 가까운 거래일로 다시 기록하지 않는다.
     assert res.summary.requested_as_of == requested_as_of

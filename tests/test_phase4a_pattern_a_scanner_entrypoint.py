@@ -102,7 +102,7 @@ def test_runner_wires_selected_phase3_membership_and_repository_v2(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module = _load_runner_module()
-    target = "2026-09-17"
+    target = "2026-09-25"
     selected_path = ROOT / "data/market/sector_membership/v01/sector_membership_20260917.parquet"
     repository = object()
     sector_mapping = {"005930": ("1001", "전기전자", "2026-09-17", "MAPPED")}
@@ -126,7 +126,7 @@ def test_runner_wires_selected_phase3_membership_and_repository_v2(
     monkeypatch.setattr(
         module,
         "load_rolling_production_market_calendar",
-        lambda _root: SimpleNamespace(trading_dates=pd.DatetimeIndex(["2026-09-17"])),
+        lambda _root: SimpleNamespace(trading_dates=pd.DatetimeIndex(["2026-09-23"])),
     )
     monkeypatch.setattr(
         module,
@@ -153,7 +153,7 @@ def test_runner_wires_selected_phase3_membership_and_repository_v2(
     module.main()
 
     assert captured["as_of"] == target
-    assert captured["reference_market_date"] == target
+    assert captured["reference_market_date"] == "2026-09-23"
     assert captured["repository"] is repository
     assert captured["sector_mapping"] == sector_mapping
     assert captured["sector_mapping_snapshot_date"] == "2026-09-17"
