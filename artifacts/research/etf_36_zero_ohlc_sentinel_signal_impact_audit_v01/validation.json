@@ -1,0 +1,319 @@
+{
+  "verdict": "ETF_36_ZERO_OHLC_SENTINEL_SIGNAL_IMPACT_AUDIT_CHECK_REQUIRED",
+  "authority_commit": "b5df1642f04fcf9804e9aeda4309c59bc3bac915",
+  "current_head": "b5df1642f04fcf9804e9aeda4309c59bc3bac915",
+  "scope": {
+    "source": "Existing ETF-36 A FAST V2 vs Julia V00 five-window artifacts and local KRX raw partitions",
+    "target_tickers": [
+      "133690",
+      "139230",
+      "140700",
+      "157490",
+      "160580",
+      "195980",
+      "228800",
+      "228810",
+      "241180",
+      "266410"
+    ],
+    "strategies": [
+      "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "JULIA_STRATEGY_V00"
+    ],
+    "official_windows": [
+      "P1",
+      "P2-1",
+      "P2-2",
+      "P3-1",
+      "P3-2"
+    ],
+    "targeted_evaluator_calls": 2172,
+    "unique_exposed_ticker_evaluation_dates": 828,
+    "window_strategy_evaluation_rows": 1736,
+    "candidate_definition": "Frozen entry contract gates plus actual raw ETF-36 date/close/20-session-volume eligibility; position-state suppression is not simulated",
+    "signal_count_definition": "Existing trade-ledger entries whose signal date is directly exposed to at least one entry-path feature",
+    "trade_count_definition": "Existing trade identities with directly exposed entry signal dates; exposure count, not proven counterfactual change count"
+  },
+  "counts": {
+    "sentinel_ticker_count": 10,
+    "sentinel_row_count": 78,
+    "sentinel_affected_evaluation_count": 1736,
+    "sentinel_affected_unique_ticker_evaluation_date_count": 828,
+    "sentinel_affected_entry_candidate_count": 53,
+    "sentinel_contract_candidate_count_before_pit_eligibility": 117,
+    "sentinel_affected_entry_signal_count": 12,
+    "sentinel_affected_trade_count": 12,
+    "sentinel_confirmed_changed_entry_signal_count": 0,
+    "sentinel_confirmed_changed_trade_identity_count": 0,
+    "sentinel_actual_change_count_determined": false,
+    "estimated_existing_trade_identities_at_risk_minimum": 12,
+    "diagnostic_nonfinite_feature_evaluation_count": 2863,
+    "diagnostic_nonfinite_feature_counts_by_name": {
+      "diagnostic.weekly_distance_from_13w_low_pct": 363,
+      "diagnostic.weekly_distance_from_26w_low_pct": 491,
+      "diagnostic.weekly_distance_from_52w_low_pct": 588,
+      "diagnostic.monthly_distance_from_12m_low": 615,
+      "diagnostic.monthly_distance_from_24m_low": 769,
+      "diagnostic.pattern_a_pivot_low_slope": 37
+    },
+    "nonfinite_value_kind_counts_by_name": {
+      "diagnostic.weekly_distance_from_13w_low_pct": {
+        "POSITIVE_INFINITY": 363
+      },
+      "diagnostic.weekly_distance_from_26w_low_pct": {
+        "POSITIVE_INFINITY": 491
+      },
+      "diagnostic.weekly_distance_from_52w_low_pct": {
+        "POSITIVE_INFINITY": 588
+      },
+      "diagnostic.monthly_distance_from_12m_low": {
+        "POSITIVE_INFINITY": 615
+      },
+      "diagnostic.monthly_distance_from_24m_low": {
+        "POSITIVE_INFINITY": 769
+      },
+      "diagnostic.pattern_a_pivot_low_slope": {
+        "NAN": 37
+      }
+    },
+    "signal_path_nonfinite_feature_counts_by_name": {}
+  },
+  "at_risk_entry_signal_rows": [
+    {
+      "ticker": "139230",
+      "window_id": "P1",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "signal_date": "2017-03-17",
+      "exposed_signal_path_features": "fast.range_position_24m|pattern_a.range_position_36m|pattern_a.range_36m",
+      "estimated_trade_count": 1
+    },
+    {
+      "ticker": "139230",
+      "window_id": "P1",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "signal_date": "2017-03-17",
+      "exposed_signal_path_features": "fast.range_position_24m|pattern_a.range_position_36m|pattern_a.range_36m",
+      "estimated_trade_count": 1
+    },
+    {
+      "ticker": "157490",
+      "window_id": "P1",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "signal_date": "2019-09-06",
+      "exposed_signal_path_features": "pattern_a.range_position_36m|pattern_a.range_36m",
+      "estimated_trade_count": 1
+    },
+    {
+      "ticker": "157490",
+      "window_id": "P1",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "signal_date": "2019-09-06",
+      "exposed_signal_path_features": "pattern_a.range_position_36m|pattern_a.range_36m",
+      "estimated_trade_count": 1
+    },
+    {
+      "ticker": "160580",
+      "window_id": "P1",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "signal_date": "2021-01-29",
+      "exposed_signal_path_features": "pattern_a.range_position_36m|pattern_a.range_36m",
+      "estimated_trade_count": 1
+    },
+    {
+      "ticker": "160580",
+      "window_id": "P1",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "signal_date": "2021-01-29",
+      "exposed_signal_path_features": "pattern_a.range_position_36m|pattern_a.range_36m",
+      "estimated_trade_count": 1
+    },
+    {
+      "ticker": "160580",
+      "window_id": "P2-1",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "signal_date": "2021-01-29",
+      "exposed_signal_path_features": "pattern_a.range_position_36m|pattern_a.range_36m",
+      "estimated_trade_count": 1
+    },
+    {
+      "ticker": "160580",
+      "window_id": "P2-1",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "signal_date": "2021-01-29",
+      "exposed_signal_path_features": "pattern_a.range_position_36m|pattern_a.range_36m",
+      "estimated_trade_count": 1
+    },
+    {
+      "ticker": "160580",
+      "window_id": "P2-2",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "signal_date": "2021-01-29",
+      "exposed_signal_path_features": "pattern_a.range_position_36m|pattern_a.range_36m",
+      "estimated_trade_count": 1
+    },
+    {
+      "ticker": "160580",
+      "window_id": "P2-2",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "signal_date": "2021-01-29",
+      "exposed_signal_path_features": "pattern_a.range_position_36m|pattern_a.range_36m",
+      "estimated_trade_count": 1
+    },
+    {
+      "ticker": "228800",
+      "window_id": "P1",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "signal_date": "2019-01-11",
+      "exposed_signal_path_features": "pattern_a.range_position_36m|pattern_a.range_36m",
+      "estimated_trade_count": 1
+    },
+    {
+      "ticker": "228800",
+      "window_id": "P1",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "signal_date": "2019-01-11",
+      "exposed_signal_path_features": "pattern_a.range_position_36m|pattern_a.range_36m",
+      "estimated_trade_count": 1
+    }
+  ],
+  "actionable_candidate_evaluation_counts_by_ticker_window_strategy": [
+    {
+      "ticker": "139230",
+      "window_id": "P1",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "actionable_candidate_evaluation_count": 5
+    },
+    {
+      "ticker": "139230",
+      "window_id": "P1",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "actionable_candidate_evaluation_count": 5
+    },
+    {
+      "ticker": "157490",
+      "window_id": "P1",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "actionable_candidate_evaluation_count": 13
+    },
+    {
+      "ticker": "157490",
+      "window_id": "P1",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "actionable_candidate_evaluation_count": 13
+    },
+    {
+      "ticker": "160580",
+      "window_id": "P1",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "actionable_candidate_evaluation_count": 7
+    },
+    {
+      "ticker": "160580",
+      "window_id": "P1",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "actionable_candidate_evaluation_count": 7
+    },
+    {
+      "ticker": "160580",
+      "window_id": "P2-1",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "actionable_candidate_evaluation_count": 7
+    },
+    {
+      "ticker": "160580",
+      "window_id": "P2-1",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "actionable_candidate_evaluation_count": 7
+    },
+    {
+      "ticker": "160580",
+      "window_id": "P2-2",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "actionable_candidate_evaluation_count": 7
+    },
+    {
+      "ticker": "160580",
+      "window_id": "P2-2",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "actionable_candidate_evaluation_count": 7
+    },
+    {
+      "ticker": "228800",
+      "window_id": "P1",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "actionable_candidate_evaluation_count": 14
+    },
+    {
+      "ticker": "228800",
+      "window_id": "P1",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "actionable_candidate_evaluation_count": 14
+    }
+  ],
+  "authority_and_integrity": {
+    "universe_sha256_before": "a41e363c5e0ba398b5361a1bb3cb7057394c0a7a4b168f48321be26eb2686b3d",
+    "universe_sha256_after": "a41e363c5e0ba398b5361a1bb3cb7057394c0a7a4b168f48321be26eb2686b3d",
+    "trade_ledger_sha256_before": "4444e0d56566cf497802509faaf42e9340c9c6e01ebe9a5ff4ff74844396a7bc",
+    "trade_ledger_sha256_after": "4444e0d56566cf497802509faaf42e9340c9c6e01ebe9a5ff4ff74844396a7bc",
+    "effective_span_sha256_before": "c560c600f0a4c385de090aed3db613f85f5af883fb976d2d3197c6266ec367af",
+    "effective_span_sha256_after": "c560c600f0a4c385de090aed3db613f85f5af883fb976d2d3197c6266ec367af",
+    "raw_manifest_sha256_before": "50d64008e052c6824564ab25e67c366f7aafe2d8869b6ac3149f921bb34cb27a",
+    "raw_manifest_sha256_after": "50d64008e052c6824564ab25e67c366f7aafe2d8869b6ac3149f921bb34cb27a",
+    "strategy_source_sha256": {
+      "src/trend_scanner/patterns/pattern_a_fast_evaluator.py": "ef06d9df9868526b62b21701a76893b44c393047e036da5f7abbf8239610d99a",
+      "src/trend_scanner/patterns/pattern_a_evaluator.py": "678bef9e9a786bf8c6321d7ad8f1f42c002a87c4bed3174843c9cadc92a0c0a7",
+      "src/trend_scanner/patterns/pattern_a_stage.py": "af881b94d33314855c2bf1a0b516a7e61a0b511fed5ae3597743f86fc247a435",
+      "src/trend_scanner/patterns/pattern_a_score.py": "5b9d1ccc84901609f9fea4db66e9ef7ff783e7f528f63febcfb741bf36fdd8d4",
+      "src/trend_scanner/research/pattern_a_fast_monthly_features.py": "ba2eca3d63047ccff67a37dee80275cb0ee8d18785215e18b6dcaa0b1f7a22cf",
+      "src/trend_scanner/research/pattern_a_fast_weekly_features.py": "ba730d46005a1a4f8b74323ba9b93985506bc831ed78a039891dae641880c3c9",
+      "src/trend_scanner/research/pattern_a_fast_daily_features.py": "0f96e2257477cc06231c54af1ddb8376f821e2567175715b19a6af6eaea50ade",
+      "src/trend_scanner/validation/feature_report.py": "eeafc564792d89e1f0fb810084d707cefe14aab9d893cb61a2f37115278341ac",
+      "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py": "a6e70b7bda6507f0913b7553fb8004cb9b2d96460eb4f4dabfc0ab82488351c8",
+      "src/trend_scanner/validation/julia_strategy_v00.py": "683c3f42c3292de42991ef6a5b9fe0c5b9e6d053a6f1587441d52d0d5bcd2f4b"
+    },
+    "strategy_source_changed_paths": [],
+    "raw_etf_partition_count_through_support": 3108,
+    "raw_etf_partition_files_scanned": 3108,
+    "raw_etf_partition_files_sha_verified": 3108,
+    "raw_partition_hash_error_count": 0,
+    "raw_etf_target_ticker_daily_rows": 28775,
+    "krx_calendar_session_count_through_support": 4102,
+    "krx_calendar_first_date": "2010-01-04",
+    "krx_calendar_last_date": "2026-09-01"
+  },
+  "validation": {
+    "checks": {
+      "authority_commit_matches_head": true,
+      "sentinel_ticker_count_10": true,
+      "sentinel_row_count_78": true,
+      "universe_changed_0": true,
+      "trade_ledger_changed_0": true,
+      "effective_span_artifact_changed_0": true,
+      "strategy_source_changed_0": true,
+      "raw_manifest_changed_0": true,
+      "raw_partition_hash_mismatch_0": true,
+      "market_refetch_0": true,
+      "forty_day_recomputation_0": true,
+      "full_backtest_rerun_0": true,
+      "only_10_affected_tickers_evaluator_replayed": true
+    },
+    "passed": true,
+    "errors": [],
+    "universe_change_count": 0,
+    "trade_ledger_change_count": 0,
+    "strategy_source_change_count": 0,
+    "market_refetch_count": 0,
+    "forty_day_recomputation_count": 0,
+    "full_backtest_rerun_count": 0,
+    "targeted_evaluator_replay_ticker_count": 10,
+    "raw_rows_modified": false,
+    "strategy_rules_modified": false
+  },
+  "interpretation": {
+    "signal_path_exposure_found": true,
+    "why_check_required": "Zero low bars fall inside features consumed by A FAST monthly permission, weekly trigger, daily risk, Pattern A stage/score, and the raw 20-session volume eligibility gate. Existing ledger entries overlap this exposure. No canonical counterfactual OHLCV treatment is authorized by the source contract, and this audit does not alter raw rows or replay an adjusted backtest.",
+    "certification_eligible": false,
+    "original_simple_backtest_certified_pass": false,
+    "no_automatic_correction_or_rerun": true
+  }
+}
