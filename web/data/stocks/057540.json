@@ -8,24 +8,24 @@
   },
   "availability": {
     "report_available": true,
-    "report_status": "READY"
+    "report_status": "PARTIAL"
   },
   "decision": {
-    "action": "WAIT",
-    "strategy_state": "WAIT",
-    "canonical_position": "FLAT",
-    "action_reason": "INVESTABILITY_FILTERED_FILTERED_MARKET_CAP",
+    "action": "NONE",
+    "strategy_state": "DATA_UNAVAILABLE",
+    "canonical_position": "DATA_UNAVAILABLE",
+    "action_reason": "INVESTABILITY_DATA_UNAVAILABLE",
     "is_investable": false
   },
   "summary": {
     "trend_stage": "WEAK",
-    "flow_state": "FLOW_RECENT_RECOVERY"
+    "flow_state": "FLOW_UNAVAILABLE"
   },
   "price_trend": {
-    "latest_close": 602.0,
-    "latest_close_as_of": "2026-09-22",
-    "price_status": "AVAILABLE",
-    "price_source": "data/market/adjusted/stocks/057540.parquet",
+    "latest_close": null,
+    "latest_close_as_of": null,
+    "price_status": "UNAVAILABLE",
+    "price_source": null,
     "score_trend": {
       "current_score": 37.28,
       "score_1m_ago": 32.69,
@@ -158,29 +158,29 @@
   },
   "market_strength": {
     "applicability": "APPLICABLE",
-    "data_status": "READY",
+    "data_status": "DATA_UNAVAILABLE",
     "benchmark_name": "코스닥",
-    "benchmark_last_observation_date": "2026-09-22",
-    "stock_return_2w": 0.02555366269165238,
-    "stock_return_1m": -0.03987240829346095,
-    "stock_return_3m": -0.2790419161676647,
-    "stock_return_6m": -0.2824791418355185,
-    "stock_return_12m": -0.2790419161676647,
-    "market_rs_2w": -0.0021015512523084867,
-    "market_rs_1m": -0.0640948079260295,
-    "market_rs_3m": -0.22966927431361783,
-    "market_rs_6m": -0.0011567545060900963,
-    "market_rs_12m": -0.28730237217264687,
-    "percentile_2w": 65.86974443528442,
-    "percentile_1m": 30.929553980825343,
-    "percentile_3m": 5.1228654727197,
-    "percentile_6m": 59.41005400914001,
-    "percentile_12m": 56.545608108108105,
-    "explanation": "기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다."
+    "benchmark_last_observation_date": null,
+    "stock_return_2w": null,
+    "stock_return_1m": null,
+    "stock_return_3m": null,
+    "stock_return_6m": null,
+    "stock_return_12m": null,
+    "market_rs_2w": null,
+    "market_rs_1m": null,
+    "market_rs_3m": null,
+    "market_rs_6m": null,
+    "market_rs_12m": null,
+    "percentile_2w": null,
+    "percentile_1m": null,
+    "percentile_3m": null,
+    "percentile_6m": null,
+    "percentile_12m": null,
+    "explanation": "일부 기간의 시장 상대강도 데이터가 없어 전체 기간 흐름은 제한적으로 해석됩니다."
   },
   "flow": {
-    "data_status": "READY",
-    "state": "FLOW_RECENT_RECOVERY",
+    "data_status": "DATA_UNAVAILABLE",
+    "state": "FLOW_UNAVAILABLE",
     "net_buy_value_1d_krw": 30323470.0,
     "net_buy_value_5d_krw": 58407949.0,
     "net_buy_value_10d_krw": 89619202.0,
@@ -196,13 +196,13 @@
     "positive_days_10d": 8,
     "positive_days_20d": 11,
     "positive_days_60d": 21,
-    "explanation": "최근 5일과 20일 외국인 수급은 순매수로 개선되었으나 60일 누적으로는 아직 순매도 상태로, 단기 수급 반등 및 회복 국면입니다 (5일 순매수 강도: +22.59%)."
+    "explanation": "외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다."
   },
   "fundamentals": {
     "status": "PARTIAL",
     "applicability": "APPLICABLE",
     "reason": "DISPLAY_WINDOW_PARTIAL",
-    "requested_as_of": "2026-09-22",
+    "requested_as_of": "2026-09-25",
     "company_family": "NON_FINANCIAL",
     "currency": "KRW",
     "filter_status": "PASS",
@@ -475,11 +475,11 @@
     ]
   },
   "strategy": {
-    "action": "WAIT",
-    "state": "WAIT",
-    "position": "FLAT",
-    "reason": "INVESTABILITY_FILTERED_FILTERED_MARKET_CAP",
-    "interpretation": "패스트 코어 V2 관망(WAIT) 상태입니다. 투자 유동성/시가총액 기준 미달(FILTERED_MARKET_CAP)로 진입 조건이 충족되지 않았습니다.",
+    "action": "NONE",
+    "state": "DATA_UNAVAILABLE",
+    "position": "DATA_UNAVAILABLE",
+    "reason": "INVESTABILITY_DATA_UNAVAILABLE",
+    "interpretation": "투자 유동성 및 시가총액 데이터 결측으로 패스트 코어 V2 신규 진입 적격성을 판정할 수 없습니다.",
     "history": [
       {
         "trade_id": "057540_01",
@@ -514,24 +514,24 @@
     ]
   },
   "technical_details": {
-    "requested_as_of": "2026-09-22",
-    "reference_market_date": "2026-09-22",
+    "requested_as_of": "2026-09-25",
+    "reference_market_date": "2026-09-23",
     "report_version": "0.5",
-    "report_status": "READY",
+    "report_status": "PARTIAL",
     "asset_type": "COMMON",
-    "investability_status": "FILTERED_MARKET_CAP",
-    "investability_reason": "MARKET_CAP_BELOW_1000EOK (357.6억)",
+    "investability_status": "DATA_UNAVAILABLE",
+    "investability_reason": "REQUIRED_METRIC_UNAVAILABLE",
     "pattern_stage": "WEAK",
     "pattern_score": 37.28,
     "candidate_state": "blocked",
-    "flow_state": "FLOW_RECENT_RECOVERY",
+    "flow_state": "FLOW_UNAVAILABLE",
     "market_strength_applicability": "APPLICABLE",
-    "market_strength_status": "READY",
-    "relative_strength_status": "READY",
+    "market_strength_status": "DATA_UNAVAILABLE",
+    "relative_strength_status": "DATA_UNAVAILABLE",
     "trading_value_state": "TRADING_VALUE_WEAKENING",
-    "price_as_of": "2026-09-22",
-    "price_status": "AVAILABLE",
-    "price_source": "data/market/adjusted/stocks/057540.parquet",
+    "price_as_of": null,
+    "price_status": "UNAVAILABLE",
+    "price_source": null,
     "sector_name": null,
     "data_quality": {
       "cache_present": true,
@@ -542,7 +542,7 @@
       "quality_status": "OK",
       "quality_flags": []
     },
-    "source_report": "artifacts/reporting/stock_reports/20260922/json/057540_옴니시스템.json"
+    "source_report": "artifacts/reporting/stock_reports/20260925/json/057540_옴니시스템.json"
   },
   "external_links": {
     "naver_finance": "https://finance.naver.com/item/main.naver?code=057540",
