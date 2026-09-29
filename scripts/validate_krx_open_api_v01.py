@@ -31,6 +31,11 @@ from trend_scanner.data.krx_openapi_client import (
     redact_headers,
 )
 from trend_scanner.data.krx_openapi_quota import KrxOpenApiQuotaExceeded, LocalKrxOpenApiQuota
+from trend_scanner.data.krx_credentials import (
+    load_open_api_auth_key as _load_shared_open_api_auth_key,
+    load_operator_credentials as _load_shared_operator_credentials,
+    read_env_value as _read_shared_env_value,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACT_DIR = ROOT / "artifacts/data/krx_openapi/v01"
@@ -90,15 +95,7 @@ def normalize_numeric(value: Any) -> float | int | None:
 
 
 def _read_env_value(path: Path, name: str) -> str:
-    if not path.exists():
-        return ""
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line.startswith(f"{name}="):
-            value = line.split("=", 1)[1].strip()
-            if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
-                value = value[1:-1]
-            return value
-    return ""
+    return _read_shared_env_value(path, name)
 
 
 def _read_secret_from_file(path: Path) -> str:
@@ -107,26 +104,11 @@ def _read_secret_from_file(path: Path) -> str:
 
 def _load_operator_credentials() -> None:
     """Load PyKRX credentials silently without serializing or printing them."""
-
-    for name in ("KRX_ID", "KRX_PW"):
-        if os.getenv(name, "").strip():
-            continue
-        for path in (ROOT / ".env", ROOT.parent / "env.md"):
-            value = _read_env_value(path, name).strip()
-            if value:
-                os.environ[name] = value
-                break
+    _load_shared_operator_credentials(ROOT)
 
 
 def _load_auth_key() -> str:
-    value = os.getenv("KRX_OPEN_API_AUTH_KEY", "").strip()
-    if value:
-        return value
-    for path in (ROOT / ".env", ROOT.parent / "env.md"):
-        value = _read_secret_from_file(path).strip()
-        if value:
-            return value
-    return ""
+    return _load_shared_open_api_auth_key(ROOT)
 
 
 def _redacted_url(url: str) -> str:

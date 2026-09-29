@@ -28,6 +28,10 @@ from trend_scanner.data.krx_openapi_client import KrxOpenApiClient
 from trend_scanner.data.krx_openapi_quota import LocalKrxOpenApiQuota
 from trend_scanner.data.krx_raw_stock_provider import KrxRawStockSnapshotProvider
 from trend_scanner.data.krx_raw_stock_store import DEFAULT_RAW_STOCK_ROOT, KrxRawStockStore
+from trend_scanner.data.krx_credentials import (
+    load_open_api_auth_key as _load_shared_open_api_auth_key,
+    read_env_value as _read_shared_env_value,
+)
 from trend_scanner.data.rolling_market_data_refresh import (
     DEFAULT_ROLLING_AUTHORITY_DIR,
     ETF_VALIDATED_ACCEPTANCE_TICKERS,
@@ -50,26 +54,11 @@ LIVE_RESULT_ARTIFACT_ROOT = ROOT / "artifacts/data/rolling_market_data_refresh/v
 
 
 def _read_env_value(path: Path, name: str) -> str:
-    if not path.exists():
-        return ""
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line.startswith(f"{name}="):
-            value = line.split("=", 1)[1].strip()
-            if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
-                value = value[1:-1]
-            return value
-    return ""
+    return _read_shared_env_value(path, name)
 
 
 def load_auth_key() -> str:
-    value = os.getenv("KRX_OPEN_API_AUTH_KEY", "").strip()
-    if value:
-        return value
-    for path in (ROOT / ".env", ROOT.parent / "env.md"):
-        value = _read_env_value(path, "KRX_OPEN_API_AUTH_KEY").strip()
-        if value:
-            return value
-    return ""
+    return _load_shared_open_api_auth_key(ROOT)
 
 
 def load_common_adjusted_tickers_from_pit(
