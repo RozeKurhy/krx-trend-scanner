@@ -1,6 +1,6 @@
 {
-  "verdict": "ETF_36_ZERO_OHLC_SENTINEL_CLEAN_ELIGIBILITY_CLOSURE_CHECK_REQUIRED",
-  "certified_backtest_verdict": "CHECK_REQUIRED",
+  "verdict": "ETF_36_ZERO_OHLC_SENTINEL_CLEAN_ELIGIBILITY_CLOSURE_PASS",
+  "certified_backtest_verdict": "ETF_36_AFAST_V2_VS_JULIA_5WINDOW_SIMPLE_BACKTEST_CERTIFIED_PASS",
   "authority": {
     "baseline_backtest_commit": "b5df1642f04fcf9804e9aeda4309c59bc3bac915",
     "sentinel_audit_commit": "3a8703209d2856cfabcc61610f73ed5996bc8e58"
@@ -212,7 +212,28 @@
     "support_after_exit_count": 0,
     "mandatory_nonfinite_count": 0,
     "realized_exit_nonfinite_count": 0,
-    "unexpected_nan_count": 0
+    "unexpected_nan_count": 0,
+    "trade_count": 505,
+    "open_trade_count": 181,
+    "realized_trade_count": 324,
+    "open_missing_exit_execution_count": 181,
+    "open_missing_exit_price_count": 181,
+    "realized_missing_exit_signal_count": 0,
+    "realized_missing_exit_execution_count": 0,
+    "realized_missing_exit_price_count": 0,
+    "duplicate_trade_identity_count": 0,
+    "entry_before_effective_start_count": 0,
+    "post_cutoff_entry_count": 0,
+    "realized_exit_price_nonfinite_count": 0,
+    "tax_pnl_application_count": 0,
+    "new_trade_count": 0,
+    "targeted_replay_count": 0,
+    "clean_ready_recompute_count": 0,
+    "normalized_blank_exit_values_by_field": {
+      "exit_signal_date": 181,
+      "exit_execution_date": 181,
+      "exit_price_raw_open": 181
+    }
   },
   "checks": {
     "frozen_universe_36": true,
@@ -232,24 +253,33 @@
     "unexpected_nan_0": true,
     "signal_path_clean_at_each_clean_ready": true,
     "strategy_span_parity": true,
-    "validation_replay_contract": false,
+    "validation_replay_contract": true,
     "original_ledger_unchanged": true,
     "original_spans_unchanged": true,
     "original_universe_unchanged": true,
     "raw_target_partition_hash_errors_0": true,
     "revised_summary_rows_20": true,
     "risk_closure_rows_12": true,
-    "no_unresolved_risk_disposition": true
+    "no_unresolved_risk_disposition": true,
+    "frozen_affected_spans_applied": true,
+    "risk_identity_closure_12": true,
+    "open_realized_exit_field_consistency": true,
+    "duplicate_trade_identity_0": true,
+    "entry_before_effective_start_0": true,
+    "post_cutoff_entry_0": true,
+    "support_after_exit_0": true,
+    "v2_julia_span_parity": true,
+    "summary_reconciliation_pass": true,
+    "tax_pnl_application_0": true,
+    "open_exit_missing_counts_equal_open_trade_count": true,
+    "no_replay_or_new_trade_generation": true,
+    "existing_closure_inputs_unchanged": true
   },
-  "failed_checks": [
-    "validation_replay_contract"
-  ],
+  "failed_checks": [],
   "replay_errors": [],
   "existing_backtest_validation": {
-    "passed": false,
-    "errors": [
-      "OPEN_TRADE_HAS_REALIZED_EXIT_FIELDS"
-    ],
+    "passed": true,
+    "errors": [],
     "checks": {
       "span_pairs": true,
       "strategy_start_end_parity": true,
@@ -257,7 +287,7 @@
       "post_cutoff_entry_count": 0,
       "not_evaluable_reason_missing_count": 0,
       "unexpected_nan_or_inf_count": 0,
-      "expected_open_trade_missing_exit_price_count": 28,
+      "expected_open_trade_missing_exit_price_count": 181,
       "duplicate_trade_identity_count": 0,
       "aggregate_float_tolerance_pp": 0.1,
       "tax_pnl_application_count": 0
@@ -311,6 +341,106 @@
     "market_refetch_count": 0,
     "forty_day_recomputation_count": 0,
     "full_36_etf_five_window_replay_count": 0,
-    "runtime_seconds": 41.417
+    "runtime_seconds": 41.417,
+    "validator_only_finalization": true,
+    "new_trade_generation_count": 0,
+    "targeted_replay_count": 0,
+    "clean_ready_recompute_count": 0
+  },
+  "validator_finalization": {
+    "mode": "EXISTING_CERTIFIED_LEDGER_ONLY",
+    "exit_missing_values_normalized_before_validation": true,
+    "new_trades_generated": 0,
+    "targeted_replay_count": 0,
+    "clean_ready_recompute_count": 0,
+    "result": {
+      "passed": true,
+      "checks": {
+        "frozen_universe_36": true,
+        "frozen_affected_spans_applied": true,
+        "risk_identity_closure_12": true,
+        "open_realized_exit_field_consistency": true,
+        "duplicate_trade_identity_0": true,
+        "entry_before_effective_start_0": true,
+        "post_cutoff_entry_0": true,
+        "support_after_exit_0": true,
+        "mandatory_nan_inf_0": true,
+        "v2_julia_span_parity": true,
+        "summary_reconciliation_pass": true,
+        "tax_pnl_application_0": true,
+        "open_exit_missing_counts_equal_open_trade_count": true,
+        "no_replay_or_new_trade_generation": true,
+        "existing_closure_inputs_unchanged": true
+      },
+      "failed_checks": [],
+      "errors": [],
+      "existing_backtest_validation": {
+        "passed": true,
+        "errors": [],
+        "checks": {
+          "span_pairs": true,
+          "strategy_start_end_parity": true,
+          "entry_before_comparison_start_count": 0,
+          "post_cutoff_entry_count": 0,
+          "not_evaluable_reason_missing_count": 0,
+          "unexpected_nan_or_inf_count": 0,
+          "expected_open_trade_missing_exit_price_count": 181,
+          "duplicate_trade_identity_count": 0,
+          "aggregate_float_tolerance_pp": 0.1,
+          "tax_pnl_application_count": 0
+        }
+      },
+      "exit_field_consistency": {
+        "passed": true,
+        "errors": [],
+        "open_trade_count": 181,
+        "open_missing_exit_execution_count": 181,
+        "open_missing_exit_price_count": 181,
+        "open_populated_exit_execution_count": 0,
+        "open_populated_exit_price_count": 0,
+        "realized_trade_count": 324,
+        "realized_missing_exit_fields_by_name": {
+          "exit_signal_date": 0,
+          "exit_execution_date": 0,
+          "exit_price_raw_open": 0
+        }
+      },
+      "counts": {
+        "trade_count": 505,
+        "open_trade_count": 181,
+        "realized_trade_count": 324,
+        "open_missing_exit_execution_count": 181,
+        "open_missing_exit_price_count": 181,
+        "realized_missing_exit_signal_count": 0,
+        "realized_missing_exit_execution_count": 0,
+        "realized_missing_exit_price_count": 0,
+        "duplicate_trade_identity_count": 0,
+        "entry_before_effective_start_count": 0,
+        "post_cutoff_entry_count": 0,
+        "support_after_exit_count": 0,
+        "mandatory_nonfinite_count": 0,
+        "realized_exit_price_nonfinite_count": 0,
+        "tax_pnl_application_count": 0,
+        "new_trade_count": 0,
+        "targeted_replay_count": 0,
+        "clean_ready_recompute_count": 0,
+        "normalized_blank_exit_values_by_field": {
+          "exit_signal_date": 181,
+          "exit_execution_date": 181,
+          "exit_price_raw_open": 181
+        }
+      },
+      "artifact_sha256": {
+        "certified_trade_ledger.csv": "c2584be359a7041a0e823204e8a8976a3d30046b112429f7b0746606f1929307",
+        "certified_window_comparison_summary.csv": "f1f1f8f706d71985db49b80fbdb164b525c39b295ca4c176a7fa094b78118cb9",
+        "affected_span_changes.csv": "0af1b4103f7185c6e4fdf4e5c828ad70c1da84d54cea393d8ac9a2e3a8271f6c",
+        "risk_identity_closure.csv": "d8204712e828a78498722b933c62fb50db8cd0bf21ed44587cb4b7db903aa522",
+        "clean_strategy_ready_dates.csv": "1f92e36868c579c93fa93688d81d9e18b2f76533c48844d1145c9cf99117bc5a",
+        "signal_path_lookback_contract.csv": "610c8c77303773ad5c3f966a1613e6e75e11687728bde0866414fdf95b6a0aa7",
+        "targeted_replay_trade_ledger.csv": "e197b8cb9394bfc42ff579bcd7144d612c26d31be772be579c3d163b2c2955ac",
+        "official_etf_universe_36.csv": "a41e363c5e0ba398b5361a1bb3cb7057394c0a7a4b168f48321be26eb2686b3d"
+      },
+      "universe_errors": []
+    }
   }
 }
