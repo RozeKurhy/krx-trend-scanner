@@ -7,7 +7,7 @@ Frozen Pattern A Score v0.2를 완료된 월봉(Completed Monthly) 기준 시간
 [핵심 설계 원칙]:
 1. Pure Measurement Layer: 별도의 가중 점수, alpha threshold, good/bad 판정을 만들지 않는다.
 2. Frozen Score Repeated Evaluation: 각 observation 시점마다 Frozen Score v0.2를 그대로 호출한다.
-3. Completed Monthly Cadence: 진행 중인 월봉을 배제하고 `req_ts` 기준 완성된 월봉만을 anchor로 사용한다.
+3. Completed Monthly Cadence: 진행 중인 월봉을 배제하고 시장 기준일(as_of 또는 `market_calendar_as_of`) 기준 완성된 월봉만을 anchor로 사용한다.
 4. Exact Calendar Horizon: 단순 봉 순서(ordinal)가 아닌 정확한 Calendar Month 이전 시점과 비교한다 (Missing month silent backfill 금지).
 5. Error Provenance & True Insufficient History 구분: 계산 에러, 히스토리 부족(Insufficient History), 중간 월봉 누락(Missing Month)을 명확히 구분한다.
 6. Stage / Candidate State 완전 독립: `score_result.stage` 등 Score 내부 legacy stage를 일체 참조하지 않는다.
@@ -138,6 +138,7 @@ def compute_pattern_a_score_momentum(
     *,
     context: PrecomputedTickerContext | None = None,
     market_calendar: MarketCalendarAuthority | None = None,
+    market_calendar_as_of: str | pd.Timestamp | None = None,
 ) -> PatternAScoreMomentumResult:
     """특정 as_of 시점 기준으로 정확한 Calendar 1M, 3M, 6M Pattern A Score Momentum을 계산한다.
 
@@ -149,6 +150,8 @@ def compute_pattern_a_score_momentum(
     ``market_calendar`` is forwarded to every completed-period check this function performs
     (PRODUCTION_REGENERATION_INFRASTRUCTURE_FIX_V01 section 1); omitting it falls back to the
     default canonical calendar authority, exactly as before this parameter existed.
+    ``market_calendar_as_of`` separates current completion checks from ``as_of`` when
+    requested-date metadata is later than the available market-data authority frontier.
     """
     clean_ticker = str(ticker).strip().zfill(6)
     clean_name = str(name).strip()
@@ -215,7 +218,13 @@ def compute_pattern_a_score_momentum(
     else:
         raw_monthly = context.monthly_up_to(req_ts)
     valid_monthly = raw_monthly.dropna(subset=["close"])
-    completed_monthly = _drop_incomplete_current_month(valid_monthly, req_ts, market_calendar=market_calendar)
+    completion_as_of = req_ts if market_calendar_as_of is None else pd.Timestamp(market_calendar_as_of)
+    completed_monthly = _drop_incomplete_current_month(
+        valid_monthly,
+        req_ts,
+        market_calendar=market_calendar,
+        market_calendar_as_of=completion_as_of,
+    )
 
     if completed_monthly.empty:
         dummy_anchor = req_ts

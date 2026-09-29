@@ -207,6 +207,7 @@ def build_historical_snapshot_from_context(
     snapshot_date: str | pd.Timestamp,
     include_incomplete_periods: bool = True,
     market_calendar: MarketCalendarAuthority | None = None,
+    market_calendar_as_of: str | pd.Timestamp | None = None,
 ) -> HistoricalSnapshot:
     """Optimized fast-path counterpart to
     ``trend_scanner.validation.historical_snapshot.build_historical_snapshot``.
@@ -215,8 +216,9 @@ def build_historical_snapshot_from_context(
     logic, FAST contract logic, or weekly/monthly completion semantics is
     reimplemented here. Must remain provably parity-identical to
     ``build_historical_snapshot`` for the same
-    (ticker, daily, snapshot_date, include_incomplete_periods)."""
+    (ticker, daily, snapshot_date, include_incomplete_periods, market_calendar_as_of)."""
     requested = pd.Timestamp(snapshot_date)
+    completion_as_of = requested if market_calendar_as_of is None else pd.Timestamp(market_calendar_as_of)
     effective_as_of, pos = _effective_as_of_position(context, requested)
 
     if effective_as_of is None:
@@ -250,7 +252,7 @@ def build_historical_snapshot_from_context(
             and monthly_tail_label is not None
             and monthly_tail_label.year == requested.year
             and monthly_tail_label.month == requested.month
-            and not is_completed_market_month(requested, calendar=market_calendar)
+            and not is_completed_market_month(completion_as_of, calendar=market_calendar)
         )
         monthly = _reconstruct_period_frame(
             context.full_monthly,
@@ -262,7 +264,12 @@ def build_historical_snapshot_from_context(
         )
 
     if not include_incomplete_periods:
-        monthly = _drop_incomplete_current_month(monthly, requested, market_calendar=market_calendar)
+        monthly = _drop_incomplete_current_month(
+            monthly,
+            requested,
+            market_calendar=market_calendar,
+            market_calendar_as_of=completion_as_of,
+        )
         weekly = _drop_incomplete_weekly(weekly, effective_as_of)
 
     sliced_daily = context.daily.iloc[: pos + 1] if pos >= 0 else context.daily.iloc[0:0]

@@ -26,6 +26,7 @@ import pandas as pd
 import pytest
 
 from trend_scanner.data.cache import ParquetCache
+from trend_scanner.data.market_calendar import MarketCalendarAuthority, MarketCalendarUnavailableError
 from trend_scanner.filters.investability import InvestabilityStatus
 from trend_scanner.patterns.pattern_a_evaluator import (
     PatternACandidateState,
@@ -276,8 +277,8 @@ def test_requested_as_of_and_reference_market_date_role_separation(mock_scanner_
     """
     from trend_scanner.universe.instrument_metadata import InstrumentMetadata
 
-    requested_as_of = "2026-09-12"  # 토요일 (비거래일)
-    reference_market_date = "2026-09-11"  # 직전 거래일(금)
+    requested_as_of = "2026-09-25"
+    reference_market_date = "2026-09-23"
 
     offline_universe_as_of_calls: list[str] = []
     resolve_metadata_as_of_calls: list[str] = []
@@ -328,9 +329,94 @@ def test_requested_as_of_and_reference_market_date_role_separation(mock_scanner_
     assert offline_universe_as_of_calls == [reference_market_date]
     assert resolve_metadata_as_of_calls == [requested_as_of]
 
-    # 요청 기준일을 가까운 거래일로 다시 기록하지 않는다.
+    # 요청 기준일을 기준 시장일로 다시 기록하지 않는다.
     assert res.summary.requested_as_of == requested_as_of
     assert res.summary.reference_market_date == reference_market_date
+
+
+def test_scanner_uses_reference_date_for_snapshot_completion_without_rewriting_requested_date(
+    mock_scanner_env, monkeypatch,
+):
+    """시장 캘린더 완료월 검사는 reference date를 쓰고 요청일 metadata는 보존한다."""
+    target = "2026-09-25"
+    reference = "2026-09-23"
+    daily = _create_mock_daily("2020-01-02", reference, 50000.0)
+    mock_scanner_env["cache"].save("005930", daily)
+
+    calendar = MarketCalendarAuthority.from_dates(
+        pd.bdate_range(daily.index.min(), reference),
+        last_completed_month="2026-08",
+    )
+    assert calendar.max_observed_trading_date == pd.Timestamp(reference)
+    assert calendar.is_completed_month(reference) is False
+    with pytest.raises(MarketCalendarUnavailableError, match="2026-09-25.*max observed trading date 2026-09-23"):
+        build_historical_snapshot(
+            "005930",
+            "삼성전자",
+            daily,
+            target,
+            include_incomplete_periods=False,
+            market_calendar=calendar,
+        )
+    legacy_snapshot = build_historical_snapshot(
+        "005930",
+        "삼성전자",
+        daily,
+        target,
+        include_incomplete_periods=False,
+        market_calendar=calendar,
+        market_calendar_as_of=reference,
+    )
+    assert legacy_snapshot.requested_snapshot_date == pd.Timestamp(target)
+    assert legacy_snapshot.monthly_as_of == pd.Timestamp("2026-08-31")
+
+    monkeypatch.setattr(scanner_module, "_default_production_market_calendar", lambda _root: calendar)
+    monkeypatch.setattr(scanner_module, "load_canonical_mcap_snapshot", lambda **_kwargs: (pd.DataFrame(), None))
+
+    observed_snapshots: list[tuple[pd.Timestamp, str | pd.Timestamp | None, pd.Timestamp | None]] = []
+    original_snapshot = scanner_module.build_historical_snapshot_from_context
+
+    def capture_snapshot(context, snapshot_date, *args, **kwargs):
+        snapshot = original_snapshot(context, snapshot_date, *args, **kwargs)
+        observed_snapshots.append(
+            (snapshot.requested_snapshot_date, kwargs.get("market_calendar_as_of"), snapshot.monthly_as_of)
+        )
+        return snapshot
+
+    observed_momentum: list[tuple[pd.Timestamp, str | pd.Timestamp | None]] = []
+    original_momentum = scanner_module.compute_pattern_a_score_momentum
+
+    def capture_momentum(ticker, name, daily, as_of, *args, **kwargs):
+        result = original_momentum(ticker, name, daily, as_of, *args, **kwargs)
+        observed_momentum.append((result.requested_as_of, kwargs.get("market_calendar_as_of")))
+        return result
+
+    monkeypatch.setattr(scanner_module, "build_historical_snapshot_from_context", capture_snapshot)
+    monkeypatch.setattr(scanner_module, "compute_pattern_a_score_momentum", capture_momentum)
+
+    result = scan_pattern_a_universe(
+        cache=mock_scanner_env["cache"],
+        as_of=target,
+        reference_market_date=reference,
+        universe_securities=[UniverseSecurity("005930", "삼성전자", MarketType.KOSPI)],
+        target_tickers=["005930"],
+        flow_df=pd.DataFrame(),
+        market_index_df=pd.DataFrame(),
+        sector_index_df=pd.DataFrame(),
+        sector_mapping={},
+        enrich_flow_for_candidates=False,
+        enrich_rs_for_candidates=False,
+    )
+
+    assert result.summary.requested_as_of == target
+    assert result.summary.reference_market_date == reference
+    assert result.summary.scanner_error_count == 0
+    assert len(observed_snapshots) == 1
+    assert observed_snapshots[0][0] == pd.Timestamp(target)
+    assert observed_snapshots[0][1] == reference
+    assert observed_snapshots[0][2] == pd.Timestamp("2026-08-31")
+    assert len(observed_momentum) == 1
+    assert observed_momentum[0] == (pd.Timestamp(target), reference)
 
 
 def test_offline_universe_missing_fails_closed_without_pykrx_fallback(monkeypatch, tmp_path):

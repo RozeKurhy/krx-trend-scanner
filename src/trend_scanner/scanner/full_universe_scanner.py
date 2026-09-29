@@ -1374,6 +1374,7 @@ def scan_pattern_a_universe(
                     snapshot_date=req_as_of,
                     include_incomplete_periods=False,
                     market_calendar=production_market_calendar,
+                    market_calendar_as_of=ref_market_date,
                 )
             else:
                 snapshot = build_historical_snapshot_from_context(
@@ -1381,6 +1382,7 @@ def scan_pattern_a_universe(
                     snapshot_date=req_as_of,
                     include_incomplete_periods=False,
                     market_calendar=production_market_calendar,
+                    market_calendar_as_of=ref_market_date,
                 )
 
             eval_res: PatternAEvaluationResult = evaluate_pattern_a(snapshot)
@@ -1407,6 +1409,7 @@ def scan_pattern_a_universe(
                 as_of=req_as_of,
                 context=ticker_context,
                 market_calendar=production_market_calendar,
+                market_calendar_as_of=ref_market_date,
             )
 
             current_obs = next(

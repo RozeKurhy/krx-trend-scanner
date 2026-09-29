@@ -61,14 +61,20 @@ def _drop_incomplete_current_month(
     monthly: pd.DataFrame,
     requested: pd.Timestamp,
     market_calendar: MarketCalendarAuthority | None = None,
+    market_calendar_as_of: str | pd.Timestamp | None = None,
 ) -> pd.DataFrame:
-    """실제 KRX 시장 캘린더 Authority 기준으로 진행 중인 마지막 월봉을 제거한다."""
+    """실제 KRX 시장 캘린더 Authority 기준으로 진행 중인 마지막 월봉을 제거한다.
+
+    ``requested``는 대상 월을 식별한다. 호출자가 요청일과 시장 기준일을
+    구분하는 경우에는 ``market_calendar_as_of``를 완료월 판정일로 사용한다.
+    """
     if monthly.empty:
         return monthly
 
     last_label = monthly.index[-1]
     same_month = (last_label.year == requested.year) and (last_label.month == requested.month)
-    if same_month and not is_completed_market_month(requested, calendar=market_calendar):
+    completion_as_of = requested if market_calendar_as_of is None else pd.Timestamp(market_calendar_as_of)
+    if same_month and not is_completed_market_month(completion_as_of, calendar=market_calendar):
         return monthly.iloc[:-1]
     return monthly
 
@@ -94,6 +100,7 @@ def build_historical_snapshot(
     snapshot_date: str | pd.Timestamp,
     include_incomplete_periods: bool = True,
     market_calendar: MarketCalendarAuthority | None = None,
+    market_calendar_as_of: str | pd.Timestamp | None = None,
 ) -> HistoricalSnapshot:
     requested = pd.Timestamp(snapshot_date)
 
@@ -105,7 +112,12 @@ def build_historical_snapshot(
     weekly = to_weekly(sliced)
     monthly = to_monthly(sliced)
     if not include_incomplete_periods:
-        monthly = _drop_incomplete_current_month(monthly, requested, market_calendar=market_calendar)
+        monthly = _drop_incomplete_current_month(
+            monthly,
+            requested,
+            market_calendar=market_calendar,
+            market_calendar_as_of=market_calendar_as_of,
+        )
         weekly = _drop_incomplete_weekly(weekly, effective_as_of)
 
     features = build_feature_row(ticker, name, sliced, weekly, monthly)
