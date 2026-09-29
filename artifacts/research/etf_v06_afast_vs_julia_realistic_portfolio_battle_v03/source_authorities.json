@@ -1,0 +1,39 @@
+{
+  "active_universe_count": 427,
+  "authority_ticker_count": 429,
+  "candidate_replay_rerun_count": 0,
+  "category_counts": {
+    "COMMODITY_RESOURCE": 17,
+    "MARKET_INDEX": 140,
+    "SECTOR_INDUSTRY": 270
+  },
+  "permanently_excluded_tickers": [
+    "265690",
+    "269530"
+  ],
+  "portfolio_replay_rerun_count": 0,
+  "pre_v04_validation_verdict": "CHECK_REQUIRED",
+  "raw_data_audit": {
+    "other_invalid_ohlc_rows": 0,
+    "raw_rewrite_count": 0,
+    "raw_rows_after_listing": 560926,
+    "strict_no_trade_session_rows": 3750,
+    "synthetic_or_forward_filled_rows": 0,
+    "technical_input_no_trade_row_count": 0,
+    "zero_volume_rows_in_raw_eligibility_source": 3750
+  },
+  "runtime": {
+    "lifecycle_wall_seconds": 169.947,
+    "portfolio_wall_seconds": 2.086,
+    "total_wall_seconds": 173.925,
+    "worker_count": 10
+  },
+  "v06_baseline_trade_count_a_fast_julia": 596,
+  "v06_full_summary_sha256": "320f2c20c734e2419a09bb232f9caf9c28da3616074a039bcc99999898b606b4",
+  "v06_permanent_exclusions_sha256": "7a72fc733df307b6d34f6f9d860da78d13474ee35ae507bb73c9a7344be9ad76",
+  "v06_readiness_sha256": "029a1c0888e4813961fe60672e13b289d09b52974b26d37fe67e72a092362acb",
+  "v06_trade_ledger_sha256": "4ab1dfe0fa116490b6b308aa3c4cfcea73e802661d0b4c12f571be8c9544a549",
+  "v06_universe_sha256": "24fab0cafc79dcf2ef7d5f319b0b2e60c09d23c64b588848fb0cc89a4cb8f5ba",
+  "validation_correction": "V04 Group B divergence reclassification; no candidate or portfolio replay",
+  "verdict": "ETF_V06_AFAST_VS_JULIA_REALISTIC_PORTFOLIO_BATTLE_V03_COMPLETE"
+}

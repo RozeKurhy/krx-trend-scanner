@@ -1,0 +1,2735 @@
+{
+  "candidate_ledger_hash_unchanged": true,
+  "candidate_replay_rerun_count": 0,
+  "candidate_trade_ledger_sha256": "6353dc2293b251bdd7d5811bad50bc0dad69f57ceb2b6edacdd482addba512e2",
+  "group_a_definition": "new_common_start == V06 common_evaluable_start; exact path parity required",
+  "group_a_mismatches": [],
+  "group_a_parity_mismatch_count": 0,
+  "group_a_ticker_count": 108,
+  "group_b_changed_ticker_details": [
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "069500",
+            "KR7069500007",
+            "2017-01-06",
+            "2017-01-09",
+            26700.0,
+            "2020-03-18",
+            "2020-03-19",
+            22335.0,
+            "2020-03-19",
+            22335.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            782
+          ]
+        ],
+        "new_trade_count": 4,
+        "old_only_count": 2,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "069500",
+            "KR7069500007",
+            "2017-09-01",
+            "2017-09-04",
+            30340.0,
+            "2019-08-05",
+            "2019-08-06",
+            25185.0,
+            "2019-08-06",
+            25185.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            469
+          ],
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "069500",
+            "KR7069500007",
+            "2019-11-15",
+            "2019-11-18",
+            28745.0,
+            "2020-03-16",
+            "2020-03-17",
+            22775.0,
+            "2020-03-17",
+            22775.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            82
+          ]
+        ],
+        "old_trade_count": 5,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2020-03-19",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "069500"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "069500",
+            "KR7069500007",
+            "2017-01-06",
+            "2017-01-09",
+            26700.0,
+            "2021-07-31",
+            "2021-08-02",
+            42685.0,
+            "2021-08-02",
+            42685.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1122
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "069500",
+            "KR7069500007",
+            "2017-09-01",
+            "2017-09-04",
+            30340.0,
+            "2021-07-31",
+            "2021-08-02",
+            42685.0,
+            "2021-08-02",
+            42685.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            961
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2021-08-02",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "069500"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "069660",
+            "KR7069660009",
+            "2017-01-06",
+            "2017-01-09",
+            26605.0,
+            "2020-03-18",
+            "2020-03-19",
+            22640.0,
+            "2020-03-19",
+            22640.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            782
+          ]
+        ],
+        "new_trade_count": 4,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "069660",
+            "KR7069660009",
+            "2019-11-15",
+            "2019-11-18",
+            29070.0,
+            "2020-03-16",
+            "2020-03-17",
+            22970.0,
+            "2020-03-17",
+            22970.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            82
+          ]
+        ],
+        "old_trade_count": 4,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2020-03-19",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "069660"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "069660",
+            "KR7069660009",
+            "2017-01-06",
+            "2017-01-09",
+            26605.0,
+            "2021-07-31",
+            "2021-08-02",
+            42680.0,
+            "2021-08-02",
+            42680.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1122
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "069660",
+            "KR7069660009",
+            "2019-11-15",
+            "2019-11-18",
+            29070.0,
+            "2021-07-31",
+            "2021-08-02",
+            42680.0,
+            "2021-08-02",
+            42680.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            424
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2021-08-02",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "069660"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "091170",
+            "KR7091170001",
+            "2017-01-06",
+            "2017-01-09",
+            7220.0,
+            "2018-05-31",
+            "2018-06-01",
+            8155.0,
+            "2018-06-01",
+            8155.0,
+            "REALIZED",
+            "EXIT3_PROGRESSED_TO_TRANSITION",
+            341
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "091170",
+            "KR7091170001",
+            "2017-03-31",
+            "2017-04-03",
+            7835.0,
+            "2018-05-31",
+            "2018-06-01",
+            8155.0,
+            "2018-06-01",
+            8155.0,
+            "REALIZED",
+            "EXIT3_PROGRESSED_TO_TRANSITION",
+            284
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2018-06-01",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "091170"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "091170",
+            "KR7091170001",
+            "2017-01-06",
+            "2017-01-09",
+            7220.0,
+            "2018-05-31",
+            "2018-06-01",
+            8155.0,
+            "2018-06-01",
+            8155.0,
+            "REALIZED",
+            "EXIT3_PROGRESSED_TO_TRANSITION",
+            341
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "091170",
+            "KR7091170001",
+            "2017-03-31",
+            "2017-04-03",
+            7835.0,
+            "2018-05-31",
+            "2018-06-01",
+            8155.0,
+            "2018-06-01",
+            8155.0,
+            "REALIZED",
+            "EXIT3_PROGRESSED_TO_TRANSITION",
+            284
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2018-06-01",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "091170"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "102110",
+            "KR7102110004",
+            "2017-01-06",
+            "2017-01-09",
+            26705.0,
+            "2020-03-18",
+            "2020-03-19",
+            22315.0,
+            "2020-03-19",
+            22315.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            782
+          ]
+        ],
+        "new_trade_count": 4,
+        "old_only_count": 2,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "102110",
+            "KR7102110004",
+            "2017-09-01",
+            "2017-09-04",
+            30375.0,
+            "2019-08-05",
+            "2019-08-06",
+            25205.0,
+            "2019-08-06",
+            25205.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            469
+          ],
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "102110",
+            "KR7102110004",
+            "2019-11-15",
+            "2019-11-18",
+            28765.0,
+            "2020-03-16",
+            "2020-03-17",
+            22600.0,
+            "2020-03-17",
+            22600.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            82
+          ]
+        ],
+        "old_trade_count": 5,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2020-03-19",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "102110"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "102110",
+            "KR7102110004",
+            "2017-01-06",
+            "2017-01-09",
+            26705.0,
+            "2021-07-31",
+            "2021-08-02",
+            42600.0,
+            "2021-08-02",
+            42600.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1122
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "102110",
+            "KR7102110004",
+            "2017-09-01",
+            "2017-09-04",
+            30375.0,
+            "2021-07-31",
+            "2021-08-02",
+            42600.0,
+            "2021-08-02",
+            42600.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            961
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2021-08-02",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "102110"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "105190",
+            "KR7105190003",
+            "2017-01-06",
+            "2017-01-09",
+            26755.0,
+            "2020-03-18",
+            "2020-03-19",
+            22405.0,
+            "2020-03-19",
+            22405.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            782
+          ]
+        ],
+        "new_trade_count": 4,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "105190",
+            "KR7105190003",
+            "2019-11-15",
+            "2019-11-18",
+            28955.0,
+            "2020-03-16",
+            "2020-03-17",
+            22685.0,
+            "2020-03-17",
+            22685.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            82
+          ]
+        ],
+        "old_trade_count": 4,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2020-03-19",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "105190"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "105190",
+            "KR7105190003",
+            "2017-01-06",
+            "2017-01-09",
+            26755.0,
+            "2021-07-31",
+            "2021-08-02",
+            42725.0,
+            "2021-08-02",
+            42725.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1122
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "105190",
+            "KR7105190003",
+            "2019-11-15",
+            "2019-11-18",
+            28955.0,
+            "2021-07-31",
+            "2021-08-02",
+            42725.0,
+            "2021-08-02",
+            42725.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            424
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2021-08-02",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "105190"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "117460",
+            "KR7117460006",
+            "2017-01-06",
+            "2017-01-09",
+            11040.0,
+            "2020-02-28",
+            "2020-03-02",
+            9140.0,
+            "2020-03-02",
+            9140.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            769
+          ]
+        ],
+        "new_trade_count": 4,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "117460",
+            "KR7117460006",
+            "2017-05-19",
+            "2017-05-22",
+            11430.0,
+            "2019-12-04",
+            "2019-12-05",
+            9620.0,
+            "2019-12-05",
+            9620.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            624
+          ]
+        ],
+        "old_trade_count": 4,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2020-03-02",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "117460"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "117460",
+            "KR7117460006",
+            "2017-01-06",
+            "2017-01-09",
+            11040.0,
+            "2021-03-31",
+            "2021-04-01",
+            19130.0,
+            "2021-04-01",
+            19130.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1037
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "117460",
+            "KR7117460006",
+            "2017-05-19",
+            "2017-05-22",
+            11430.0,
+            "2021-03-31",
+            "2021-04-01",
+            19130.0,
+            "2021-04-01",
+            19130.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            949
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2021-04-01",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "117460"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "122090",
+            "KR7122090004",
+            "2017-01-20",
+            "2017-01-23",
+            17895.0,
+            "2020-03-19",
+            "2020-03-20",
+            14350.0,
+            "2020-03-20",
+            14350.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            773
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "122090",
+            "KR7122090004",
+            "2019-11-15",
+            "2019-11-18",
+            19695.0,
+            "2020-03-16",
+            "2020-03-17",
+            15900.0,
+            "2020-03-17",
+            15900.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            82
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-23",
+            "exit_or_terminal_date": "2020-03-20",
+            "signal_date": "2017-01-20"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "122090"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "122090",
+            "KR7122090004",
+            "2017-01-20",
+            "2017-01-23",
+            17895.0,
+            "2022-02-28",
+            "2022-03-02",
+            25545.0,
+            "2022-03-02",
+            25545.0,
+            "REALIZED",
+            "EXIT3_PROGRESSED_TO_TRANSITION",
+            1253
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "122090",
+            "KR7122090004",
+            "2019-11-15",
+            "2019-11-18",
+            19695.0,
+            "2022-02-28",
+            "2022-03-02",
+            25545.0,
+            "2022-03-02",
+            25545.0,
+            "REALIZED",
+            "EXIT3_PROGRESSED_TO_TRANSITION",
+            565
+          ]
+        ],
+        "old_trade_count": 1,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-23",
+            "exit_or_terminal_date": "2022-03-02",
+            "signal_date": "2017-01-20"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "122090"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "138910",
+            "KR7138910005",
+            "2017-01-06",
+            "2017-01-09",
+            5525.0,
+            "2020-03-17",
+            "2020-03-18",
+            4590.0,
+            "2020-03-18",
+            4590.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            781
+          ]
+        ],
+        "new_trade_count": 4,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "138910",
+            "KR7138910005",
+            "2017-02-03",
+            "2017-02-06",
+            5680.0,
+            "2020-02-28",
+            "2020-03-02",
+            4915.0,
+            "2020-03-02",
+            4915.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            751
+          ]
+        ],
+        "old_trade_count": 4,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2020-03-18",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "138910"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "138910",
+            "KR7138910005",
+            "2017-01-06",
+            "2017-01-09",
+            5525.0,
+            "2022-04-30",
+            "2022-05-02",
+            8035.0,
+            "2022-05-02",
+            8035.0,
+            "REALIZED",
+            "EXIT3_PROGRESSED_TO_TRANSITION",
+            1305
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "138910",
+            "KR7138910005",
+            "2017-02-03",
+            "2017-02-06",
+            5680.0,
+            "2022-04-30",
+            "2022-05-02",
+            8035.0,
+            "2022-05-02",
+            8035.0,
+            "REALIZED",
+            "EXIT3_PROGRESSED_TO_TRANSITION",
+            1287
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2022-05-02",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "138910"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "148020",
+            "KR7148020001",
+            "2017-01-06",
+            "2017-01-09",
+            26815.0,
+            "2020-03-18",
+            "2020-03-19",
+            22310.0,
+            "2020-03-19",
+            22310.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            782
+          ]
+        ],
+        "new_trade_count": 4,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "148020",
+            "KR7148020001",
+            "2019-11-15",
+            "2019-11-18",
+            28745.0,
+            "2020-03-16",
+            "2020-03-17",
+            22930.0,
+            "2020-03-17",
+            22930.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            82
+          ]
+        ],
+        "old_trade_count": 4,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2020-03-19",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "148020"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "148020",
+            "KR7148020001",
+            "2017-01-06",
+            "2017-01-09",
+            26815.0,
+            "2021-07-31",
+            "2021-08-02",
+            42605.0,
+            "2021-08-02",
+            42605.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1122
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "148020",
+            "KR7148020001",
+            "2019-11-15",
+            "2019-11-18",
+            28745.0,
+            "2021-07-31",
+            "2021-08-02",
+            42605.0,
+            "2021-08-02",
+            42605.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            424
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2021-08-02",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "148020"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "152100",
+            "KR7152100004",
+            "2017-01-06",
+            "2017-01-09",
+            26840.0,
+            "2020-03-18",
+            "2020-03-19",
+            22330.0,
+            "2020-03-19",
+            22330.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            782
+          ]
+        ],
+        "new_trade_count": 4,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "152100",
+            "KR7152100004",
+            "2019-11-15",
+            "2019-11-18",
+            28940.0,
+            "2020-03-16",
+            "2020-03-17",
+            22645.0,
+            "2020-03-17",
+            22645.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            82
+          ]
+        ],
+        "old_trade_count": 4,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2020-03-19",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "152100"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "152100",
+            "KR7152100004",
+            "2017-01-06",
+            "2017-01-09",
+            26840.0,
+            "2021-07-31",
+            "2021-08-02",
+            43110.0,
+            "2021-08-02",
+            43110.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1122
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "152100",
+            "KR7152100004",
+            "2019-11-15",
+            "2019-11-18",
+            28940.0,
+            "2021-07-31",
+            "2021-08-02",
+            43110.0,
+            "2021-08-02",
+            43110.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            424
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2021-08-02",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "152100"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "152870",
+            "KR7152870002",
+            "2017-01-06",
+            "2017-01-09",
+            27160.0,
+            "2020-03-18",
+            "2020-03-19",
+            22745.0,
+            "2020-03-19",
+            22745.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            782
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "152870",
+            "KR7152870002",
+            "2019-11-15",
+            "2019-11-18",
+            29255.0,
+            "2020-03-13",
+            "2020-03-16",
+            25220.0,
+            "2020-03-16",
+            25220.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            81
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2020-03-19",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "152870"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "152870",
+            "KR7152870002",
+            "2017-01-06",
+            "2017-01-09",
+            27160.0,
+            "2021-07-31",
+            "2021-08-02",
+            43670.0,
+            "2021-08-02",
+            43670.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1122
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "152870",
+            "KR7152870002",
+            "2019-11-15",
+            "2019-11-18",
+            29255.0,
+            "2021-07-31",
+            "2021-08-02",
+            43670.0,
+            "2021-08-02",
+            43670.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            424
+          ]
+        ],
+        "old_trade_count": 1,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2021-08-02",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "152870"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "169950",
+            "KR7169950003",
+            "2017-01-06",
+            "2017-01-09",
+            13280.0,
+            null,
+            null,
+            null,
+            "2026-08-31",
+            25250.0,
+            "OPEN_AT_CUTOFF",
+            "NO_PROGRESSED_BEFORE_CUTOFF",
+            2363
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "169950",
+            "KR7169950003",
+            "2017-02-03",
+            "2017-02-06",
+            13045.0,
+            null,
+            null,
+            null,
+            "2026-08-31",
+            25250.0,
+            "OPEN_AT_CUTOFF",
+            "NO_PROGRESSED_BEFORE_CUTOFF",
+            2345
+          ]
+        ],
+        "old_trade_count": 1,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2026-08-31",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "169950"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "169950",
+            "KR7169950003",
+            "2017-01-06",
+            "2017-01-09",
+            13280.0,
+            null,
+            null,
+            null,
+            "2026-08-31",
+            25250.0,
+            "OPEN_AT_CUTOFF",
+            "NO_PROGRESSED_BEFORE_CUTOFF",
+            2363
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "169950",
+            "KR7169950003",
+            "2017-02-03",
+            "2017-02-06",
+            13045.0,
+            null,
+            null,
+            null,
+            "2026-08-31",
+            25250.0,
+            "OPEN_AT_CUTOFF",
+            "NO_PROGRESSED_BEFORE_CUTOFF",
+            2345
+          ]
+        ],
+        "old_trade_count": 1,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2017-01-09",
+            "exit_or_terminal_date": "2026-08-31",
+            "signal_date": "2017-01-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "169950"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "266360",
+            "KR7266360007",
+            "2020-02-28",
+            "2020-03-02",
+            12115.0,
+            "2020-03-19",
+            "2020-03-20",
+            9985.0,
+            "2020-03-20",
+            9985.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            15
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 1,
+        "pass": false
+      },
+      "divergence_class": "PRE_V06_WINDOW_ONLY",
+      "divergence_reason": "PRE_V06_WINDOW_ONLY",
+      "evidence": {
+        "pre_v06_window_trade_count": 1,
+        "pre_v06_window_trade_examples": [
+          {
+            "entry_execution_date": "2020-03-02",
+            "exit_or_terminal_date": "2020-03-20",
+            "signal_date": "2020-02-28"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "266360"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "266360",
+            "KR7266360007",
+            "2020-02-28",
+            "2020-03-02",
+            12115.0,
+            "2021-01-31",
+            "2021-02-01",
+            20705.0,
+            "2021-02-01",
+            20705.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            229
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 1,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2020-03-02",
+            "exit_or_terminal_date": "2021-02-01",
+            "signal_date": "2020-02-28"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "266360"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "266370",
+            "KR7266370006",
+            "2020-03-06",
+            "2020-03-09",
+            13490.0,
+            "2020-03-17",
+            "2020-03-18",
+            11340.0,
+            "2020-03-18",
+            11340.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            8
+          ]
+        ],
+        "new_trade_count": 5,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 4,
+        "pass": false
+      },
+      "divergence_class": "PRE_V06_WINDOW_ONLY",
+      "divergence_reason": "PRE_V06_WINDOW_ONLY",
+      "evidence": {
+        "pre_v06_window_trade_count": 1,
+        "pre_v06_window_trade_examples": [
+          {
+            "entry_execution_date": "2020-03-09",
+            "exit_or_terminal_date": "2020-03-18",
+            "signal_date": "2020-03-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "266370"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "266370",
+            "KR7266370006",
+            "2020-03-06",
+            "2020-03-09",
+            13490.0,
+            "2021-06-30",
+            "2021-07-01",
+            21135.0,
+            "2021-07-01",
+            21135.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            327
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "266370",
+            "KR7266370006",
+            "2020-09-04",
+            "2020-09-07",
+            14975.0,
+            "2021-06-30",
+            "2021-07-01",
+            21135.0,
+            "2021-07-01",
+            21135.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            202
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2020-03-09",
+            "exit_or_terminal_date": "2021-07-01",
+            "signal_date": "2020-03-06"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "266370"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "278530",
+            "KR7278530001",
+            "2020-10-30",
+            "2020-11-02",
+            9705.0,
+            "2022-02-28",
+            "2022-03-02",
+            12035.0,
+            "2022-03-02",
+            12035.0,
+            "REALIZED",
+            "EXIT3_PROGRESSED_TO_TRANSITION",
+            329
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "278530",
+            "KR7278530001",
+            "2021-01-29",
+            "2021-02-01",
+            13220.0,
+            "2022-02-28",
+            "2022-03-02",
+            12035.0,
+            "2022-03-02",
+            12035.0,
+            "REALIZED",
+            "EXIT3_PROGRESSED_TO_TRANSITION",
+            267
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2020-11-02",
+            "exit_or_terminal_date": "2022-03-02",
+            "signal_date": "2020-10-30"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "278530"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "278530",
+            "KR7278530001",
+            "2020-10-30",
+            "2020-11-02",
+            9705.0,
+            "2022-02-28",
+            "2022-03-02",
+            12035.0,
+            "2022-03-02",
+            12035.0,
+            "REALIZED",
+            "EXIT3_PROGRESSED_TO_TRANSITION",
+            329
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "278530",
+            "KR7278530001",
+            "2021-01-29",
+            "2021-02-01",
+            13220.0,
+            "2022-02-28",
+            "2022-03-02",
+            12035.0,
+            "2022-03-02",
+            12035.0,
+            "REALIZED",
+            "EXIT3_PROGRESSED_TO_TRANSITION",
+            267
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2020-11-02",
+            "exit_or_terminal_date": "2022-03-02",
+            "signal_date": "2020-10-30"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "278530"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "278540",
+            "KR7278540000",
+            "2020-10-30",
+            "2020-11-02",
+            9680.0,
+            "2026-02-28",
+            "2026-03-03",
+            31795.0,
+            "2026-03-03",
+            31795.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1306
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "278540",
+            "KR7278540000",
+            "2021-02-05",
+            "2021-02-08",
+            13705.0,
+            "2026-02-28",
+            "2026-03-03",
+            31795.0,
+            "2026-03-03",
+            31795.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1239
+          ]
+        ],
+        "old_trade_count": 1,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2020-11-02",
+            "exit_or_terminal_date": "2026-03-03",
+            "signal_date": "2020-10-30"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "278540"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "278540",
+            "KR7278540000",
+            "2020-10-30",
+            "2020-11-02",
+            9680.0,
+            "2026-02-28",
+            "2026-03-03",
+            31795.0,
+            "2026-03-03",
+            31795.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1306
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "278540",
+            "KR7278540000",
+            "2021-02-05",
+            "2021-02-08",
+            13705.0,
+            "2026-02-28",
+            "2026-03-03",
+            31795.0,
+            "2026-03-03",
+            31795.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1239
+          ]
+        ],
+        "old_trade_count": 1,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2020-11-02",
+            "exit_or_terminal_date": "2026-03-03",
+            "signal_date": "2020-10-30"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "278540"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "280930",
+            "KR7280930009",
+            "2020-11-27",
+            "2020-11-30",
+            12090.0,
+            "2021-07-31",
+            "2021-08-02",
+            14520.0,
+            "2021-08-02",
+            14520.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            168
+          ]
+        ],
+        "new_trade_count": 3,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2020-11-30",
+            "exit_or_terminal_date": "2021-08-02",
+            "signal_date": "2020-11-27"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "280930"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "280930",
+            "KR7280930009",
+            "2020-11-27",
+            "2020-11-30",
+            12090.0,
+            "2021-07-31",
+            "2021-08-02",
+            14520.0,
+            "2021-08-02",
+            14520.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            168
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 1,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2020-11-30",
+            "exit_or_terminal_date": "2021-08-02",
+            "signal_date": "2020-11-27"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "280930"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "292050",
+            "KR7292050002",
+            "2021-02-26",
+            "2021-03-02",
+            19835.0,
+            "2026-02-28",
+            "2026-03-03",
+            43200.0,
+            "2026-03-03",
+            43200.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1226
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 0,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2021-03-02",
+            "exit_or_terminal_date": "2026-03-03",
+            "signal_date": "2021-02-26"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "292050"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "292050",
+            "KR7292050002",
+            "2021-02-26",
+            "2021-03-02",
+            19835.0,
+            "2026-02-28",
+            "2026-03-03",
+            43200.0,
+            "2026-03-03",
+            43200.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1226
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 0,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2021-03-02",
+            "exit_or_terminal_date": "2026-03-03",
+            "signal_date": "2021-02-26"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "292050"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "292190",
+            "KR7292190006",
+            "2021-02-26",
+            "2021-03-02",
+            19580.0,
+            "2026-02-28",
+            "2026-03-03",
+            42240.0,
+            "2026-03-03",
+            42240.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1226
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 2,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "292190",
+            "KR7292190006",
+            "2024-08-16",
+            "2024-08-19",
+            17400.0,
+            "2025-04-09",
+            "2025-04-10",
+            15625.0,
+            "2025-04-10",
+            15625.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            155
+          ],
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "292190",
+            "KR7292190006",
+            "2025-06-13",
+            "2025-06-16",
+            18120.0,
+            "2026-02-28",
+            "2026-03-03",
+            42240.0,
+            "2026-03-03",
+            42240.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            174
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2021-03-02",
+            "exit_or_terminal_date": "2026-03-03",
+            "signal_date": "2021-02-26"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "292190"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "292190",
+            "KR7292190006",
+            "2021-02-26",
+            "2021-03-02",
+            19580.0,
+            "2026-02-28",
+            "2026-03-03",
+            42240.0,
+            "2026-03-03",
+            42240.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1226
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "292190",
+            "KR7292190006",
+            "2024-08-16",
+            "2024-08-19",
+            17400.0,
+            "2026-02-28",
+            "2026-03-03",
+            42240.0,
+            "2026-03-03",
+            42240.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            370
+          ]
+        ],
+        "old_trade_count": 1,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2021-03-02",
+            "exit_or_terminal_date": "2026-03-03",
+            "signal_date": "2021-02-26"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "292190"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "292500",
+            "KR7292500006",
+            "2021-02-26",
+            "2021-03-02",
+            19555.0,
+            "2026-02-28",
+            "2026-03-03",
+            42660.0,
+            "2026-03-03",
+            42660.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1226
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 0,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2021-03-02",
+            "exit_or_terminal_date": "2026-03-03",
+            "signal_date": "2021-02-26"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "292500"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "292500",
+            "KR7292500006",
+            "2021-02-26",
+            "2021-03-02",
+            19555.0,
+            "2026-02-28",
+            "2026-03-03",
+            42660.0,
+            "2026-03-03",
+            42660.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1226
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 0,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2021-03-02",
+            "exit_or_terminal_date": "2026-03-03",
+            "signal_date": "2021-02-26"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "292500"
+    },
+    {
+      "comparison": {
+        "new_only_count": 2,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "354350",
+            "KR7354350001",
+            "2023-04-28",
+            "2023-05-02",
+            19820.0,
+            "2023-10-23",
+            "2023-10-24",
+            16805.0,
+            "2023-10-24",
+            16805.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            117
+          ],
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "354350",
+            "KR7354350001",
+            "2024-02-23",
+            "2024-02-26",
+            19600.0,
+            null,
+            null,
+            null,
+            "2026-08-31",
+            19565.0,
+            "OPEN_AT_CUTOFF",
+            "NO_PROGRESSED_BEFORE_CUTOFF",
+            611
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "354350",
+            "KR7354350001",
+            "2023-06-02",
+            "2023-06-05",
+            18655.0,
+            null,
+            null,
+            null,
+            "2026-08-31",
+            19565.0,
+            "OPEN_AT_CUTOFF",
+            "NO_PROGRESSED_BEFORE_CUTOFF",
+            789
+          ]
+        ],
+        "old_trade_count": 1,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2023-05-02",
+            "exit_or_terminal_date": "2023-10-24",
+            "signal_date": "2023-04-28"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "354350"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "354350",
+            "KR7354350001",
+            "2023-04-28",
+            "2023-05-02",
+            19820.0,
+            null,
+            null,
+            null,
+            "2026-08-31",
+            19565.0,
+            "OPEN_AT_CUTOFF",
+            "NO_PROGRESSED_BEFORE_CUTOFF",
+            811
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "354350",
+            "KR7354350001",
+            "2023-06-02",
+            "2023-06-05",
+            18655.0,
+            null,
+            null,
+            null,
+            "2026-08-31",
+            19565.0,
+            "OPEN_AT_CUTOFF",
+            "NO_PROGRESSED_BEFORE_CUTOFF",
+            789
+          ]
+        ],
+        "old_trade_count": 1,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2023-05-02",
+            "exit_or_terminal_date": "2026-08-31",
+            "signal_date": "2023-04-28"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "354350"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "394660",
+            "KR7394660005",
+            "2024-06-28",
+            "2024-07-01",
+            11095.0,
+            "2024-08-05",
+            "2024-08-06",
+            9150.0,
+            "2024-08-06",
+            9150.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            27
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 1,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2024-07-01",
+            "exit_or_terminal_date": "2024-08-06",
+            "signal_date": "2024-06-28"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "394660"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "394660",
+            "KR7394660005",
+            "2024-06-28",
+            "2024-07-01",
+            11095.0,
+            null,
+            null,
+            null,
+            "2026-08-31",
+            15800.0,
+            "OPEN_AT_CUTOFF",
+            "NO_EXIT_BEFORE_CUTOFF",
+            527
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "394660",
+            "KR7394660005",
+            "2025-08-22",
+            "2025-08-25",
+            11720.0,
+            null,
+            null,
+            null,
+            "2026-08-31",
+            15800.0,
+            "OPEN_AT_CUTOFF",
+            "NO_EXIT_BEFORE_CUTOFF",
+            248
+          ]
+        ],
+        "old_trade_count": 1,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2024-07-01",
+            "exit_or_terminal_date": "2026-08-31",
+            "signal_date": "2024-06-28"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "394660"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "411060",
+            "KR7411060007",
+            "2024-11-29",
+            "2024-12-02",
+            17125.0,
+            "2025-05-31",
+            "2025-06-02",
+            20630.0,
+            "2025-06-02",
+            20630.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            120
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 0,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2024-12-02",
+            "exit_or_terminal_date": "2025-06-02",
+            "signal_date": "2024-11-29"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "411060"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "411060",
+            "KR7411060007",
+            "2024-11-29",
+            "2024-12-02",
+            17125.0,
+            "2025-05-31",
+            "2025-06-02",
+            20630.0,
+            "2025-06-02",
+            20630.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            120
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 0,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2024-12-02",
+            "exit_or_terminal_date": "2025-06-02",
+            "signal_date": "2024-11-29"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "411060"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "453650",
+            "KR7453650004",
+            "2026-02-27",
+            "2026-03-03",
+            18290.0,
+            null,
+            null,
+            null,
+            "2026-08-31",
+            19410.0,
+            "OPEN_AT_CUTOFF",
+            "NO_PROGRESSED_BEFORE_CUTOFF",
+            124
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 0,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2026-03-03",
+            "exit_or_terminal_date": "2026-08-31",
+            "signal_date": "2026-02-27"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "453650"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "453650",
+            "KR7453650004",
+            "2026-02-27",
+            "2026-03-03",
+            18290.0,
+            null,
+            null,
+            null,
+            "2026-08-31",
+            19410.0,
+            "OPEN_AT_CUTOFF",
+            "NO_PROGRESSED_BEFORE_CUTOFF",
+            124
+          ]
+        ],
+        "new_trade_count": 1,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 0,
+        "pass": false
+      },
+      "divergence_class": "LIFECYCLE_CARRYOVER",
+      "divergence_reason": "LIFECYCLE_CARRYOVER",
+      "evidence": {
+        "carryover_trade_count": 1,
+        "carryover_trade_examples": [
+          {
+            "entry_execution_date": "2026-03-03",
+            "exit_or_terminal_date": "2026-08-31",
+            "signal_date": "2026-02-27"
+          }
+        ]
+      },
+      "group": "B",
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "453650"
+    }
+  ],
+  "group_b_changed_trade_path_ticker_count": 24,
+  "group_b_classification_counts": {
+    "LIFECYCLE_CARRYOVER": 46,
+    "NO_DIVERGENCE": 264,
+    "POST_V06_UNEXPLAINED_DIVERGENCE": 0,
+    "PRE_V06_WINDOW_ONLY": 2
+  },
+  "group_b_definition": "new_common_start < V06 common_evaluable_start; only PRE_V06_WINDOW_ONLY and LIFECYCLE_CARRYOVER are allowed",
+  "group_b_earliest_start_delta_days": 14,
+  "group_b_lifecycle_carryover_divergence_count": 46,
+  "group_b_max_start_delta_days": 788,
+  "group_b_post_v06_unexplained_divergence_count": 0,
+  "group_b_pre_v06_window_only_divergence_count": 2,
+  "group_b_ticker_count": 156,
+  "group_b_unexplained_divergence_count": 0,
+  "portfolio_replay_rerun_count": 0,
+  "stored_v03_comparisons_match": true,
+  "verdict": "PARITY_PASS"
+}

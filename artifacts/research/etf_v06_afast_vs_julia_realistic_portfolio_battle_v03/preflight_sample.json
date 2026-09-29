@@ -1,0 +1,323 @@
+{
+  "group_a_parity_rows": [
+    {
+      "comparison": {
+        "new_only_count": 0,
+        "new_only_examples": [],
+        "new_trade_count": 2,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 2,
+        "pass": true
+      },
+      "group": "A",
+      "pass": true,
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "192090"
+    },
+    {
+      "comparison": {
+        "new_only_count": 0,
+        "new_only_examples": [],
+        "new_trade_count": 1,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 1,
+        "pass": true
+      },
+      "group": "A",
+      "pass": true,
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "192090"
+    },
+    {
+      "comparison": {
+        "new_only_count": 0,
+        "new_only_examples": [],
+        "new_trade_count": 1,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 1,
+        "pass": true
+      },
+      "group": "A",
+      "pass": true,
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "203780"
+    },
+    {
+      "comparison": {
+        "new_only_count": 0,
+        "new_only_examples": [],
+        "new_trade_count": 1,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 1,
+        "pass": true
+      },
+      "group": "A",
+      "pass": true,
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "203780"
+    }
+  ],
+  "group_b_divergence_rows": [
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "069500",
+            "KR7069500007",
+            "2017-01-06",
+            "2017-01-09",
+            26700.0,
+            "2020-03-18",
+            "2020-03-19",
+            22335.0,
+            "2020-03-19",
+            22335.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            782
+          ]
+        ],
+        "new_trade_count": 4,
+        "old_only_count": 2,
+        "old_only_examples": [
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "069500",
+            "KR7069500007",
+            "2017-09-01",
+            "2017-09-04",
+            30340.0,
+            "2019-08-05",
+            "2019-08-06",
+            25185.0,
+            "2019-08-06",
+            25185.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            469
+          ],
+          [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "069500",
+            "KR7069500007",
+            "2019-11-15",
+            "2019-11-18",
+            28745.0,
+            "2020-03-16",
+            "2020-03-17",
+            22775.0,
+            "2020-03-17",
+            22775.0,
+            "REALIZED",
+            "LOSS_GUARD_CLOSE_LE_NEG_15",
+            82
+          ]
+        ],
+        "old_trade_count": 5,
+        "pass": false
+      },
+      "divergence_reason": "earlier-position lifecycle effect",
+      "earlier_position_spans_v06_start": true,
+      "group": "B",
+      "pass": true,
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "069500"
+    },
+    {
+      "comparison": {
+        "new_only_count": 1,
+        "new_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "069500",
+            "KR7069500007",
+            "2017-01-06",
+            "2017-01-09",
+            26700.0,
+            "2021-07-31",
+            "2021-08-02",
+            42685.0,
+            "2021-08-02",
+            42685.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            1122
+          ]
+        ],
+        "new_trade_count": 2,
+        "old_only_count": 1,
+        "old_only_examples": [
+          [
+            "JULIA_STRATEGY_V00",
+            "069500",
+            "KR7069500007",
+            "2017-09-01",
+            "2017-09-04",
+            30340.0,
+            "2021-07-31",
+            "2021-08-02",
+            42685.0,
+            "2021-08-02",
+            42685.0,
+            "REALIZED",
+            "EXIT4_SCORE_DRAWDOWN_GE_15",
+            961
+          ]
+        ],
+        "old_trade_count": 2,
+        "pass": false
+      },
+      "divergence_reason": "earlier-position lifecycle effect",
+      "earlier_position_spans_v06_start": true,
+      "group": "B",
+      "pass": true,
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "069500"
+    },
+    {
+      "comparison": {
+        "new_only_count": 0,
+        "new_only_examples": [],
+        "new_trade_count": 3,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 3,
+        "pass": true
+      },
+      "divergence_reason": "NO_DIVERGENCE",
+      "earlier_position_spans_v06_start": false,
+      "group": "B",
+      "pass": true,
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "091160"
+    },
+    {
+      "comparison": {
+        "new_only_count": 0,
+        "new_only_examples": [],
+        "new_trade_count": 3,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 3,
+        "pass": true
+      },
+      "divergence_reason": "NO_DIVERGENCE",
+      "earlier_position_spans_v06_start": false,
+      "group": "B",
+      "pass": true,
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "091160"
+    },
+    {
+      "comparison": {
+        "new_only_count": 0,
+        "new_only_examples": [],
+        "new_trade_count": 3,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 3,
+        "pass": true
+      },
+      "divergence_reason": "NO_DIVERGENCE",
+      "earlier_position_spans_v06_start": false,
+      "group": "B",
+      "pass": true,
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "ticker": "133690"
+    },
+    {
+      "comparison": {
+        "new_only_count": 0,
+        "new_only_examples": [],
+        "new_trade_count": 3,
+        "old_only_count": 0,
+        "old_only_examples": [],
+        "old_trade_count": 3,
+        "pass": true
+      },
+      "divergence_reason": "NO_DIVERGENCE",
+      "earlier_position_spans_v06_start": false,
+      "group": "B",
+      "pass": true,
+      "strategy_id": "JULIA_STRATEGY_V00",
+      "ticker": "133690"
+    }
+  ],
+  "sample_count": 5,
+  "sample_tickers": [
+    {
+      "category": "MARKET_INDEX",
+      "common_start": "2017-01-06",
+      "errors": [],
+      "group": "B",
+      "status": "EVALUABLE",
+      "ticker": "069500",
+      "trade_counts": {
+        "JULIA_STRATEGY_V00": 2,
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02": 4
+      },
+      "v06_common_start": "2017-01-31"
+    },
+    {
+      "category": "SECTOR_INDUSTRY",
+      "common_start": "2017-01-06",
+      "errors": [],
+      "group": "B",
+      "status": "EVALUABLE",
+      "ticker": "091160",
+      "trade_counts": {
+        "JULIA_STRATEGY_V00": 3,
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02": 3
+      },
+      "v06_common_start": "2017-01-31"
+    },
+    {
+      "category": "MARKET_INDEX",
+      "common_start": "2017-01-06",
+      "errors": [],
+      "group": "B",
+      "status": "EVALUABLE",
+      "ticker": "133690",
+      "trade_counts": {
+        "JULIA_STRATEGY_V00": 3,
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02": 3
+      },
+      "v06_common_start": "2017-01-31"
+    },
+    {
+      "category": "MARKET_INDEX",
+      "common_start": "2017-02-03",
+      "errors": [],
+      "group": "A",
+      "status": "EVALUABLE",
+      "ticker": "192090",
+      "trade_counts": {
+        "JULIA_STRATEGY_V00": 1,
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02": 2
+      },
+      "v06_common_start": "2017-02-03"
+    },
+    {
+      "category": "SECTOR_INDUSTRY",
+      "common_start": "2017-08-04",
+      "errors": [],
+      "group": "A",
+      "status": "EVALUABLE",
+      "ticker": "203780",
+      "trade_counts": {
+        "JULIA_STRATEGY_V00": 1,
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02": 1
+      },
+      "v06_common_start": "2017-08-04"
+    }
+  ],
+  "validation_passed": true,
+  "verdict": "SAMPLE_PASS",
+  "worker_count": 5
+}
