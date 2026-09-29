@@ -353,27 +353,47 @@ def _build_fundamentals(
 
 
 def _build_market_data(requested_as_of: str, *, reference_market_date: str | None = None) -> dict[str, Any]:
-    """``reference_market_date``(선택, PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01): 생략하면
-    기존과 동일하게 ``requested_as_of``와 비교한다(하위 호환). 비거래일
-    target_as_of에서는 실제 시장 거래일(reference_market_date)과 비교해야
-    ``requested_as_of > reference_market_date``를 정상으로 처리할 수 있다."""
+    """Validate request coverage and the actual market date against their own authorities.
+
+    ``reference_market_date`` is optional for backward compatibility; when omitted,
+    ``requested_as_of`` remains the effective reference date.
+    """
     effective_reference_market_date = (
         reference_market_date if reference_market_date is not None else requested_as_of
     )
     manifest = _read_json(MARKET_AUTHORITY_MANIFEST_PATH)
-    latest = str(manifest.get("certified_through") or "")[:10]
-    frontier = str(manifest.get("merged_calendar_frontier") or "")[:10]
-    if not latest or latest != frontier:
-        raise ValueError("rolling market authority has no single certified frontier")
-    status = "NORMAL" if latest == effective_reference_market_date else "CHECK_REQUIRED"
+
+    def _required_date(value: Any, field: str) -> str:
+        if not isinstance(value, str):
+            raise ValueError(f"rolling market authority is missing or has an invalid {field}")
+        try:
+            parsed = date.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError(f"rolling market authority is missing or has an invalid {field}") from exc
+        if parsed.isoformat() != value:
+            raise ValueError(f"rolling market authority is missing or has an invalid {field}")
+        return value
+
+    requested = _required_date(requested_as_of, "requested_as_of")
+    reference = _required_date(effective_reference_market_date, "reference_market_date")
+    certified_through = _required_date(manifest.get("certified_through"), "certified_through")
+    frontier = _required_date(manifest.get("merged_calendar_frontier"), "merged_calendar_frontier")
+
+    if certified_through < requested:
+        raise ValueError("rolling market authority does not certify requested_as_of")
+    if frontier < reference:
+        raise ValueError("rolling market calendar frontier precedes reference_market_date")
+    if frontier != reference:
+        raise ValueError("rolling market calendar frontier does not match reference_market_date")
+
     return {
-        "status": status,
-        "latest_trading_date": latest,
-        "certified_through": latest,
+        "status": "NORMAL",
+        "latest_trading_date": frontier,
+        "certified_through": certified_through,
         "authority_version": manifest.get("authority_version"),
         "source": _source(
             MARKET_AUTHORITY_MANIFEST_PATH,
-            as_of=latest,
+            as_of=frontier,
             generated_at=str(manifest.get("generated_at") or "") or None,
         ),
     }

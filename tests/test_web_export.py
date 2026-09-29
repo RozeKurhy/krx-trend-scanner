@@ -54,9 +54,12 @@ def test_health_uses_actual_resolved_authority_values(health, exporter):
     resolved_tickers, _, _ = exporter._load_universe(requested_as_of)
     market_manifest = exporter._read_json(exporter.MARKET_AUTHORITY_MANIFEST_PATH)
     certified_through = str(market_manifest["certified_through"])[:10]
+    merged_calendar_frontier = str(market_manifest["merged_calendar_frontier"])[:10]
 
-    assert health["market_data"]["latest_trading_date"] == certified_through
-    assert health["market_data"]["latest_trading_date"] == reference_market_date
+    assert certified_through >= requested_as_of
+    assert merged_calendar_frontier == reference_market_date
+    assert health["market_data"]["latest_trading_date"] == merged_calendar_frontier
+    assert health["market_data"]["certified_through"] == certified_through
     assert health["universe"]["count"] == len(resolved_tickers)
     assert health["fundamentals"]["requested_as_of"] == requested_as_of
     fundamentals = health["fundamentals"]
@@ -105,6 +108,89 @@ def test_health_uses_actual_resolved_authority_values(health, exporter):
     assert health["stock_reports"]["web_index_available_report_count"] == expected_report_count
     assert "analysis" not in health
     assert "backtest" not in health
+
+
+def test_market_data_accepts_distinct_certification_and_market_frontiers(exporter, monkeypatch):
+    manifest = {
+        "certified_through": "2026-09-25",
+        "merged_calendar_frontier": "2026-09-23",
+        "generated_at": "2026-09-14T01:20:32.586563+00:00",
+        "authority_version": "ROLLING_MARKET_DATA_V01",
+    }
+    monkeypatch.setattr(exporter, "_read_json", lambda _path: manifest)
+
+    market_data = exporter._build_market_data(
+        "2026-09-25", reference_market_date="2026-09-23"
+    )
+
+    assert market_data["status"] == "NORMAL"
+    assert market_data["latest_trading_date"] == "2026-09-23"
+    assert market_data["certified_through"] == "2026-09-25"
+    assert market_data["source"]["as_of"] == "2026-09-23"
+    # generated_at is provenance metadata, not a market-data freshness gate.
+    assert market_data["source"]["generated_at"] == manifest["generated_at"]
+
+
+def test_market_data_preserves_same_date_authority_regression(exporter, monkeypatch):
+    manifest = {
+        "certified_through": "2026-09-25",
+        "merged_calendar_frontier": "2026-09-25",
+    }
+    monkeypatch.setattr(exporter, "_read_json", lambda _path: manifest)
+
+    market_data = exporter._build_market_data(
+        "2026-09-25", reference_market_date="2026-09-25"
+    )
+
+    assert market_data["status"] == "NORMAL"
+    assert market_data["latest_trading_date"] == "2026-09-25"
+    assert market_data["certified_through"] == "2026-09-25"
+
+
+@pytest.mark.parametrize(
+    ("requested_as_of", "reference_market_date", "manifest", "message"),
+    [
+        (
+            "2026-09-25",
+            "2026-09-23",
+            {"certified_through": "2026-09-24", "merged_calendar_frontier": "2026-09-23"},
+            "does not certify requested_as_of",
+        ),
+        (
+            "2026-09-25",
+            "2026-09-23",
+            {"certified_through": "2026-09-25", "merged_calendar_frontier": "2026-09-22"},
+            "precedes reference_market_date",
+        ),
+        (
+            "2026-09-25",
+            "2026-09-23",
+            {"certified_through": "2026-09-25", "merged_calendar_frontier": "2026-09-24"},
+            "does not match reference_market_date",
+        ),
+        (
+            "2026-09-25",
+            "2026-09-23",
+            {"merged_calendar_frontier": "2026-09-23"},
+            "invalid certified_through",
+        ),
+        (
+            "2026-09-25",
+            "2026-09-23",
+            {"certified_through": "2026-09-25"},
+            "invalid merged_calendar_frontier",
+        ),
+    ],
+)
+def test_market_data_authority_mismatches_fail_closed(
+    exporter, monkeypatch, requested_as_of, reference_market_date, manifest, message
+):
+    monkeypatch.setattr(exporter, "_read_json", lambda _path: manifest)
+
+    with pytest.raises(ValueError, match=message):
+        exporter._build_market_data(
+            requested_as_of, reference_market_date=reference_market_date
+        )
 
 
 def test_date_key_drives_fundamentals_and_stock_report_paths(exporter, health):
