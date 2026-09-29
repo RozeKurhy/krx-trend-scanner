@@ -1,0 +1,195 @@
+{
+  "verdict": "ETF_36_AFAST_V2_VS_JULIA_5WINDOW_SIMPLE_BACKTEST_COMPLETE",
+  "preflight_passed": true,
+  "backtest_started": true,
+  "start_git_head": "4f3afe29dd80dd282bc482709768c4a84fa58538",
+  "worker_count_requested": 10,
+  "worker_count_actual": 10,
+  "universe": {
+    "selected_count": 36,
+    "removed_ticker": "474800",
+    "removed_ticker_present": false,
+    "removed_ticker_absent": true,
+    "exact_v04_minus_474800_match": true,
+    "category_counts": {
+      "SECTOR_INDEX": 19,
+      "MARKET_INDEX": 12,
+      "COMMODITY_RESOURCE": 5
+    },
+    "taxable_count": 15,
+    "non_taxable_count": 21,
+    "krx_tax_metadata_mismatches": [],
+    "market_refetch_count": 0,
+    "forty_day_recomputation_count": 0,
+    "tax_pnl_application_count": 0
+  },
+  "source_authority": {
+    "errors": [],
+    "selected_count": 36,
+    "category_counts": {
+      "SECTOR_INDEX": 19,
+      "MARKET_INDEX": 12,
+      "COMMODITY_RESOURCE": 5
+    },
+    "taxable_count": 15,
+    "non_taxable_count": 21,
+    "tax_metadata_mismatch_tickers": [],
+    "v04_sha256": "e243320993cdcb20b2b8122faa34da2ca9c1e3ea28eb6415716cb321ff6f26c7",
+    "v02_product_master_sha256": "3a657bdb273bae2dd95dc45d8655ba383fb2e7506ef830d228b93ee029a585a1",
+    "v04_commit": "4f3afe29dd80dd282bc482709768c4a84fa58538",
+    "excluded_ticker": "474800"
+  },
+  "windows": [
+    {
+      "window_id": "P1",
+      "window_start": "2014-01-02",
+      "window_end": "2026-08-31",
+      "execution_support_date": "2026-09-01"
+    },
+    {
+      "window_id": "P2-1",
+      "window_start": "2021-01-04",
+      "window_end": "2025-05-30",
+      "execution_support_date": "2025-06-02"
+    },
+    {
+      "window_id": "P2-2",
+      "window_start": "2021-01-04",
+      "window_end": "2026-08-31",
+      "execution_support_date": "2026-09-01"
+    },
+    {
+      "window_id": "P3-1",
+      "window_start": "2022-01-03",
+      "window_end": "2025-05-30",
+      "execution_support_date": "2025-06-02"
+    },
+    {
+      "window_id": "P3-2",
+      "window_start": "2022-01-03",
+      "window_end": "2026-08-31",
+      "execution_support_date": "2026-09-01"
+    }
+  ],
+  "coverage_by_window": [
+    {
+      "window_id": "P1",
+      "universe_count": 36,
+      "full_window_count": 0,
+      "partial_window_count": 36,
+      "not_evaluable_count": 0
+    },
+    {
+      "window_id": "P2-1",
+      "universe_count": 36,
+      "full_window_count": 28,
+      "partial_window_count": 6,
+      "not_evaluable_count": 2
+    },
+    {
+      "window_id": "P2-2",
+      "universe_count": 36,
+      "full_window_count": 28,
+      "partial_window_count": 8,
+      "not_evaluable_count": 0
+    },
+    {
+      "window_id": "P3-1",
+      "universe_count": 36,
+      "full_window_count": 30,
+      "partial_window_count": 4,
+      "not_evaluable_count": 2
+    },
+    {
+      "window_id": "P3-2",
+      "universe_count": 36,
+      "full_window_count": 30,
+      "partial_window_count": 6,
+      "not_evaluable_count": 0
+    }
+  ],
+  "raw_data_source": {
+    "raw_etf_partition_count_through_support": 3108,
+    "raw_etf_partition_first_date": "2014-01-02",
+    "raw_etf_partition_last_date": "2026-09-01",
+    "krx_calendar_session_count_through_support": 4102,
+    "krx_calendar_first_date": "2010-01-04",
+    "krx_calendar_last_date": "2026-09-01",
+    "krx_calendar_sha256": "78cff0957e5bc55d3d330e7a88d39134d14b20866f3a05add9c9bc7f1df41113",
+    "completed_month_end_count_through_cutoff": 200,
+    "current_universe_raw_ticker_date_row_count": 90389,
+    "current_universe_tickers_with_cutoff_prices": 36,
+    "current_universe_tickers_with_support_prices": 36,
+    "source_store_manifest_sha256": "50d64008e052c6824564ab25e67c366f7aafe2d8869b6ac3149f921bb34cb27a",
+    "sqlite_database_bytes": 6569984,
+    "database_build_seconds": 26.807
+  },
+  "span_validation": {
+    "audit_rows": 180,
+    "expected_pairs": 180,
+    "v2_julia_eligible_date_parity": true,
+    "not_evaluable_reason_missing_count": 0
+  },
+  "structural_errors": [],
+  "runtime_seconds": 29.954,
+  "backtest_runtime_seconds": 75.017,
+  "backtest": {
+    "strategy_ids": [
+      "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "JULIA_STRATEGY_V00"
+    ],
+    "worker_count_requested": 10,
+    "worker_count_actual": 10,
+    "trade_count": 521,
+    "worker_errors": [],
+    "validation": {
+      "passed": true,
+      "errors": [],
+      "checks": {
+        "span_pairs": true,
+        "strategy_start_end_parity": true,
+        "entry_before_comparison_start_count": 0,
+        "post_cutoff_entry_count": 0,
+        "not_evaluable_reason_missing_count": 0,
+        "unexpected_nan_or_inf_count": 0,
+        "expected_open_trade_missing_exit_price_count": 181,
+        "duplicate_trade_identity_count": 0,
+        "aggregate_float_tolerance_pp": 0.1,
+        "tax_pnl_application_count": 0
+      }
+    }
+  },
+  "raw_data_quality": {
+    "no_trade_zero_ohlc_ticker_count": 10,
+    "no_trade_zero_ohlc_row_count": 78,
+    "no_trade_zero_ohlc_tickers": [
+      "133690",
+      "139230",
+      "140700",
+      "157490",
+      "160580",
+      "195980",
+      "228800",
+      "228810",
+      "241180",
+      "266410"
+    ],
+    "raw_session_gap_ticker_count": 0,
+    "observed_date_range": [
+      "2014-01-08",
+      "2018-05-31"
+    ],
+    "row_pattern": "open=high=low=0; close>0; volume=0; retained unchanged under the raw KRX snapshot contract"
+  },
+  "runtime_diagnostics": {
+    "source": "captured stderr from the single 10-worker replay; informational only",
+    "warning_counts": {
+      "monthly_distance_from_low": 1451,
+      "weekly_distance_from_low": 947,
+      "pivot_invalid_division": 37,
+      "pandas_futurewarning_weekly_pct_change": 33984,
+      "pandas_futurewarning_moving_average_pct_change": 3346
+    },
+    "interpretation": "Existing feature formulas emitted numeric RuntimeWarnings while using preserved no-trade sentinel rows. Strategy code was not changed. Ledger required numeric outputs were finite; review the early-history segment before any portfolio-stage decision."
+  }
+}
