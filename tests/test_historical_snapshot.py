@@ -330,6 +330,41 @@ def test_partial_month_snapshot_regression():
     assert pd.Timestamp("2026-08-31") not in snap.monthly.index
 
 
+def test_snapshot_requested_date_uses_separate_reference_calendar_date():
+    """요청일은 보존하면서 reference date로 캘린더 완료월을 판정한다."""
+    requested = "2026-09-25"
+    reference = "2026-09-23"
+    dates = pd.bdate_range("2020-01-02", reference)
+    daily = _daily_frame(len(dates))
+    daily.index = dates
+    calendar = MarketCalendarAuthority.from_dates(
+        dates=dates,
+        last_completed_month="2026-08",
+        source_name="SYNTHETIC_REFERENCE_BOUNDARY",
+    )
+
+    assert calendar.max_observed_trading_date == pd.Timestamp(reference)
+    with pytest.raises(MarketCalendarUnavailableError, match="2026-09-25.*max observed trading date 2026-09-23"):
+        build_historical_snapshot(
+            "TEST", "테스트", daily, requested,
+            include_incomplete_periods=False,
+            market_calendar=calendar,
+        )
+
+    snapshot = build_historical_snapshot(
+        "TEST", "테스트", daily, requested,
+        include_incomplete_periods=False,
+        market_calendar=calendar,
+        market_calendar_as_of=reference,
+    )
+
+    assert snapshot.requested_snapshot_date == pd.Timestamp(requested)
+    assert snapshot.effective_as_of == pd.Timestamp(reference)
+    assert snapshot.monthly_as_of == pd.Timestamp("2026-08-31")
+    assert pd.Timestamp("2026-09-30") not in snapshot.monthly.index
+    assert calendar.max_observed_trading_date == pd.Timestamp(reference)
+
+
 def test_canonical_actual_20260814_regression():
     """Section 13: 실제 Canonical Calendar의 2026-08-14 Cutoff 검증.
     

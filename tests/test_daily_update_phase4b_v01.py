@@ -320,6 +320,29 @@ def test_e_stale_canonical_directory_is_fully_replaced_not_merged(tmp_path, patc
     assert md_tickers == {"000050"}
 
 
+def test_stale_partial_staging_is_not_reused_or_promoted(tmp_path, patched_runner):
+    _default_previous_corpus(tmp_path)
+    _write_scanner_artifacts(tmp_path, TARGET, _candidate_rows(["000050"]))
+    _write_fundamentals_artifact(tmp_path, TARGET, "000050")
+
+    stale_staging = (
+        tmp_path / "artifacts/reporting/stock_reports" / ".phase4b-staging-stale" / TARGET.replace("-", "")
+    )
+    stale_json = stale_staging / "json" / "999999.json"
+    stale_json.parent.mkdir(parents=True)
+    stale_json.write_text(json.dumps({"ticker": "999999"}), encoding="utf-8")
+    (stale_staging / "999999.md").write_text("stale partial", encoding="utf-8")
+
+    result = phase4b.run_phase4b(TARGET, root=tmp_path)
+
+    canonical_dir = tmp_path / "artifacts/reporting/stock_reports" / TARGET.replace("-", "")
+    assert result["promoted"] is True
+    assert {p.stem for p in (canonical_dir / "json").glob("*.json")} == {"000050"}
+    assert {p.stem for p in canonical_dir.glob("*.md")} == {"000050"}
+    assert stale_json.exists()
+    assert stale_json.read_text(encoding="utf-8") == json.dumps({"ticker": "999999"})
+
+
 # --- F. fundamentals missing/mismatch → fail --------------------------------------
 
 

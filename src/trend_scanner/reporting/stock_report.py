@@ -976,6 +976,7 @@ def generate_stock_report(
                 snapshot_date=canonical_as_of,
                 include_incomplete_periods=False,
                 market_calendar=production_market_calendar,
+                market_calendar_as_of=ref_market_date,
             )
             cur_eval = evaluate_pattern_a(cur_snap)
             cur_score = round(cur_eval.score, 2) if cur_eval.score is not None else None

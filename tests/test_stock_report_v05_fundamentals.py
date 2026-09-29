@@ -17,6 +17,7 @@ from trend_scanner.reporting.fundamentals_report import (
     build_fundamentals_section,
     fundamentals_executive_bullet,
 )
+from trend_scanner.reporting import stock_report
 from trend_scanner.reporting.stock_report import generate_stock_report, render_markdown_report
 
 
@@ -296,6 +297,14 @@ def test_reference_market_date_param_overrides_display_field_only(monkeypatch):
         "build_sector_relative_strength_section",
         capture_sector_reference_date,
     )
+    original_snapshot_builder = stock_report.build_historical_snapshot
+    snapshot_kwargs: list[dict] = []
+
+    def capture_snapshot_kwargs(**kwargs):
+        snapshot_kwargs.append(dict(kwargs))
+        return original_snapshot_builder(**kwargs)
+
+    monkeypatch.setattr(stock_report, "build_historical_snapshot", capture_snapshot_kwargs)
     report_explicit, _, _ = generate_stock_report(
         ticker="001540", as_of="2026-08-14", repo_root=ROOT, save_artifacts=False,
         reference_market_date="2026-08-13",
@@ -305,6 +314,10 @@ def test_reference_market_date_param_overrides_display_field_only(monkeypatch):
     assert report_explicit.header.requested_as_of == "2026-08-14"
     assert report_explicit.header.reference_market_date == "2026-08-13"
     assert sector_dates == ["2026-08-13"]
+    assert len(snapshot_kwargs) == 1
+    assert snapshot_kwargs[0]["snapshot_date"] == "2026-08-14"
+    assert snapshot_kwargs[0]["market_calendar_as_of"] == "2026-08-13"
+    assert report_explicit.current_snapshot.pattern_a_score is not None
     # identity/전략 판정(A FAST Core strategy_id 등)은 reference_market_date와 무관하다.
     assert report_explicit.a_fast_core.strategy_id == report_default.a_fast_core.strategy_id
     assert report_explicit.asset_type == report_default.asset_type
