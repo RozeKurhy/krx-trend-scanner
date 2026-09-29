@@ -1,0 +1,84 @@
+{
+  "verdict": "ETF_OFFICIAL_UNIVERSE_REFINEMENT_V03_COMPLETE",
+  "passed": true,
+  "market_reference_date": "2026-09-23",
+  "40D_start_date": "2026-07-29",
+  "40D_end_date": "2026-09-23",
+  "40D_session_count": 40,
+  "market_data_refetch_count": 0,
+  "40D_market_metric_recomputation_count": 0,
+  "v02_selected_count": 39,
+  "v03_selected_count": 37,
+  "active_representatives_removed_count": 1,
+  "active_representatives_replaced_count": 1,
+  "active_representatives_removed": [
+    {
+      "ticker": "462900",
+      "ETF_name": "KoAct 바이오헬스케어액티브",
+      "group": "HEALTHCARE"
+    }
+  ],
+  "active_representatives_replaced": [
+    {
+      "old_ticker": "462900",
+      "new_ticker": "244580",
+      "new_ETF_name": "KODEX 바이오"
+    }
+  ],
+  "parent_sector_groups_removed": [
+    "FINANCIALS",
+    "INFORMATION_TECHNOLOGY"
+  ],
+  "parent_sector_groups_removed_count": 2,
+  "remaining_child_groups": [
+    "BANK",
+    "SECURITIES",
+    "INSURANCE",
+    "SEMICONDUCTOR",
+    "SOFTWARE"
+  ],
+  "selected_active_etf_count": 0,
+  "selected_active_tickers": [],
+  "selected_hard_filter_violation_count": 0,
+  "duplicate_representative_group_count": 0,
+  "duplicate_selected_ticker_count": 0,
+  "parent_child_overlap_violation_count": 0,
+  "unknown_selected_classification_count": 0,
+  "v02_market_metric_source_mismatch_count": 0,
+  "v02_source_artifact_hashes_before": {
+    "all_current_etf_snapshot.csv": "fb96d4cad2dcb45a8933bc7f4a83218e82eae4f4b47986a14b609d987cc1373e",
+    "classified_universe.csv": "3a657bdb273bae2dd95dc45d8655ba383fb2e7506ef830d228b93ee029a585a1",
+    "comparison_vs_existing_ranking_24.csv": "aec4bf9b5575e5b2ecad038c98b2618b4bf2dc4dbde993f59cd3cbb17fa9d0cc",
+    "eligible_candidates.csv": "c149be8565a73c0c0bc88cfaf4410f91a97c25fda5ae29c34ba650991afb8b2b",
+    "excluded_audit.csv": "3d9f718bb58eeb3e5af592767e41a2bf5c8ee07657ac32f64d80042998a37d5a",
+    "official_representative_etf_universe.csv": "328d85977ac03377e6e05b318803133759028b39f1c7c757baa52d1384c35601",
+    "summary.md": "4d309b6948e595c3414c49b1d0cfbedde8901e6d07baae7266a43255b1037e83",
+    "validation.json": "a725666d73a7e46584c36e792756a9ece5aee937e0caec9414c3e55a9045e291"
+  },
+  "v02_source_artifact_hashes_after": {
+    "all_current_etf_snapshot.csv": "fb96d4cad2dcb45a8933bc7f4a83218e82eae4f4b47986a14b609d987cc1373e",
+    "classified_universe.csv": "3a657bdb273bae2dd95dc45d8655ba383fb2e7506ef830d228b93ee029a585a1",
+    "comparison_vs_existing_ranking_24.csv": "aec4bf9b5575e5b2ecad038c98b2618b4bf2dc4dbde993f59cd3cbb17fa9d0cc",
+    "eligible_candidates.csv": "c149be8565a73c0c0bc88cfaf4410f91a97c25fda5ae29c34ba650991afb8b2b",
+    "excluded_audit.csv": "3d9f718bb58eeb3e5af592767e41a2bf5c8ee07657ac32f64d80042998a37d5a",
+    "official_representative_etf_universe.csv": "328d85977ac03377e6e05b318803133759028b39f1c7c757baa52d1384c35601",
+    "summary.md": "4d309b6948e595c3414c49b1d0cfbedde8901e6d07baae7266a43255b1037e83",
+    "validation.json": "a725666d73a7e46584c36e792756a9ece5aee937e0caec9414c3e55a9045e291"
+  },
+  "checks": {
+    "reference_date_unchanged": true,
+    "40D_window_unchanged": true,
+    "40D_session_count_unchanged": true,
+    "market_data_refetch_count_zero": true,
+    "40D_metric_recomputation_count_zero": true,
+    "selected_active_etf_count_zero": true,
+    "selected_hard_filter_violation_count_zero": true,
+    "duplicate_representative_group_count_zero": true,
+    "parent_child_overlap_violation_count_zero": true,
+    "unknown_selected_classification_count_zero": true,
+    "v02_source_raw_figures_unchanged": true,
+    "v02_market_metrics_copied_exactly": true,
+    "v03_count_matches_expected_scope": true,
+    "selected_ticker_count_unique": true
+  }
+}

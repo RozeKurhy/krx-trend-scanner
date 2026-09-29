@@ -1,0 +1,6 @@
+﻿major_category,parent_group,parent_ticker,parent_ETF_name,child_groups,child_tickers,action,reason
+SECTOR_INDEX,FINANCIALS,139270,TIGER 200 금융,BANK|SECURITIES|INSURANCE,091170|102970|140700,REMOVE_PARENT,"Removed the broad financial-sector representative because BANK, SECURITIES, and INSURANCE are retained as separate child groups."
+SECTOR_INDEX,INFORMATION_TECHNOLOGY,139260,TIGER 200 IT,SEMICONDUCTOR|SOFTWARE,091160|157490,REMOVE_PARENT,Removed the broad IT representative because SEMICONDUCTOR and SOFTWARE are retained as separate child groups.
+SECTOR_INDEX,ENERGY,474800,KIWOOM 미국원유에너지기업,ENERGY_CHEMICALS,117460,KEEP_SEPARATE_AS_DIRECTED,The work instruction explicitly says not to automatically deduplicate ENERGY and ENERGY_CHEMICALS; the selected products also represent distinct regional/industry structures.
+SECTOR_INDEX,CONSUMER_DISCRETIONARY,,,AUTO|COSMETICS|TRAVEL_LEISURE,091180|228790|228800,NO_SELECTED_PARENT_REPRESENTATIVE,"V02 has no eligible broad consumer-discretionary representative, so there is no parent representative to remove."
+SECTOR_INDEX,MEDIA_ENTERTAINMENT,228810,TIGER 미디어컨텐츠,GAMING,300950,KEEP_AMBIGUOUS_SEPARATE,The V02 product/index mandates do not establish a clear parent-child exposure relationship; preserve both and record the ambiguity.
