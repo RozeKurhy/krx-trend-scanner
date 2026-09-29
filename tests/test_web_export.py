@@ -147,6 +147,54 @@ def test_market_data_preserves_same_date_authority_regression(exporter, monkeypa
     assert market_data["certified_through"] == "2026-09-25"
 
 
+def test_build_health_preserves_distinct_request_and_market_dates(
+    exporter, monkeypatch, tmp_path
+):
+    manifest = {
+        "certified_through": "2026-09-25",
+        "merged_calendar_frontier": "2026-09-23",
+    }
+    monkeypatch.setattr(exporter, "_read_json", lambda _path: manifest)
+    monkeypatch.setattr(
+        exporter, "_load_exact_as_of", lambda _target: "2026-09-23"
+    )
+    monkeypatch.setattr(
+        exporter,
+        "_production_paths",
+        lambda _requested: {
+            "fundamentals_checkpoint": tmp_path / "checkpoint.json",
+            "fundamentals_manifest": tmp_path / "manifest.json",
+            "fundamentals_root": tmp_path,
+            "fundamentals_tickers": tmp_path / "tickers",
+            "stock_reports": tmp_path / "stock_reports",
+        },
+    )
+    monkeypatch.setattr(exporter, "_load_universe", lambda _requested: (set(), "2026-09-25", {}))
+    monkeypatch.setattr(
+        exporter,
+        "_build_fundamentals",
+        lambda _requested, _tickers, _paths: {"status": "NORMAL", "source": {}},
+    )
+    monkeypatch.setattr(exporter, "_count_stock_report_artifacts", lambda _path: 0)
+    monkeypatch.setattr(
+        exporter,
+        "_stock_report_readiness",
+        lambda *_args, **_kwargs: {"ready": True},
+    )
+    monkeypatch.setattr(
+        exporter,
+        "_build_downstream_section",
+        lambda *_args, **_kwargs: {"status": "NORMAL"},
+    )
+
+    health = exporter.build_health(target_as_of="2026-09-25", web_data_root=tmp_path)
+
+    assert health["requested_as_of"] == "2026-09-25"
+    assert health["reference_market_date"] == "2026-09-23"
+    assert health["market_data"]["latest_trading_date"] == "2026-09-23"
+    assert health["market_data"]["certified_through"] == "2026-09-25"
+
+
 @pytest.mark.parametrize(
     ("requested_as_of", "reference_market_date", "manifest", "message"),
     [
