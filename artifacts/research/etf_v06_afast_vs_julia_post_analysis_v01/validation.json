@@ -1,0 +1,150 @@
+{
+  "actual_trade_counts": {
+    "JULIA_STRATEGY_V00": 246,
+    "PATTERN_A_FAST_FINAL_STRATEGY_V02": 350
+  },
+  "aggregate_validation": {
+    "mismatch_count": 0,
+    "mismatches": [],
+    "overall_strategy_checks": [
+      {
+        "checks": {
+          "cost.mean_pct": true,
+          "cost.median_pct": true,
+          "cost.positive_rate_pct": true,
+          "etf_weighted.etf_count_with_trades": true,
+          "etf_weighted.median_etf_mean_trade_return_pct": true,
+          "etf_weighted.median_etf_positive_rate_pct": true,
+          "gross.mean_pct": true,
+          "gross.median_pct": true,
+          "gross.p10_pct": true,
+          "gross.p25_pct": true,
+          "gross.p50_pct": true,
+          "gross.p75_pct": true,
+          "gross.p90_pct": true,
+          "gross.positive_rate_pct": true,
+          "trade_count": true,
+          "unique_etf_count": true
+        },
+        "passed": true,
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+      },
+      {
+        "checks": {
+          "cost.mean_pct": true,
+          "cost.median_pct": true,
+          "cost.positive_rate_pct": true,
+          "etf_weighted.etf_count_with_trades": true,
+          "etf_weighted.median_etf_mean_trade_return_pct": true,
+          "etf_weighted.median_etf_positive_rate_pct": true,
+          "gross.mean_pct": true,
+          "gross.median_pct": true,
+          "gross.p10_pct": true,
+          "gross.p25_pct": true,
+          "gross.p50_pct": true,
+          "gross.p75_pct": true,
+          "gross.p90_pct": true,
+          "gross.positive_rate_pct": true,
+          "trade_count": true,
+          "unique_etf_count": true
+        },
+        "passed": true,
+        "strategy_id": "JULIA_STRATEGY_V00"
+      }
+    ],
+    "return_aggregate_tolerance_absolute_pp": 0.1
+  },
+  "analysis_only": true,
+  "canonical_trade_id_missing_count": 0,
+  "category_counts_in_universe": {
+    "COMMODITY_RESOURCE": 17,
+    "MARKET_INDEX": 140,
+    "SECTOR_INDUSTRY": 270
+  },
+  "category_trade_count_mismatch_count": 0,
+  "category_trade_count_mismatches": [],
+  "checks": {
+    "canonical_trade_ids_present": true,
+    "category_count_sum_equals_total": true,
+    "closed_plus_terminal_equals_total": true,
+    "duplicate_trade_ids_zero": true,
+    "overall_and_category_aggregates_within_0_1pp": true,
+    "strategy_trade_counts_exact": true,
+    "unknown_category_zero": true,
+    "unknown_status_zero": true,
+    "v06_source_verdict_exact": true
+  },
+  "closed_terminal_count_mismatch_count": 0,
+  "closed_terminal_count_mismatches": [],
+  "duplicate_trade_id_count": 0,
+  "expected_trade_counts": {
+    "JULIA_STRATEGY_V00": 246,
+    "PATTERN_A_FAST_FINAL_STRATEGY_V02": 350
+  },
+  "new_backtest_or_replay": false,
+  "passed": true,
+  "strategies": [
+    "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "JULIA_STRATEGY_V00"
+  ],
+  "strategy_trade_count_mismatches": {},
+  "trade_status_counts": {
+    "('JULIA_STRATEGY_V00', 'CLOSED')": 159,
+    "('JULIA_STRATEGY_V00', 'TERMINAL')": 87,
+    "('PATTERN_A_FAST_FINAL_STRATEGY_V02', 'CLOSED')": 281,
+    "('PATTERN_A_FAST_FINAL_STRATEGY_V02', 'TERMINAL')": 69
+  },
+  "unknown_category_count": 0,
+  "unknown_status_count": 0,
+  "v06_input_directory": "artifacts/research/etf_plain_long_market_sector_resource_v06",
+  "v06_overall_reaggregation": {
+    "JULIA_STRATEGY_V00": {
+      "ge_100_count": 59,
+      "ge_20_count": 167,
+      "ge_50_count": 104,
+      "gross_p10_pct": -10.33614943456117,
+      "gross_p25_pct": 8.914781292546254,
+      "gross_p50_pct": 41.72064122618336,
+      "gross_p75_pct": 93.95971588851444,
+      "gross_p90_pct": 148.2440704681246,
+      "le_15_count": 21,
+      "le_30_count": 6,
+      "le_40_count": 4,
+      "le_50_count": 2,
+      "mean_cost_adjusted_return_pct": 56.50876325563847,
+      "mean_gross_return_pct": 56.814515948997695,
+      "mean_holding_sessions": 606.8048780487804,
+      "median_cost_adjusted_return_pct": 41.39505822065695,
+      "median_gross_return_pct": 41.72064122618336,
+      "median_holding_sessions": 406.0,
+      "positive_rate_cost_adjusted_pct": 84.14634146341463,
+      "positive_rate_pct": 84.5528455284553,
+      "trade_count": 246
+    },
+    "PATTERN_A_FAST_FINAL_STRATEGY_V02": {
+      "ge_100_count": 53,
+      "ge_20_count": 162,
+      "ge_50_count": 104,
+      "gross_p10_pct": -17.376747157255057,
+      "gross_p25_pct": -15.215953531170923,
+      "gross_p50_pct": 11.32475411107433,
+      "gross_p75_pct": 60.704518722428624,
+      "gross_p90_pct": 131.46685678035703,
+      "le_15_count": 94,
+      "le_30_count": 2,
+      "le_40_count": 1,
+      "le_50_count": 1,
+      "mean_cost_adjusted_return_pct": 34.01383817908972,
+      "mean_gross_return_pct": 34.288717229090324,
+      "mean_holding_sessions": 350.4,
+      "median_cost_adjusted_return_pct": 11.069001330679228,
+      "median_gross_return_pct": 11.32475411107433,
+      "median_holding_sessions": 193.0,
+      "positive_rate_cost_adjusted_pct": 57.99999999999999,
+      "positive_rate_pct": 58.285714285714285,
+      "trade_count": 350
+    }
+  },
+  "v06_source_verdict": "ETF_PLAIN_LONG_THREE_STRATEGY_SIMPLE_BACKTEST_V06_COMPLETE",
+  "verdict": "ETF_V06_AFAST_VS_JULIA_POST_ANALYSIS_COMPLETE"
+}
