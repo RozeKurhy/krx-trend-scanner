@@ -368,6 +368,7 @@ def test_p1_final_closure_v02_permanent_exclusions_are_exact_pairs_and_preserve_
         | P1_FINAL_CLOSURE_V02_IDENTITIES
         | V2_MDD_RAW_DATA_GAP_CLOSURE_IDENTITIES
         | P2_1_GLOBAL_LIFECYCLE_EXCLUSIONS
+        | {BATTLE_C_UNRESOLVED_LIQUIDATION_EXCLUSION}
         | set(_pattern_b_v02_structural_authority())
     )
 

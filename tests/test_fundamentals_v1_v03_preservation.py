@@ -132,11 +132,9 @@ def test_v03_web_fundamentals_layout_and_formatting_contract():
     js = (ROOT / "web/js/report.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert html.count("web-02d-window-13") == 1
+    assert html.count("web-02e-etf36-julia-v1") == 1
     assert "fundamentals-summary-grid" not in html
-    assert html.index('<div class="report-card-row">') < html.index(
-        '<div class="report-card-row report-card-row--secondary">'
-    )
+    assert html.index('id="price-card"') < html.index('id="pattern-card"')
     assert "fundamentals-detail-meta" not in html
     assert 'id="fundamentals-detail-heading">펀더멘탈</h3>' in html
     assert "Fundamentals 상세" not in html

@@ -138,8 +138,20 @@ def _artifact_literals(text: str) -> tuple[str, ...]:
         tree = ast.parse(text)
     except (SyntaxError, ValueError):
         return ()
+    docstring_nodes: set[int] = set()
+    for owner in ast.walk(tree):
+        if isinstance(owner, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)) and owner.body:
+            first = owner.body[0]
+            if (
+                isinstance(first, ast.Expr)
+                and isinstance(first.value, ast.Constant)
+                and isinstance(first.value.value, str)
+            ):
+                docstring_nodes.add(id(first.value))
     literals: list[str] = []
     for node in ast.walk(tree):
+        if id(node) in docstring_nodes:
+            continue
         if isinstance(node, ast.Constant) and isinstance(node.value, str) and "artifacts/" in node.value:
             literals.append(node.value[node.value.index("artifacts/"):])
         elif isinstance(node, ast.JoinedStr):

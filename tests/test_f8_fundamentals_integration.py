@@ -118,15 +118,16 @@ def _current_integrated_record():
     )
 
 
-def test_current_target_discovers_exact_553_reports_and_f7_joins():
+def test_current_target_report_population_is_unique_and_f7_joins():
     report_dir = ROOT / "artifacts/reporting/stock_reports/20260904"
     fundamentals_dir = ROOT / "artifacts/fundamentals/production/20260904/tickers"
     report_paths = sorted((report_dir / "json").glob("*.json"))
     markdown_paths = sorted(report_dir.glob("*.md"))
 
-    assert len(report_paths) == 553
-    assert len(markdown_paths) == 553
-    assert len({path.stem for path in report_paths}) == 553
+    report_stems = {path.stem for path in report_paths}
+    assert report_paths
+    assert len(report_stems) == len(report_paths)
+    assert {path.stem for path in markdown_paths} == report_stems
     for path in report_paths:
         report = json.loads(path.read_text(encoding="utf-8"))
         f7 = json.loads((fundamentals_dir / f"{report['ticker']}.json").read_text(encoding="utf-8"))

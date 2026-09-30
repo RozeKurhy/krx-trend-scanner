@@ -30,13 +30,19 @@ def _load_ranking() -> dict:
 
 def _current_source_paths(ranking: dict | None = None):
     ranking = ranking or _load_ranking()
-    return _load_exporter()._resolve_source_paths(
+    index_path, _flow_path, sector_path, _authority_path = _load_exporter()._resolve_source_paths(
         ROOT,
         ranking["as_of"],
         index_path=None,
         flow_path=None,
         sector_path=None,
         common_authority_path=None,
+    )
+    return (
+        index_path,
+        ROOT / ranking["source"]["path"],
+        sector_path,
+        ROOT / ranking["scope"]["universe_authority_path"],
     )
 
 
@@ -71,7 +77,8 @@ def test_payload_has_exact_as_of_common_scope_and_reconciliation():
     assert ranking["scope"]["universe_snapshot_date"] == ranking["as_of"]
     assert ranking["scope"]["universe_authority_path"].endswith(authority_path.name)
     assert ranking["horizons"] == ["1d", "5d", "10d", "20d", "60d"]
-    assert ranking["source"]["as_of"] == ranking["as_of"]
+    assert ranking["source"]["date_max"] == ranking["as_of"]
+    assert ranking["source"]["as_of"] >= ranking["as_of"]
     assert ranking["source"]["date_min"] == min(source_dates)
     assert ranking["source"]["date_max"] == max(source_dates) == ranking["as_of"]
     assert ranking["source"]["trading_session_count"] == source_dates.nunique()

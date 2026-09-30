@@ -199,6 +199,17 @@ def test_legacy_runtime_artifact_dependencies_are_explicit():
     assert set(scan["legacy_runtime_artifact_dependencies"]) == {item["dependency_id"] for item in LEGACY_RUNTIME_DEPENDENCIES}
 
 
+def test_runtime_artifact_dependency_scan_ignores_docstring_examples(tmp_path):
+    validator = _load_validator("krx_architecture_docstring_validator")
+    example = tmp_path / "docstring_example.py"
+    example.write_text('"""Example path: artifacts/not_a_runtime_dependency/example.json"""\n', encoding="utf-8")
+
+    scan = validator._runtime_artifact_dependency_counts((example,))
+
+    assert scan["legacy_runtime_artifact_dependency_unclassified_count"] == 0
+    assert scan["legacy_runtime_artifact_literals"] == []
+
+
 def test_unclassified_runtime_artifact_dependency_is_blocked(tmp_path):
     validator = _load_validator("krx_architecture_unclassified_validator")
     synthetic = tmp_path / "synthetic_runtime.py"

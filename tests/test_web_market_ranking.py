@@ -182,7 +182,7 @@ def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     page_versions = {
         ROOT / "web/index.html": ("web-ui-density-11", "app", "web-fear-fix02-4"),
         ROOT / "web/report.html": ("web-ui-density-12", "report", "web-02e-etf36-julia-v1"),
-        ROOT / "web/strategy.html": ("web-strategy-sort-2", "strategy", "web-strategy-sort-2"),
+        ROOT / "web/strategy.html": ("web-strategy-monitor-v2-1", "strategy", "web-strategy-monitor-v2-1"),
         ROOT / "web/market.html": ("web-ui-density-11", "market", "web-02c-toss-4"),
     }
     pages = list(page_versions)

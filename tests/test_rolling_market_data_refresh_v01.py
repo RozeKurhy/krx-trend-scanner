@@ -271,7 +271,7 @@ def test_common_adjusted_updater_fails_closed_when_pit_frontier_insufficient(tmp
     from trend_scanner.data.rolling_market_data_refresh import RollingAdjustedPriceUpdater
 
     calendar_path = tmp_path / "calendar.json"
-    calendar_path.write_text(json.dumps({"trading_dates": ["2026-08-20", "2026-08-21"]}))
+    calendar_path.write_text(json.dumps({"trading_dates": ["2026-08-20", "2026-08-21", "2026-09-04"]}))
     pit_path = tmp_path / "pit.json"
     pit_path.write_text(json.dumps({"intervals": [{"ticker": "005930", "state": "COMMON", "effective_from": "2010-01-04", "effective_to": "2026-08-21"}]}))
 

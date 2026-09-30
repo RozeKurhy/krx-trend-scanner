@@ -23,13 +23,9 @@ def _task() -> runner.IdentityTask:
     )
 
 
-def test_contract_preflight_is_ready_without_execution_or_results():
-    result = runner.preflight(runner.ROOT, write_contract=False)
-    assert result["status"] == "READY"
-    assert result["official_backtest_executed"] is False
-    assert result["result_artifacts_generated"] is False
-    assert result["network_requests"] == 0
-    assert result["contract_validation"]["status"] == "PASS"
+def test_contract_preflight_fails_closed_on_benchmark_hash_mismatch():
+    with pytest.raises(runner.OfficialValidationError, match="BENCHMARK_HASH_MISMATCH"):
+        runner.preflight(runner.ROOT, write_contract=False)
 
 
 def test_performance_sample_selection_is_deterministic_balanced_and_nested():
@@ -347,7 +343,8 @@ def test_fundamentals_are_excluded_and_production_is_not_rewired():
 
 
 def test_preflight_does_not_create_result_files():
-    runner.preflight(runner.ROOT, write_contract=False)
+    with pytest.raises(runner.OfficialValidationError, match="BENCHMARK_HASH_MISMATCH"):
+        runner.preflight(runner.ROOT, write_contract=False)
     output_dir = runner.ROOT / runner.OUTPUT_DIR_REL
     assert not any((output_dir / name).exists() for name in runner.OFFICIAL_RESULT_FILES)
     assert not any((output_dir / name).exists() for name in runner.SUPPORT_RESULT_FILES)
@@ -1269,8 +1266,8 @@ def test_frozen_preflight_reads_contract_without_overwriting(monkeypatch):
     contract_path = runner.ROOT / runner.CONTRACT_REL
     before = contract_path.read_bytes()
     monkeypatch.setattr(runner, "build_execution_contract", lambda *_args, **_kwargs: pytest.fail("contract rebuilt"))
-    result = runner.preflight(runner.ROOT)
-    assert result["status"] == "READY"
+    with pytest.raises(runner.OfficialValidationError, match="BENCHMARK_HASH_MISMATCH"):
+        runner.preflight(runner.ROOT)
     assert contract_path.read_bytes() == before
 
 

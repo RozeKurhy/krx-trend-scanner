@@ -51,7 +51,7 @@ def _write_adjusted_authority(tmp_path: Path, intervals: list[dict[str, str]]) -
     return pit, calendar
 
 
-def test_common_adjusted_authority_failure_is_blocked_and_boundary_is_unchanged(tmp_path):
+def test_common_adjusted_ambiguous_identity_is_skipped_and_boundary_is_unchanged(tmp_path):
     pit, calendar = _write_adjusted_authority(
         tmp_path,
         [
@@ -82,8 +82,8 @@ def test_common_adjusted_authority_failure_is_blocked_and_boundary_is_unchanged(
     result = RollingAdjustedPriceUpdater(
         Provider(), store, pit_path=pit, historical_calendar_path=calendar
     ).refresh(["000001"], "2026-08-01", "2026-08-03")
-    assert result["blocked"][0]["reason"] == "IDENTITY_AMBIGUOUS"
-    assert result["skipped"] == []
+    assert result["blocked"] == []
+    assert result["skipped"] == [{"ticker": "000001", "reason": "IDENTITY_AMBIGUOUS"}]
     assert result["failures"] == []
     assert result["new_boundary"] == "2026-08-01"
 

@@ -125,6 +125,7 @@ def test_bootstrap_mode_is_not_sufficient(tmp_path) -> None:
     old_manifest = bootstrap_rolling_authority(
         raw_store=_FakeRawStore({"KOSPI": "2026-08-21", "KOSDAQ": "2026-08-21", "ETF": "2026-08-21"}),
         adjusted_store_dir=adjusted_dir,
+        etf_acceptance_tickers=("0115D0",),
     )
     assert old_manifest.leg_boundaries["common_adjusted"] == "2026-08-21"  # wrongly certifies the majority
 

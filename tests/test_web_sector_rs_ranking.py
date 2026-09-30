@@ -53,11 +53,16 @@ def _target() -> str:
 
 
 def _ranking_paths(target: str) -> tuple[Path, Path]:
-    compact = target.replace("-", "")
-    ranking_path = RANKING_DIR / f"sector_rs_ranking_{compact}.parquet"
-    meta_path = RANKING_DIR / f"sector_rs_ranking_{compact}_meta.json"
-    assert ranking_path.is_file(), f"authoritative Sector RS ranking is missing for {target}: {ranking_path}"
-    assert meta_path.is_file(), f"authoritative Sector RS ranking meta is missing for {target}: {meta_path}"
+    candidates = []
+    for meta_path in RANKING_DIR.glob("sector_rs_ranking_*_meta.json"):
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        if meta.get("as_of") != target:
+            continue
+        ranking_path = meta_path.with_name(meta_path.name.removesuffix("_meta.json") + ".parquet")
+        if ranking_path.is_file():
+            candidates.append((str(meta.get("requested_as_of", meta["as_of"])), ranking_path, meta_path))
+    assert candidates, f"authoritative Sector RS ranking is missing for as_of={target}"
+    _requested_as_of, ranking_path, meta_path = max(candidates, key=lambda item: item[0])
     return ranking_path, meta_path
 
 
@@ -127,13 +132,14 @@ def test_payload_equals_deterministic_exporter_projection():
     exporter = _load_exporter()
     target = _target()
     ranking_path, meta_path = _ranking_paths(target)
+    meta = json.loads(meta_path.read_text(encoding="utf-8"))
     basic_info_dir, _name_date = resolve_basic_info_snapshot_dir(ROOT, target)
     assert _load_payload() == exporter.build_sector_rs_web_payload(
         ranking_path=ranking_path,
         meta_path=meta_path,
         basic_info_dir=basic_info_dir,
         stocks_dir=ROOT / "web/data/stocks",
-        requested_as_of=target,
+        requested_as_of=meta.get("requested_as_of", target),
         reference_market_date=target,
     )
 

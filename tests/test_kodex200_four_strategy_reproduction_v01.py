@@ -18,14 +18,16 @@ from scripts.run_kodex200_four_strategy_reproduction_v01 import (
 from trend_scanner.backtest.snapshot_context import build_precomputed_ticker_context
 
 
-def test_price_authority_period_and_schema_are_frozen() -> None:
+def test_price_authority_period_and_schema_match_metadata() -> None:
     frame, meta = load_price_authority()
+    source_frame = pd.read_parquet(DATA_PATH).sort_index()
     assert DATA_PATH.exists()
     assert TICKER == "069500"
     assert NAME == "KODEX 200"
     assert len(frame) == 3097
-    assert meta["actual_start"] == "2014-01-02"
-    assert meta["actual_end"] == "2026-08-14"
+    assert meta["actual_start"] == source_frame.index.min().strftime("%Y-%m-%d")
+    assert meta["actual_end"] == source_frame.index.max().strftime("%Y-%m-%d")
+    assert frame.index.max().strftime("%Y-%m-%d") == meta["signal_cutoff"]
     assert set(("open", "high", "low", "close", "volume", "trading_value")).issubset(frame.columns)
     assert frame.index.is_unique
 

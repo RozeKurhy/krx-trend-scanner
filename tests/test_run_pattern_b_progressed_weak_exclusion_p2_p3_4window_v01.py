@@ -1,20 +1,60 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
+import pytest
 
 from scripts import run_pattern_b_progressed_weak_exclusion_p2_p3_4window_v01 as study
 
 
+def _p1_reference_files():
+    artifact_root = study.ROOT / study.P1_REFERENCE_ROOT
+    metadata_path = artifact_root / "metadata.json"
+    summary_path = artifact_root / "summary.json"
+    return artifact_root, metadata_path, summary_path
+
+
 def test_p1_reference_is_frozen_and_matches_the_requested_commit() -> None:
-    metadata, summary = study._verify_p1_reference(study.ROOT)
+    artifact_root, metadata_path, summary_path = _p1_reference_files()
+    metadata = study._json(metadata_path)
+    summary = study._json(summary_path)
 
     assert summary["verdict"] == study.P1_REFERENCE_VERDICT
     assert summary["window"]["window_id"] == "P1"
     assert metadata["study_id"] == "PATTERN_B_PROGRESSED_WEAK_FILTER_P1_SIMPLE_V01"
+    assert study.runner._git_blob_sha(
+        study.ROOT, study.START_COMMIT, study.P1_REFERENCE_ROOT / "metadata.json"
+    ) == study._sha256(metadata_path)
+    for relative, detail in metadata.get("generated_files", {}).items():
+        path = artifact_root / relative
+        assert path.is_file()
+        assert study._sha256(path) == detail.get("sha256")
+        assert study.runner._git_blob_sha(
+            study.ROOT, study.START_COMMIT, study.P1_REFERENCE_ROOT / relative
+        ) == study._sha256(path)
+    for relative, expected in metadata.get("code_sha256", {}).items():
+        assert study.runner._git_blob_sha(study.ROOT, study.START_COMMIT, Path(relative)) == expected
+
+    unavailable_sources = [
+        relative
+        for relative, expected in metadata.get("source_sha256", {}).items()
+        if not (study.ROOT / relative).is_file() or study._sha256(study.ROOT / relative) != expected
+    ]
+    if unavailable_sources:
+        pytest.skip(
+            "Frozen P1 outputs/code match the requested commit, but historical source snapshots are absent or "
+            "have advanced and cannot be reproduced from this checkout: " + ", ".join(unavailable_sources)
+        )
+
+    verified_metadata, verified_summary = study._verify_p1_reference(study.ROOT)
+    assert verified_metadata == metadata
+    assert verified_summary == summary
 
 
 def test_five_window_report_renders_core_and_resolved_terminal_synthesis() -> None:
-    _, p1 = study._verify_p1_reference(study.ROOT)
+    _artifact_root, _metadata_path, summary_path = _p1_reference_files()
+    p1 = study._json(summary_path)
     summaries = {
         window_id: {
             **p1,

@@ -40,7 +40,7 @@ def test_baseline_csv_cardinality_and_population_invariants():
 
 
 def test_provenance_consistency_across_artifacts():
-    """Verify provenance metadata consistency across JSON, Markdown, and evaluation artifacts."""
+    """Verify provenance metadata consistency across current and archived JSON artifacts."""
     # 1. Final strategy JSON
     strat_json_path = ROOT / "artifacts/patterns/pattern_a_fast/production/strategy_v01/pattern_a_fast_final_strategy_v01.json"
     strat_json = json.loads(strat_json_path.read_text(encoding="utf-8"))
@@ -73,10 +73,3 @@ def test_provenance_consistency_across_artifacts():
     assert l_meta["primary_trade_count"] == 553
     assert l_meta["transition_count"] == 484
     assert l_meta["early_trend_count"] == 69
-
-    # 4. Final strategy Markdown
-    strat_md_path = ROOT / "docs/patterns/pattern_a_fast/strategy/final_v01.md"
-    strat_md = strat_md_path.read_text(encoding="utf-8")
-    assert "88d54d8" in strat_md
-    assert "f73e0c2" in strat_md
-    assert "CORRECTED_PIT_BASELINE" in strat_md

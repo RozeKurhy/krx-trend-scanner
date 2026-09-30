@@ -45,7 +45,7 @@ from trend_scanner.reporting.stock_report import generate_stock_report, render_m
 
 
 ARTIFACT_DIR = ROOT / "artifacts/fundamentals/validation/f6_representative_validation"
-SCHEMA_PATH = ROOT / "docs/reporting/schema_v05.json"
+SCHEMA_PATH = ROOT / "docs/reporting/schema_v07.json"
 AS_OF = "2026-06-30"
 
 
@@ -432,7 +432,7 @@ def _validate_report_outputs(
     for name, section in selected:
         # This is the actual F5 integration path under test.  Do not assemble
         # a StockReport with dataclasses.replace, which bypasses generator
-        # summary construction and v0.5 serialization behavior.
+        # summary construction and current Stock Report serialization behavior.
         report, _, _ = generate_stock_report(
             ticker="001540", as_of="2026-06-30", repo_root=ROOT,
             save_artifacts=False, fundamentals_section=section,
@@ -481,7 +481,7 @@ def _validate_report_outputs(
         }
         non_integration_guard = all(non_integration_checks.values())
         assert not schema_errors, schema_errors
-        assert report.report_version == "0.5"
+        assert report.report_version == "0.7"
         assert summary_fundamentals_consistent
         assert as_of_consistent
         assert markdown_valid

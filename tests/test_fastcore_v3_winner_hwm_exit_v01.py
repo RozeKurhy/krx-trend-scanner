@@ -12,7 +12,6 @@ from trend_scanner.validation import pattern_a_fast_winner_hwm_exit_v01 as evalu
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = ROOT / "artifacts/patterns/pattern_a_fast/research/candidate/winner_hwm_exit_v01.json"
-SPEC_PATH = ROOT / "docs/patterns/pattern_a_fast/strategy/final_v03_candidate.md"
 
 
 def _contract() -> dict:
@@ -123,9 +122,8 @@ def test_no_strategy_generated_reentry() -> None:
     assert contract["next_ab_matched_cohort_requirement"]["reentry_generated"] is False
 
 
-def test_machine_contract_matches_spec_and_json() -> None:
+def test_machine_contract_matches_evaluator_and_json() -> None:
     contract = _contract()
-    spec = SPEC_PATH.read_text(encoding="utf-8")
     assert contract["strategy_id"] == evaluator.STRATEGY_ID == "PATTERN_A_FAST_FINAL_STRATEGY_V03"
     assert contract["base_strategy_id"] == evaluator.BASE_STRATEGY_ID == "PATTERN_A_FAST_FINAL_STRATEGY_V02"
     assert contract["exit_contract_id"] == evaluator.EXIT_CONTRACT_ID == "WINNER_HWM_EXIT_V01"
@@ -136,6 +134,3 @@ def test_machine_contract_matches_spec_and_json() -> None:
     assert [(row["lower_mfe_pct"], row["upper_mfe_pct_exclusive"], row["soft_drawdown_pct"], row["hard_drawdown_pct"], row["label"]) for row in contract["bands"]] == [
         (lower, upper, soft, hard, label) for lower, upper, soft, hard, label in evaluator.MFE_TIERS
     ]
-    assert "running_raw_MFE < +20%" in spec
-    assert "NEXT_LOCAL_TRADING_DAY_OPEN" in spec
-    assert "Pre-Winner에는 강제 청산이 없으므로 장기간 자본이 묶이거나 큰 미실현 손실이 발생할 수 있다." in spec

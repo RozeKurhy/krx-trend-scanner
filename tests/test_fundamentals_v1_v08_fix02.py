@@ -55,10 +55,12 @@ def test_fix02_reproduction_cases_and_pit_provenance_are_recorded():
 
 def test_fix02_keeps_raw_flow_and_uses_the_new_chart_contract():
     payload = json.loads((ROOT / "web/data/stocks/004000.json").read_text(encoding="utf-8"))
+    ranking = json.loads((ROOT / "web/data/foreign-net-buy-ranking.json").read_text(encoding="utf-8"))
     html = (ROOT / "web/report.html").read_text(encoding="utf-8")
     js = (ROOT / "web/js/report.js").read_text(encoding="utf-8")
 
-    assert payload["flow"]["net_buy_value_10d_krw"] == 23829500.0
+    flow_item = next(item for item in ranking["items"] if item["ticker"] == payload["identity"]["ticker"])
+    assert payload["flow"]["net_buy_value_10d_krw"] == flow_item["foreign_net_buy_10d"]
     assert payload["external_links"] == {
         "naver_finance": "https://finance.naver.com/item/main.naver?code=004000",
         "naver_chart": "https://stock.naver.com/fchart/domestic/stock/004000",
@@ -66,7 +68,7 @@ def test_fix02_keeps_raw_flow_and_uses_the_new_chart_contract():
     assert "Npay 증권" in html
     assert "차트</a>" in html
     assert "전자공시</a>" in html
-    assert "web-02d-window-13" in html
+    assert "web-02e-etf36-julia-v1" in html
     assert "Math.floor(absolute / 1e7)" in js
     assert "return `${sign}${formatNumber(absolute)}원`;" not in js
     assert "naver_chart" in js and "toss_chart" not in js
