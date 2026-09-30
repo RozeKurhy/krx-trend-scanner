@@ -12,11 +12,20 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 EXPORTER_PATH = ROOT / "scripts/export_etf_ranking_web.py"
 RANKING_PATH = ROOT / "web/data/etf-ranking.json"
-ETF_TICKERS = {
-    "069500", "226490", "229200", "091160", "091180", "091170", "102970", "140700",
-    "117700", "117680", "117460", "139230", "139260", "157490", "143860", "102960",
-    "140710", "266410", "266390", "266360", "133690", "360750", "241180", "192090",
+OFFICIAL_GROUP_TICKERS = {
+    "MARKET": {
+        "069500", "229200", "133690", "360750", "241180", "283580", "453810", "245710",
+        "256440", "195980", "379790", "251350",
+    },
+    "SECTOR": {
+        "091160", "091180", "091170", "102970", "140700", "117700", "117680", "117460",
+        "139230", "157490", "143860", "266410", "228790", "228810", "228800", "300950",
+        "305720", "449450", "367760",
+    },
+    "COMMODITY": {"411060", "144600", "160580", "261220", "271060"},
 }
+ETF_TICKERS = set().union(*OFFICIAL_GROUP_TICKERS.values())
+OLD_ONLY_TICKERS = {"226490", "139260", "102960", "140710", "266390", "266360", "192090"}
 HORIZONS = {"2w": 10, "1m": 21, "3m": 63, "6m": 126, "12m": 252}
 
 
@@ -39,14 +48,21 @@ def test_etf_ranking_has_exact_fixed_scope_and_complete_finite_values():
     assert ranking["requested_as_of"] == stock_index["requested_as_of"]
     assert ranking["reference_market_date"] == stock_index["reference_market_date"]
     assert ranking["as_of"] == ranking["reference_market_date"]
-    assert ranking["scope"] == {"type": "FIXED_ETF_UNIVERSE", "count": 24}
+    assert ranking["scope"] == {"type": "FIXED_ETF_UNIVERSE", "count": 36}
     assert ranking["horizons"] == HORIZONS
-    assert len(ranking["items"]) == 24
+    assert len(ranking["items"]) == 36
     assert {item["ticker"] for item in ranking["items"]} == ETF_TICKERS
-    assert len({item["ticker"] for item in ranking["items"]}) == 24
+    assert len({item["ticker"] for item in ranking["items"]}) == 36
+    ranking_tickers = {item["ticker"] for item in ranking["items"]}
+    assert not (OLD_ONLY_TICKERS & ranking_tickers)
+    assert "474800" not in ranking_tickers
+    assert {group: sum(item["group"] == group for item in ranking["items"]) for group in OFFICIAL_GROUP_TICKERS} == {
+        "MARKET": 12, "SECTOR": 19, "COMMODITY": 5,
+    }
+    assert {group: {item["ticker"] for item in ranking["items"] if item["group"] == group} for group in OFFICIAL_GROUP_TICKERS} == OFFICIAL_GROUP_TICKERS
     for item in ranking["items"]:
         assert item["latest_close_as_of"] == ranking["as_of"]
-        assert item["group"] in {"MARKET", "SECTOR", "OVERSEAS"}
+        assert item["group"] in OFFICIAL_GROUP_TICKERS
         assert item["category"]
         for key in (
             "latest_close", "return_2w", "return_1m", "return_3m", "return_6m", "return_12m",
@@ -69,9 +85,11 @@ def test_etf_ranking_has_exact_fixed_scope_and_complete_finite_values():
 
 def test_etf_exporter_contract_is_fixed_and_uses_repository_authority():
     exporter = _load_exporter()
-    assert len(exporter.ETF_UNIVERSE) == 24
-    assert len({ticker for ticker, _group, _category in exporter.ETF_UNIVERSE}) == 24
+    assert len(exporter.ETF_UNIVERSE) == 36
+    assert len({ticker for ticker, _group, _category in exporter.ETF_UNIVERSE}) == 36
     assert {ticker for ticker, _group, _category in exporter.ETF_UNIVERSE} == ETF_TICKERS
+    assert {group: {ticker for ticker, group_value, _category in exporter.ETF_UNIVERSE if group_value == group} for group in OFFICIAL_GROUP_TICKERS} == OFFICIAL_GROUP_TICKERS
+    assert "474800" not in {ticker for ticker, _group, _category in exporter.ETF_UNIVERSE}
     assert exporter.HORIZONS == HORIZONS
     source = EXPORTER_PATH.read_text(encoding="utf-8")
     assert "build_repository_v2" in source
@@ -79,6 +97,14 @@ def test_etf_exporter_contract_is_fixed_and_uses_repository_authority():
     assert "repository_v2_contract_for_metadata" in source
     assert "requests" not in source
     assert "pykrx" not in source
+
+
+def test_official_universe_metadata_is_trusted_etf_for_all_36_tickers():
+    exporter = _load_exporter()
+    ranking = _load_ranking()
+    metadata = exporter._load_metadata(ROOT, reference_market_date=ranking["reference_market_date"])
+    assert set(metadata) == ETF_TICKERS
+    assert all(item.asset_type == "ETF" and item.is_trusted_for_production for item in metadata.values())
 
 
 def test_horizon_metrics_use_anchor_plus_exact_measurement_window():
@@ -109,13 +135,13 @@ def test_etf_page_has_required_tabs_controls_and_no_report_or_search_ui():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     assert '<title>ETF 랭킹 · KRX Trend Scanner</title>' in html
     assert 'href="./css/app.css?v=web-ui-density-11"' in html
-    assert 'src="./js/etf.js?v=web-etf-ranking-2"' in html
+    assert 'src="./js/etf.js?v=web-etf-ranking-3"' in html
     assert '<a class="ranking-tab is-active" href="./etf.html" aria-current="page">ETF</a>' in html
     expected_tabs = ("마켓 RS", "섹터 RS", "섹터 랭킹", "외인 순매수", "매출액 성장률", "영업이익 성장률", "순이익 성장률")
     assert [text for text in expected_tabs if text in html] == list(expected_tabs)
     assert html.count('data-horizon=') == 5
     assert 'data-horizon="1m" aria-pressed="true"' in html
-    assert '기준일 확인 중 · 24개 ETF' in html
+    assert '기준일 확인 중 · 36개 ETF' in html
     assert 'id="etf-ranking-list"' in html
     assert "기간 수익률" not in html and "기간 수익률" not in js
     assert "기간 등락" in js
@@ -129,6 +155,8 @@ def test_etf_page_has_required_tabs_controls_and_no_report_or_search_ui():
     assert 'let activeHorizon = "1m";' in js
     assert 'Number(right[field]) - Number(left[field])' in js
     assert 'value.as_of !== value.reference_market_date' in js
+    assert 'value.scope.count !== 36' in js and 'value.items.length !== 36' in js
+    assert 'new Set(value.items.map((item) => item && item.ticker)).size !== 36' in js
     assert 'String(left.name || "").localeCompare(String(right.name || ""), "ko-KR")' in js
     assert 'String(left.ticker || "").localeCompare(String(right.ticker || ""))' in js
     for field in ("RETURN_FIELDS", "MFE_FIELDS", "MDD_FIELDS", "AVG_VOLUME_FIELDS", "AVG_TRADING_VALUE_FIELDS"):

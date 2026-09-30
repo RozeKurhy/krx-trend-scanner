@@ -26,12 +26,21 @@ DEFAULT_OUTPUT_PATH = ROOT / "web" / "data" / "etf-ranking.json"
 HORIZONS = {"2w": 10, "1m": 21, "3m": 63, "6m": 126, "12m": 252}
 READ_START = "2023-01-01"
 
-# This is the web feature's fixed 24-product universe.  Product names are
+# This is the web feature's fixed official 36-product universe. Product names are
 # always read from the formal PIT metadata authority, never from this list.
 ETF_UNIVERSE = (
     ("069500", "MARKET", "한국 대형시장"),
-    ("226490", "MARKET", "한국 전체시장"),
-    ("229200", "MARKET", "코스닥"),
+    ("229200", "MARKET", "코스닥150"),
+    ("133690", "MARKET", "미국 나스닥100"),
+    ("360750", "MARKET", "미국 S&P500"),
+    ("241180", "MARKET", "일본 니케이225"),
+    ("283580", "MARKET", "중국 CSI300"),
+    ("453810", "MARKET", "인도 Nifty50"),
+    ("245710", "MARKET", "베트남 VN30"),
+    ("256440", "MARKET", "인도네시아 MSCI"),
+    ("195980", "MARKET", "신흥국 MSCI"),
+    ("379790", "MARKET", "유로스탁스50"),
+    ("251350", "MARKET", "선진국 MSCI"),
     ("091160", "SECTOR", "반도체"),
     ("091180", "SECTOR", "자동차"),
     ("091170", "SECTOR", "은행"),
@@ -41,18 +50,21 @@ ETF_UNIVERSE = (
     ("117680", "SECTOR", "철강"),
     ("117460", "SECTOR", "에너지화학"),
     ("139230", "SECTOR", "중공업"),
-    ("139260", "SECTOR", "IT"),
     ("157490", "SECTOR", "소프트웨어"),
     ("143860", "SECTOR", "헬스케어"),
-    ("102960", "SECTOR", "기계장비"),
-    ("140710", "SECTOR", "운송"),
     ("266410", "SECTOR", "필수소비재"),
-    ("266390", "SECTOR", "경기소비재"),
-    ("266360", "SECTOR", "K-콘텐츠"),
-    ("133690", "OVERSEAS", "미국 기술주"),
-    ("360750", "OVERSEAS", "미국 대표주"),
-    ("241180", "OVERSEAS", "일본"),
-    ("192090", "OVERSEAS", "중국"),
+    ("228790", "SECTOR", "화장품"),
+    ("228810", "SECTOR", "미디어콘텐츠"),
+    ("228800", "SECTOR", "여행레저"),
+    ("300950", "SECTOR", "게임산업"),
+    ("305720", "SECTOR", "2차전지산업"),
+    ("449450", "SECTOR", "K방산"),
+    ("367760", "SECTOR", "네트워크인프라"),
+    ("411060", "COMMODITY", "금"),
+    ("144600", "COMMODITY", "은"),
+    ("160580", "COMMODITY", "구리"),
+    ("261220", "COMMODITY", "원유"),
+    ("271060", "COMMODITY", "농산물"),
 )
 
 
@@ -65,8 +77,12 @@ def _write_json(path: Path, value: dict[str, Any]) -> None:
 
 def _validate_universe() -> None:
     tickers = [ticker for ticker, _group, _category in ETF_UNIVERSE]
-    if len(tickers) != 24 or len(set(tickers)) != 24:
-        raise ValueError("ETF universe must contain exactly 24 unique tickers")
+    if len(tickers) != 36 or len(set(tickers)) != 36:
+        raise ValueError("ETF universe must contain exactly 36 unique tickers")
+    expected_group_counts = {"MARKET": 12, "SECTOR": 19, "COMMODITY": 5}
+    group_counts = pd.Series([group for _ticker, group, _category in ETF_UNIVERSE]).value_counts().to_dict()
+    if group_counts != expected_group_counts:
+        raise ValueError("ETF universe group counts do not match the official 36-product contract")
 
 
 def _resolve_reference_market_date(target_as_of: str, repo_root: Path) -> str:
@@ -190,7 +206,7 @@ def build_etf_ranking(target_as_of: str, repo_root: Path | str = ROOT) -> dict[s
         )
         for ticker, group, category in ETF_UNIVERSE
     ]
-    if len(items) != 24 or {item["ticker"] for item in items} != {ticker for ticker, _group, _category in ETF_UNIVERSE}:
+    if len(items) != 36 or {item["ticker"] for item in items} != {ticker for ticker, _group, _category in ETF_UNIVERSE}:
         raise ValueError("ETF ranking item set is incomplete")
     items.sort(key=lambda item: (-float(item["return_1m"]), str(item["name"]), str(item["ticker"])))
     return {
@@ -198,7 +214,7 @@ def build_etf_ranking(target_as_of: str, repo_root: Path | str = ROOT) -> dict[s
         "requested_as_of": target_as_of,
         "reference_market_date": reference_market_date,
         "as_of": reference_market_date,
-        "scope": {"type": "FIXED_ETF_UNIVERSE", "count": 24},
+        "scope": {"type": "FIXED_ETF_UNIVERSE", "count": 36},
         "horizons": HORIZONS.copy(),
         "items": items,
     }
