@@ -31,6 +31,23 @@ def _health_validation_fixture(
     stage = tmp_path / "stage"
     stocks_dir = stage / "stocks"
     stocks_dir.mkdir(parents=True)
+    common_item = {"ticker": "000001", "asset_type": "COMMON", "bucket": "unavailable"}
+    b_status = {
+        "status": "PASS",
+        "strategy_id": phase4d.B_SELECT_ID,
+        "requested_as_of": target,
+        "reference_market_date": target,
+        "scope": {"type": "PUBLISHED_COMMON_REPORTS", "report_count": 1},
+        "count": 1,
+        "counts": {"entry": 0, "hold": 0, "exit": 0, "watch": 0, "unavailable": 1},
+        "items": [common_item],
+        "network_requests": 0,
+        "evaluation_error_count": 0,
+        "date_mismatch_count": 0,
+        "future_reference_count": 0,
+        "duplicate_item_count": 0,
+        "cross_strategy_contamination_count": 0,
+    }
     documents: dict[str, dict] = {
         "stock-index.json": {
             "requested_as_of": target,
@@ -45,11 +62,36 @@ def _health_validation_fixture(
             "scope": {"report_count": 1},
         },
         "strategy-monitor.json": {
+            "schema_version": 2,
+            "default_strategy_id": phase4d.STRATEGY_ID,
             "requested_as_of": target,
             "reference_market_date": target,
-            "items": [{"ticker": "000001"}],
-            "scope": {"report_count": 1},
-            "strategy": {"id": phase4d.STRATEGY_ID},
+            "strategies": [
+                {
+                    "id": phase4d.STRATEGY_ID,
+                    "label": "A FAST Core V2",
+                    "asset_scope": "COMMON",
+                    "scope": {"type": "PUBLISHED_COMMON_REPORTS", "report_count": 1},
+                    "counts": b_status["counts"],
+                    "items": [common_item],
+                },
+                {
+                    "id": phase4d.B_SELECT_ID,
+                    "label": "B Select Core V1",
+                    "asset_scope": "COMMON",
+                    "scope": {"type": "PUBLISHED_COMMON_REPORTS", "report_count": 1},
+                    "counts": b_status["counts"],
+                    "items": [common_item],
+                },
+                {
+                    "id": phase4d.JULIA_ID,
+                    "label": "Julia V1",
+                    "asset_scope": "OFFICIAL_ETF_36",
+                    "scope": {"type": "OFFICIAL_ETF_36", "report_count": 0},
+                    "counts": {"entry": 0, "hold": 0, "exit": 0, "watch": 0, "unavailable": 0},
+                    "items": [],
+                },
+            ],
         },
         "sector-rs-ranking.json": {
             "requested_as_of": target,
@@ -94,9 +136,11 @@ def _health_validation_fixture(
         },
         "strategy": {"id": phase4d.STRATEGY_ID},
     }
+    documents[phase4d.B_SELECT_STATUS_STAGING_NAME] = b_status
     for name in phase4d.REQUIRED_FILES:
         (stage / name).touch()
     (stocks_dir / "000001.json").touch()
+    (stage / phase4d.B_SELECT_STATUS_STAGING_NAME).touch()
     return stage, documents
 
 
@@ -187,6 +231,21 @@ def test_phase4d_passes_periodic_sector_membership_snapshot_to_foreign_export(mo
     )
     monkeypatch.setattr(phase4d.market_web, "build_market_ranking", lambda **kwargs: {})
     monkeypatch.setattr(phase4d.strategy_web, "build_strategy_monitor", lambda **kwargs: {})
+    monkeypatch.setattr(
+        phase4d.b_select_status_web,
+        "build_b_select_status",
+        lambda **kwargs: {
+            "status": "PASS",
+            "strategy_id": phase4d.B_SELECT_ID,
+            "requested_as_of": "2026-09-18",
+            "reference_market_date": "2026-09-18",
+            "count": 0,
+            "counts": {"entry": 0, "hold": 0, "exit": 0, "watch": 0, "unavailable": 0},
+            "evaluation_error_count": 0,
+            "network_requests": 0,
+            "items": [],
+        },
+    )
     monkeypatch.setattr(phase4d.sector_web, "build_sector_rs_web_payload", lambda **kwargs: {})
 
     def _foreign(**kwargs):

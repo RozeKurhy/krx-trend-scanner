@@ -19,7 +19,12 @@ INDEX_PATH = ROOT / "web/data/stock-index.json"
 STOCKS_PATH = ROOT / "web/data/stocks"
 OUTPUT_PATH = ROOT / "web/data/strategy-monitor.json"
 STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
-STRATEGY_LABEL = "A FAST Core"
+STRATEGY_LABEL = "A FAST Core V2"
+B_SELECT_ID = "PATTERN_B_SELECT_CORE_V01"
+B_SELECT_LABEL = "B Select Core V1"
+JULIA_ID = "JULIA_ETF_STRATEGY_V01"
+JULIA_LABEL = "Julia V1"
+DEFAULT_STRATEGY_ID = STRATEGY_ID
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -130,6 +135,7 @@ def build_strategy_monitor(
     stocks_path: Path | None = None,
     target_as_of: str | None = None,
     reference_market_date: str | None = None,
+    b_select_status: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """``index_path``/``stocks_path``(선택, PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01)를
     명시하면 ``web/data/`` 대신 그 exact-target 소스를 읽는다. 생략하면 기존과
@@ -152,7 +158,8 @@ def build_strategy_monitor(
     if report_paths != expected_tickers:
         raise ValueError("published stock report files do not match stock index")
 
-    items: list[dict[str, Any]] = []
+    common_items: list[dict[str, Any]] = []
+    etf_items: list[dict[str, Any]] = []
     as_of_values: set[str] = set()
     reference_market_date_values: set[str] = set()
     for index_item in available:
@@ -166,7 +173,16 @@ def build_strategy_monitor(
         if ref:
             reference_market_date_values.add(ref)
         if index_item.get("asset_type") == "COMMON":
-            items.append(_project_item(index_item, report))
+            common_items.append(_project_item(index_item, report))
+        elif index_item.get("asset_type") == "ETF":
+            strategy = report.get("strategy") or {}
+            if (
+                strategy.get("source") != "official_strategy"
+                or strategy.get("strategy_id") != JULIA_ID
+                or strategy.get("strategy_name") != JULIA_LABEL
+            ):
+                raise ValueError(f"Julia source strategy mismatch: {ticker}")
+            etf_items.append(_project_item(index_item, report))
 
     if target_as_of is not None and as_of_values != {target_as_of}:
         raise ValueError(
@@ -187,30 +203,113 @@ def build_strategy_monitor(
         else (next(iter(reference_market_date_values)) if len(reference_market_date_values) == 1 else "MIXED")
     )
 
-    counts = {"entry": 0, "hold": 0, "exit": 0, "watch": 0, "unavailable": 0}
-    for item in items:
-        counts[item["bucket"]] += 1
+    if b_select_status is None:
+        b_select_path = repo_root / "artifacts/strategies/b_select_core_v1/production" / resolved_as_of.replace("-", "") / "status.json"
+        if not b_select_path.is_file():
+            raise ValueError("B Select current status artifact is missing")
+        b_select_status = _read_json(b_select_path)
+    if (
+        b_select_status.get("status") != "PASS"
+        or b_select_status.get("strategy_id") != B_SELECT_ID
+        or b_select_status.get("requested_as_of") != resolved_as_of
+        or b_select_status.get("reference_market_date") != resolved_reference
+        or (b_select_status.get("scope") or {}).get("type") != "PUBLISHED_COMMON_REPORTS"
+    ):
+        raise ValueError("B Select current status is invalid or date-mismatched")
+    b_items = b_select_status.get("items")
+    if not isinstance(b_items, list):
+        raise ValueError("B Select current status items are invalid")
+    common_tickers = {item["ticker"] for item in common_items}
+    if {str(item.get("ticker", "")).zfill(6) for item in b_items} != common_tickers:
+        raise ValueError("B Select current status COMMON scope does not match published reports")
+    b_counts = b_select_status.get("counts") or {}
+    expected_bucket_counts = {"entry": 0, "hold": 0, "exit": 0, "watch": 0, "unavailable": 0}
+    for item in b_items:
+        if item.get("asset_type") != "COMMON" or item.get("bucket") not in expected_bucket_counts:
+            raise ValueError("B Select current status item contract is invalid")
+        expected_bucket_counts[item["bucket"]] += 1
+    if (
+        b_select_status.get("count") != len(b_items)
+        or (b_select_status.get("scope") or {}).get("report_count") != len(b_items)
+        or b_counts != expected_bucket_counts
+        or any(
+            b_select_status.get(key) != 0
+            for key in (
+                "network_requests",
+                "evaluation_error_count",
+                "date_mismatch_count",
+                "future_reference_count",
+                "duplicate_item_count",
+                "cross_strategy_contamination_count",
+            )
+        )
+    ):
+        raise ValueError("B Select current status diagnostics or counts are invalid")
+    if len(etf_items) != 36:
+        raise ValueError(f"Official ETF 36 report count mismatch: {len(etf_items)}")
 
-    return {
-        "schema_version": 1,
-        "strategy": {
+    def counts_for(items: list[dict[str, Any]]) -> dict[str, int]:
+        counts = {"entry": 0, "hold": 0, "exit": 0, "watch": 0, "unavailable": 0}
+        for item in items:
+            bucket = item.get("bucket")
+            if bucket not in counts:
+                raise ValueError(f"unknown strategy item bucket: {bucket!r}")
+            counts[bucket] += 1
+        return counts
+
+    strategies = [
+        {
             "id": STRATEGY_ID,
             "label": STRATEGY_LABEL,
+            "asset_scope": "COMMON",
+            "scope": {
+                "type": "PUBLISHED_COMMON_REPORTS",
+                "label": "현재 공개 COMMON 리포트 기준",
+                "report_count": len(common_items),
+            },
+            "counts": counts_for(common_items),
+            "items": common_items,
         },
+        {
+            "id": B_SELECT_ID,
+            "label": B_SELECT_LABEL,
+            "asset_scope": "COMMON",
+            "scope": {
+                "type": "PUBLISHED_COMMON_REPORTS",
+                "label": "현재 공개 COMMON 리포트 기준",
+                "report_count": len(b_items),
+            },
+            "counts": dict(b_select_status.get("counts") or {}),
+            "items": b_items,
+        },
+        {
+            "id": JULIA_ID,
+            "label": JULIA_LABEL,
+            "asset_scope": "OFFICIAL_ETF_36",
+            "scope": {
+                "type": "OFFICIAL_ETF_36",
+                "label": "Official ETF 36 기준",
+                "report_count": len(etf_items),
+            },
+            "counts": counts_for(etf_items),
+            "items": etf_items,
+        },
+    ]
+    for strategy in strategies:
+        if len(strategy["items"]) != strategy["scope"]["report_count"]:
+            raise ValueError(f"strategy monitor scope count mismatch: {strategy['id']}")
+
+    return {
+        "schema_version": 2,
         "source": {
             "type": "PUBLISHED_STOCK_REPORTS",
             "path": "web/data/stocks/*.json",
         },
-        "scope": {
-            "type": "PUBLISHED_COMMON_REPORTS",
-            "label": "현재 공개 COMMON 리포트 기준",
-            "report_count": len(items),
-        },
+        "default_strategy_id": DEFAULT_STRATEGY_ID,
         "requested_as_of": resolved_as_of,
         "reference_market_date": resolved_reference,
         "as_of": resolved_as_of,
-        "counts": counts,
-        "items": items,
+        "strategies": strategies,
     }
 
 
@@ -226,7 +325,13 @@ def main() -> int:
     parser.add_argument("--output", type=Path, default=OUTPUT_PATH)
     args = parser.parse_args()
     payload = export_strategy_monitor(args.output)
-    print(json.dumps({"as_of": payload["as_of"], "counts": payload["counts"], "item_count": len(payload["items"])}, ensure_ascii=False, sort_keys=True))
+    print(json.dumps({
+        "as_of": payload["as_of"],
+        "strategies": [
+            {"id": strategy["id"], "scope_count": strategy["scope"]["report_count"], "counts": strategy["counts"]}
+            for strategy in payload["strategies"]
+        ],
+    }, ensure_ascii=False, sort_keys=True))
     return 0
 
 

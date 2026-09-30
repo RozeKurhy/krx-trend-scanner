@@ -15,6 +15,7 @@
     WATCH: "관찰 중",
     WAIT: "관찰 중",
     NONE: "전략 데이터 없음",
+    NOT_APPLICABLE: "해당 없음",
   };
   const POSITION_LABELS = { OPEN: "보유 중", FLAT: "미보유", NOT_APPLICABLE: "해당 없음" };
   const STATE_LABELS = {
@@ -22,6 +23,10 @@
     HOLD_PRE_PROGRESSED: "초기 추세 구간 보유",
     WAIT: "진입 전 관찰",
     ENTRY: "진입 조건 충족",
+    ENTRY_PENDING: "다음 시가 진입 대기",
+    EXIT_PENDING: "다음 시가 청산 대기",
+    HOLD: "보유 유지",
+    DATA_UNAVAILABLE: "전략 데이터 없음",
     NOT_APPLICABLE: "해당 없음",
   };
   const STAGE_LABELS = {
@@ -32,11 +37,25 @@
     PROGRESSED: "상승 진행",
     UNAVAILABLE: "확인 필요",
   };
+  const PATTERN_B_LABELS = {
+    DEEP_DEPRESSED: "깊은 침체",
+    DEPRESSED: "침체",
+    NORMAL: "정상",
+    OVERHEATED: "과열",
+    EXTREME_OVERHEATED: "극단 과열",
+  };
+  const STRATEGY_LABELS = {
+    PATTERN_A_FAST_FINAL_STRATEGY_V02: "A FAST Core V2",
+    PATTERN_B_SELECT_CORE_V01: "B Select Core V1",
+    JULIA_ETF_STRATEGY_V01: "Julia V1",
+  };
+  const EXPECTED_STRATEGY_IDS = Object.keys(STRATEGY_LABELS);
   const SECTION_IDS = { hold: "hold", entry: "entry", exit: "exit", watch: "watch", unavailable: "unavailable" };
   const FILTERS = new Set(["all", ...Object.keys(SECTION_IDS)]);
 
   const byId = (id) => document.getElementById(id);
   let monitor = null;
+  let activeStrategyId = "PATTERN_A_FAST_FINAL_STRATEGY_V02";
   let activeFilter = "all";
   let searchQuery = "";
   let holdSort = "entry-date";
@@ -56,6 +75,11 @@
   function positionLabel(value) { return POSITION_LABELS[value] || "상태 확인 필요"; }
   function stateLabel(value) { return STATE_LABELS[value] || "상태 확인 필요"; }
   function stageLabel(value) { return STAGE_LABELS[value] || "확인 필요"; }
+  function patternBLabel(value) { return PATTERN_B_LABELS[value] || (value ? "확인 필요" : "확인 필요"); }
+  function activeStrategy() {
+    if (!monitor) return null;
+    return (monitor.strategies || []).find((strategy) => strategy.id === activeStrategyId) || monitor.strategies[0] || null;
+  }
 
   function formatNumber(value, maximumFractionDigits) {
     if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
@@ -143,7 +167,15 @@
   function itemMatches(item) {
     const normalized = searchQuery.trim().toLocaleLowerCase("ko-KR");
     if (!normalized) return true;
-    return [item.ticker, item.name, item.sector_name].some((value) => String(value || "").toLocaleLowerCase("ko-KR").includes(normalized));
+    return [
+      item.ticker,
+      item.name,
+      item.sector_name,
+      item.pattern_b_state,
+      item.pattern_a_stage,
+      item.previous_pattern_a_stage,
+      item.strategy_state,
+    ].some((value) => String(value || "").toLocaleLowerCase("ko-KR").includes(normalized));
   }
 
   function compareText(a, b) {
@@ -239,9 +271,22 @@
 
     const action = createField("전략 판단", actionLabel(item.action, item.data_status), `strategy-item-action action-${item.bucket}`);
     const position = createPositionField(item);
-    const pattern = item.canonical_position === "NOT_APPLICABLE"
-      ? createField("패턴", "해당 없음")
-      : createField("패턴", `${stageLabel(item.pattern_stage)} · ${formatNumber(item.pattern_score, 2)}점`);
+    const strategyId = activeStrategyId;
+    let detailFields = [];
+    if (strategyId === "PATTERN_B_SELECT_CORE_V01") {
+      detailFields = [
+        createField("Pattern B", patternBLabel(item.pattern_b_state)),
+        createField("Pattern A", stageLabel(item.pattern_a_stage)),
+        createField("이전 Stage", stageLabel(item.previous_pattern_a_stage)),
+      ];
+    } else if (strategyId === "JULIA_ETF_STRATEGY_V01") {
+      detailFields = [createField("전략 상태", stateLabel(item.strategy_state))];
+    } else {
+      const pattern = item.canonical_position === "NOT_APPLICABLE"
+        ? createField("패턴", "해당 없음")
+        : createField("패턴", `${stageLabel(item.pattern_stage)} · ${formatNumber(item.pattern_score, 2)}점`);
+      detailFields = [pattern];
+    }
     const price = createPriceDateField("현재가", formatPrice(item.latest_close), formatDate(item.latest_close_as_of));
     const trade = item.current_trade;
     const entry = trade
@@ -251,12 +296,13 @@
     const returnField = createField("수익률", trade ? formatReturn(trade.return_pct) : "—", returnClass);
     const arrow = createElement("span", "strategy-item-link", "리포트 보기 ›");
 
-    link.append(identity, action, position, pattern, price, entry, returnField, arrow);
+    link.append(identity, action, position, ...detailFields, price, entry, returnField, arrow);
     return link;
   }
 
   function filteredItems(category) {
-    const items = (monitor.items || []).filter((item) => item.bucket === category && itemMatches(item));
+    const selected = activeStrategy();
+    const items = ((selected && selected.items) || []).filter((item) => item.bucket === category && itemMatches(item));
     if (category !== "hold" || activeFilter !== "hold") return items;
     return items.slice().sort(compareHoldItems);
   }
@@ -273,17 +319,19 @@
   }
 
   function renderFilterCounts() {
+    const selected = activeStrategy();
+    if (!selected) return;
     const counts = { all: 0, hold: 0, entry: 0, exit: 0, watch: 0, unavailable: 0 };
     if (searchQuery.trim()) {
-      const matched = (monitor.items || []).filter(itemMatches);
+      const matched = (selected.items || []).filter(itemMatches);
       counts.all = matched.length;
       matched.forEach((item) => {
         if (Object.prototype.hasOwnProperty.call(counts, item.bucket)) counts[item.bucket] += 1;
       });
     } else {
-      counts.all = monitor.scope.report_count;
+      counts.all = selected.scope.report_count;
       Object.keys(SECTION_IDS).forEach((category) => {
-        counts[category] = monitor.counts[category] || 0;
+        counts[category] = selected.counts[category] || 0;
       });
     }
     Object.keys(counts).forEach((category) => setText(`strategy-filter-count-${category}`, counts[category]));
@@ -332,28 +380,112 @@
   }
 
   function renderScope() {
-    setText("strategy-scope", `기준일 ${formatDate(monitor.as_of)}`);
+    const selected = activeStrategy();
+    if (!selected) return;
+    setText(
+      "strategy-scope",
+      `기준일 ${formatDate(monitor.requested_as_of || monitor.as_of)} · ${selected.scope.label} · ${formatNumber(selected.scope.report_count)}개`
+    );
+    document.querySelectorAll("[data-strategy-id]").forEach((button) => {
+      const available = (monitor.strategies || []).some((strategy) => strategy.id === button.dataset.strategyId);
+      const selectedButton = available && button.dataset.strategyId === activeStrategyId;
+      button.disabled = !available;
+      button.classList.toggle("is-active", selectedButton);
+      button.setAttribute("aria-pressed", String(selectedButton));
+    });
   }
 
   function validateMonitor(value) {
-    return Boolean(
-      value && value.schema_version === 1 && value.strategy && value.strategy.label === "A FAST Core" &&
-      value.scope && value.scope.type === "PUBLISHED_REPORTS" && Number.isInteger(value.scope.report_count) &&
-      value.counts && Array.isArray(value.items)
-    );
+    if (!value || value.source?.type !== "PUBLISHED_STOCK_REPORTS") return false;
+    if (value.schema_version === 1) {
+      return Boolean(
+        value.strategy?.id === "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+        && value.scope?.type === "PUBLISHED_COMMON_REPORTS"
+        && Number.isInteger(value.scope.report_count)
+        && value.counts && Array.isArray(value.items)
+      );
+    }
+    if (
+      value.schema_version !== 2
+      || value.default_strategy_id !== "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+      || !/^\d{4}-\d{2}-\d{2}$/.test(value.requested_as_of || "")
+      || !/^\d{4}-\d{2}-\d{2}$/.test(value.reference_market_date || "")
+      || value.reference_market_date > value.requested_as_of
+      || !Array.isArray(value.strategies)
+      || value.strategies.length !== EXPECTED_STRATEGY_IDS.length
+    ) return false;
+    const byId = new Map(value.strategies.map((strategy) => [strategy && strategy.id, strategy]));
+    if (EXPECTED_STRATEGY_IDS.some((id) => !byId.has(id))) return false;
+    for (const id of EXPECTED_STRATEGY_IDS) {
+      const strategy = byId.get(id);
+      const expectedScope = id === "JULIA_ETF_STRATEGY_V01" ? "OFFICIAL_ETF_36" : "COMMON";
+      const expectedScopeType = expectedScope === "OFFICIAL_ETF_36" ? "OFFICIAL_ETF_36" : "PUBLISHED_COMMON_REPORTS";
+      if (
+        strategy.label !== STRATEGY_LABELS[id]
+        || strategy.asset_scope !== expectedScope
+        || !strategy.scope || strategy.scope.type !== expectedScopeType
+        || !Number.isInteger(strategy.scope.report_count)
+        || !strategy.counts || !Array.isArray(strategy.items)
+        || strategy.items.length !== strategy.scope.report_count
+        || (expectedScope === "OFFICIAL_ETF_36" && strategy.scope.report_count !== 36)
+      ) return false;
+      const seen = new Set();
+      const counts = { entry: 0, hold: 0, exit: 0, watch: 0, unavailable: 0 };
+      for (const item of strategy.items) {
+        if (!item || !item.ticker || seen.has(String(item.ticker))) return false;
+        seen.add(String(item.ticker));
+        if (item.asset_type !== (expectedScope === "OFFICIAL_ETF_36" ? "ETF" : "COMMON")) return false;
+        if (!Object.prototype.hasOwnProperty.call(counts, item.bucket)) return false;
+        counts[item.bucket] += 1;
+      }
+      if (Object.keys(counts).some((key) => Number(strategy.counts[key] || 0) !== counts[key])) return false;
+    }
+    const commonA = new Set(byId.get("PATTERN_A_FAST_FINAL_STRATEGY_V02").items.map((item) => item.ticker));
+    const commonB = new Set(byId.get("PATTERN_B_SELECT_CORE_V01").items.map((item) => item.ticker));
+    return commonA.size === commonB.size && Array.from(commonA).every((ticker) => commonB.has(ticker));
+  }
+
+  function normalizeMonitor(value) {
+    if (value.schema_version !== 1) return value;
+    return {
+      ...value,
+      schema_version: 2,
+      requested_as_of: value.requested_as_of || value.as_of,
+      default_strategy_id: value.strategy.id,
+      strategies: [{
+        id: value.strategy.id,
+        label: STRATEGY_LABELS[value.strategy.id],
+        asset_scope: "COMMON",
+        scope: value.scope,
+        counts: value.counts,
+        items: value.items,
+      }],
+    };
   }
 
   async function loadMonitor() {
     const response = await fetch(MONITOR_URL, { cache: "no-store" });
     if (!response.ok) throw new Error("strategy monitor request failed");
-    const value = await response.json();
-    if (!validateMonitor(value)) throw new Error("strategy monitor schema is incomplete");
+    const raw = await response.json();
+    if (!validateMonitor(raw)) throw new Error("strategy monitor schema is incomplete");
+    const value = normalizeMonitor(raw);
     monitor = value;
+    activeStrategyId = value.default_strategy_id;
+    renderScope();
+    renderSections();
+  }
+
+  function setStrategy(strategyId) {
+    if (!monitor || !(monitor.strategies || []).some((strategy) => strategy.id === strategyId)) return;
+    activeStrategyId = strategyId;
     renderScope();
     renderSections();
   }
 
   function initInteractions() {
+    document.querySelectorAll("[data-strategy-id]").forEach((button) => {
+      button.addEventListener("click", () => setStrategy(button.dataset.strategyId));
+    });
     document.querySelectorAll("[data-filter]").forEach((button) => {
       button.addEventListener("click", () => setFilter(button.dataset.filter));
     });

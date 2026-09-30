@@ -81,10 +81,9 @@ ETF 전용 공식 전략은 Julia V1 (JULIA_ETF_STRATEGY_V01)이며 공식 ETF 3
 적용한다. COMMON 4B 성공 뒤 같은 `target_as_of`와 4A가 확정한
 `reference_market_date`로 ETF36 전용 Stock Report v0.6
 (`official_strategy=JULIA_ETF_STRATEGY_V01`)을 자동 생성한다. 이 결과는
-별도 artifact와 상태로 기록하고 Phase4D 종목 리포트 Web/UI에 투영한다.
-ETF 결과는 Market RS·Sector RS·외인 랭킹 또는 A FAST Strategy Monitor의
-모집단에 포함하지 않으며 Julia V1 Strategy Monitor 연결도 아니다. 자동 주문은
-승인되지 않았다.
+별도 artifact와 상태로 기록하고 Phase4D 종목 리포트 Web/UI 및 Strategy Monitor에
+투영한다. ETF 결과는 Market RS·Sector RS·외인 랭킹과 COMMON 전략 모집단에
+포함하지 않는다. 자동 주문은 승인되지 않았다.
 A FAST Core V2는 의사결정 지원 운영
 (PRODUCTION_DECISION_SUPPORT)이며 자동매매 권한이 아니다. V3/V4 또는
 다른 비공식 후보 전략을 4단계 운영 출력에 추가하지 않는다.
@@ -134,7 +133,7 @@ ETF 리포트는 4A가 반환한 동일한 두 날짜를 명시적으로 전달�
 |---|---|---|---|
 | 종목 리포트 | 같은 날짜의 COMMON v0.7 + Official ETF36 v0.6, PIT 메타데이터, 정확한 일별 종가 | `stock-index.json`, `stocks/*.json` | 필수 구성 요소 |
 | 마켓 RS | 공개 COMMON 종목 리포트 웹 전달 데이터 | `market-ranking.json` | 필수 구성 요소 |
-| 전략 모니터 | `stock-index.json`, `stocks/*.json`의 COMMON 항목 | `strategy-monitor.json` | A FAST Core만 포함 |
+| 전략 모니터 | A FAST·Julia 공개 리포트와 B Select current status | `strategy-monitor.json` v2 | A FAST·B Select COMMON 및 Julia ETF36을 전략별로 분리 |
 | 섹터 RS | 업종 RS 권위, 메타데이터, COMMON 리포트 집합 | `sector-rs-ranking.json` | 필수 구성 요소 |
 | 외인 순매수 | 외국인 수급, PIT COMMON 권위, 섹터 구성; `stock-index.json`은 리포트 보유 여부만 확인 | `foreign-net-buy-ranking.json` | 필수 구성 요소 |
 | 웹 상태 | 시장·PIT·펀더멘털·리포트의 로컬 상태 | `health.json` | 필수 구성 요소 |
@@ -143,8 +142,9 @@ ETF 리포트는 4A가 반환한 동일한 두 날짜를 명시적으로 전달�
 
 `export_market_ranking_web.py`와 `export_strategy_monitor_web.py`는 Stock
 Report 웹 전달 데이터를 입력으로 사용한다. 전체 stock-index와 파일 집합의 날짜·무결성을
-확인한 뒤 COMMON 리포트만 결과에 투영한다. 따라서 둘은 종목 리포트 웹 투영 후에만
-실행한다. ETF36은 A FAST 전략 집계나 Market RS 순위에 포함하지 않는다. 외인
+확인한 뒤 Market RS는 COMMON만, Strategy Monitor는 A FAST·B Select의 COMMON과
+Julia의 Official ETF36을 각각 독립 투영한다. B Select current status가 없거나 날짜·범위가
+맞지 않으면 Phase4D는 실패 처리한다. ETF36은 COMMON Market RS 집계에 포함하지 않는다. 외인
 순매수의 `stock-index.json` 사용은 보통주 모집단을 정하는
 근거가 아니라 `report_available` 표시에만 한정된다.
 
@@ -166,8 +166,8 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
      → 4A 전체 PIT COMMON 스캐너
      → 4B A FAST Core V2 + Stock Report v0.7
      → ETF36 Julia V1 Stock Report v0.6 자동 생성 (4B 성공 후, 별도 상태)
-     → 4C 필수 분석 표시 결과 검증
-     → 4D COMMON v0.7 + ETF36 v0.6 Web/UI 정적 투영
+     → 4C 필수 분석 표시 결과·B Select current status 생성 및 검증
+     → 4D 같은 실행 status artifact 승격 및 COMMON v0.7 + ETF36 v0.6 Web/UI 정적 투영
      → 전체 상태 합성
 ```
 
@@ -175,9 +175,12 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
 호출하고 각 단계의 입력·출력을 검증한다. COMMON 4B가 성공하면 같은 날짜
 권위로 ETF36 리포트를 생성하거나 유효한 기존 산출물을 `NOOP_ALREADY_COMPLETE`로
 기록한 뒤 COMMON 4C/4D를 계속 실행한다. ETF 결과는 `etf_stock_reports`에
-별도로 기록하며 COMMON 4A~4D 상태 계산을 바꾸지 않는다. COMMON 4A~4D 중
-`BLOCKED` 또는 `FAILED`가 발생하면 이후 COMMON 단계는 진행하지 않는다. 4C에는 마켓 RS, 섹터 RS,
-외인 순매수, 전략 모니터와 웹 상태가 포함된다.
+  별도로 기록하며 COMMON 4A~4D 상태 계산을 바꾸지 않는다. 4D는 같은 실행의 공개
+  공개 COMMON 리포트와 ETF36 Julia 리포트로 Strategy Monitor v2를 검증하고,
+  B Select lifecycle status를 한 번 생성해 메모리로 4D에 전달한다. 4D는 같은
+  실행 status를 날짜별 artifact로 승격하고 정적 Web JSON을 투영한다. COMMON 4A~4D 중
+`BLOCKED` 또는 `FAILED`가 발생하면 이후 COMMON 단계는 진행하지 않는다. 4D에는
+Strategy Monitor v2의 세 전략 projection과 웹 상태가 포함된다.
 공포지수와 ETF 랭킹의 웹 투영은 선택 보조 구성 요소라 실패해도 COMMON
 4A~4D를 차단하지 않는다. ETF36 Julia V1 Stock Report 생성은 별도 단계이며
 그 결과를 최상위 상태에 합성한다. 정기적인
@@ -248,11 +251,21 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
   ETF corpus는 frozen ETF36 전체 집합, v0.6 schema, Julia ID와 두 날짜가 모두
   검증되어야 한다. ETF 전략 상세는 Julia V1 authority를 보존한다.
 - 범위 분리: 종목 index/JSON은 COMMON과 ETF36을 함께 포함한다. Market RS,
-  Sector RS, 외인 랭킹 및 A FAST Strategy Monitor는 기존 COMMON 집합만 포함한다.
-  ETF Pattern B는 적용하지 않으며 Julia V1을 Strategy Monitor에 연결하지 않는다.
+  Sector RS 및 외인 랭킹은 기존 COMMON 집합만 포함한다. Strategy Monitor v2는
+  A FAST Core V2와 B Select Core V1을 공개 COMMON 집합에, Julia V1을 Official ETF 36에
+  각각 분리해 저장하며 기본 선택은 A FAST Core V2다. ETF Pattern B는 적용하지 않는다.
+- B Select current status: Phase4C가 `build_b_select_core_v1_status.py`를 한 번 실행한다. 이 생성기는 해시 검증된 기존
+  candidate-stage authority와 월별 Pattern B state를 exact PIT identity에 연결하고,
+  현재 공개 COMMON 리포트의 같은 실행 기준일 상태를 더해 per-identity lifecycle을
+  복원한다. exact KRX 다음 세션 시가만 체결로 사용한다. reference 뒤 체결은 pending으로
+  남기며 해당 시가를 조회하지 않는다. 이 경로는 성과 지표·portfolio simulation을 만들지 않는다.
+- 실패 정책: B Select status가 없거나 날짜·범위·lifecycle 검증에 실패하면 Strategy Monitor를
+  가짜 WAIT로 채우지 않고 Phase4C/4D를 실패 처리한다. Phase4D는 Phase4C가 만든
+  같은 실행의 status를 재사용해 날짜별 artifact로 보존한다.
 - 검증: `stock-index.json` 및 종목 JSON, 필수 순위·모니터·상태 JSON에
   `requested_as_of == target_as_of`와 동일 실행의 `reference_market_date`가
-  일관되게 기록되고, 화면 입력 파일이 존재하며 JSON 형식이 유효한지 확인한다.
+  일관되게 기록되고, strategy-monitor v2의 3개 전략 범위·counts·items 및 B Select
+  status artifact가 일치하며 화면 입력 JSON 형식이 유효한지 확인한다.
   비거래일에는 `reference_market_date < target_as_of`를 정상으로 처리한다.
   ETF corpus가 없거나 불완전·무효이면 NOOP로 통과시키지 않고 4D를 실패 처리한다.
 - 배포: 이 단계는 `web/data` 생성까지만 정의한다. Pages 배포는 main 반영 후의
@@ -296,6 +309,9 @@ artifacts/reporting/stock_reports/{YYYYMMDD}/
 
 ETF36 Julia V1 Stock Report:
 artifacts/reporting/etf_stock_reports/{YYYYMMDD}/
+
+B Select Core V1 current status:
+artifacts/strategies/b_select_core_v1/production/{YYYYMMDD}/status.json
 
 웹 정적 투영:
 web/data/

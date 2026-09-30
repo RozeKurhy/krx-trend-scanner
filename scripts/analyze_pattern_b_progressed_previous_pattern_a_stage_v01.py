@@ -36,6 +36,7 @@ from trend_scanner.data.repository_v2_loader import (  # noqa: E402
 )
 from trend_scanner.data.resampler import to_monthly, to_weekly  # noqa: E402
 from trend_scanner.patterns.pattern_a_stage import classify_pattern_a_stage  # noqa: E402
+from trend_scanner.strategies.b_select_core_v1 import resolve_progressed_episode  # noqa: E402
 
 STUDY_ID = "PATTERN_B_PROGRESSED_PREVIOUS_PATTERN_A_STAGE_V01"
 EXPECTED_HEAD = "2a76f8c312606af338001073d6da3f69da7e7239"
@@ -120,47 +121,13 @@ def _resolve_progressed_episode(
     UNAVAILABLE and gaps in PIT identity activity break a run. A missing earlier
     different stage is explicitly grouped as UNAVAILABLE.
     """
-    entry_date = str(entry_date)[:10]
-    index = bisect.bisect_left(active_dates, entry_date)
-    if index >= len(active_dates) or active_dates[index] != entry_date:
-        raise ValueError(f"entry date is not an active Pattern A snapshot: {entry_date}")
-    if stage_by_date.get(entry_date) != "PROGRESSED":
-        raise ValueError(f"entry-date Pattern A stage is not PROGRESSED: {entry_date}")
-    run_index = index
-    prior_stage = "UNAVAILABLE"
-    prior_date = None
-    boundary_reason = "NO_PRIOR_DISTINCT_STAGE"
-    if entry_date not in trading_positions:
-        raise ValueError(f"entry date is not an exchange session: {entry_date}")
-    while run_index > 0:
-        previous_date = active_dates[run_index - 1]
-        current_date = active_dates[run_index]
-        if snapshot_positions[current_date] != snapshot_positions[previous_date] + 1:
-            prior_stage = "UNAVAILABLE"
-            prior_date = previous_date
-            boundary_reason = "PIT_IDENTITY_ACTIVE_GAP"
-            break
-        previous_stage = stage_by_date[previous_date]
-        if previous_stage != "PROGRESSED":
-            prior_stage = previous_stage
-            prior_date = previous_date
-            boundary_reason = "PREVIOUS_DIFFERENT_OBSERVATION"
-            break
-        run_index -= 1
-    start_date = active_dates[run_index]
-    if start_date not in trading_positions:
-        raise ValueError(f"PROGRESSED segment start is not an exchange session: {start_date}")
-    elapsed = trading_positions[entry_date] - trading_positions[start_date]
-    if elapsed < 0:
-        raise ValueError(f"negative PROGRESSED duration: {start_date} -> {entry_date}")
-    return {
-        "previous_pattern_a_stage": prior_stage,
-        "previous_pattern_a_stage_date": prior_date,
-        "progressed_segment_start_date": start_date,
-        "progressed_segment_krx_sessions": int(elapsed),
-        "progressed_segment_month_observation_count": int(index - run_index + 1),
-        "episode_boundary_reason": boundary_reason,
-    }
+    return resolve_progressed_episode(
+        active_dates,
+        stage_by_date,
+        entry_date,
+        snapshot_positions,
+        trading_positions,
+    )
 
 
 def _stage_inputs_are_pit_safe(

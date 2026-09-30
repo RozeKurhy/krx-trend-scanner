@@ -297,7 +297,7 @@ def test_e_published_ticker_parity_across_payloads(real_phase4c_result):
 # --- F. OPEN continuity: previous OPEN + current non-CANDIDATE가 strategy monitor에 존재 ---
 
 
-def test_f_previous_open_non_candidate_ticker_present_in_strategy_monitor():
+def test_f_previous_open_non_candidate_ticker_present_in_strategy_monitor(real_phase4c_result):
     """000370은 Phase 4B continuity 감사에서 previous OPEN + current non-CANDIDATE로
     확인된 실제 종목이다 -- strategy monitor에서 canonical_position OPEN으로 계속
     나타나야 한다(candidate 여부로 재필터링되지 않음)."""
@@ -318,8 +318,13 @@ def test_f_previous_open_non_candidate_ticker_present_in_strategy_monitor():
         monitor = strategy_monitor_web.build_strategy_monitor(
             index_path=index_path, stocks_path=stocks_dir,
             target_as_of=target_as_of, reference_market_date=reference_market_date,
+            b_select_status=real_phase4c_result["_b_select_status_for_phase4d"],
         )
-    item = next(item for item in monitor["items"] if item["ticker"] == "000370")
+    common_strategy = next(
+        strategy for strategy in monitor["strategies"]
+        if strategy["id"] == "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+    )
+    item = next(item for item in common_strategy["items"] if item["ticker"] == "000370")
     assert item["canonical_position"] == "OPEN"
 
 

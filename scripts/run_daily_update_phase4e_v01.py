@@ -501,6 +501,12 @@ def run_phase4e(
         [common_overall_status, etf_stock_reports["status"]]
     )
 
+    phase4c_result = (phases.get("4C") or {}).get("result")
+    if isinstance(phase4c_result, dict):
+        # Phase 4D consumes the complete in-memory status to avoid a second
+        # lifecycle replay. Keep the orchestrator's user-facing result compact.
+        phase4c_result.pop("_b_select_status_for_phase4d", None)
+
     return {
         "target_as_of": target_as_of,
         "execute_live": execute_live,

@@ -63,6 +63,27 @@ B Select Core V1은 검증 후보 `PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDA
 과거 원장·산출물의 전략 ID는 검증 당시 값으로 보존한다. B Select Core V1의 공식 전략 ID와
 관련 산출물 ID는 `PATTERN_B_SELECT_CORE_V01`이다.
 
+## 일일 current status와 Strategy Monitor
+
+Phase4D는 아래 status artifact를 exact `target_as_of`와 `reference_market_date`로 생성한다.
+
+```text
+artifacts/strategies/b_select_core_v1/production/{YYYYMMDD}/status.json
+```
+
+이 artifact는 Strategy Monitor의 현재 상태 projection이다. 과거 completed Pattern B
+관측과 해시 검증된 Pattern A progressed-episode stage lineage로 종목별 lifecycle을 복원하고,
+동일 실행의 최신 공개 COMMON Stock Report 상태를 반영한다. exact KRX 다음 세션 시가만
+체결로 인정한다. `reference_market_date` 이후 체결은 pending으로 남기며 미래 시가를
+조회하지 않는다. 새 backtest·portfolio simulation·성과 metric을 만들지 않는다.
+
+Monitor scope는 해당 실행에서 공개된 COMMON 리포트 집합이다. 2026-09-25 기준 공개 집합은
+1,451개다. B Select 공식 전략의 전체 PIT COMMON 적용 범위와 웹 Monitor의 공개 리포트 범위는
+서로 다르다. 영구 identity 제외는 전역 exact `(ticker, ISU)` authority를 적용한다.
+
+Pattern B 또는 lifecycle authority가 누락·불일치하면 상태를 임의로 `WAIT`로 채우지 않고
+Phase4D를 실패 처리한다. 이 Monitor 연결은 투자 의사결정 지원 표시이며 자동 주문 승인이 아니다.
+
 ## 공식 채택 근거
 
 [공식 전략 공통 채택 기준](../../../../docs/validation/official_strategy_adoption_criteria.md)의 A~E를

@@ -28,6 +28,7 @@ from scripts import export_sector_rs_ranking_web as sector_web
 from scripts import export_stock_report_web as stock_web
 from scripts import export_strategy_monitor_web as strategy_web
 from scripts import export_web_data as health_web
+from scripts import build_b_select_core_v1_status as b_select_status_web
 from scripts import run_daily_update_phase4c_v01 as phase4c
 from scripts import run_pattern_a_universe_scanner as phase4a
 
@@ -45,6 +46,13 @@ REQUIRED_FILES = (
     "health.json",
 )
 STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+B_SELECT_ID = "PATTERN_B_SELECT_CORE_V01"
+JULIA_ID = "JULIA_ETF_STRATEGY_V01"
+B_SELECT_STATUS_STAGING_NAME = "b-select-status.json"
+
+
+def _b_select_status_path(root: Path, target_as_of: str) -> Path:
+    return root / "artifacts/strategies/b_select_core_v1/production" / target_as_of.replace("-", "") / "status.json"
 
 
 def _write_json(path: Path, value: dict[str, Any]) -> None:
@@ -112,6 +120,7 @@ def inspect_published_payload(
         return None
     if not (web_data / "stocks").is_dir():
         return None
+    status_path = _b_select_status_path(root, target_as_of)
 
     try:
         scanner_summary = phase4c.load_scanner_summary(root, target_as_of)
@@ -135,9 +144,15 @@ def inspect_published_payload(
             stock_web.validate_exact_etf_report_corpus(target_as_of, reference_market_date)
         except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
             raise Phase4DError(f"PHASE4D_ETF36_SOURCE_INVALID: {exc}") from exc
+    if not status_path.is_file():
+        return None
     try:
         validation = validate_staging(
-            web_data, target_as_of, reference_market_date, require_etf36=require_etf_source,
+            web_data,
+            target_as_of,
+            reference_market_date,
+            require_etf36=require_etf_source,
+            b_select_status_path=status_path,
         )
     except Phase4DError as exc:
         code = str(exc).split(":", 1)[0]
@@ -178,11 +193,26 @@ def _stage_payloads(
         index_path=stage_data / "stock-index.json", stocks_dir=stocks_dir,
     )
     _write_json(stage_data / "market-ranking.json", market)
+    b_status = (
+        phase4c_result.get("_b_select_status_for_phase4d")
+        if isinstance(phase4c_result, dict)
+        else None
+    )
+    if not isinstance(b_status, dict):
+        b_status = b_select_status_web.build_b_select_status(
+            repo_root=ROOT,
+            index_path=stage_data / "stock-index.json",
+            stocks_path=stocks_dir,
+            target_as_of=target_as_of,
+            reference_market_date=reference_market_date,
+        )
+    _write_json(stage_data / B_SELECT_STATUS_STAGING_NAME, b_status)
     strategy = strategy_web.build_strategy_monitor(
         index_path=stage_data / "stock-index.json",
         stocks_path=stocks_dir,
         target_as_of=target_as_of,
         reference_market_date=reference_market_date,
+        b_select_status=b_status,
     )
     _write_json(stage_data / "strategy-monitor.json", strategy)
 
@@ -224,6 +254,13 @@ def _stage_payloads(
             "path": str(sector_membership_path),
         },
         "report_stats": report_stats,
+        "b_select_status": {
+            "status": b_status.get("status"),
+            "count": b_status.get("count"),
+            "counts": b_status.get("counts"),
+            "evaluation_error_count": b_status.get("evaluation_error_count"),
+            "network_requests": b_status.get("network_requests"),
+        },
     }
 
 
@@ -233,15 +270,26 @@ def validate_staging(
     reference_market_date: str,
     *,
     require_etf36: bool = False,
+    b_select_status_path: Path | None = None,
 ) -> dict[str, Any]:
     missing = [name for name in REQUIRED_FILES if not (stage_data / name).is_file()]
     if missing or not (stage_data / "stocks").is_dir():
         raise Phase4DError(f"PHASE4D_STAGE_REQUIRED_OUTPUT_MISSING: {missing}")
     documents = {name: _read_json(stage_data / name) for name in REQUIRED_FILES}
+    if b_select_status_path is None:
+        staged_status = stage_data / B_SELECT_STATUS_STAGING_NAME
+        if staged_status.is_file():
+            b_select_status_path = staged_status
+        else:
+            b_select_status_path = _b_select_status_path(ROOT, target_as_of)
+    if not b_select_status_path.is_file():
+        raise Phase4DError("PHASE4D_B_SELECT_STATUS_MISSING")
+    b_status = _read_json(b_select_status_path)
     stock_paths = sorted((stage_data / "stocks").glob("*.json"))
     stocks = {path.stem: _read_json(path) for path in stock_paths}
     for name, document in documents.items():
         _assert_finite(document, name)
+    _assert_finite(b_status, "b-select-status.json")
     for ticker, document in stocks.items():
         _assert_finite(document, f"stocks/{ticker}.json")
 
@@ -301,12 +349,79 @@ def validate_staging(
     strategy = documents["strategy-monitor.json"]
     if {item.get("ticker") for item in market.get("items", [])} != common_tickers:
         raise Phase4DError("PHASE4D_MARKET_SET_MISMATCH")
-    if {item.get("ticker") for item in strategy.get("items", [])} != common_tickers:
-        raise Phase4DError("PHASE4D_STRATEGY_SET_MISMATCH")
-    if market.get("scope", {}).get("report_count") != len(common_tickers) or strategy.get("scope", {}).get("report_count") != len(common_tickers):
+    if market.get("scope", {}).get("report_count") != len(common_tickers):
         raise Phase4DError("PHASE4D_REPORT_COUNT_MISMATCH")
-    if strategy.get("strategy", {}).get("id") != STRATEGY_ID:
-        raise Phase4DError("PHASE4D_STRATEGY_ID_MISMATCH")
+    if strategy.get("schema_version") != 2 or strategy.get("default_strategy_id") != STRATEGY_ID:
+        raise Phase4DError("PHASE4D_STRATEGY_MONITOR_SCHEMA_INVALID")
+    if strategy.get("requested_as_of") != target_as_of or strategy.get("reference_market_date") != reference_market_date:
+        raise Phase4DError("PHASE4D_STRATEGY_MONITOR_DATE_MISMATCH")
+    strategy_rows = strategy.get("strategies")
+    if not isinstance(strategy_rows, list) or [row.get("id") for row in strategy_rows] != [STRATEGY_ID, B_SELECT_ID, JULIA_ID]:
+        raise Phase4DError("PHASE4D_STRATEGY_SET_INVALID")
+    strategy_by_id = {row["id"]: row for row in strategy_rows}
+    expected_strategy_scopes = {
+        STRATEGY_ID: ("COMMON", common_tickers),
+        B_SELECT_ID: ("COMMON", common_tickers),
+        JULIA_ID: ("OFFICIAL_ETF_36", etf_tickers),
+    }
+    for strategy_id, (asset_scope, expected_tickers) in expected_strategy_scopes.items():
+        row = strategy_by_id[strategy_id]
+        items = row.get("items")
+        scope = row.get("scope") or {}
+        if (
+            row.get("asset_scope") != asset_scope
+            or not isinstance(items, list)
+            or scope.get("report_count") != len(expected_tickers)
+            or len(items) != len(expected_tickers)
+            or {str(item.get("ticker", "")).zfill(6) for item in items} != expected_tickers
+            or len({str(item.get("ticker", "")).zfill(6) for item in items}) != len(items)
+        ):
+            raise Phase4DError(f"PHASE4D_STRATEGY_SCOPE_MISMATCH:{strategy_id}")
+        expected_asset = "ETF" if asset_scope == "OFFICIAL_ETF_36" else "COMMON"
+        if any(item.get("asset_type") != expected_asset for item in items):
+            raise Phase4DError(f"PHASE4D_STRATEGY_ASSET_CONTAMINATION:{strategy_id}")
+        counts = row.get("counts") or {}
+        if sum(int(counts.get(key, 0)) for key in ("entry", "hold", "exit", "watch", "unavailable")) != len(items):
+            raise Phase4DError(f"PHASE4D_STRATEGY_COUNTS_MISMATCH:{strategy_id}")
+
+    b_items = strategy_by_id[B_SELECT_ID]["items"]
+    if (
+        b_status.get("status") != "PASS"
+        or b_status.get("strategy_id") != B_SELECT_ID
+        or b_status.get("requested_as_of") != target_as_of
+        or b_status.get("reference_market_date") != reference_market_date
+        or b_status.get("network_requests") != 0
+        or b_status.get("evaluation_error_count") != 0
+        or b_status.get("date_mismatch_count") != 0
+        or b_status.get("future_reference_count") != 0
+        or b_status.get("duplicate_item_count") != 0
+        or b_status.get("cross_strategy_contamination_count") != 0
+        or b_status.get("scope", {}).get("type") != "PUBLISHED_COMMON_REPORTS"
+        or b_status.get("count") != len(common_tickers)
+        or len(b_status.get("items", [])) != len(common_tickers)
+        or {str(item.get("ticker", "")).zfill(6) for item in b_status.get("items", [])} != common_tickers
+        or b_items != b_status.get("items")
+        or strategy_by_id[B_SELECT_ID].get("counts") != b_status.get("counts")
+    ):
+        raise Phase4DError("PHASE4D_B_SELECT_STATUS_INVALID")
+    for item in b_items:
+        if item.get("latest_close_as_of") not in {None, reference_market_date}:
+            raise Phase4DError(f"PHASE4D_B_SELECT_LATEST_CLOSE_DATE_INVALID:{item.get('ticker')}")
+        trade = item.get("current_trade")
+        if isinstance(trade, dict) and str(trade.get("entry_execution_date", ""))[:10] > reference_market_date:
+            raise Phase4DError(f"PHASE4D_B_SELECT_FUTURE_POSITION_FILL:{item.get('ticker')}")
+        pending = item.get("pending_event")
+        if isinstance(pending, dict) and pending.get("execution_date") is not None and str(pending["execution_date"])[:10] <= reference_market_date:
+            raise Phase4DError(f"PHASE4D_B_SELECT_PENDING_EVENT_NOT_FILLED:{item.get('ticker')}")
+
+    if target_as_of == "2026-09-25" and reference_market_date == "2026-09-23":
+        fast = strategy_by_id[STRATEGY_ID]
+        if fast.get("scope", {}).get("report_count") != 1451 or fast.get("counts") != {
+            "entry": 0, "hold": 241, "exit": 0, "watch": 0, "unavailable": 1210,
+        }:
+            raise Phase4DError("PHASE4D_A_FAST_BASELINE_REGRESSION")
+        if strategy_by_id[JULIA_ID].get("scope", {}).get("report_count") != 36:
+            raise Phase4DError("PHASE4D_JULIA_ETF36_COUNT_MISMATCH")
 
     sector = documents["sector-rs-ranking.json"]
     foreign = documents["foreign-net-buy-ranking.json"]
@@ -342,28 +457,50 @@ def validate_staging(
         "foreign_population_count": foreign.get("coverage", {}).get("target_common_universe_count"),
         "foreign_flow_covered_count": foreign.get("coverage", {}).get("flow_covered_count"),
         "health_overall_status": health.get("overall_status"),
+        "strategy_monitor_strategy_count": len(strategy_rows),
+        "b_select_status_count": b_status.get("count"),
+        "b_select_evaluation_error_count": b_status.get("evaluation_error_count"),
+        "b_select_date_mismatch_count": b_status.get("date_mismatch_count"),
+        "b_select_future_reference_count": b_status.get("future_reference_count"),
+        "b_select_duplicate_item_count": b_status.get("duplicate_item_count"),
+        "b_select_cross_strategy_contamination_count": b_status.get("cross_strategy_contamination_count"),
+        "b_select_network_requests": b_status.get("network_requests"),
     }
 
 
-def promote(stage_data: Path, web_data: Path) -> None:
+def promote(stage_data: Path, web_data: Path, *, target_as_of: str) -> Path:
     backup = web_data.parent / f".phase4d-stocks-backup-{os.getpid()}"
     staged_stocks = stage_data / "stocks"
     destination_stocks = web_data / "stocks"
+    status_source = stage_data / B_SELECT_STATUS_STAGING_NAME
+    status_destination = _b_select_status_path(web_data.parent.parent, target_as_of)
+    status_backup = status_destination.with_name(f".status-backup-{os.getpid()}.json")
+    status_destination.parent.mkdir(parents=True, exist_ok=True)
     if backup.exists():
         raise Phase4DError(f"PHASE4D_BACKUP_PATH_EXISTS: {backup}")
+    if status_backup.exists():
+        raise Phase4DError(f"PHASE4D_BACKUP_PATH_EXISTS: {status_backup}")
     try:
         if destination_stocks.exists():
             destination_stocks.replace(backup)
         staged_stocks.replace(destination_stocks)
         for name in REQUIRED_FILES:
             (stage_data / name).replace(web_data / name)
+        if status_destination.exists():
+            status_destination.replace(status_backup)
+        status_source.replace(status_destination)
     except Exception:
         if not destination_stocks.exists() and backup.exists():
             backup.replace(destination_stocks)
+        if not status_destination.exists() and status_backup.exists():
+            status_backup.replace(status_destination)
         raise
     finally:
         if backup.exists():
             shutil.rmtree(backup)
+        if status_backup.exists():
+            status_backup.unlink()
+    return status_destination
 
 
 def run_phase4d(
@@ -397,9 +534,13 @@ def run_phase4d(
             stage_data, target_as_of, context["reference_market_date"], require_etf36=True,
         )
         if execute_live:
-            promote(stage_data, web_data)
+            status_path = promote(stage_data, web_data, target_as_of=target_as_of)
             readback = validate_staging(
-                web_data, target_as_of, context["reference_market_date"], require_etf36=True,
+                web_data,
+                target_as_of,
+                context["reference_market_date"],
+                require_etf36=True,
+                b_select_status_path=status_path,
             )
         else:
             readback = None

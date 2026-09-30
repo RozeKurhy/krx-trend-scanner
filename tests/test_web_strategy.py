@@ -41,15 +41,21 @@ def _source_projection(ticker: str, exporter=None) -> dict:
 def test_strategy_monitor_schema_and_source_count_are_consistent():
     monitor = _load_monitor()
     index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
-    items = monitor["items"]
+    strategies = {strategy["id"]: strategy for strategy in monitor["strategies"]}
+    common = strategies["PATTERN_A_FAST_FINAL_STRATEGY_V02"]
+    b_select = strategies["PATTERN_B_SELECT_CORE_V01"]
+    julia = strategies["JULIA_ETF_STRATEGY_V01"]
+    items = common["items"]
 
-    assert monitor["schema_version"] == 1
-    assert monitor["strategy"] == {
-        "id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
-        "label": "A FAST Core",
-    }
+    assert monitor["schema_version"] == 2
+    assert monitor["default_strategy_id"] == "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+    assert [strategy["id"] for strategy in monitor["strategies"]] == [
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        "PATTERN_B_SELECT_CORE_V01",
+        "JULIA_ETF_STRATEGY_V01",
+    ]
     assert monitor["source"]["type"] == "PUBLISHED_STOCK_REPORTS"
-    assert monitor["scope"] == {
+    assert common["scope"] == {
         "type": "PUBLISHED_COMMON_REPORTS",
         "label": "현재 공개 COMMON 리포트 기준",
         "report_count": sum(
@@ -57,12 +63,12 @@ def test_strategy_monitor_schema_and_source_count_are_consistent():
             for item in index["items"]
         ),
     }
-    assert monitor["as_of"] == index["requested_as_of"]
+    assert monitor["requested_as_of"] == index["requested_as_of"]
     assert monitor["reference_market_date"] == index["reference_market_date"]
-    assert monitor["scope"]["report_count"] == len(items)
+    assert common["scope"]["report_count"] == len(items)
     bucket_counts = Counter(item["bucket"] for item in items)
-    assert all(monitor["counts"][key] == bucket_counts.get(key, 0) for key in ("entry", "hold", "exit", "watch", "unavailable"))
-    assert sum(monitor["counts"].values()) == len(items)
+    assert all(common["counts"][key] == bucket_counts.get(key, 0) for key in ("entry", "hold", "exit", "watch", "unavailable"))
+    assert sum(common["counts"].values()) == len(items)
     assert {item["ticker"] for item in items} == {
         item["ticker"] for item in index["items"]
         if item["report_available"] is True and item.get("asset_type") == "COMMON"
@@ -74,13 +80,19 @@ def test_strategy_monitor_schema_and_source_count_are_consistent():
             "latest_close", "latest_close_as_of", "report_status", "data_status",
             "current_trade", "bucket",
         } <= item.keys()
+    assert {item["ticker"] for item in b_select["items"]} == {item["ticker"] for item in items}
+    assert b_select["scope"]["type"] == "PUBLISHED_COMMON_REPORTS"
+    assert sum(b_select["counts"].values()) == b_select["scope"]["report_count"]
+    assert julia["scope"]["type"] == "OFFICIAL_ETF_36"
+    assert julia["scope"]["report_count"] == 36
+    assert len(julia["items"]) == 36
 
 
 def test_representative_common_open_trade_is_projected_without_recalculation():
     exporter = _load_exporter()
     monitor = _load_monitor()
     item = next(
-        item for item in monitor["items"]
+        item for item in monitor["strategies"][0]["items"]
         if item["asset_type"] == "COMMON" and item["current_trade"] is not None
     )
     source = _source_projection(item["ticker"], exporter)
@@ -92,8 +104,13 @@ def test_representative_common_open_trade_is_projected_without_recalculation():
 
 def test_etf_is_not_in_action_counts_and_has_no_fake_trade():
     monitor = _load_monitor()
-    assert "069500" not in {item["ticker"] for item in monitor["items"]}
-    assert sum(monitor["counts"].values()) == monitor["scope"]["report_count"]
+    strategies = {strategy["id"]: strategy for strategy in monitor["strategies"]}
+    common = strategies["PATTERN_A_FAST_FINAL_STRATEGY_V02"]
+    julia = strategies["JULIA_ETF_STRATEGY_V01"]
+    assert "069500" not in {item["ticker"] for item in common["items"]}
+    assert "069500" in {item["ticker"] for item in julia["items"]}
+    assert sum(common["counts"].values()) == common["scope"]["report_count"]
+    assert sum(julia["counts"].values()) == julia["scope"]["report_count"]
 
 
 def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
@@ -131,7 +148,8 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert 'id="strategy-scope" class="strategy-scope">기준일 —</p>' in strategy_html
     assert "현재 판단 요약" not in strategy_html
     assert "현재 공개 리포트 기준" not in strategy_html
-    assert 'setText("strategy-scope", `기준일 ${formatDate(monitor.as_of)}`);' in strategy_js
+    assert 'formatDate(monitor.requested_as_of || monitor.as_of)' in strategy_js
+    assert 'selected.scope.label' in strategy_js
     assert 'id="strategy-search"' in strategy_html
     assert 'data-filter="hold"' in strategy_html
     assert 'data-filter="entry"' in strategy_html
@@ -155,7 +173,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
         assert removed not in strategy_html
     assert 'function renderFilterCounts()' in strategy_js
     assert 'setText(`strategy-filter-count-${category}`, counts[category])' in strategy_js
-    assert 'counts.all = monitor.scope.report_count' in strategy_js
+    assert 'counts.all = selected.scope.report_count' in strategy_js
     assert 'counts[item.bucket] += 1' in strategy_js
     assert 'setText(`${category}-count`, items.length)' not in strategy_js
     assert 'strategy-results-meta' not in strategy_js
@@ -221,11 +239,11 @@ def test_strategy_ui_polish_uses_representative_source_returns_and_split_dates()
     exporter = _load_exporter()
     monitor = _load_monitor()
     positive = next(
-        item for item in monitor["items"]
+        item for item in monitor["strategies"][0]["items"]
         if item["current_trade"] is not None and item["current_trade"]["return_pct"] > 0
     )
     negative = next(
-        item for item in monitor["items"]
+        item for item in monitor["strategies"][0]["items"]
         if item["current_trade"] is not None and item["current_trade"]["return_pct"] < 0
     )
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
@@ -244,14 +262,14 @@ def test_strategy_ui_polish_uses_representative_source_returns_and_split_dates()
 
 def test_strategy_position_examples_keep_meaningful_two_line_values():
     monitor = _load_monitor()
-    items_by_state = {item["strategy_state"]: item for item in monitor["items"]}
+    items_by_state = {item["strategy_state"]: item for item in monitor["strategies"][0]["items"]}
     assert items_by_state["HOLD_PROGRESSED"]["canonical_position"] == "OPEN"
     assert items_by_state["HOLD_PRE_PROGRESSED"]["canonical_position"] == "OPEN"
-    neutral_items = [item for item in monitor["items"] if item["strategy_state"] == "WAIT"]
+    neutral_items = [item for item in monitor["strategies"][0]["items"] if item["strategy_state"] == "WAIT"]
     if neutral_items:
         assert all(item["canonical_position"] == "FLAT" for item in neutral_items)
     else:
-        unavailable = next(item for item in monitor["items"] if item["strategy_state"] == "DATA_UNAVAILABLE")
+        unavailable = next(item for item in monitor["strategies"][0]["items"] if item["strategy_state"] == "DATA_UNAVAILABLE")
         assert unavailable["canonical_position"] == "DATA_UNAVAILABLE"
 
 

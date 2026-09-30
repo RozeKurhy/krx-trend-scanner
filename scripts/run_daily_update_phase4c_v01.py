@@ -30,6 +30,7 @@ from scripts import export_sector_rs_ranking_web as sector_rs_web
 from scripts import export_stock_report_web as stock_report_web
 from scripts import export_strategy_monitor_web as strategy_monitor_web
 from scripts import export_web_data as health_web
+from scripts import build_b_select_core_v1_status as b_select_status_web
 from trend_scanner.data.sector_membership import (
     SectorMembershipSnapshotUnavailable,
     resolve_sector_membership_snapshot_for_target,
@@ -185,13 +186,21 @@ def run_phase4c(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
 
         # 4. Stock Report web payload
         index, reports, stock_report_stats = stock_report_web.build_web_payload(
-            root, target_as_of=target_as_of, reference_market_date=reference_market_date,
+            root,
+            target_as_of=target_as_of,
+            reference_market_date=reference_market_date,
+            include_etf=True,
         )
-        stock_report_tickers = set(reports)
+        stock_report_tickers = {
+            ticker for ticker, report in reports.items()
+            if (report.get("identity") or {}).get("asset_type") == "COMMON"
+        }
+        etf_report_tickers = set(reports) - stock_report_tickers
         temp_index_path, temp_stocks_dir = write_temp_stock_report_payload(staging_dir, index, reports)
 
         stock_index_available = {
-            str(item["ticker"]) for item in index["items"] if item.get("report_available") is True
+            str(item["ticker"]) for item in index["items"]
+            if item.get("report_available") is True and item.get("asset_type") == "COMMON"
         }
 
         # 5. Market RS
@@ -209,19 +218,37 @@ def run_phase4c(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
             )
 
         # 6. Strategy monitor
-        strategy_monitor = strategy_monitor_web.build_strategy_monitor(
+        b_select_status = b_select_status_web.build_b_select_status(
+            repo_root=root,
             index_path=temp_index_path,
             stocks_path=temp_stocks_dir,
             target_as_of=target_as_of,
             reference_market_date=reference_market_date,
         )
-        strategy_monitor_tickers = {str(item["ticker"]) for item in strategy_monitor["items"]}
-        if strategy_monitor["scope"]["report_count"] != report_json_count:
+        strategy_monitor = strategy_monitor_web.build_strategy_monitor(
+            repo_root=root,
+            index_path=temp_index_path,
+            stocks_path=temp_stocks_dir,
+            target_as_of=target_as_of,
+            reference_market_date=reference_market_date,
+            b_select_status=b_select_status,
+        )
+        strategy_rows = strategy_monitor["strategies"]
+        strategy_by_id = {row["id"]: row for row in strategy_rows}
+        strategy_monitor_tickers = {
+            str(item["ticker"])
+            for item in strategy_by_id["PATTERN_A_FAST_FINAL_STRATEGY_V02"]["items"]
+        }
+        if strategy_by_id["PATTERN_A_FAST_FINAL_STRATEGY_V02"]["scope"]["report_count"] != report_json_count:
             raise Phase4CError(
                 f"PHASE4C_STRATEGY_MONITOR_REPORT_COUNT_MISMATCH: "
-                f"{strategy_monitor['scope']['report_count']} != {report_json_count}"
+                f"{strategy_by_id['PATTERN_A_FAST_FINAL_STRATEGY_V02']['scope']['report_count']} != {report_json_count}"
             )
-        if strategy_monitor["strategy"]["id"] != "PATTERN_A_FAST_FINAL_STRATEGY_V02":
+        if [row["id"] for row in strategy_rows] != [
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            "PATTERN_B_SELECT_CORE_V01",
+            "JULIA_ETF_STRATEGY_V01",
+        ]:
             raise Phase4CError("PHASE4C_STRATEGY_MONITOR_STRATEGY_ID_MISMATCH")
 
         # 7. Sector RS ranking (exact-target Phase 3 authority)
@@ -356,15 +383,30 @@ def run_phase4c(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
             "source_report_directory": stock_report_stats["source_report_directory"],
             "json_count": report_json_count,
             "universe_count": stock_report_stats["universe_count"],
-            "available_report_count": stock_report_stats["available_report_count"],
+            "available_report_count": len(stock_report_tickers),
         },
         "market_ranking": {
             "report_count": market_ranking["scope"]["report_count"],
         },
         "strategy_monitor": {
-            "report_count": strategy_monitor["scope"]["report_count"],
-            "strategy_id": strategy_monitor["strategy"]["id"],
-            "counts": strategy_monitor["counts"],
+            "strategy_count": len(strategy_rows),
+            "common_report_count": strategy_by_id["PATTERN_A_FAST_FINAL_STRATEGY_V02"]["scope"]["report_count"],
+            "strategies": [
+                {
+                    "id": strategy["id"],
+                    "scope_count": strategy["scope"]["report_count"],
+                    "counts": strategy["counts"],
+                }
+                for strategy in strategy_rows
+            ],
+        },
+        "b_select_status": {
+            "status": b_select_status["status"],
+            "count": b_select_status["count"],
+            "counts": b_select_status["counts"],
+            "evaluation_error_count": b_select_status["evaluation_error_count"],
+            "date_mismatch_count": b_select_status["date_mismatch_count"],
+            "network_requests": b_select_status["network_requests"],
         },
         "sector_rs_ranking": {
             "requested_as_of": sector_rs_payload.get("requested_as_of"),
@@ -389,6 +431,7 @@ def run_phase4c(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
         },
         "cross_payload_validation": {
             "stock_report_ticker_count": len(stock_report_tickers),
+            "etf_report_ticker_count": len(etf_report_tickers),
             "stock_index_available_count": len(stock_index_available),
             "market_ranking_ticker_count": len(market_ranking_tickers),
             "strategy_monitor_ticker_count": len(strategy_monitor_tickers),
@@ -397,6 +440,7 @@ def run_phase4c(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
         "network_calls": 0,
         "web_data_writes": web_data_writes,
         "status": "PASS",
+        "_b_select_status_for_phase4d": b_select_status,
     }
     return result
 
@@ -415,6 +459,7 @@ def main(argv: list[str] | None = None) -> int:
     except Phase4CError as exc:
         print(json.dumps({"status": "FAIL", "error": str(exc)}, ensure_ascii=False, indent=2))
         return 1
+    result.pop("_b_select_status_for_phase4d", None)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2, default=str))
     return 0
 

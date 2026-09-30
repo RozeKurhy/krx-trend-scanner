@@ -513,7 +513,17 @@ def test_common_only_publication_cannot_be_treated_as_complete_phase4d_noop(monk
     _write_web_fixture(tmp_path)
     monkeypatch.setattr(phase4e, "run_phase4a", lambda *args, **kwargs: pytest.fail("4A ran"))
     monkeypatch.setattr(phase4e, "run_phase4b", lambda *args, **kwargs: pytest.fail("4B ran"))
-    monkeypatch.setattr(phase4e, "run_phase4c", lambda *args, **kwargs: pytest.fail("4C ran"))
+    monkeypatch.setattr(
+        phase4e,
+        "run_phase4c",
+        lambda *args, **kwargs: {
+            "status": "PASS",
+            "requested_as_of": "2026-09-17",
+            "reference_market_date": "2026-09-17",
+            "network_calls": 0,
+            "web_data_writes": 0,
+        },
+    )
     monkeypatch.setattr(phase4e, "run_phase4d", lambda *args, **kwargs: pytest.fail("4D ran"))
 
     result = phase4e.run_phase4e("2026-09-17", root=tmp_path)
@@ -522,7 +532,7 @@ def test_common_only_publication_cannot_be_treated_as_complete_phase4d_noop(monk
     assert [result["phases"][name]["status"] for name in ("4A", "4B", "4C", "4D")] == [
         "NOOP_ALREADY_COMPLETE",
         "NOOP_ALREADY_COMPLETE",
-        "NOOP_ALREADY_COMPLETE",
+        "PASS",
         "FAILED",
     ]
     assert result["etf_stock_reports"]["status"] in {"PASS", "NOOP_ALREADY_COMPLETE"}
@@ -624,10 +634,16 @@ def test_phase4c_is_called_once_and_4d_reuses_its_result(
 
     def phase4c_runner(*args: object, **kwargs: object) -> dict[str, object]:
         calls["phase4c"] += 1
-        return {"status": "PASS", "network_calls": 0, "web_data_writes": 0}
+        return {
+            "status": "PASS",
+            "network_calls": 0,
+            "web_data_writes": 0,
+            "_b_select_status_for_phase4d": {"marker": "same-run-status"},
+        }
 
     def phase4d_runner(*args: object, **kwargs: object) -> dict[str, object]:
-        calls["phase4d_context"] = kwargs.get("phase4c_result")
+        context = kwargs.get("phase4c_result")
+        calls["phase4d_context"] = context.copy() if isinstance(context, dict) else context
         return {"status": "PASS"}
 
     monkeypatch.setattr(phase4e, "run_phase4c", phase4c_runner)
@@ -637,7 +653,8 @@ def test_phase4c_is_called_once_and_4d_reuses_its_result(
 
     assert result["overall_status"] == "PASS"
     assert calls["phase4c"] == 1
-    assert calls["phase4d_context"] == {"status": "PASS", "network_calls": 0, "web_data_writes": 0}
+    assert calls["phase4d_context"]["_b_select_status_for_phase4d"] == {"marker": "same-run-status"}
+    assert "_b_select_status_for_phase4d" not in result["phases"]["4C"]["result"]
 
 
 @pytest.mark.parametrize(
