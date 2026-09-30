@@ -4,8 +4,9 @@
 
 이 문서는 [데일리 업데이트 기준 V01](daily_update_contract_v01.md) §6.3이
 정의한 4단계의 상세 계약이다. 4단계는 1~3단계가 같은 기준일로 인증한
-입력을 받아 기존 스캐너, 공식 전략, Stock Report v0.7과 웹 정적 투영을
-일관되게 연결한다. 새 분석 엔진·산식·전략을 만드는 단계가 아니다. 개별 실행
+입력을 받아 기존 스캐너, 공식 전략, COMMON Stock Report v0.7, ETF36 Julia V1
+Stock Report v0.6 자동 생성, 웹 정적 투영을 일관되게 연결한다. 새 분석
+엔진·산식·전략을 만드는 단계가 아니다. 개별 실행
 결과와 검증 일지는 이 문서의 범위에 포함하지 않는다.
 
 ## 2. 입력 경계와 공통 기준일
@@ -77,11 +78,12 @@ artifacts/patterns/pattern_a/production/scanner/
 (PATTERN_B_SELECT_CORE_V01)이다. A FAST Core V2가 기본 전략이자
 CONTROL이고, B Select Core V1은 기본 전략·CONTROL이 아닌 독립 공식 전략이다.
 ETF 전용 공식 전략은 Julia V1 (JULIA_ETF_STRATEGY_V01)이며 공식 ETF 36에만
-적용한다. Julia V1은 현재 Phase 4의 Stock Report와 전략 모니터 운영 출력에
-연결되어 있지 않다. 별도 로컬 산출 작업에서 Official ETF 36용 Stock Report
-v0.6 (`official_strategy=JULIA_ETF_STRATEGY_V01`) 생성은 연결됐지만,
-Phase 4 후보 실행·전략 모니터·웹/UI 경로에는 추가되지 않았다. 이 문서는 Julia V1을
-Phase 4 실행 경로에 추가하지 않는다. A FAST Core V2는 의사결정 지원 운영
+적용한다. COMMON 4B 성공 뒤 같은 `target_as_of`와 4A가 확정한
+`reference_market_date`로 ETF36 전용 Stock Report v0.6
+(`official_strategy=JULIA_ETF_STRATEGY_V01`)을 자동 생성한다. 이 결과는
+COMMON 4A~4D 산출물과 별도 상태로 기록하며, ETF 리포트는 4C/4D 입력,
+전략 모니터, 웹/UI에 연결되지 않는다. 자동 주문은 승인되지 않았다.
+A FAST Core V2는 의사결정 지원 운영
 (PRODUCTION_DECISION_SUPPORT)이며 자동매매 권한이 아니다. V3/V4 또는
 다른 비공식 후보 전략을 4단계 운영 출력에 추가하지 않는다.
 
@@ -103,8 +105,8 @@ artifacts/reporting/stock_reports/{YYYYMMDD}/
   json/*.json
 ```
 
-Official ETF 36 Julia V1 v0.6은 독립 생성 경로만 제공하며 Phase 4 및 웹 정적
-투영 대상에 포함되지 않는다.
+Official ETF 36 Julia V1 v0.6은 Phase 4E가 COMMON 4B 성공 뒤 자동 생성하며,
+웹 정적 투영 대상에는 포함되지 않는다.
 
 ```text
 artifacts/reporting/etf_stock_reports/{YYYYMMDD}/
@@ -112,11 +114,14 @@ artifacts/reporting/etf_stock_reports/{YYYYMMDD}/
   json/*.json
 ```
 
-4단계의 모든 리포트 생성은 `requested_as_of == target_as_of`와
+COMMON 리포트 생성은 `requested_as_of == target_as_of`와
 `reference_market_date ==` 스캐너가 확정한 실제 시장 기준 거래일을 명시하고,
 스캐너 결과를 유일한 후보 입력으로 소비한다. 리포트가 스캐너를 독립
 재실행하거나 다른 기준 거래일·날짜 후보를 대체 경로로 사용하는 것은 허용하지
 않는다.
+
+ETF 리포트는 4A가 반환한 동일한 두 날짜를 명시적으로 전달받고 frozen ETF36을
+대상으로 생성한다. COMMON 후보를 소비하거나 ETF universe를 다시 선정하지 않는다.
 
 ### 3.3 웹 정적 투영
 
@@ -156,17 +161,22 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
   → 4E 조율기
      → 4A 전체 PIT COMMON 스캐너
      → 4B A FAST Core V2 + Stock Report v0.7
+     → ETF36 Julia V1 Stock Report v0.6 자동 생성 (4B 성공 후, 별도 상태)
      → 4C 필수 분석 표시 결과 검증
      → 4D web/data 정적 투영
      → 전체 상태 합성
 ```
 
 4E 조율기는 4A~4D를 같은 `target_as_of`와 `reference_market_date`로 순서대로
-호출하고 각 단계의 입력·출력을 검증한 뒤 전체 상태를 합성한다. 4A~4D 중
-`BLOCKED` 또는 `FAILED`가 발생하면 이후 단계는 진행하지 않는다. 4C에는 마켓 RS, 섹터 RS,
+호출하고 각 단계의 입력·출력을 검증한다. COMMON 4B가 성공하면 같은 날짜
+권위로 ETF36 리포트를 생성하거나 유효한 기존 산출물을 `NOOP_ALREADY_COMPLETE`로
+기록한 뒤 COMMON 4C/4D를 계속 실행한다. ETF 결과는 `etf_stock_reports`에
+별도로 기록하며 COMMON 4A~4D 상태 계산을 바꾸지 않는다. COMMON 4A~4D 중
+`BLOCKED` 또는 `FAILED`가 발생하면 이후 COMMON 단계는 진행하지 않는다. 4C에는 마켓 RS, 섹터 RS,
 외인 순매수, 전략 모니터와 웹 상태가 포함된다.
-공포지수와 ETF는 이 순서에 붙일 수 있는 선택 보조 투영이지만, 실패해도
-필수 결과를 같은 성공으로 승격하거나 필수 완료를 차단하지 않는다. 정기적인
+공포지수와 ETF 랭킹의 웹 투영은 선택 보조 구성 요소라 실패해도 COMMON
+4A~4D를 차단하지 않는다. ETF36 Julia V1 Stock Report 생성은 별도 단계이며
+그 결과를 최상위 상태에 합성한다. 정기적인
 섹터 구성 갱신 같은 관리 작업은 4단계 일일 완료 게이트가 아니라 3단계의
 별도 운영 주기를 따른다.
 
@@ -197,6 +207,25 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
   실제 시장 기준 거래일과 같으며, A FAST Core의 strategy ID가 V2이고 report
   version이 `0.7`인지 확인한다.
 
+### ETF36. Julia V1 Stock Report v0.6 자동 생성
+
+- 실행 시점: COMMON 4B가 `PASS` 또는 `NOOP_ALREADY_COMPLETE`로 끝난 직후,
+  COMMON 4C 시작 전.
+- 입력: 호출자가 전달한 `target_as_of`와 4A가 확정한 정확한
+  `reference_market_date`. 날짜를 독립 계산하거나 KRX/API를 조회하지 않는다.
+- 처리: frozen Official ETF 36과 기존 Julia V1 v0.6 생성기를 사용한다. 전략
+  lifecycle, threshold, ETF 적격성 또는 COMMON 리포트 계산은 바꾸지 않는다.
+- 출력: `artifacts/reporting/etf_stock_reports/{YYYYMMDD}/`의 Markdown 36개,
+  `json/`의 JSON 36개 및 생성 요약.
+- 멱등성: 동일 날짜의 완전하고 유효한 corpus(정확한 ticker 집합, v0.6 ETF
+  스키마, Julia V1 ID, eligibility PASS 36개, post-reference data 0, 실패 0)는
+  쓰기 없이 `NOOP_ALREADY_COMPLETE`로 기록한다. partial/stale corpus는 NOOP가
+  아니며, staging 전체 검증 후에만 canonical 경로로 promote한다.
+- 상태: `etf_stock_reports.status`에 `PASS`, `NOOP_ALREADY_COMPLETE`,
+  `BLOCKED`, `FAILED`를 별도 기록한다. ETF 실패는 COMMON 4C/4D를 중단하지 않고,
+  최상위 `overall_status`에는 반영한다.
+- 범위: 이 생성 단계는 Web/UI, Strategy Monitor, 자동 주문에 연결되지 않는다.
+
 ### 4C. 필수 분석 표시 결과
 
 - 입력: 4B 리포트와 3단계 권위 산출물.
@@ -225,15 +254,18 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
 
 | 상태 | 의미 |
 |---|---|
-| `PASS` | 모든 필수 4A~4D 단위가 같은 기준일로 새 결과를 정상 생성 |
-| `NOOP_ALREADY_COMPLETE` | 모든 필수 단위의 유효한 동일 기준일 결과가 이미 존재하고 쓰기 없음 |
+| `PASS` | 모든 COMMON 4A~4D 단위가 같은 기준일로 새 결과를 정상 생성 |
+| `NOOP_ALREADY_COMPLETE` | 모든 COMMON 단위의 유효한 동일 기준일 결과가 이미 존재하고 쓰기 없음 |
 | `BLOCKED` | 기준일·권위·필수 입력·출력 일치 검증이 불가능해 안전하게 중단 |
 | `FAILED` | 예기치 않은 실행·형식·무결성 오류 |
 
-필수 단위 중 하나라도 `FAILED`이면 전체 `FAILED`, `FAILED`는 없고 하나라도
-`BLOCKED`이면 전체 `BLOCKED`, 모두 `NOOP_ALREADY_COMPLETE`이면 전체
-`NOOP_ALREADY_COMPLETE`, 나머지 정상 조합은 `PASS`다. 선택 보조 투영과
-정기 관리 작업은 전체 상태 합성에 포함하지 않고 별도로 기록한다.
+`common_overall_status`는 기존 규칙대로 COMMON 4A~4D 상태만 합성한다. 최상위
+`overall_status`는 이 값과 ETF 상태를 함께 합성해 ETF 실패가 성공으로 가려지지
+않게 한다. ETF 상태는 `etf_stock_reports.status`에 기록하며 `PASS`,
+`NOOP_ALREADY_COMPLETE`, `BLOCKED`, `FAILED`를 쓴다. ETF 단계의 실패는 COMMON
+4C/4D 실행을 중단시키지 않는다. 두 상태 값은 각각 COMMON 결과와 ETF 리포트
+생성 결과를 구분해 해석한다. 공포지수 투영과 정기 관리 작업은 전체 상태 합성에
+포함하지 않고 별도로 기록한다.
 
 ### 동일 기준일 멱등성 원칙
 
@@ -248,8 +280,11 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
 scanner:
 artifacts/patterns/pattern_a/production/scanner/
 
-Stock Report:
+COMMON Stock Report:
 artifacts/reporting/stock_reports/{YYYYMMDD}/
+
+ETF36 Julia V1 Stock Report:
+artifacts/reporting/etf_stock_reports/{YYYYMMDD}/
 
 웹 정적 투영:
 web/data/

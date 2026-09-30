@@ -13,11 +13,82 @@ from trend_scanner.reporting.julia_v1_report import (
     STRATEGY_ID,
     _render_strategy_markdown,
     compute_etf_eligibility,
+    generate_official_etf36_reports,
     load_official_etf36,
 )
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_certified_etf36_corpus_is_read_only_noop(monkeypatch: pytest.MonkeyPatch) -> None:
+    output_dir = ROOT / "artifacts/reporting/etf_stock_reports/20260925"
+    summary_path = output_dir / "generation_summary.json"
+    before = summary_path.read_bytes()
+    before_mtime = summary_path.stat().st_mtime_ns
+
+    def should_not_regenerate(**kwargs: object) -> dict[str, object]:
+        pytest.fail("valid certified ETF36 corpus was regenerated")
+
+    monkeypatch.setattr(
+        "trend_scanner.reporting.julia_v1_report._generate_official_etf36_reports_into",
+        should_not_regenerate,
+    )
+    result = generate_official_etf36_reports(
+        repo_root=ROOT,
+        target_as_of="2026-09-25",
+        reference_market_date="2026-09-23",
+        output_dir=output_dir,
+    )
+
+    assert result["status"] == "NOOP_ALREADY_COMPLETE"
+    assert result["generated_count"] == 36
+    assert summary_path.read_bytes() == before
+    assert summary_path.stat().st_mtime_ns == before_mtime
+
+
+def test_partial_etf36_corpus_is_not_accepted_as_noop(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    output_dir = tmp_path / "20260925"
+    (output_dir / "json").mkdir(parents=True)
+    partial = output_dir / "json" / "partial.json"
+    partial.write_text("{}\n", encoding="utf-8")
+    calls = 0
+
+    def incomplete_generation(**kwargs: object) -> dict[str, object]:
+        nonlocal calls
+        calls += 1
+        return {
+            "target_as_of": "2026-09-25",
+            "reference_market_date": "2026-09-23",
+            "expected_count": 36,
+            "generated_count": 0,
+            "generated_tickers": [],
+            "strategy_id_counts": {},
+            "eligibility_pass_fail_counts": {"PASS": 0, "FAIL": 0},
+            "failed_tickers_and_reasons": [],
+            "source_universe_sha256": "",
+            "network_requests": 0,
+            "post_asof_data_references": 0,
+            "julia_evaluator_error_tickers": [],
+        }
+
+    monkeypatch.setattr(
+        "trend_scanner.reporting.julia_v1_report._generate_official_etf36_reports_into",
+        incomplete_generation,
+    )
+    result = generate_official_etf36_reports(
+        repo_root=ROOT,
+        target_as_of="2026-09-25",
+        reference_market_date="2026-09-23",
+        output_dir=output_dir,
+    )
+
+    assert calls == 1
+    assert result["status"] == "FAILED"
+    assert result["status"] != "NOOP_ALREADY_COMPLETE"
+    assert partial.read_text(encoding="utf-8") == "{}\n"
 
 
 def _synthetic_strategy() -> dict:

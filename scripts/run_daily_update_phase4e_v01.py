@@ -35,6 +35,7 @@ from scripts import run_daily_update_phase4c_v01 as phase4c
 from scripts import run_daily_update_phase4d_v01 as phase4d
 from scripts import run_pattern_a_universe_scanner as phase4a
 from trend_scanner.universe.instrument_metadata import load_target_pit_common_tickers
+from trend_scanner.reporting.julia_v1_report import generate_official_etf36_reports
 
 
 class Phase4EError(RuntimeError):
@@ -130,6 +131,9 @@ _BLOCKED_ERROR_CODES = frozenset(
         "PHASE4D_REFERENCE_MARKET_DATE_INVALID",
         "PHASE4A_REFERENCE_MARKET_DATE_AUTHORITY_MISMATCH",
         "PHASE4D_REFERENCE_MARKET_DATE_AUTHORITY_MISMATCH",
+        "PHASE4E_REFERENCE_MARKET_DATE_MISSING",
+        "PHASE4E_REFERENCE_MARKET_DATE_INVALID",
+        "PHASE4E_REFERENCE_MARKET_DATE_AFTER_TARGET",
     }
 )
 
@@ -335,6 +339,22 @@ def run_phase4d(
     )
 
 
+def run_etf_stock_reports(
+    target_as_of: str,
+    reference_market_date: str,
+    *,
+    root: Path = ROOT,
+) -> dict[str, Any]:
+    """Generate Official ETF36 Julia V1 v0.6 reports for Phase 4's exact dates."""
+    output_dir = Path(root) / "artifacts/reporting/etf_stock_reports" / target_as_of.replace("-", "")
+    return generate_official_etf36_reports(
+        repo_root=Path(root),
+        target_as_of=target_as_of,
+        reference_market_date=reference_market_date,
+        output_dir=output_dir,
+    )
+
+
 def _run_one(
     phase_name: str,
     target_as_of: str,
@@ -366,13 +386,48 @@ def _run_one(
         }
 
 
+def _phase4a_reference_market_date(phase4a_result: dict[str, Any], target_as_of: str) -> str:
+    raw = phase4a_result.get("result")
+    if not isinstance(raw, Mapping):
+        raise Phase4EError("PHASE4E_REFERENCE_MARKET_DATE_MISSING")
+    reference_market_date = raw.get("reference_market_date")
+    if reference_market_date is None and isinstance(raw.get("summary"), Mapping):
+        reference_market_date = raw["summary"].get("reference_market_date")
+    if reference_market_date is None:
+        raise Phase4EError("PHASE4E_REFERENCE_MARKET_DATE_MISSING")
+    try:
+        reference_market_date = _validate_target_as_of(str(reference_market_date))
+    except Phase4EError as exc:
+        raise Phase4EError("PHASE4E_REFERENCE_MARKET_DATE_INVALID") from exc
+    if reference_market_date > target_as_of:
+        raise Phase4EError("PHASE4E_REFERENCE_MARKET_DATE_AFTER_TARGET")
+    return reference_market_date
+
+
+def _run_etf_stock_reports(
+    target_as_of: str,
+    reference_market_date: str,
+    *,
+    root: Path,
+) -> dict[str, Any]:
+    try:
+        raw_result = run_etf_stock_reports(target_as_of, reference_market_date, root=root)
+        return {"status": normalize_status(raw_result), "result": raw_result}
+    except Exception as exc:
+        return {
+            "status": _exception_status(exc, phase_name="ETF_STOCK_REPORTS"),
+            "error": str(exc),
+            "error_type": type(exc).__name__,
+        }
+
+
 def run_phase4e(
     target_as_of: str,
     *,
     execute_live: bool = False,
     root: Path = ROOT,
 ) -> dict[str, Any]:
-    """Run 4A → 4B → 4C → 4D and synthesize one structured result."""
+    """Run 4A → 4B → ETF36 reports → 4C → 4D and synthesize results."""
 
     target_as_of = _validate_target_as_of(target_as_of)
     root = Path(root)
@@ -390,6 +445,7 @@ def run_phase4e(
     }
 
     phases: dict[str, dict[str, Any]] = {}
+    etf_stock_reports: dict[str, Any] | None = None
     for phase_name, runner in phase_runners:
         try:
             prechecked = phase_prechecks[phase_name](target_as_of, root=root)
@@ -413,12 +469,43 @@ def run_phase4e(
         phases[phase_name] = phase_result
         if phase_result["status"] in {FAILED, BLOCKED}:
             break
+        if phase_name == "4B":
+            try:
+                reference_market_date = _phase4a_reference_market_date(phases["4A"], target_as_of)
+                etf_stock_reports = _run_etf_stock_reports(
+                    target_as_of,
+                    reference_market_date,
+                    root=root,
+                )
+                etf_stock_reports["target_as_of"] = target_as_of
+                etf_stock_reports["reference_market_date"] = reference_market_date
+            except Exception as exc:
+                etf_stock_reports = {
+                    "status": _exception_status(exc),
+                    "error": str(exc),
+                    "error_type": type(exc).__name__,
+                    "target_as_of": target_as_of,
+                }
+
+    if etf_stock_reports is None:
+        etf_stock_reports = {
+            "status": BLOCKED,
+            "reason": "COMMON_4A_OR_4B_PREREQUISITE_NOT_PASSED",
+            "target_as_of": target_as_of,
+        }
+
+    common_overall_status = synthesize_overall_status(item["status"] for item in phases.values())
+    overall_status = synthesize_overall_status(
+        [common_overall_status, etf_stock_reports["status"]]
+    )
 
     return {
         "target_as_of": target_as_of,
         "execute_live": execute_live,
-        "overall_status": synthesize_overall_status(item["status"] for item in phases.values()),
+        "overall_status": overall_status,
+        "common_overall_status": common_overall_status,
         "phases": phases,
+        "etf_stock_reports": etf_stock_reports,
     }
 
 

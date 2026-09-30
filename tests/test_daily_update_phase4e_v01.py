@@ -16,6 +16,22 @@ from scripts import run_daily_update_phase4b_v01 as phase4b
 from scripts import run_pattern_a_universe_scanner as phase4a
 
 
+@pytest.fixture(autouse=True)
+def _default_etf_step_is_already_complete(monkeypatch: pytest.MonkeyPatch) -> None:
+    def already_complete(
+        target_as_of: str,
+        reference_market_date: str,
+        **kwargs: object,
+    ) -> dict[str, str]:
+        return {"status": "NOOP_ALREADY_COMPLETE"}
+
+    monkeypatch.setattr(
+        phase4e,
+        "run_etf_stock_reports",
+        already_complete,
+    )
+
+
 @pytest.mark.parametrize(
     ("statuses", "expected"),
     [
@@ -36,7 +52,10 @@ def test_run_order_and_same_target_are_preserved(monkeypatch: pytest.MonkeyPatch
     def fake(name: str, status: str):
         def _runner(target_as_of: str, **kwargs: object) -> dict[str, str]:
             calls.append((name, target_as_of))
-            return {"status": status}
+            result = {"status": status}
+            if name == "4A":
+                result["reference_market_date"] = target_as_of
+            return result
 
         return _runner
 
@@ -49,9 +68,62 @@ def test_run_order_and_same_target_are_preserved(monkeypatch: pytest.MonkeyPatch
 
     assert calls == [("4A", "2026-09-17"), ("4B", "2026-09-17"), ("4C", "2026-09-17"), ("4D", "2026-09-17")]
     assert result["overall_status"] == "PASS"
+    assert result["common_overall_status"] == "PASS"
+    assert result["etf_stock_reports"]["status"] == "NOOP_ALREADY_COMPLETE"
     assert [result["phases"][name]["status"] for name in ("4A", "4B", "4C", "4D")] == [
         "PASS", "NOOP_ALREADY_COMPLETE", "PASS", "PASS"
     ]
+
+
+@pytest.mark.parametrize(
+    ("etf_status", "overall_status"),
+    [("PASS", "PASS"), ("FAILED", "FAILED")],
+)
+def test_etf_step_uses_phase4a_dates_and_preserves_common_progression(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    etf_status: str,
+    overall_status: str,
+) -> None:
+    order: list[str] = []
+    captured: dict[str, object] = {}
+    target = "2026-09-20"
+    reference = "2026-09-18"
+
+    def phase4a_runner(target_as_of: str, **kwargs: object) -> dict[str, str]:
+        order.append("4A")
+        return {"status": "PASS", "target_as_of": target_as_of, "reference_market_date": reference}
+
+    def phase4b_runner(target_as_of: str, **kwargs: object) -> dict[str, str]:
+        order.append("4B")
+        return {"status": "PASS"}
+
+    def etf_runner(target_as_of: str, reference_market_date: str, **kwargs: object) -> dict[str, str]:
+        order.append("ETF")
+        captured.update(target_as_of=target_as_of, reference_market_date=reference_market_date)
+        return {"status": etf_status, "reason": "synthetic test result"}
+
+    def phase4c_runner(target_as_of: str, **kwargs: object) -> dict[str, str]:
+        order.append("4C")
+        return {"status": "PASS"}
+
+    def phase4d_runner(target_as_of: str, **kwargs: object) -> dict[str, str]:
+        order.append("4D")
+        return {"status": "PASS"}
+
+    monkeypatch.setattr(phase4e, "run_phase4a", phase4a_runner)
+    monkeypatch.setattr(phase4e, "run_phase4b", phase4b_runner)
+    monkeypatch.setattr(phase4e, "run_etf_stock_reports", etf_runner)
+    monkeypatch.setattr(phase4e, "run_phase4c", phase4c_runner)
+    monkeypatch.setattr(phase4e, "run_phase4d", phase4d_runner)
+
+    result = phase4e.run_phase4e(target, root=tmp_path)
+
+    assert order == ["4A", "4B", "ETF", "4C", "4D"]
+    assert captured == {"target_as_of": target, "reference_market_date": reference}
+    assert result["common_overall_status"] == "PASS"
+    assert result["etf_stock_reports"]["status"] == etf_status
+    assert result["overall_status"] == overall_status
 
 
 @pytest.mark.parametrize("blocked_status", ["BLOCKED", "FAILED"])
@@ -152,7 +224,7 @@ def _write_report(path: Path, target: str, ticker: str = "000001") -> None:
             {
                 "ticker": ticker,
                 "asset_type": "COMMON",
-                "report_version": "0.5",
+                "report_version": "0.7",
                 "requested_as_of": target,
                 "reference_market_date": target,
                 "a_fast_core": {
@@ -345,7 +417,7 @@ def _write_web_fixture(
         "technical_details": {
             "requested_as_of": target,
             "reference_market_date": ref,
-            "report_version": "0.5",
+            "report_version": "0.7",
         },
         "strategy": {"id": "PATTERN_A_FAST_FINAL_STRATEGY_V02"},
     }
@@ -371,6 +443,7 @@ def _write_web_fixture(
         },
         "stock_reports": {
             "ready": True,
+            "report_version": "0.7",
             "source_json_count": 1,
             "web_compact_count": 1,
             "web_index_available_report_count": 1,
@@ -416,7 +489,11 @@ def test_phase4b_valid_exact_corpus_skips_runner(monkeypatch: pytest.MonkeyPatch
     _write_report(reports / "20260916", "2026-09-16")
     _write_report(reports / "20260917", "2026-09-17")
     _write_positive_fundamentals(tmp_path, "2026-09-17")
-    monkeypatch.setattr(phase4e, "run_phase4a", lambda *args, **kwargs: {"status": "PASS"})
+    monkeypatch.setattr(
+        phase4e,
+        "run_phase4a",
+        lambda *args, **kwargs: {"status": "PASS", "reference_market_date": "2026-09-17"},
+    )
     monkeypatch.setattr(phase4e, "run_phase4b", lambda *args, **kwargs: pytest.fail("4B reran"))
     monkeypatch.setattr(phase4e, "run_phase4c", lambda *args, **kwargs: {"status": "PASS"})
     monkeypatch.setattr(phase4e, "run_phase4d", lambda *args, **kwargs: {"status": "PASS"})
@@ -539,7 +616,11 @@ def test_phase4c_is_called_once_and_4d_reuses_its_result(
 ) -> None:
     calls = {"phase4c": 0, "phase4d_context": None}
 
-    monkeypatch.setattr(phase4e, "run_phase4a", lambda *args, **kwargs: {"status": "PASS"})
+    monkeypatch.setattr(
+        phase4e,
+        "run_phase4a",
+        lambda *args, **kwargs: {"status": "PASS", "reference_market_date": "2026-09-17"},
+    )
     monkeypatch.setattr(phase4e, "run_phase4b", lambda *args, **kwargs: {"status": "PASS"})
 
     def phase4c_runner(*args: object, **kwargs: object) -> dict[str, object]:

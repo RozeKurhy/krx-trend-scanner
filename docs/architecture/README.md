@@ -28,7 +28,7 @@
 |---|---|---|
 | 2단계 | [주봉·월봉 파생 기준 V01](daily_update_phase2_weekly_monthly_derivation_contract_v01.md) | 인증된 일봉에서 주봉·월봉을 파생하고 기간 완료 상태를 판정하는 기준 |
 | 3단계 | [분석 입력 갱신 기준 V01](daily_update_phase3_analysis_inputs_contract_v01.md) | 수급·펀더멘털·시장·업종 RS 등 분석 입력의 기준일·권위·상태를 조율하는 기준 |
-| 4단계 | [분석·리포트·웹 반영 기준 V01](daily_update_phase4_analysis_reporting_web_contract_v01.md) | 스캐너·공식 전략·Stock Report v0.7·필수 웹 투영을 같은 기준일에 연결하는 기준 |
+| 4단계 | [분석·리포트·웹 반영 기준 V01](daily_update_phase4_analysis_reporting_web_contract_v01.md) | COMMON Stock Report v0.7·필수 웹 투영과 ETF36 Julia V1 v0.6 자동 생성을 같은 기준일에 조율하는 기준 |
 
 ## B. 현재 세부 데이터 계약
 

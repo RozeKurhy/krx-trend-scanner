@@ -9,11 +9,15 @@ from __future__ import annotations
 
 from bisect import bisect_right
 from dataclasses import dataclass
+from datetime import date
 import hashlib
 import json
 from pathlib import Path
 import re
+import shutil
+import tempfile
 from typing import Any, Callable, Iterable
+from uuid import uuid4
 
 import numpy as np
 import pandas as pd
@@ -970,7 +974,7 @@ def generate_etf_stock_report_v06(
     return payload, markdown
 
 
-def generate_official_etf36_reports(
+def _generate_official_etf36_reports_into(
     *,
     repo_root: Path,
     target_as_of: str,
@@ -978,7 +982,7 @@ def generate_official_etf36_reports(
     output_dir: Path,
     tickers: Iterable[str] | None = None,
 ) -> dict[str, Any]:
-    """Generate the requested subset (full frozen set by default) once."""
+    """Write a requested ETF report set into an isolated staging directory."""
     root = Path(repo_root).resolve()
     universe, universe_sha = load_official_etf36(root)
     ready_dates = load_strategy_ready_dates(root)
@@ -1059,3 +1063,206 @@ def generate_official_etf36_reports(
     summary_file = output / "generation_summary.json"
     summary_file.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return result
+
+
+def _validate_etf_report_corpus(
+    *,
+    repo_root: Path,
+    output_dir: Path,
+    target_as_of: str,
+    reference_market_date: str,
+    identities: list[ETFIdentity],
+    universe_sha: str,
+) -> list[str]:
+    """Return contract errors for an exact staged or existing ETF corpus."""
+    errors: list[str] = []
+    output = Path(output_dir)
+    expected_stems = {f"{item.ticker}_{item.name}" for item in identities}
+    json_dir = output / "json"
+    json_paths = list(json_dir.glob("*.json")) if json_dir.is_dir() else []
+    markdown_paths = list(output.glob("*.md")) if output.is_dir() else []
+    if {path.stem for path in json_paths} != expected_stems or len(json_paths) != len(expected_stems):
+        errors.append("JSON_TICKER_SET_OR_COUNT_MISMATCH")
+    if {path.stem for path in markdown_paths} != expected_stems or len(markdown_paths) != len(expected_stems):
+        errors.append("MARKDOWN_TICKER_SET_OR_COUNT_MISMATCH")
+
+    summary_path = output / "generation_summary.json"
+    try:
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        summary = None
+        errors.append("GENERATION_SUMMARY_MISSING_OR_INVALID")
+    if isinstance(summary, dict):
+        expected_tickers = {item.ticker for item in identities}
+        if summary.get("target_as_of") != target_as_of:
+            errors.append("SUMMARY_TARGET_AS_OF_MISMATCH")
+        if summary.get("reference_market_date") != reference_market_date:
+            errors.append("SUMMARY_REFERENCE_MARKET_DATE_MISMATCH")
+        if summary.get("expected_count") != len(identities) or summary.get("generated_count") != len(identities):
+            errors.append("SUMMARY_COUNT_MISMATCH")
+        if set(summary.get("generated_tickers") or []) != expected_tickers:
+            errors.append("SUMMARY_TICKER_SET_MISMATCH")
+        if summary.get("source_universe_sha256") != universe_sha:
+            errors.append("SUMMARY_UNIVERSE_HASH_MISMATCH")
+        if summary.get("strategy_id_counts") != {STRATEGY_ID: len(identities)}:
+            errors.append("SUMMARY_STRATEGY_COUNT_MISMATCH")
+        if len(identities) == 36 and summary.get("eligibility_pass_fail_counts") != {"PASS": 36, "FAIL": 0}:
+            errors.append("SUMMARY_ELIGIBILITY_COUNT_MISMATCH")
+        if summary.get("network_requests") != 0:
+            errors.append("SUMMARY_NETWORK_REQUESTS_NONZERO")
+        if summary.get("post_asof_data_references") != 0:
+            errors.append("SUMMARY_POST_ASOF_REFERENCES_NONZERO")
+        if summary.get("failed_tickers_and_reasons") != []:
+            errors.append("SUMMARY_HAS_FAILED_TICKERS")
+        if summary.get("julia_evaluator_error_tickers") != []:
+            errors.append("SUMMARY_HAS_EVALUATOR_ERRORS")
+        if summary.get("status") not in {None, "PASS"}:
+            errors.append("SUMMARY_STATUS_NOT_PASS")
+
+    for identity in identities:
+        stem = f"{identity.ticker}_{identity.name}"
+        json_path = json_dir / f"{stem}.json"
+        markdown_path = output / f"{stem}.md"
+        try:
+            payload = json.loads(json_path.read_text(encoding="utf-8"))
+            markdown = markdown_path.read_text(encoding="utf-8")
+            validate_v06_report_payload(repo_root, payload, markdown)
+        except Exception as exc:
+            errors.append(f"REPORT_INVALID:{identity.ticker}:{type(exc).__name__}")
+            continue
+        if payload.get("requested_as_of") != target_as_of:
+            errors.append(f"REPORT_TARGET_AS_OF_MISMATCH:{identity.ticker}")
+        if payload.get("reference_market_date") != reference_market_date:
+            errors.append(f"REPORT_REFERENCE_MARKET_DATE_MISMATCH:{identity.ticker}")
+        if payload.get("report_version") != "0.6":
+            errors.append(f"REPORT_VERSION_MISMATCH:{identity.ticker}")
+        if payload.get("asset_type") != "ETF":
+            errors.append(f"REPORT_ASSET_TYPE_MISMATCH:{identity.ticker}")
+        if f"# [{identity.name} ({identity.ticker})] 종목 리포트 v0.6" not in markdown:
+            errors.append(f"MARKDOWN_IDENTITY_MISMATCH:{identity.ticker}")
+        if "- **자산 유형 (Asset Type)**: `ETF`" not in markdown:
+            errors.append(f"MARKDOWN_ASSET_TYPE_MISMATCH:{identity.ticker}")
+        if f"- **분석 기준일 (Requested As-Of)**: `{target_as_of}`" not in markdown:
+            errors.append(f"MARKDOWN_TARGET_AS_OF_MISMATCH:{identity.ticker}")
+        if f"- **신선도 기준일 (Reference Market Date)**: `{reference_market_date}`" not in markdown:
+            errors.append(f"MARKDOWN_REFERENCE_MARKET_DATE_MISMATCH:{identity.ticker}")
+        strategy = payload.get("official_strategy") or {}
+        if strategy.get("strategy_id") != STRATEGY_ID:
+            errors.append(f"REPORT_STRATEGY_ID_MISMATCH:{identity.ticker}")
+        snapshot = strategy.get("current_snapshot") or {}
+        if len(identities) == 36 and snapshot.get("eligibility_pass") is not True:
+            errors.append(f"REPORT_ELIGIBILITY_FAIL:{identity.ticker}")
+
+    return errors
+
+
+def _validate_explicit_report_dates(target_as_of: str, reference_market_date: str) -> None:
+    for name, value in (("target_as_of", target_as_of), ("reference_market_date", reference_market_date)):
+        if not isinstance(value, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+            raise ValueError(f"INVALID_{name.upper()}")
+        try:
+            date.fromisoformat(value)
+        except ValueError as exc:
+            raise ValueError(f"INVALID_{name.upper()}") from exc
+    if reference_market_date > target_as_of:
+        raise ValueError("REFERENCE_MARKET_DATE_AFTER_TARGET")
+
+
+def _remove_path(path: Path) -> None:
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    elif path.exists() or path.is_symlink():
+        path.unlink()
+
+
+def generate_official_etf36_reports(
+    *,
+    repo_root: Path,
+    target_as_of: str,
+    reference_market_date: str,
+    output_dir: Path,
+    tickers: Iterable[str] | None = None,
+) -> dict[str, Any]:
+    """Generate and validate a staged report corpus before promoting it.
+
+    A complete full-set corpus for these exact dates is returned as a read-only
+    ``NOOP_ALREADY_COMPLETE`` result. Subsets (used by the CLI preflight) are
+    always generated into their requested output directory.
+    """
+    _validate_explicit_report_dates(target_as_of, reference_market_date)
+    root = Path(repo_root).resolve()
+    universe, universe_sha = load_official_etf36(root)
+    all_tickers = {item.ticker for item in universe}
+    selected = set(str(ticker).zfill(6) for ticker in tickers) if tickers is not None else all_tickers
+    if not selected <= all_tickers:
+        raise ValueError("REQUESTED_TICKER_OUTSIDE_OFFICIAL_ETF36")
+    if not selected:
+        raise ValueError("REQUESTED_ETF_TICKER_SET_EMPTY")
+    selected_identities = [item for item in universe if item.ticker in selected]
+    output = Path(output_dir).resolve()
+    if selected == all_tickers and output.name != target_as_of.replace("-", ""):
+        raise ValueError("ETF36_OUTPUT_DIRECTORY_DATE_MISMATCH")
+
+    if selected == all_tickers:
+        existing_errors = _validate_etf_report_corpus(
+            repo_root=root,
+            output_dir=output,
+            target_as_of=target_as_of,
+            reference_market_date=reference_market_date,
+            identities=selected_identities,
+            universe_sha=universe_sha,
+        )
+        if not existing_errors:
+            existing_summary = json.loads((output / "generation_summary.json").read_text(encoding="utf-8"))
+            return {
+                **existing_summary,
+                "status": "NOOP_ALREADY_COMPLETE",
+                "reason": "VALID_EXACT_TARGET_ETF36_REPORT_CORPUS",
+            }
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=f".{output.name}.staging-", dir=output.parent) as temp_dir:
+        staging = Path(temp_dir) / "corpus"
+        staging.mkdir()
+        summary = _generate_official_etf36_reports_into(
+            repo_root=root,
+            target_as_of=target_as_of,
+            reference_market_date=reference_market_date,
+            output_dir=staging,
+            tickers=selected,
+        )
+        validation_errors = _validate_etf_report_corpus(
+            repo_root=root,
+            output_dir=staging,
+            target_as_of=target_as_of,
+            reference_market_date=reference_market_date,
+            identities=selected_identities,
+            universe_sha=universe_sha,
+        )
+        if validation_errors:
+            return {
+                **summary,
+                "status": "FAILED",
+                "validation_errors": validation_errors[:25],
+            }
+
+        summary["status"] = "PASS"
+        summary["verdict"] = "OFFICIAL_ETF36_STOCK_REPORT_JULIA_V1_INTEGRATION_PASS"
+        (staging / "generation_summary.json").write_text(
+            json.dumps(summary, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
+        backup = output.parent / f".{output.name}.backup-{uuid4().hex}"
+        if backup.exists():
+            _remove_path(backup)
+        had_existing_output = output.exists()
+        if had_existing_output:
+            output.rename(backup)
+        try:
+            staging.rename(output)
+        except Exception:
+            if had_existing_output and backup.exists() and not output.exists():
+                backup.rename(output)
+            raise
+        if backup.exists():
+            _remove_path(backup)
+        return summary
