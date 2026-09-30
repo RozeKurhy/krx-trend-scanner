@@ -73,13 +73,15 @@ artifacts/patterns/pattern_a/production/scanner/
 ### 3.2 공식 전략과 Stock Report
 
 일반 종목의 공식 전략은 A FAST Core V2
-(`PATTERN_A_FAST_FINAL_STRATEGY_V02`)와 B Select Core V1
-(`PATTERN_B_SELECT_CORE_V01`) 두 개다. A FAST Core V2가 기본 전략이자
+(PATTERN_A_FAST_FINAL_STRATEGY_V02)와 B Select Core V1
+(PATTERN_B_SELECT_CORE_V01)이다. A FAST Core V2가 기본 전략이자
 CONTROL이고, B Select Core V1은 기본 전략·CONTROL이 아닌 독립 공식 전략이다.
-현재 Phase 4의 Stock Report와 전략 모니터 운영 출력에는 A FAST Core V2만
-연결되어 있다. A FAST Core V2는 의사결정 지원 운영
-(`PRODUCTION_DECISION_SUPPORT`)이며 자동매매 권한이 아니다. V3/V4, Julia 또는
-다른 후보 전략을 4단계 운영 출력에 추가하지 않는다.
+ETF 전용 공식 전략은 Julia V1 (JULIA_ETF_STRATEGY_V01)이며 공식 ETF 36에만
+적용한다. Julia V1은 현재 Phase 4의 Stock Report와 전략 모니터 운영 출력에
+연결되어 있지 않으며, ETF 리포트 연결은 별도 후속 작업이다. 이 문서는 Julia V1을
+Phase 4 실행 경로에 추가하지 않는다. A FAST Core V2는 의사결정 지원 운영
+(PRODUCTION_DECISION_SUPPORT)이며 자동매매 권한이 아니다. V3/V4 또는
+다른 비공식 후보 전략을 4단계 운영 출력에 추가하지 않는다.
 
 `generate_stock_report()`와 `build_a_fast_core_section()`은
 `requested_as_of` 이하의 입력을 사용한다. 리포트는 외국인 수급, 펀더멘털,

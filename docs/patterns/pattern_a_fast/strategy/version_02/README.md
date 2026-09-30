@@ -151,7 +151,7 @@
   - Julia realistic portfolio: Total Return `38.5329%`, CAGR `5.9762%`, MDD `-30.6909%`, trades `89`
   - 양쪽 결과: `PASS`, unresolved `0`, cash conservation `PASS`
 - **Julia 일반 종목 채택 여부**: `NOT ADOPTED / RETIRED AS GENERAL-STOCK OFFICIAL STRATEGY`
-- **Julia ETF 가능성**: ETF 전용 후보로만 보존하며 현재 `DEFERRED`; ETF 공식 전략으로 확정하지 않음
+- **Julia ETF 전략 상태**: 검증 후보 JULIA_STRATEGY_V00은 ETF 전용 심사를 통과해 공식명 Julia V1, ID JULIA_ETF_STRATEGY_V01로 승격됨. 공식 ETF 36에만 적용하며 일반 종목에서는 미채택. A FAST Core V2의 기본 전략·CONTROL 상태는 변경 없음.
 - **V2.1 Candidate**: 비채택·종료 (`V2_1_PROMOTION_REJECTED_RESEARCH_CLOSED`)
 - **Exit4 threshold research**: T15 유지·종료 (`EXIT4_T15_KEEP_RESEARCH_CLOSED`)
 - **Exit3 Coverage Extension**: 비승격·종료 (`EXIT3_COVERAGE_EXTENSION_NOT_PROMOTED_RESEARCH_CLOSED`)
