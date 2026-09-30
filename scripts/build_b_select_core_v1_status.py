@@ -402,6 +402,14 @@ def _safe_float(value: Any) -> float | None:
     return number if pd.notna(number) else None
 
 
+def _calendar_authority_payload(provenance: Mapping[str, Any]) -> dict[str, str]:
+    frontier = provenance.get("calendar_frontier")
+    sha256 = provenance.get("calendar_sha256")
+    if not frontier or not sha256:
+        raise BSelectStatusError("B_SELECT_CALENDAR_PROVENANCE_MISSING")
+    return {"frontier": str(frontier), "sha256": str(sha256)}
+
+
 def build_b_select_status(
     *,
     repo_root: Path = ROOT,
@@ -812,10 +820,7 @@ def build_b_select_status(
         "future_reference_count": future_reference_count,
         "duplicate_item_count": duplicate_item_count,
         "cross_strategy_contamination_count": cross_contamination_count,
-        "calendar_authority": {
-            "frontier": calendar_provenance.get("frontier"),
-            "source": calendar_provenance.get("path"),
-        },
+        "calendar_authority": _calendar_authority_payload(calendar_provenance),
         "source_authorities": {
             "pattern_b_monthly_states": str(MONTHLY_SAMPLE_REL),
             "pattern_a_stage_history": str(STAGE_HISTORY_REL),

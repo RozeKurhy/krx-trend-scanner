@@ -11,6 +11,17 @@ from scripts import run_pattern_b_pure_simple_backtest_v01 as pattern_b_source
 from trend_scanner.universe.permanent_identity_exclusions import PERMANENT_IDENTITY_EXCLUSIONS
 
 
+def test_calendar_authority_payload_maps_real_provenance_keys():
+    assert status_builder._calendar_authority_payload(
+        {"calendar_frontier": "2026-09-23", "calendar_sha256": "abc123"}
+    ) == {"frontier": "2026-09-23", "sha256": "abc123"}
+
+
+def test_calendar_authority_payload_fails_closed_when_provenance_is_missing():
+    with pytest.raises(status_builder.BSelectStatusError, match="B_SELECT_CALENDAR_PROVENANCE_MISSING"):
+        status_builder._calendar_authority_payload({"calendar_frontier": "2026-09-23"})
+
+
 def test_status_builder_rejects_report_date_mismatch(tmp_path: Path):
     index_path = tmp_path / "stock-index.json"
     index_path.write_text(

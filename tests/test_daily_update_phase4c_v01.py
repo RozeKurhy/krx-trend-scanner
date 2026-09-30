@@ -1,6 +1,6 @@
 """Phase 4C production runner (scripts/run_daily_update_phase4c_v01.py) targeted tests.
 
-일부 테스트는 실제 2026-09-17 exact-target production 데이터(4A/4B가 이미 생성한
+일부 테스트는 실제 2026-09-25 exact-target production 데이터(4A/4B가 이미 생성한
 로컬 authority)를 그대로 사용한다 -- exporter들이 ``repo_root``를 실제 저장소
 루트에 고정하는 계약(예: ``export_stock_report_web.build_web_payload``)이라 완전히
 격리된 tmp_path 루트로는 대체할 수 없기 때문이다. 이 테스트들은 세션 스코프
@@ -23,7 +23,8 @@ from scripts import export_stock_report_web as stock_report_web
 from scripts import export_strategy_monitor_web as strategy_monitor_web
 
 ROOT = Path(__file__).resolve().parents[1]
-REAL_TARGET = "2026-09-21"
+REAL_TARGET = "2026-09-25"
+REAL_REFERENCE_MARKET_DATE = "2026-09-23"
 
 
 def _write_scanner_summary(
@@ -247,7 +248,7 @@ def test_d_report_with_wrong_requested_as_of_fails_closed(temp_report_dir_for_no
         )
 
 
-# --- 실제 2026-09-17 production 데이터 기반 통합 검증 (세션 1회 실행) --------------
+# --- 실제 2026-09-25 production 데이터 기반 통합 검증 (세션 1회 실행) --------------
 
 
 @pytest.fixture(scope="session")
@@ -258,7 +259,7 @@ def real_phase4c_result():
 def test_real_run_status_pass(real_phase4c_result):
     assert real_phase4c_result["status"] == "PASS"
     assert real_phase4c_result["requested_as_of"] == REAL_TARGET
-    assert real_phase4c_result["reference_market_date"] == REAL_TARGET
+    assert real_phase4c_result["reference_market_date"] == REAL_REFERENCE_MARKET_DATE
 
 
 # --- B. stale web/data가 4C 결과의 authority로 쓰이지 않음 --------------------------
@@ -266,7 +267,7 @@ def test_real_run_status_pass(real_phase4c_result):
 
 def test_b_stale_web_data_is_not_used_as_authority(real_phase4c_result):
     """web/data가 현재 더 오래된 날짜 기반 상태여도(예: 2026-09-04, 553~1836개 등)
-    4C 결과는 2026-09-17 exact-target 기준(1850개)으로 나와야 한다."""
+    4C 결과는 2026-09-25 exact-target 기준(1487개)으로 나와야 한다."""
     web_index_path = ROOT / "web/data/stock-index.json"
     if web_index_path.exists():
         web_index = json.loads(web_index_path.read_text(encoding="utf-8"))
@@ -305,7 +306,10 @@ def test_f_previous_open_non_candidate_ticker_present_in_strategy_monitor(real_p
     summary = phase4c.load_scanner_summary(ROOT, target_as_of)
     reference_market_date = str(summary["reference_market_date"])
     index, reports, _stats = stock_report_web.build_web_payload(
-        ROOT, target_as_of=target_as_of, reference_market_date=reference_market_date,
+        ROOT,
+        target_as_of=target_as_of,
+        reference_market_date=reference_market_date,
+        include_etf=True,
     )
     assert "000370" in reports
     assert reports["000370"]["decision"]["canonical_position"] == "OPEN"
@@ -335,7 +339,7 @@ def test_g_foreign_ranking_population_authority_is_not_stock_index(real_phase4c_
     foreign = real_phase4c_result["foreign_net_buy_ranking"]
     stock_report = real_phase4c_result["stock_report"]
     # foreign net buy 모집단(PIT COMMON authority exact target)은 발행된 Stock Report
-    # 개수(1850, continuity 적용된 부분집합)와 다르다 -- stock-index가 모집단 authority로
+    # 개수(1487; COMMON 1451 + ETF 36)와 다르다 -- stock-index가 모집단 authority로
     # 쓰였다면 두 값이 같아야 하므로, 다르다는 사실 자체가 분리를 증명한다.
     assert foreign["target_common_universe_count"] != stock_report["available_report_count"]
     assert real_phase4c_result["sector_rs_ranking"]["population_count"] != stock_report["available_report_count"]
@@ -360,8 +364,8 @@ def test_no_web_data_writes(real_phase4c_result):
 def test_a_sector_rs_exposes_requested_reference_as_of(real_phase4c_result):
     sector_rs = real_phase4c_result["sector_rs_ranking"]
     assert sector_rs["requested_as_of"] == REAL_TARGET
-    assert sector_rs["reference_market_date"] == REAL_TARGET
-    assert sector_rs["as_of"] == REAL_TARGET
+    assert sector_rs["reference_market_date"] == REAL_REFERENCE_MARKET_DATE
+    assert sector_rs["as_of"] == REAL_REFERENCE_MARKET_DATE
     assert sector_rs["as_of"] == sector_rs["reference_market_date"]
 
 
@@ -371,8 +375,8 @@ def test_a_sector_rs_exposes_requested_reference_as_of(real_phase4c_result):
 def test_b_foreign_net_buy_exposes_requested_reference_as_of(real_phase4c_result):
     foreign = real_phase4c_result["foreign_net_buy_ranking"]
     assert foreign["requested_as_of"] == REAL_TARGET
-    assert foreign["reference_market_date"] == REAL_TARGET
-    assert foreign["as_of"] == REAL_TARGET
+    assert foreign["reference_market_date"] == REAL_REFERENCE_MARKET_DATE
+    assert foreign["as_of"] == REAL_REFERENCE_MARKET_DATE
     assert foreign["as_of"] == foreign["reference_market_date"]
 
 
@@ -409,7 +413,7 @@ def test_d_sector_rs_authority_as_of_mismatch_fails_closed():
             basic_info_dir=basic_info_dir,
             stocks_dir=Path(tmp_name),
             requested_as_of=REAL_TARGET,
-            reference_market_date="2026-09-20",  # 실제 ranking authority as_of(2026-09-21)와 다름
+            reference_market_date="2026-09-22",  # 실제 ranking authority 기준일(2026-09-23)과 다름
         )
 
 
