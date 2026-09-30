@@ -290,7 +290,7 @@ def test_future_daily_row_append_does_not_change_reference_day_features(daily):
     daily_before = daily[daily.index <= ref]
     feats_before = compute_daily_timing_features(daily_before)
 
-    future_idx = pd.bdate_range(start=daily.index.max() + pd.Timedelta(days=1), periods=60)
+    future_idx = pd.bdate_range(start=daily.index.max() + pd.Timedelta(1, unit="D"), periods=60)
     rng = np.random.default_rng(123)
     future_close = daily["close"].iloc[-1] + np.cumsum(rng.normal(5, 60, size=len(future_idx)))
     future_close = np.clip(future_close, 1_000, None)

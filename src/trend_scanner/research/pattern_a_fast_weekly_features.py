@@ -638,7 +638,7 @@ def compute_weekly_trigger_features(weekly: pd.DataFrame) -> dict[str, float]:
     out["distance_from_26w_low_pct"] = distance_from_low(26)
     out["distance_from_52w_low_pct"] = distance_from_low(52)
 
-    weekly_return = close.pct_change()
+    weekly_return = close.ffill().pct_change(fill_method=None)
 
     def down_ratio(k: int) -> float:
         w = _tail_or_none(weekly_return, k)

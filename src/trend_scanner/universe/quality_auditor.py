@@ -176,7 +176,7 @@ def audit_ticker_quality(
 
     # 극단 일간 수익률 진단 (35% 초과 jump 등 - Diagnostic only, Hard exclusion 아님)
     if "close" in daily.columns and len(daily) > 1:
-        daily_pct = daily["close"].pct_change().dropna()
+        daily_pct = daily["close"].ffill().pct_change(fill_method=None).dropna()
         if (daily_pct.abs() > 0.35).any():
             quality_flags.append("DIAGNOSTIC_EXTREME_DAILY_RETURN")
 

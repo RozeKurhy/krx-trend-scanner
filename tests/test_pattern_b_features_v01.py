@@ -21,7 +21,7 @@ def _frame(dates, close, high=None, low=None) -> pd.DataFrame:
 
 def _monthly_rows(n: int, close, high=None, low=None, start="2015-01-01") -> pd.DataFrame:
     """One session per month on the 15th, so each completed month equals that row."""
-    return _frame(pd.date_range(start, periods=n, freq="MS") + pd.Timedelta(days=14), close, high, low)
+    return _frame(pd.date_range(start, periods=n, freq="MS") + pd.Timedelta(14, unit="D"), close, high, low)
 
 
 def _weekly_rows(n: int, close, high=None, low=None, start="2020-01-01") -> pd.DataFrame:

@@ -181,10 +181,10 @@ def build_features(joined: pd.DataFrame) -> pd.DataFrame:
     v_mean = v.rolling(60, min_periods=30).mean()
     v_std = v.rolling(60, min_periods=30).std().replace(0.0, np.nan)
     frame["v_z_60"] = (v - v_mean) / v_std
-    frame["v_change_20"] = v.pct_change(20)
-    frame["kospi_return_5"] = k.pct_change(5)
-    frame["kospi_return_20"] = k.pct_change(20)
-    frame["kospi_return_60"] = k.pct_change(60)
+    frame["v_change_20"] = v.ffill().pct_change(20, fill_method=None)
+    frame["kospi_return_5"] = k.ffill().pct_change(5, fill_method=None)
+    frame["kospi_return_20"] = k.ffill().pct_change(20, fill_method=None)
+    frame["kospi_return_60"] = k.ffill().pct_change(60, fill_method=None)
     frame["kospi_drawdown_60"] = k / k.rolling(60, min_periods=30).max() - 1.0
     frame["participation_pct_252"] = _rolling_percentile(value, 252, 126)
     value_median = value.rolling(252, min_periods=126).median()

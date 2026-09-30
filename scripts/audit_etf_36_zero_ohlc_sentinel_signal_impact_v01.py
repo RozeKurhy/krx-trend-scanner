@@ -239,16 +239,16 @@ def sentinel_periods(
         weekly = to_weekly(daily)
         monthly = to_monthly(daily)
         sent_weeks = {
-            (pd.Timestamp(date) + pd.Timedelta(days=(4 - pd.Timestamp(date).weekday()) % 7)).normalize()
+            (pd.Timestamp(date) + pd.Timedelta((4 - pd.Timestamp(date).weekday()) % 7, unit="D")).normalize()
             for date in sent_dates
         }
         sent_months = {pd.Timestamp(pd.Timestamp(date) + pd.offsets.MonthEnd(0)).normalize() for date in sent_dates}
         periods[ticker] = {"dates": set(sent_dates), "weeks": sent_weeks, "months": sent_months}
         for raw_date in sent_dates:
             date = pd.Timestamp(raw_date)
-            week_label = (date + pd.Timedelta(days=(4 - date.weekday()) % 7)).normalize()
+            week_label = (date + pd.Timedelta((4 - date.weekday()) % 7, unit="D")).normalize()
             month_label = pd.Timestamp(date + pd.offsets.MonthEnd(0)).normalize()
-            week_rows = daily.loc[(daily.index > week_label - pd.Timedelta(days=7)) & (daily.index <= week_label)]
+            week_rows = daily.loc[(daily.index > week_label - pd.Timedelta(7, unit="D")) & (daily.index <= week_label)]
             month_rows = daily.loc[daily.index.to_period("M") == date.to_period("M")]
             rows.append({
                 "ticker": ticker,

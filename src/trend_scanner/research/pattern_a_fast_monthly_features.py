@@ -451,7 +451,7 @@ def compute_monthly_regime_features(monthly: pd.DataFrame) -> dict[str, float]:
     if not (np.isnan(slope_now) or np.isnan(slope_3m_ago)):
         out["ma12_slope_change_3m"] = float(slope_now - slope_3m_ago)
 
-    monthly_return = close.pct_change()
+    monthly_return = close.ffill().pct_change(fill_method=None)
     mr12 = _tail_or_none(monthly_return, 12)
     if mr12 is not None and mr12.notna().all():
         out["recent_3m_return_vs_prior_9m"] = float(mr12.iloc[-3:].mean() - mr12.iloc[:9].mean())

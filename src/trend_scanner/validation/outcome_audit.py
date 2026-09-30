@@ -76,7 +76,7 @@ def _empty(base_date: pd.Timestamp | None = None, base_close: float = NAN) -> Ou
 
 
 def _window_end(base_date: pd.Timestamp, months: int) -> pd.Timestamp:
-    return base_date + pd.Timedelta(days=months * _DAYS_PER_MONTH)
+    return base_date + pd.Timedelta(months * _DAYS_PER_MONTH, unit="D")
 
 
 def _forward_close(daily: pd.DataFrame, base_date: pd.Timestamp, months: int) -> pd.Series:

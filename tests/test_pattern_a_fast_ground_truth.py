@@ -83,7 +83,7 @@ def test_compute_reference_snapshot_ok_on_completed_friday(daily):
 
 def test_build_chart_slices_no_future_leakage(daily):
     ref = resolve_completed_weekly_reference("000000", "테스트종목", daily, "2021-03-19")
-    outcome_end = min(ref + pd.Timedelta(weeks=26), daily.index.max())
+    outcome_end = min(ref + pd.Timedelta(26 * 7, unit="D"), daily.index.max())
     slices = build_chart_slices(daily, ref, outcome_end)
 
     assert slices.monthly_pit.empty or slices.monthly_pit.index.max() <= ref
@@ -95,7 +95,7 @@ def test_build_chart_slices_no_future_leakage(daily):
 
 def test_build_chart_slices_daily_pit_excludes_future_rows_even_if_present(daily):
     ref = pd.Timestamp("2021-03-19")
-    slices = build_chart_slices(daily, ref, ref + pd.Timedelta(weeks=4))
+    slices = build_chart_slices(daily, ref, ref + pd.Timedelta(4 * 7, unit="D"))
     assert (slices.daily_pit.index <= ref).all()
     assert (slices.monthly_pit.index <= ref).all()
     assert (slices.weekly_pit.index <= ref).all()

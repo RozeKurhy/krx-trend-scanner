@@ -41,7 +41,7 @@ def test_compute_outcome_max_and_end_returns_match_independent_slice():
     assert outcome.base_close == base_close
 
     for months, expected_attr in [(3, "return_3m_max"), (6, "return_6m_max"), (12, "return_12m_max")]:
-        window_end = base_date + pd.Timedelta(days=months * 30.4375)
+        window_end = base_date + pd.Timedelta(months * 30.4375, unit="D")
         window_close = daily.loc[(daily.index > base_date) & (daily.index <= window_end), "close"]
         expected = (window_close.max() - base_close) / base_close
         assert getattr(outcome, expected_attr) == pytest.approx(expected)
@@ -49,7 +49,7 @@ def test_compute_outcome_max_and_end_returns_match_independent_slice():
     assert outcome.complete_3m and outcome.complete_6m and outcome.complete_12m
 
     for months, expected_attr in [(6, "return_6m_end"), (12, "return_12m_end")]:
-        window_end = base_date + pd.Timedelta(days=months * 30.4375)
+        window_end = base_date + pd.Timedelta(months * 30.4375, unit="D")
         window_close = daily.loc[(daily.index > base_date) & (daily.index <= window_end), "close"]
         expected = (window_close.iloc[-1] - base_close) / base_close
         assert getattr(outcome, expected_attr) == pytest.approx(expected)
@@ -57,7 +57,7 @@ def test_compute_outcome_max_and_end_returns_match_independent_slice():
     # drawdown은 base_close를 시작값으로 포함해야 한다(재리뷰 수정). 피크(day60)가
     # 12개월 window max이기도 하므로, base_close와 그 이후 close를 합친 running max는
     # day60부터 150으로 고정되고 마지막 날(day365 근방)이 최저 drawdown 지점이어야 한다.
-    window_end_12m = base_date + pd.Timedelta(days=12 * 30.4375)
+    window_end_12m = base_date + pd.Timedelta(12 * 30.4375, unit="D")
     window_close_12m = daily.loc[(daily.index > base_date) & (daily.index <= window_end_12m), "close"]
     combined = pd.concat([pd.Series([base_close]), window_close_12m], ignore_index=True)
     running_max = combined.cummax()
@@ -103,7 +103,7 @@ def test_compute_outcome_uses_nearest_prior_trading_day_for_base_date():
 
 def test_compute_outcome_before_any_data_returns_all_nan():
     daily = _rise_then_decline_frame()
-    requested = daily.index[0] - pd.Timedelta(days=10)
+    requested = daily.index[0] - pd.Timedelta(10, unit="D")
 
     outcome = compute_outcome(daily, requested)
 

@@ -20,7 +20,7 @@ def ma_slope(series: pd.Series, periods: int = 3) -> float:
 
 
 def ma_slope_series(series: pd.Series, periods: int = 3) -> pd.Series:
-    return series.pct_change(periods)
+    return series.ffill().pct_change(periods=periods, fill_method=None)
 
 
 def ma_slope_acceleration(series: pd.Series, periods: int = 3, lag: int = 3) -> float:

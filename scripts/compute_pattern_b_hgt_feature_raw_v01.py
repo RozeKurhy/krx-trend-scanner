@@ -172,7 +172,7 @@ def main() -> None:
             raise SystemExit(f"CHECK_REQUIRED: {sample['sample_id']} has no Repository V2 data")
         row, provenance = feature_row(sample["sample_id"], daily, as_of)
 
-        future_end = (pd.Timestamp(as_of) + pd.Timedelta(days=FUTURE_CHECK_DAYS)).date().isoformat()
+        future_end = (pd.Timestamp(as_of) + pd.Timedelta(FUTURE_CHECK_DAYS, unit="D")).date().isoformat()
         future_daily = RepositoryV2DailyLoader(repository, start=REQUESTED_HISTORY_START, end=future_end).load(
             sample["ticker"]
         )

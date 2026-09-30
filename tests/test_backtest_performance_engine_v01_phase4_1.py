@@ -101,7 +101,7 @@ def test_pre_window_pruning_reduces_fast_evaluation_count(ticker):
     )
 
     assert optimized_cache.evaluation_count <= legacy_cache.evaluation_count
-    if daily.index.min() < EVALUATION_START_DATE - pd.Timedelta(days=180):
+    if daily.index.min() < EVALUATION_START_DATE - pd.Timedelta(180, unit="D"):
         # A genuinely long-history ticker should see a real reduction, not
         # just an equal count.
         assert optimized_cache.evaluation_count < legacy_cache.evaluation_count

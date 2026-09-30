@@ -233,7 +233,7 @@ def build_row(
         "pit_data_start": str(daily.index.min().date()),
         "pit_data_end": reference_date.strftime("%Y-%m-%d"),
         "outcome_review_end": min(
-            reference_date + pd.Timedelta(weeks=52), daily.index.max()
+            reference_date + pd.Timedelta(52 * 7, unit="D"), daily.index.max()
         ).strftime("%Y-%m-%d"),
         "data_status": "OK",
         "quality_flags": "",

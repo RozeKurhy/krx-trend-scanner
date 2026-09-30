@@ -185,7 +185,7 @@ def sample_timeline(sample: pd.Series, score: dict, stage: dict, cache: ParquetC
     reference, end = pd.Timestamp(sample.reference_date), pd.Timestamp(sample.outcome_review_end)
     rows = []
     for weekly_date in to_weekly(daily[daily.index <= end]).index:
-        if weekly_date < reference - pd.Timedelta(weeks=104) or weekly_date > end:
+        if weekly_date < reference - pd.Timedelta(104 * 7, unit="D") or weekly_date > end:
             continue
         if daily[daily.index <= weekly_date].index.max().normalize() != weekly_date.normalize():
             continue

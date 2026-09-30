@@ -76,7 +76,7 @@ def test_incremental_update_fetches_overlap_window_only(tmp_path):
     result = repo.get_daily("005930", "2024-01-01", "2024-01-15")
 
     expected_overlap_start = (
-        seed.index.max() - pd.Timedelta(days=DEFAULT_OVERLAP_DAYS)
+        seed.index.max() - pd.Timedelta(DEFAULT_OVERLAP_DAYS, unit="D")
     ).strftime("%Y-%m-%d")
     assert provider.calls == [("005930", expected_overlap_start, "2024-01-15")]
 
@@ -93,7 +93,7 @@ def test_new_api_value_overrides_cached_value_on_same_date(tmp_path):
     seed = _make_df("2024-01-01", 10, base_price=100.0)
     cache.save("005930", seed)
 
-    overlap_date = seed.index.max() - pd.Timedelta(days=DEFAULT_OVERLAP_DAYS)
+    overlap_date = seed.index.max() - pd.Timedelta(DEFAULT_OVERLAP_DAYS, unit="D")
     fresh = _make_df(overlap_date.strftime("%Y-%m-%d"), 6, base_price=999.0)
     provider = FakeProvider(lambda ticker, start, end: fresh.loc[start:end])
     repo = MarketDataRepository(provider, cache)

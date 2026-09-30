@@ -69,7 +69,7 @@ def test_no_future_daily_row_influence(daily):
 
     # 미래 행을 원본 daily 뒤에 그대로 이어붙인다(재생성이 아니라 append) —
     # 그래야 prefix가 byte-identical함이 자명하게 보장된다.
-    future_idx = pd.bdate_range(start=daily.index.max() + pd.Timedelta(days=1), periods=120)
+    future_idx = pd.bdate_range(start=daily.index.max() + pd.Timedelta(1, unit="D"), periods=120)
     rng = np.random.default_rng(123)
     future_close = daily["close"].iloc[-1] + np.cumsum(rng.normal(5, 60, size=len(future_idx)))
     future_close = np.clip(future_close, 1_000, None)
@@ -107,7 +107,7 @@ def test_incomplete_future_monthly_period_does_not_affect_features(daily):
     feats_before = compute_monthly_regime_features(snap_before.monthly)
 
     # ref 다음날부터 같은 달이 끝날 때까지(진행 중인 달) 며칠만 추가
-    partial_future_idx = pd.bdate_range(start=ref + pd.Timedelta(days=1), periods=4)
+    partial_future_idx = pd.bdate_range(start=ref + pd.Timedelta(1, unit="D"), periods=4)
     rng = np.random.default_rng(999)
     extra = pd.DataFrame(
         {

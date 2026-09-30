@@ -57,7 +57,7 @@ class MarketDataRepository:
 
         cached_min = cached.index.min()
         cached_max = cached.index.max()
-        refresh_from = cached_max - pd.Timedelta(days=self._overlap_days)
+        refresh_from = cached_max - pd.Timedelta(self._overlap_days, unit="D")
 
         # 요청 시작일이 캐시 최소일보다 이전: 앞쪽이 비어 있으므로 전체 구간을
         # 다시 받는다(과거 구간 일부만 정교하게 채우는 최적화는 하지 않는다).

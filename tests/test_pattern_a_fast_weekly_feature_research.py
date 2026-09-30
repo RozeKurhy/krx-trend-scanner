@@ -334,7 +334,7 @@ def test_future_daily_row_append_does_not_change_reference_week_features(daily):
     snap_before = build_historical_snapshot("000000", "테스트", daily, ref, include_incomplete_periods=False)
     feats_before = compute_weekly_trigger_features(snap_before.weekly)
 
-    future_idx = pd.bdate_range(start=daily.index.max() + pd.Timedelta(days=1), periods=120)
+    future_idx = pd.bdate_range(start=daily.index.max() + pd.Timedelta(1, unit="D"), periods=120)
     rng = np.random.default_rng(123)
     future_close = daily["close"].iloc[-1] + np.cumsum(rng.normal(5, 60, size=len(future_idx)))
     future_close = np.clip(future_close, 1_000, None)
@@ -369,7 +369,7 @@ def test_incomplete_future_week_does_not_affect_features(daily):
     snap_before = build_historical_snapshot("000000", "테스트", daily, ref, include_incomplete_periods=False)
     feats_before = compute_weekly_trigger_features(snap_before.weekly)
 
-    partial_idx = pd.bdate_range(start=ref + pd.Timedelta(days=1), periods=2)  # 같은 주 남은 거래일
+    partial_idx = pd.bdate_range(start=ref + pd.Timedelta(1, unit="D"), periods=2)  # 같은 주 남은 거래일
     rng = np.random.default_rng(999)
     extra = pd.DataFrame(
         {

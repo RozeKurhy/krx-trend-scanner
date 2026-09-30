@@ -105,10 +105,10 @@ def _raw_summary_rows(ticker: str, name: str, monthly: pd.DataFrame, weekly: pd.
     w_close = weekly["close"]
 
     ma24_raw = m_close.rolling(24).mean()
-    ma24_raw_slope_6m = ma24_raw.pct_change(6)
+    ma24_raw_slope_6m = ma24_raw.ffill().pct_change(6, fill_method=None)
 
     ma12w_raw = w_close.rolling(12).mean()
-    ma12w_raw_slope_8w = ma12w_raw.pct_change(8)
+    ma12w_raw_slope_8w = ma12w_raw.ffill().pct_change(8, fill_method=None)
 
     roll36_high = m_close.rolling(36).max()
     roll36_low = m_close.rolling(36).min()

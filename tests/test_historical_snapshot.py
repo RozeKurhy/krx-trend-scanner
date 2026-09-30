@@ -72,7 +72,7 @@ def test_non_trading_snapshot_date_uses_last_trading_day():
     daily = _daily_frame(400, freq="B")  # 영업일만 있는 데이터 -> 토/일은 index에 없음
     fridays = daily.index[daily.index.weekday == 4]
     friday = fridays[50]
-    saturday = friday + pd.Timedelta(days=1)
+    saturday = friday + pd.Timedelta(1, unit="D")
     assert saturday not in daily.index
 
     snap_on_saturday = build_historical_snapshot("TEST", "테스트", daily, saturday)
@@ -96,7 +96,7 @@ def test_insufficient_history_returns_nan_without_error():
 
 def test_snapshot_before_any_data_returns_empty_result_without_error():
     daily = _daily_frame(40)
-    snapshot_date = daily.index[0] - pd.Timedelta(days=10)
+    snapshot_date = daily.index[0] - pd.Timedelta(10, unit="D")
 
     snap = build_historical_snapshot("TEST", "테스트", daily, snapshot_date)
 
@@ -221,7 +221,7 @@ def test_monthly_as_of_and_weekly_as_of_reflect_completed_trim():
 
 def test_monthly_as_of_and_weekly_as_of_none_when_no_data():
     daily = _daily_frame(40)
-    snapshot_date = daily.index[0] - pd.Timedelta(days=10)
+    snapshot_date = daily.index[0] - pd.Timedelta(10, unit="D")
 
     snap = build_historical_snapshot("TEST", "테스트", daily, snapshot_date)
 

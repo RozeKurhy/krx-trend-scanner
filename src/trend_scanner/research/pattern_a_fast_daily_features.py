@@ -602,7 +602,7 @@ def compute_daily_timing_features(daily: pd.DataFrame) -> dict[str, float]:
     if w10 is not None and w10.min() > 0:
         out["recent_10d_max_runup"] = float(w10.max() / w10.min() - 1.0)
 
-    daily_return = close.pct_change()
+    daily_return = close.ffill().pct_change(fill_method=None)
     if n >= 2:
         streak = 0
         returns = daily_return.iloc[1:]

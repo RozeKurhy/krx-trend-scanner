@@ -135,7 +135,7 @@ def main() -> None:
             raise SystemExit(f"CHECK_REQUIRED: {sample['sample_id']} history missing or after as_of")
         values, provenance = keep_values(daily, sample["as_of"])
 
-        future_end = (as_of + pd.Timedelta(days=FUTURE_CHECK_DAYS)).date().isoformat()
+        future_end = (as_of + pd.Timedelta(FUTURE_CHECK_DAYS, unit="D")).date().isoformat()
         future_daily = RepositoryV2DailyLoader(repository, start=start, end=future_end).load(sample["ticker"])
         future_values, _ = keep_values(future_daily, sample["as_of"])
         checks.append({

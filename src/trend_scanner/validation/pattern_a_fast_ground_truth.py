@@ -137,7 +137,7 @@ def first_stage_dates_after(
     둘 다 못 찾으면 각각 NOT_APPLICABLE.
     """
     weekly_index = to_weekly(daily).index
-    horizon_end = reference_date + pd.Timedelta(weeks=horizon_weeks)
+    horizon_end = reference_date + pd.Timedelta(horizon_weeks * 7, unit="D")
     data_end = daily.index.max()
     candidates = [d for d in weekly_index if reference_date < d <= horizon_end and d <= data_end]
 
@@ -233,8 +233,8 @@ def find_base_reference_before_entry(
 
     # 2) entry_boundary - min_lead_weeks 부터 backward로 최대
     #    max_lookback_weeks까지, forward-confirmed BASE를 찾는다.
-    search_start = entry_boundary - pd.Timedelta(weeks=min_lead_weeks)
-    search_floor = entry_boundary - pd.Timedelta(weeks=max_lookback_weeks)
+    search_start = entry_boundary - pd.Timedelta(min_lead_weeks * 7, unit="D")
+    search_floor = entry_boundary - pd.Timedelta(max_lookback_weeks * 7, unit="D")
     search_candidates = sorted((d for d in all_weekly_asc if search_floor <= d <= search_start), reverse=True)
 
     for d in search_candidates:
@@ -369,7 +369,7 @@ def build_chart_slices(
     monthly_pit = monthly_pit[monthly_pit.index <= reference_date]
     weekly_pit = to_weekly(pit_daily_full)
     weekly_pit = weekly_pit[weekly_pit.index <= reference_date]
-    daily_pit_start = reference_date - pd.Timedelta(days=daily_pit_window_days)
+    daily_pit_start = reference_date - pd.Timedelta(daily_pit_window_days, unit="D")
     daily_pit = pit_daily_full[pit_daily_full.index >= daily_pit_start]
 
     outcome_daily = daily[daily.index <= outcome_review_end]

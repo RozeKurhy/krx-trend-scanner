@@ -260,7 +260,7 @@ def populate_single_ticker(
         fetch_start_str = target_start_str
         fetch_end_str = ref_str
     else:
-        overlap_ts = cached.index.max() - pd.Timedelta(days=overlap_days)
+        overlap_ts = cached.index.max() - pd.Timedelta(overlap_days, unit="D")
         fetch_start_str = max(overlap_ts, target_start_ts).strftime("%Y-%m-%d")
         fetch_end_str = ref_str
 

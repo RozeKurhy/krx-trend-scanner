@@ -40,7 +40,7 @@ FAST_LIFECYCLE_STATUS = "PHASE_13_RESEARCH_CLOSED / HIERARCHICAL_V01_PRODUCTION_
 # Pattern A Monthly History의 "최근 12개월(recent_12m)" 관측 구간과 동일한 calendar
 # range를 FAST Weekly History에도 적용한다 (기존 report 관례를 따름, row 수를 억지로
 # 맞추지는 않는다).
-WEEKLY_HISTORY_LOOKBACK = pd.Timedelta(days=52 * 7)
+WEEKLY_HISTORY_LOOKBACK = pd.Timedelta(52 * 7, unit="D")
 
 _INTERPRETATION_BY_STAGE = {
     "WATCH": "FAST 기준 명확한 초기 상승 전환 구조가 아직 확인되지 않았습니다.",

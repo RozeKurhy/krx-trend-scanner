@@ -75,7 +75,7 @@ def _sample_dates(daily: pd.DataFrame, stride: int) -> list[pd.Timestamp]:
     # Non-trading requested snapshot: the day after each sampled date (may or
     # may not itself be a trading day -- either way exercises the "requested
     # date has no exact daily row" path identically on both sides).
-    dates.extend([d + pd.Timedelta(days=1) for d in dates[:50]])
+    dates.extend([d + pd.Timedelta(1, unit="D") for d in dates[:50]])
     return sorted(set(pd.Timestamp(d) for d in dates))
 
 
@@ -195,7 +195,7 @@ def test_snapshot_context_matches_legacy_for_non_trading_requested_date():
 
     # Pick a handful of Sundays spread across the history.
     candidates = pd.date_range(daily.index[100], daily.index[-100], freq="90D")
-    sundays = [d + pd.Timedelta(days=(6 - d.weekday()) % 7) for d in candidates]
+    sundays = [d + pd.Timedelta((6 - d.weekday()) % 7, unit="D") for d in candidates]
 
     for snapshot_date in sundays:
         legacy = build_historical_snapshot(ticker, ticker, daily, snapshot_date, include_incomplete_periods=False)
@@ -244,7 +244,7 @@ def test_snapshot_context_matches_legacy_before_ticker_history_starts():
     daily = _load_daily(ticker)
     context = build_precomputed_ticker_context(ticker, ticker, daily)
 
-    snapshot_date = daily.index[0] - pd.Timedelta(days=30)
+    snapshot_date = daily.index[0] - pd.Timedelta(30, unit="D")
     legacy = build_historical_snapshot(ticker, ticker, daily, snapshot_date, include_incomplete_periods=False)
     fast = build_historical_snapshot_from_context(context, snapshot_date, include_incomplete_periods=False)
 
