@@ -4,9 +4,9 @@
 
 이 문서는 [데일리 업데이트 기준 V01](daily_update_contract_v01.md) §6.3이
 정의한 4단계의 상세 계약이다. 4단계는 1~3단계가 같은 기준일로 인증한
-입력을 받아 기존 스캐너, 공식 전략, Stock Report v0.5와 웹 정적 투영을
-일관되게 연결한다. 새 분석 엔진·산식·전략·리포트 버전을 만드는 단계가
-아니다. 개별 실행 결과와 검증 일지는 이 문서의 범위에 포함하지 않는다.
+입력을 받아 기존 스캐너, 공식 전략, Stock Report v0.7과 웹 정적 투영을
+일관되게 연결한다. 새 분석 엔진·산식·전략을 만드는 단계가 아니다. 개별 실행
+결과와 검증 일지는 이 문서의 범위에 포함하지 않는다.
 
 ## 2. 입력 경계와 공통 기준일
 
@@ -87,15 +87,15 @@ Phase 4 실행 경로에 추가하지 않는다. A FAST Core V2는 의사결정 
 
 `generate_stock_report()`와 `build_a_fast_core_section()`은
 `requested_as_of` 이하의 입력을 사용한다. 리포트는 외국인 수급, 펀더멘털,
-시장 RS와 A FAST Core V2를 기존 섹션으로 소비하며, v0.5의
-펀더멘털 섹션은 이미 생성된 F2/F3/F4 결과를 주입받을 뿐 OpenDART를
+시장 RS와 A FAST Core V2를 기존 섹션으로 소비한다. v0.7은 v0.5에서 정의한
+펀더멘털 섹션을 이어받아 이미 생성된 F2/F3/F4 결과를 주입받을 뿐 OpenDART를
 호출하거나 필터를 다시 계산하지 않는다. 업종 RS는 3단계 업종 RS 순위
 산출물을 소비하지 않는다. 리포트 생성기가 3단계에서 갱신한 업종 지수
 캐시와 `requested_as_of`와 날짜가 정확히 같은 섹터 구성 스냅샷으로 직접
 계산하며, 그 스냅샷이 없으면 업종 RS 섹션만 산출 불가(`DATA_UNAVAILABLE`)로
 두고 리포트 생성은 계속한다.
 
-Phase 4 COMMON 리포트는 Stock Report v0.5이며 출력 위치는 다음과 같다.
+Phase 4 COMMON 리포트는 Stock Report v0.7이며 출력 위치는 다음과 같다.
 
 ```text
 artifacts/reporting/stock_reports/{YYYYMMDD}/
@@ -125,7 +125,7 @@ artifacts/reporting/etf_stock_reports/{YYYYMMDD}/
 
 | 구분 | 입력 | 웹 출력 | 계약상 역할 |
 |---|---|---|---|
-| 종목 리포트 | 날짜별 Stock Report v0.5, PIT 메타데이터, 정확한 일별 종가 | `stock-index.json`, `stocks/*.json` | 필수 구성 요소 |
+| 종목 리포트 | 날짜별 Stock Report v0.7, PIT 메타데이터, 정확한 일별 종가 | `stock-index.json`, `stocks/*.json` | 필수 구성 요소 |
 | 마켓 RS | 공개 종목 리포트 웹 전달 데이터 | `market-ranking.json` | 필수 구성 요소 |
 | 전략 모니터 | `stock-index.json`, `stocks/*.json` | `strategy-monitor.json` | 필수 구성 요소 |
 | 섹터 RS | 업종 RS 권위, 메타데이터, 리포트 집합 | `sector-rs-ranking.json` | 필수 구성 요소 |
@@ -155,7 +155,7 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
 1~3단계의 동일 `target_as_of` 입력 인증
   → 4E 조율기
      → 4A 전체 PIT COMMON 스캐너
-     → 4B A FAST Core V2 + Stock Report v0.5
+     → 4B A FAST Core V2 + Stock Report v0.7
      → 4C 필수 분석 표시 결과 검증
      → 4D web/data 정적 투영
      → 전체 상태 합성
@@ -184,17 +184,18 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
   엄격히 더 이를 수 있다. 또한 공식 COMMON 총수와 emitted row 수의 관계를
   확인한다.
 
-### 4B. A FAST Core V2 및 Stock Report v0.5
+### 4B. A FAST Core V2 및 Stock Report v0.7
 
 - 입력: 4A scanner 결과, 3단계의 외국인 수급·펀더멘털·시장 RS, 업종 RS
   직접 계산용 업종 지수 캐시와 기준일 섹터 구성 스냅샷.
-- 처리: 후보를 scanner 결과에서만 받아 A FAST Core V2 상태와 Stock Report v0.5를
-  생성한다. 스캐너 재실행, 전략 재정의, 펀더멘털 수집·주입 또는 새 산식은 하지 않는다.
+- 처리: 후보를 scanner 결과에서만 받아 A FAST Core V2 상태와 Stock Report v0.7을
+  생성한다. Pattern B는 기존 evaluator·운영 계약을 쓰는 정보 분석이며 매매 전략
+  실행과 분리한다. 스캐너 재실행, 전략 재정의, 펀더멘털 수집 또는 새 산식은 하지 않는다.
 - 출력: `artifacts/reporting/stock_reports/{YYYYMMDD}/`의 Markdown/JSON.
 - 검증: 모든 발행 리포트의 `requested_as_of`와 date directory가
   `target_as_of`에 일치하고, `reference_market_date`가 4A scanner가 확정한
   실제 시장 기준 거래일과 같으며, A FAST Core의 strategy ID가 V2이고 report
-  version이 `0.5`인지 확인한다.
+  version이 `0.7`인지 확인한다.
 
 ### 4C. 필수 분석 표시 결과
 
@@ -271,6 +272,6 @@ web/data/
 - [분석 입력 갱신 기준 V01](daily_update_phase3_analysis_inputs_contract_v01.md)
 - [A FAST Core V2 현재 기본 전략](../patterns/pattern_a_fast/strategy/version_02/README.md)
 - [Stock Report 안내 및 버전 색인](../reporting/README.md)
-- [Stock Report v0.5 계약](../reporting/contract_v05.md)
+- [Stock Report v0.7 계약](../reporting/contract_v07.md)
 - [Official ETF 36 Stock Report v0.6 계약](../reporting/contract_v06.md)
 - [웹 영역 안내](../web/README.md)

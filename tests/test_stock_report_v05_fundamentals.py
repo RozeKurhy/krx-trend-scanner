@@ -223,16 +223,19 @@ def test_ttm_operating_income_and_net_income_use_f3_authority():
     assert section.summary.ttm_net_income_krw == 6_000_000_000
 
 
-def test_v05_generator_explicit_none_is_safe_and_schema_valid():
+def test_v07_generator_explicit_none_is_safe_and_schema_valid():
     report, _, _ = generate_stock_report(
         ticker="001540", as_of="2026-08-14", repo_root=ROOT,
         save_artifacts=False, fundamentals_section=None,
     )
     payload = report.to_dict()
-    assert report.report_version == "0.5"
+    assert report.report_version == "0.7"
+    assert payload["asset_type"] == "COMMON"
+    assert payload["pattern_b"]["evaluation_status"] in {"READY", "PARTIAL", "UNAVAILABLE"}
+    assert payload["a_fast_core"]["strategy_id"] == "PATTERN_A_FAST_FINAL_STRATEGY_V02"
     assert payload["fundamentals"]["data_status"] == DATA_UNAVAILABLE
     assert payload["fundamentals"]["reason"] == "FUNDAMENTALS_INPUT_NOT_PROVIDED"
-    schema = json.loads((ROOT / "docs/reporting/schema_v05.json").read_text(encoding="utf-8"))
+    schema = json.loads((ROOT / "docs/reporting/schema_v07.json").read_text(encoding="utf-8"))
     assert list(Draft7Validator(schema).iter_errors(payload)) == []
     markdown = render_markdown_report(report)
     assert "## 1.5. 펀더멘털 (Fundamentals)" in markdown
@@ -241,6 +244,8 @@ def test_v05_generator_explicit_none_is_safe_and_schema_valid():
     assert "최근 12개 분기" in markdown
     assert "최근 5개년" in markdown
     assert markdown.index("## 1. 현재 기술적 국면") < markdown.index("## 1.5. 펀더멘털") < markdown.index("## 2. 패스트 코어")
+    assert "## 1.6. Pattern B 정보 분석" in markdown
+    assert markdown.index("## 1.5. 펀더멘털") < markdown.index("## 1.6. Pattern B") < markdown.index("## 2. 패스트 코어")
 
     legacy, _, _ = generate_stock_report(
         ticker="001540", as_of="2026-08-14", repo_root=ROOT,
@@ -253,21 +258,21 @@ def test_v05_generator_explicit_none_is_safe_and_schema_valid():
         assert getattr(legacy, field) == getattr(report, field)
 
 
-def test_v05_generator_keeps_injected_section_identity():
+def test_v07_generator_keeps_injected_fundamentals_section_identity():
     f2, f3, f4 = _inputs()
     section = build_fundamentals_section(f2, f3, f4, AS_OF, "COMMON")
     report, _, _ = generate_stock_report(
         ticker="001540", as_of="2026-08-14", repo_root=ROOT,
         save_artifacts=False, fundamentals_section=section,
     )
-    assert report.report_version == "0.5"
+    assert report.report_version == "0.7"
     assert report.fundamentals is section
     assert "Filter PASS" in report.summary.bullet_points[1]
 
 
 def test_reference_market_date_param_defaults_to_canonical_as_of():
     """reference_market_date를 생략하면(None) 기존처럼 canonical_as_of를 그대로
-    사용해야 한다 (Phase 4B 이전 v0.4/v0.5 호출과의 하위 호환)."""
+    사용해야 한다 (legacy v0.4와 COMMON v0.7 호출의 하위 호환)."""
     report, _, _ = generate_stock_report(
         ticker="001540", as_of="2026-08-14", repo_root=ROOT, save_artifacts=False,
     )

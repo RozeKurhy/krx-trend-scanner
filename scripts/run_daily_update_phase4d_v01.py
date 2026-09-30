@@ -235,7 +235,7 @@ def validate_staging(stage_data: Path, target_as_of: str, reference_market_date:
         technical = report.get("technical_details") or {}
         if technical.get("requested_as_of") != target_as_of or technical.get("reference_market_date") != reference_market_date:
             raise Phase4DError(f"PHASE4D_STOCK_DATE_MISMATCH: {ticker}")
-        if technical.get("report_version") != "0.5":
+        if technical.get("report_version") != "0.7":
             raise Phase4DError(f"PHASE4D_STOCK_REPORT_VERSION_MISMATCH: {ticker}")
         if (report.get("strategy") or {}).get("id") not in {None, STRATEGY_ID}:
             raise Phase4DError(f"PHASE4D_STOCK_STRATEGY_MISMATCH: {ticker}")
@@ -244,6 +244,8 @@ def validate_staging(stage_data: Path, target_as_of: str, reference_market_date:
         document = documents[name]
         if document.get("requested_as_of") != target_as_of or document.get("reference_market_date") != reference_market_date:
             raise Phase4DError(f"PHASE4D_DATE_MISMATCH: {name}")
+    if (documents["health.json"].get("stock_reports") or {}).get("report_version") != "0.7":
+        raise Phase4DError("PHASE4D_STOCK_REPORT_VERSION_MISMATCH: health.json")
     market = documents["market-ranking.json"]
     strategy = documents["strategy-monitor.json"]
     if {item.get("ticker") for item in market.get("items", [])} != report_tickers:

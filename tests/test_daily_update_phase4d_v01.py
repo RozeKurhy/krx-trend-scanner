@@ -79,6 +79,7 @@ def _health_validation_fixture(
             },
             "stock_reports": {
                 "ready": True,
+                "report_version": "0.7",
                 "source_json_count": 1,
                 "web_compact_count": 1,
                 "web_index_available_report_count": 1,
@@ -89,7 +90,7 @@ def _health_validation_fixture(
         "technical_details": {
             "requested_as_of": target,
             "reference_market_date": target,
-            "report_version": "0.5",
+            "report_version": "0.7",
         },
         "strategy": {"id": phase4d.STRATEGY_ID},
     }
@@ -123,6 +124,24 @@ def test_validate_staging_rejects_fundamentals_integrity(monkeypatch: pytest.Mon
     monkeypatch.setattr(phase4d, "_read_json", lambda path: documents[path.relative_to(stage).as_posix()])
 
     with pytest.raises(phase4d.Phase4DError, match="PHASE4D_HEALTH_FUNDAMENTALS_INTEGRITY_FAILED"):
+        phase4d.validate_staging(stage, "2026-09-17", "2026-09-17")
+
+
+def test_validate_staging_rejects_legacy_report_version(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    stage, documents = _health_validation_fixture(tmp_path)
+    documents["stocks/000001.json"]["technical_details"]["report_version"] = "0.5"
+    monkeypatch.setattr(phase4d, "_read_json", lambda path: documents[path.relative_to(stage).as_posix()])
+
+    with pytest.raises(phase4d.Phase4DError, match="PHASE4D_STOCK_REPORT_VERSION_MISMATCH"):
+        phase4d.validate_staging(stage, "2026-09-17", "2026-09-17")
+
+
+def test_validate_staging_requires_v07_health_contract(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    stage, documents = _health_validation_fixture(tmp_path)
+    documents["health.json"]["stock_reports"]["report_version"] = "0.5"
+    monkeypatch.setattr(phase4d, "_read_json", lambda path: documents[path.relative_to(stage).as_posix()])
+
+    with pytest.raises(phase4d.Phase4DError, match="PHASE4D_STOCK_REPORT_VERSION_MISMATCH: health.json"):
         phase4d.validate_staging(stage, "2026-09-17", "2026-09-17")
 
 

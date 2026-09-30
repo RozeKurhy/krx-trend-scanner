@@ -21,6 +21,7 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SUPPORTED_STOCK_REPORT_VERSIONS = {"0.5", "0.7"}
 METADATA_PATH = ROOT / "data/reference/krx_instrument_metadata.csv"
 STOCK_REPORTS_ROOT = ROOT / "artifacts/reporting/stock_reports"
 ADJUSTED_STOCK_ROOT = ROOT / "data/market/adjusted/stocks"
@@ -51,6 +52,17 @@ def _read_json(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"JSON authority must be an object: {path}")
     return value
+
+
+def _validate_report_contract(report: dict[str, Any], source_path: Path) -> None:
+    version = report.get("report_version")
+    if not isinstance(version, str) or version not in SUPPORTED_STOCK_REPORT_VERSIONS:
+        raise ValueError(f"Unsupported Stock Report version {version!r}: {source_path}")
+    if version == "0.7" and (
+        report.get("asset_type") != "COMMON"
+        or not isinstance(report.get("pattern_b"), dict)
+    ):
+        raise ValueError(f"Stock Report v0.7 COMMON Pattern B contract missing: {source_path}")
 
 
 def _write_json(path: Path, value: dict[str, Any]) -> None:
@@ -402,8 +414,7 @@ def build_web_payload(
             raise ValueError(f"Stock Report date mismatch: {path}")
         if str(report.get("reference_market_date") or "")[:10] != effective_reference_market_date:
             raise ValueError(f"Stock Report reference_market_date mismatch: {path}")
-        if report.get("report_version") != "0.5":
-            raise ValueError(f"Stock Report v0.5 authority missing: {path}")
+        _validate_report_contract(report, path)
         fundamentals_source = report.get("fundamentals")
         if not isinstance(fundamentals_source, dict) or fundamentals_source.get("requested_as_of") != requested_as_of:
             raise ValueError(f"Stock Report fundamentals date mismatch: {path}")

@@ -82,7 +82,7 @@ foreign_flow_daily_{YYYYMMDD}_meta.json
 
 **현재 재사용 대상**: OpenDART 원천 → `FilingRegistry` → F2 → F3 → F4
 → `FundamentalsSection` 생성 계층(`src/trend_scanner/reporting/fundamentals_report.py`).
-생성된 섹션은 Stock Report v0.5에 주입하며, `stock_report.py`는 이를 소비·렌더링한다.
+생성된 섹션은 COMMON Stock Report v0.7에 주입하며, `stock_report.py`는 이를 소비·렌더링한다.
 
 **계약**:
 
@@ -257,12 +257,12 @@ target_as_of보다 미래인 스냅샷만 존재
 OpenDART 원천 수화(hydration)
   → Fundamentals 결과(F2/F3/F4)
   → FundamentalsSection
-  → Stock Report v0.5에 주입
+  → COMMON Stock Report v0.7에 주입
 ```
 
 `stock_report.py`는 `FundamentalsSection`을 파라미터로 받아 렌더링만
 한다(`_render_fundamentals_section()`). `fundamentals_section`이
-주입되지 않고 v0.5 출력이 요청된 경우에만
+주입되지 않고 COMMON v0.7 출력이 요청된 경우에만
 `build_fundamentals_section(None, None, None, requested_as_of=...)`을
 호출하는데, 이때도 실제 F2/F3/F4 원천 데이터 없이 빈 섹션을 만드는
 경로일 뿐 OpenDART를 직접 호출하지 않는다. `stock_report.py` 자체는

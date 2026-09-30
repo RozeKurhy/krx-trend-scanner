@@ -30,7 +30,8 @@ MARKET_AUTHORITY_MANIFEST_PATH = ROOT / "data/market/rolling_authority/manifest.
 METADATA_PATH = ROOT / "data/reference/krx_instrument_metadata.parquet"
 FUNDAMENTALS_PRODUCTION_ROOT = ROOT / "artifacts/fundamentals/production"
 STOCK_REPORTS_ROOT = ROOT / "artifacts/reporting/stock_reports"
-STOCK_REPORT_SCHEMA_PATH = ROOT / "docs/reporting/schema_v05.json"
+STOCK_REPORT_SCHEMA_V05_PATH = ROOT / "docs/reporting/schema_v05.json"
+STOCK_REPORT_SCHEMA_PATH = ROOT / "docs/reporting/schema_v07.json"
 WEB_STOCK_DATA_ROOT = ROOT / "web/data"
 VALID_FUNDAMENTALS_DATA_STATUSES = {"READY", "PARTIAL", "DATA_UNAVAILABLE", "NOT_APPLICABLE"}
 
@@ -435,8 +436,12 @@ def _stock_report_readiness(
     source_json_dir = stock_reports_dir / "json"
     source_json_paths = sorted(source_json_dir.glob("*.json")) if source_json_dir.exists() else []
     source_markdown_count = _count_stock_report_artifacts(stock_reports_dir)
-    schema_validator = Draft7Validator(_read_json(STOCK_REPORT_SCHEMA_PATH))
+    schema_validators = {
+        "0.5": Draft7Validator(_read_json(STOCK_REPORT_SCHEMA_V05_PATH)),
+        "0.7": Draft7Validator(_read_json(STOCK_REPORT_SCHEMA_PATH)),
+    }
     v05_count = 0
+    v07_count = 0
     schema_errors = 0
     fundamentals_integrated_count = 0
     for path in source_json_paths:
@@ -445,15 +450,25 @@ def _stock_report_readiness(
         except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
             schema_errors += 1
             continue
-        errors = list(schema_validator.iter_errors(report))
-        schema_errors += len(errors)
+        report_version = report.get("report_version")
+        schema_validator = (
+            schema_validators.get(report_version)
+            if isinstance(report_version, str)
+            else None
+        )
+        if schema_validator is None:
+            schema_errors += 1
+        else:
+            schema_errors += len(list(schema_validator.iter_errors(report)))
         fundamentals = report.get("fundamentals")
         if (
-            report.get("report_version") == "0.5"
-            and report.get("requested_as_of") == requested_as_of
+            report.get("requested_as_of") == requested_as_of
             and report.get("reference_market_date") == effective_reference_market_date
         ):
-            v05_count += 1
+            if report_version == "0.5":
+                v05_count += 1
+            elif report_version == "0.7":
+                v07_count += 1
         if (
             isinstance(fundamentals, Mapping)
             and fundamentals.get("requested_as_of") == requested_as_of
@@ -488,10 +503,15 @@ def _stock_report_readiness(
             web_index = {}
     web_index_available_count = web_index.get("available_report_count")
     expected_report_count = len(source_json_paths)
+    effective_report_version = (
+        "0.7" if expected_report_count > 0 and v07_count == expected_report_count
+        else "0.5" if expected_report_count > 0 and v05_count == expected_report_count
+        else None
+    )
     ready = all((
         expected_report_count > 0,
         source_markdown_count == expected_report_count,
-        v05_count == expected_report_count,
+        effective_report_version is not None,
         fundamentals_integrated_count == expected_report_count,
         schema_errors == 0,
         len(web_paths) == expected_report_count,
@@ -503,7 +523,9 @@ def _stock_report_readiness(
         "status": "NORMAL" if ready else "CHECK_REQUIRED",
         "source_json_count": len(source_json_paths),
         "source_markdown_count": source_markdown_count,
+        "report_version": effective_report_version,
         "v05_count": v05_count,
+        "v07_count": v07_count,
         "schema_errors": schema_errors,
         "fundamentals_integrated_count": fundamentals_integrated_count,
         "web_compact_count": len(web_paths),
@@ -527,10 +549,13 @@ def _build_downstream_section(
     elif fundamentals_status == "NORMAL":
         if readiness is not None and readiness.get("ready") is True:
             status = "NORMAL"
-            reason = "Stock Report v0.5 and Web Fundamentals artifacts are complete."
+            reason = (
+                f"Stock Report v{readiness.get('report_version')} and Web Fundamentals artifacts are complete."
+            )
         elif readiness is not None:
             status = "CHECK_REQUIRED"
-            reason = "Stock Report v0.5 and Web Fundamentals artifacts are incomplete."
+            version = readiness.get("report_version") or "0.7"
+            reason = f"Stock Report v{version} and Web Fundamentals artifacts are incomplete."
         else:
             status = "UNKNOWN"
             reason = "No WEB-01 readiness authority confirms downstream completion."
@@ -547,12 +572,14 @@ def _build_downstream_section(
         value["existing_artifact_count"] = existing_artifact_count
         value["artifact_source"] = _source(stock_reports_dir, as_of=requested_as_of)
     if readiness is not None:
-        value["report_version"] = "0.5"
+        value["report_version"] = readiness.get("report_version")
         value["ready"] = readiness.get("ready")
         for key in (
             "source_json_count",
             "source_markdown_count",
+            "report_version",
             "v05_count",
+            "v07_count",
             "schema_errors",
             "fundamentals_integrated_count",
             "web_compact_count",

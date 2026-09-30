@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 4B production runner: exact-target A FAST Core V2 + Stock Report v0.5.
+"""Phase 4B production runner: exact-target A FAST Core V2 + Stock Report v0.7.
 
 Consumes only the 4A Scanner's exact-target artifacts
 (``artifacts/patterns/pattern_a/production/scanner/pattern_a_universe_scan_{TARGET}.csv``
@@ -65,7 +65,8 @@ logger = logging.getLogger("run_daily_update_phase4b_v01")
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
-EXPECTED_REPORT_VERSION = "0.5"
+EXPECTED_REPORT_VERSION = "0.7"
+SUPPORTED_PREVIOUS_REPORT_VERSIONS = {"0.5", EXPECTED_REPORT_VERSION}
 LATEST_QUARTER_OPERATING_PROFIT_POSITIVE = "POSITIVE"
 LATEST_QUARTER_OPERATING_PROFIT_NON_POSITIVE = "NON_POSITIVE"
 LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE = "UNAVAILABLE"
@@ -181,7 +182,8 @@ def audit_previous_corpus(previous_dir: Path) -> PreviousCorpusAudit:
 
     PHASE4B_PRODUCTION_DEFAULT_FINAL_FIX_V01: continuity 계산의 authority가 되는
     선택된 previous corpus 단 하나에 대해 최소 무결성을 fail-closed로 검증한다
-    (ticker 유효/중복 없음/report_version==0.5/requested_as_of==디렉터리 날짜/
+    (ticker 유효/중복 없음/report_version은 legacy v0.5 또는 v0.7 /
+    requested_as_of==디렉터리 날짜/
     strategy_id==PATTERN_A_FAST_FINAL_STRATEGY_V02). previous corpus 선택 로직
     (``find_previous_canonical_report_dir``) 자체는 확대하지 않는다 -- 이미
     선택된 단 하나의 후보만 검증한다.
@@ -204,10 +206,11 @@ def audit_previous_corpus(previous_dir: Path) -> PreviousCorpusAudit:
             raise Phase4BError(f"PHASE4B_PREVIOUS_CORPUS_DUPLICATE_TICKER: {raw_ticker} in {previous_dir}")
         seen_tickers.add(raw_ticker)
 
-        if payload.get("report_version") != EXPECTED_REPORT_VERSION:
+        if payload.get("report_version") not in SUPPORTED_PREVIOUS_REPORT_VERSIONS:
             raise Phase4BError(
                 f"PHASE4B_PREVIOUS_CORPUS_REPORT_VERSION_MISMATCH: {raw_ticker} "
-                f"expected {EXPECTED_REPORT_VERSION!r}, got {payload.get('report_version')!r} in {p}"
+                f"expected one of {sorted(SUPPORTED_PREVIOUS_REPORT_VERSIONS)!r}, "
+                f"got {payload.get('report_version')!r} in {p}"
             )
         if payload.get("requested_as_of") != expected_as_of:
             raise Phase4BError(
@@ -538,7 +541,7 @@ def generate_candidate_reports(
     max_workers: int = 1,
     instrument_metadata_resolver: Any | None = None,
 ) -> list[GenerationOutcome]:
-    """staging_dir에 후보별 Stock Report v0.5를 생성한다. 개별 실패는 수집해 계속 진행하고
+    """staging_dir에 후보별 COMMON Stock Report v0.7을 생성한다. 개별 실패는 수집해 계속 진행하고
     (전체 생성 -> 전체 검증 -> promote 흐름을 위해), 최종 승격 여부는 호출자가 판단한다.
 
     ``max_workers <= 1``(기본값)이면 기존과 동일한 순차 in-process 경로를 그대로

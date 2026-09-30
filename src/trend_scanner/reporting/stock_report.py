@@ -1,4 +1,4 @@
-"""Stock Report Generator Engine (Contract v0.5).
+"""Stock Report Generator Engine (Contracts v0.4, v0.5, and v0.7).
 
 로컬 Parquet 일봉 캐시와 정본 아티팩트만을 활용하여 단일 종목의 종합 분석 리포트를 생성하고
 A FAST Core V2 전략 상태와 선택적 Fundamentals context를 포함한 JSON 및 GitHub
@@ -77,7 +77,7 @@ from trend_scanner.backtest.snapshot_context import (
 logger = logging.getLogger(__name__)
 
 # Preserve the v0.4 API for callers that omit the new injection argument while
-# allowing an explicit ``None`` to request the v0.5 safe DATA_UNAVAILABLE
+# allowing an explicit ``None`` to request the safe DATA_UNAVAILABLE
 # fundamentals section.  v0.4 artifacts and their schema remain untouched.
 _FUNDAMENTALS_UNSET = object()
 
@@ -359,7 +359,7 @@ def _format_fundamentals_pct(value: Any) -> str:
 
 
 def _render_fundamentals_section(section: FundamentalsSection) -> list[str]:
-    """Render the additive v0.5 fundamentals block after Current Snapshot."""
+    """Render the fundamentals block after Current Snapshot."""
     summary = section.summary
     lines = [
         "## 1.5. 펀더멘털 (Fundamentals)",
@@ -850,10 +850,11 @@ def generate_stock_report(
 ) -> tuple[StockReport, Path | None, Path | None]:
     """단일 종목 리포트를 생성한다.
 
-    Fundamentals are an additive, pure injection.  The legacy omitted-call
-    path remains v0.4 for archived/regression callers; passing either a section
-    or explicit ``None`` opts into v0.5 (``None`` becomes a safe unavailable
-    section without any provider hydration).
+    Fundamentals are an additive, pure injection. The legacy omitted-call
+    path remains v0.4 for archived/regression callers. Passing a section or
+    explicit ``None`` opts COMMON reports into v0.7, which adds informational
+    Pattern B; non-COMMON reports retain v0.5. Explicit ``None`` creates a safe
+    unavailable fundamentals section without provider hydration.
 
     ``reference_market_date``: 시장 거래일 표기(freshness 등)에 쓰는 별도 기준일.
     생략하면(``None``) 기존처럼 ``canonical_as_of``를 그대로 사용한다(하위 호환).
@@ -864,9 +865,9 @@ def generate_stock_report(
     ``daily_override``: 명시적으로 주입된 exact local daily frame을 공통 리포트
     계산에 사용한다. ETF v0.6에서만 raw KRX OHLCV를 주입해 조정/원시 세션 집합이
     맞지 않는 경우에도 nearest/proxy 보정 없이 공통 계산을 재사용한다. 생략한
-    일반 v0.5/v0.4 호출 경로는 기존 Repository V2/legacy loader 동작을 유지한다.
+    일반 v0.7/v0.5/v0.4 호출 경로는 기존 Repository V2/legacy loader 동작을 유지한다.
     """
-    emit_v05 = fundamentals_section is not _FUNDAMENTALS_UNSET
+    emit_fundamentals = fundamentals_section is not _FUNDAMENTALS_UNSET
     root_path = Path(repo_root) if repo_root else Path(__file__).resolve().parent.parent.parent.parent
     clean_ticker = _format_ticker(ticker)
     production_market_calendar = load_rolling_production_market_calendar(root_path)
@@ -922,11 +923,11 @@ def generate_stock_report(
     else:
         metadata_provenance_mode = "DATA_UNAVAILABLE"
 
-    if emit_v05 and fundamentals_section is None:
+    if emit_fundamentals and fundamentals_section is None:
         fundamentals_section = build_fundamentals_section(
             None, None, None, requested_as_of=canonical_as_of, asset_type=asset_type,
         )
-    if not emit_v05:
+    if not emit_fundamentals:
         fundamentals_section = None
 
     # 3. Daily Slice 생성 (Lookahead 방지)
@@ -1346,7 +1347,7 @@ def generate_stock_report(
     )
 
     pattern_b_section = None
-    if emit_v05:
+    if emit_fundamentals:
         pattern_b_section = build_pattern_b_section(
             ticker=clean_ticker,
             name=name,
@@ -1447,7 +1448,11 @@ def generate_stock_report(
     )
 
     report = StockReport(
-        report_version="0.5" if emit_v05 else "0.4",
+        report_version=(
+            "0.7" if emit_fundamentals and asset_type == AssetType.COMMON.value
+            else "0.5" if emit_fundamentals
+            else "0.4"
+        ),
         ticker=clean_ticker,
         name=name,
         market=market,

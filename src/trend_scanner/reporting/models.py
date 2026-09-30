@@ -1,8 +1,8 @@
-"""Stock Report Data Models (Contract v0.5).
+"""Stock Report Data Models (Contracts v0.4, v0.5, and v0.7).
 
 종목 리포트의 JSON 직렬화 및 구조 정의 데이터 클래스를 제공한다.
-v0.5에서는 기존 v0.4 구조에 독립적인 Fundamentals(fundamentals) 섹션을
-additive로 제공한다. v0.4 historical artifacts의 구조는 변경하지 않는다.
+v0.5 adds Fundamentals and v0.7 adds COMMON-only informational Pattern B to
+the existing v0.4 structure. Historical artifacts retain their original shape.
 """
 
 from __future__ import annotations
@@ -573,7 +573,8 @@ class StockReport:
         """Convert report to JSON-serializable dictionary."""
         payload = asdict(self)
         # Keep legacy v0.4 serialization byte-for-byte compatible when the
-        # additive section was not injected; v0.5 always carries the section.
+        # additive sections were not injected. The v0.7 COMMON path supplies
+        # both fundamentals and Pattern B explicitly.
         if self.fundamentals is None:
             payload.pop("fundamentals", None)
         if self.pattern_b is None:

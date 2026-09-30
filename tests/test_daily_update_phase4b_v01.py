@@ -113,7 +113,7 @@ def _write_previous_corpus(
     previous_date: str,
     entries: list[tuple[str, str, str | None]],
     *,
-    report_version: str = "0.5",
+    report_version: str = "0.7",
     requested_as_of: str | None = None,
     strategy_id: str | None = _VALID_STRATEGY_ID,
     duplicate_last: bool = False,
@@ -167,7 +167,7 @@ def _fake_generate_stock_report(
     json_dir = Path(output_dir) / "json"
     json_dir.mkdir(parents=True, exist_ok=True)
     payload = {
-        "report_version": "0.5",
+        "report_version": "0.7",
         "requested_as_of": as_of,
         "reference_market_date": reference_market_date,
         "a_fast_core": {"strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02"},
@@ -177,7 +177,7 @@ def _fake_generate_stock_report(
     md_path = Path(output_dir) / f"{ticker}.md"
     md_path.write_text(f"# {ticker}", encoding="utf-8")
     fake_report = SimpleNamespace(
-        report_version="0.5",
+        report_version="0.7",
         a_fast_core=SimpleNamespace(strategy_id="PATTERN_A_FAST_FINAL_STRATEGY_V02"),
         requested_as_of=as_of,
         reference_market_date=reference_market_date,
@@ -869,6 +869,17 @@ def test_c_previous_corpus_duplicate_ticker_fails_closed(tmp_path):
     )
     with pytest.raises(phase4b.Phase4BError, match="PHASE4B_PREVIOUS_CORPUS_DUPLICATE_TICKER"):
         phase4b.audit_previous_corpus(corpus_dir)
+
+
+def test_previous_corpus_legacy_v05_remains_usable_for_position_continuity(tmp_path):
+    corpus_dir = _write_previous_corpus(
+        tmp_path, PREVIOUS, [("900000", "COMMON", "OPEN")], report_version="0.5",
+    )
+
+    audit = phase4b.audit_previous_corpus(corpus_dir)
+
+    assert audit.common == {"900000"}
+    assert audit.open_tickers == {"900000"}
 
 
 def test_d_previous_corpus_wrong_report_version_fails_closed(tmp_path):

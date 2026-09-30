@@ -212,6 +212,8 @@ def test_pattern_b_compact_projection_is_verbatim_and_does_not_recalculate(expor
     report_dir, _requested_as_of = exporter._resolve_report_directory()
     source_path = next((report_dir / "json").glob("005930_*.json"))
     source = json.loads(source_path.read_text(encoding="utf-8"))
+    source["report_version"] = "0.7"
+    source["asset_type"] = "COMMON"
     source["pattern_b"] = {
         "applicability": "APPLICABLE",
         "evaluation_status": "READY",
@@ -220,6 +222,7 @@ def test_pattern_b_compact_projection_is_verbatim_and_does_not_recalculate(expor
         "monthly_history": [{"as_of": source["reference_market_date"], "pattern_b_state": "NORMAL"}],
         "provenance": {"market_data_authority": "MarketDataRepositoryV2"},
     }
+    exporter._validate_report_contract(source, source_path)
     monkeypatch.setattr(exporter, "_load_exact_daily_close", lambda *_args: None)
 
     compact = exporter._compact_report(source, source_path)
@@ -227,6 +230,15 @@ def test_pattern_b_compact_projection_is_verbatim_and_does_not_recalculate(expor
     assert compact["pattern_b"] == source["pattern_b"]
     assert not hasattr(exporter, "evaluate_pattern_b")
     assert all(row["as_of"] <= source["reference_market_date"] for row in compact["pattern_b"]["monthly_history"])
+
+
+def test_v07_export_contract_fails_closed_without_common_pattern_b(exporter, tmp_path):
+    source_path = tmp_path / "005930.json"
+
+    with pytest.raises(ValueError, match="v0.7 COMMON Pattern B contract missing"):
+        exporter._validate_report_contract(
+            {"report_version": "0.7", "asset_type": "COMMON"}, source_path,
+        )
 
 
 def test_exporter_writes_index_and_one_json_per_available_report(tmp_path, exporter):
@@ -257,7 +269,7 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-11"' in html
+    assert 'href="./css/app.css?v=web-ui-density-12"' in html
     assert 'href="./css/app.css?v=web-ui-density-11"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
@@ -265,6 +277,7 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert '#9f1d2f' in favicon
     assert 'src="./js/report.js?v=web-02d-window-13"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
+    assert html.count("web-ui-density-12") == 1
     assert html.count("web-02d-window-13") == 1
     assert index_html.count("web-ui-density-11") == 1
     assert "web-03a-final-1" not in html
@@ -288,6 +301,8 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert "차트 바로가기" not in html
     assert "naver_chart" in js
     assert "toss_chart" not in js
+
+
     assert html.count('id="naver-link"') == 1
     assert html.count('id="naver-chart-link"') == 1
     assert html.count('id="dart-link"') == 1
@@ -430,6 +445,18 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert "signedValueClass" in js
     assert "--market-down-blue" in css
     assert "history[-12:]" not in (ROOT / "scripts/export_stock_report_web.py").read_text(encoding="utf-8")
+
+
+def test_report_cards_share_three_column_desktop_rows():
+    html = (ROOT / "web/report.html").read_text(encoding="utf-8")
+    css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
+
+    assert html.count('class="report-card-row"') == 2
+    assert "report-card-row--secondary" not in html
+    assert ".report-card-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }" in css
+    assert "report-card-row--secondary" not in css
+    assert ".report-card-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }" in css
+    assert ".report-summary-layout, .report-card-row, .report-detail-grid { grid-template-columns: 1fr; }" in css
 
 
 def test_report_request_state_is_distinct_from_available_reports(payload):
