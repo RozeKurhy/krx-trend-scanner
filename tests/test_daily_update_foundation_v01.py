@@ -302,7 +302,7 @@ def test_repository_validator_still_blocks_etf_session_mismatch_after_lower_boun
     assert result["failures"] == [{"ticker": etf, "error": "REPOSITORY_V2_TRADING_SESSION_MISMATCH"}]
 
 
-def test_repository_validator_keeps_all_28_etf_validation_targets(monkeypatch, tmp_path):
+def test_repository_validator_keeps_all_36_etf_validation_targets(monkeypatch, tmp_path):
     calls = []
 
     class RecordingRepository:
@@ -329,7 +329,7 @@ def test_repository_validator_keeps_all_28_etf_validation_targets(monkeypatch, t
     )
 
     assert result["status"] == "PASS"
-    assert result["checked_ticker_count"] == 28
+    assert result["checked_ticker_count"] == 36
     assert {ticker for ticker, _start, _end in calls} == set(ETF_VALIDATED_ACCEPTANCE_TICKERS)
     assert {start for _ticker, start, _end in calls} == {ETF_ADJUSTED_COVERAGE_START}
 
@@ -830,9 +830,9 @@ def test_etf_adjusted_uses_ticker_presence_to_remove_prelisting_gap_and_keep_tai
     assert "2025-10-27" not in record["missing_dates"]
 
 
-def test_etf_adjusted_scope_remains_28_without_ticker_hardcode():
+def test_etf_adjusted_scope_matches_official_36_without_ticker_hardcode():
     source = Path("src/trend_scanner/data/rolling_market_data_refresh.py").read_text(encoding="utf-8")
-    assert len(ETF_VALIDATED_ACCEPTANCE_TICKERS) == 28
+    assert len(ETF_VALIDATED_ACCEPTANCE_TICKERS) == 36
     updater_source = source[source.index("class RollingEtfAdjustedUpdater"):]
     assert "0115D0" not in updater_source
 

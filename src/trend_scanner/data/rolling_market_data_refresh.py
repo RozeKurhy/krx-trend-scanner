@@ -23,8 +23,8 @@ Four independent legs make up one refresh cycle:
 * ``etf_raw``        -- ETF whole-market snapshots, newly separated from the
   bundled acceptance script so it can run independently
   (see ``scripts/backfill_krx_raw_etf_v01.py``).
-* ``etf_adjusted``   -- adjusted OHLC for the fixed, Repository-V2-validated
-  28-ticker ETF scope. Never routes through a PIT/expected-coverage gate (the
+* ``etf_adjusted``   -- adjusted OHLC for the official, Repository-V2-validated
+  36-ticker ETF scope. Never routes through a PIT/expected-coverage gate (the
   original acceptance script fetches the full requested range directly), so
   it rolls forward safely with no calendar dependency.
 * ``common_adjusted`` -- adjusted OHLC for the full COMMON population. This is
@@ -155,18 +155,18 @@ DEFAULT_EMPTY_TICKER_INVESTIGATION_PATH = Path(
 # The four legs a target boundary must clear before it can be certified.
 REQUIRED_LEGS = ("common_raw", "common_adjusted", "etf_raw", "etf_adjusted")
 
-# The fixed, Repository-V2-validated ETF adjusted-price scope (directive
-# section 19: "임의 확장하지 않는다"). This MUST stay identical to
+# The official 36-product, Repository-V2-validated ETF adjusted-price scope.
+# This MUST stay identical to
 # ``scripts/backfill_krx_etf_repository_v2_v01.py::ACCEPTANCE_TICKERS`` --
 # ``tests/test_rolling_market_data_refresh_v01.py`` asserts the two never
 # drift apart, the same allowlist+drift-test pairing already used for
 # ``PATTERN_A_TEMPORAL_FIELDS``.
 ETF_VALIDATED_ACCEPTANCE_TICKERS = (
-    "0115D0", "069500", "091160", "091170", "091180", "102960", "102970",
-    "117460", "117680", "117700", "140700", "140710", "229200", "244580",
-    "266410", "300950", "305720", "226490", "139230", "139260",
-    "157490", "143860", "266390", "266360", "133690", "360750",
-    "241180", "192090",
+    "069500", "229200", "133690", "360750", "241180", "283580", "453810", "245710",
+    "256440", "195980", "379790", "251350", "091160", "091180", "091170", "102970",
+    "140700", "117700", "117680", "117460", "139230", "157490", "143860", "266410",
+    "228790", "228810", "228800", "300950", "305720", "449450", "367760", "411060",
+    "144600", "160580", "261220", "271060",
 )
 
 
@@ -2719,12 +2719,12 @@ def classify_adjusted_history_transition(
 
 
 class RollingEtfAdjustedUpdater:
-    """ETF adjusted-price rolling leg for the fixed 28-ticker validated scope.
+    """ETF adjusted-price rolling leg for the official 36-ticker validated scope.
 
     Unlike COMMON, this never routed through ``resolve_expected_coverage``/PIT -- the original
     acceptance script fetches the full requested range directly from Naver each cycle -- so it has no
     frozen-calendar dependency and rolls forward safely. Never expands beyond
-    ``ETF_VALIDATED_ACCEPTANCE_TICKERS``; scope expansion is a separate, unapproved phase.
+    ``ETF_VALIDATED_ACCEPTANCE_TICKERS``.
     """
 
     def __init__(

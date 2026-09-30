@@ -9,7 +9,6 @@ from scripts.backfill_etf_adjusted_scope_expansion_v01 import (
     fetch_missing_adjusted,
     validate_adjusted_frame,
 )
-from trend_scanner.data.rolling_market_data_refresh import ETF_VALIDATED_ACCEPTANCE_TICKERS
 
 
 def _frame(start: str = REQUESTED_START, end: str = "2026-09-11") -> pd.DataFrame:
@@ -25,14 +24,12 @@ def _frame(start: str = REQUESTED_START, end: str = "2026-09-11") -> pd.DataFram
     )
 
 
-def test_new_scope_is_exactly_the_fixed_11_and_preserves_existing_17() -> None:
+def test_previous_scope_expansion_remains_an_11_plus_17_historical_set() -> None:
     assert len(NEW_ETF_TICKERS) == 11
     assert len(set(NEW_ETF_TICKERS)) == 11
     assert len(EXISTING_ETF_TICKERS) == 17
-    assert set(EXISTING_ETF_TICKERS).issubset(ETF_VALIDATED_ACCEPTANCE_TICKERS)
     assert set(NEW_ETF_TICKERS).isdisjoint(EXISTING_ETF_TICKERS)
     assert len(set(NEW_ETF_TICKERS) | set(EXISTING_ETF_TICKERS)) == 28
-    assert set(ETF_VALIDATED_ACCEPTANCE_TICKERS) == set(NEW_ETF_TICKERS) | set(EXISTING_ETF_TICKERS)
 
 
 def test_adjusted_frame_validation_requires_target_end_and_history() -> None:
