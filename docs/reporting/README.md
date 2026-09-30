@@ -26,8 +26,8 @@ v0.5 계약은 한 문서가 아니다. 기반 계약 위에 버전별 추가분
 | 2 | [v0.3](contract_v03.md) | 시장 RS (`relative_strength`) | [schema_v03.json](schema_v03.json) |
 | 3 | [v0.4](contract_v04.md) | 업종 RS (`sector_relative_strength`), 가격 원천 `MarketDataRepositoryV2` | [schema_v04.json](schema_v04.json) |
 | 4 | [v0.5](contract_v05.md) | COMMON 펀더멘털 (`fundamentals`) | [schema_v05.json](schema_v05.json) |
-| 5 | [ETF v0.6](contract_v06.md) | Official ETF 36의 Julia V1 전략 및 ETF PIT 적격성 | [schema_v06.json](schema_v06.json) |
-| 6 | [COMMON v0.7](contract_v07.md) | COMMON Pattern B 정보 분석 (`pattern_b`) | [schema_v07.json](schema_v07.json) |
+| 5 | [v0.6](contract_v06.md) | Official ETF 36의 Julia V1 전략 및 ETF PIT 적격성 | [schema_v06.json](schema_v06.json) |
+| 6 | [v0.7](contract_v07.md) | COMMON Pattern B 정보 분석 (`pattern_b`) | [schema_v07.json](schema_v07.json) |
 
 버전별 스키마는 해당 버전 리포트의 검증과 기존 테스트에 쓰이므로 제자리에
 유지한다. 현재 COMMON 리포트 검증에는 `schema_v07.json`을 쓴다. 기반 공통 섹션의
