@@ -1,0 +1,908 @@
+{
+  "review_id": "JULIA_V00_ETF_OFFICIAL_ADOPTION_V01",
+  "review_date": "2026-09-30",
+  "baseline_commit": "8db83df396c9469fb7f169431822272afea5d4eb",
+  "strategy_id": "JULIA_STRATEGY_V00",
+  "asset_scope": "OFFICIAL ETF 36 ONLY",
+  "primary_scenario": {
+    "initial_capital_krw": 250000000,
+    "position_cap_krw": 15000000
+  },
+  "sizing_sensitivity": {
+    "position_cap_krw": 25000000,
+    "diagnostic_only": true
+  },
+  "final_verdict": "OFFICIAL_STRATEGY_ADOPTED",
+  "official_status": "OFFICIAL_STRATEGY_ADOPTED — ETF ONLY",
+  "general_stock_status": "NOT ADOPTED / RETIRED AS GENERAL-STOCK OFFICIAL STRATEGY",
+  "default_strategy_remains": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "automatic_order_approval": false,
+  "relative_mdd_control_gate_applied": false,
+  "criteria_sources": [
+    "docs/validation/official_strategy_adoption_criteria.md",
+    "docs/validation/backtest_common_rules.md",
+    "docs/strategies/strategy_lifecycle.md"
+  ],
+  "cost_contract": {
+    "buy_commission_rate": 0.00015,
+    "sell_commission_rate": 0.00015,
+    "buy_slippage_rate": 0.001,
+    "sell_slippage_rate": 0.001,
+    "sell_tax_rate_applied_to_official_pnl": 0.0,
+    "trade_tax_excluded": true
+  },
+  "official_universe": {
+    "frozen_count": 36,
+    "exact_set_match_to_current_repository_constant": true,
+    "group_counts": {
+      "MARKET": 12,
+      "SECTOR": 19,
+      "COMMODITY": 5
+    },
+    "frozen_major_category_counts": {
+      "MARKET_INDEX": 12,
+      "SECTOR_INDEX": 19,
+      "COMMODITY_RESOURCE": 5
+    },
+    "duplicate_count": 0,
+    "ticker_474800_absent": true,
+    "effective_span_row_count": 180,
+    "effective_span_rows_per_window": {
+      "P1": 36,
+      "P2-1": 36,
+      "P2-2": 36,
+      "P3-1": 36,
+      "P3-2": 36
+    },
+    "evaluable_counts_by_window": {
+      "P1": {
+        "official_universe_etfs": 36,
+        "evaluable_etfs": 36,
+        "not_evaluable_etfs": 0
+      },
+      "P2-1": {
+        "official_universe_etfs": 36,
+        "evaluable_etfs": 34,
+        "not_evaluable_etfs": 2
+      },
+      "P2-2": {
+        "official_universe_etfs": 36,
+        "evaluable_etfs": 36,
+        "not_evaluable_etfs": 0
+      },
+      "P3-1": {
+        "official_universe_etfs": 36,
+        "evaluable_etfs": 34,
+        "not_evaluable_etfs": 2
+      },
+      "P3-2": {
+        "official_universe_etfs": 36,
+        "evaluable_etfs": 36,
+        "not_evaluable_etfs": 0
+      }
+    },
+    "not_evaluable_span_rows": [
+      {
+        "window_id": "P2-1",
+        "ticker": "449450",
+        "ETF_name": "PLUS K방산",
+        "reason": "STRATEGY_READY_AFTER_WINDOW_END",
+        "comparison_effective_start": "2026-01-02"
+      },
+      {
+        "window_id": "P2-1",
+        "ticker": "453810",
+        "ETF_name": "KODEX 인도Nifty50",
+        "reason": "STRATEGY_READY_AFTER_WINDOW_END",
+        "comparison_effective_start": "2026-04-03"
+      },
+      {
+        "window_id": "P3-1",
+        "ticker": "449450",
+        "ETF_name": "PLUS K방산",
+        "reason": "STRATEGY_READY_AFTER_WINDOW_END",
+        "comparison_effective_start": "2026-01-02"
+      },
+      {
+        "window_id": "P3-1",
+        "ticker": "453810",
+        "ETF_name": "KODEX 인도Nifty50",
+        "reason": "STRATEGY_READY_AFTER_WINDOW_END",
+        "comparison_effective_start": "2026-04-03"
+      }
+    ],
+    "post_result_universe_changes": 0
+  },
+  "source_authorities": {
+    "closure_verdict": "ETF_36_ZERO_OHLC_SENTINEL_CLEAN_ELIGIBILITY_CLOSURE_PASS",
+    "closure_validation_replay_contract": true,
+    "closure_finalizer_passed": true,
+    "closure_finalizer_errors": [],
+    "certified_backtest_verdict": "ETF_36_AFAST_V2_VS_JULIA_5WINDOW_SIMPLE_BACKTEST_CERTIFIED_PASS",
+    "realistic_portfolio_verdict": "ETF_36_REALISTIC_PORTFOLIO_AFAST_V2_VS_JULIA_15M_25M_PASS",
+    "realistic_worker_count": 10,
+    "realistic_run_attempt_count": 1,
+    "source_trade_count": 505,
+    "review_replays_or_new_signal_generation": 0
+  },
+  "preflight": {
+    "price_mismatch_counts": {
+      "entry_execution_price_mismatch": 0,
+      "realized_exit_execution_price_mismatch": 0,
+      "open_terminal_close_mismatch": 0,
+      "candidate_holding_close_missing_or_invalid": 0
+    },
+    "candidate_holding_valuation_session_count": 215297,
+    "official_universe_raw_price_coverage_count": 36,
+    "synthetic_or_forward_filled_rows": 0,
+    "invalid_ohlc_rows": 0,
+    "calendar_session_count": 4102,
+    "calendar_sha256": "78cff0957e5bc55d3d330e7a88d39134d14b20866f3a05add9c9bc7f1df41113",
+    "market_refetch_count": 0,
+    "signal_regeneration_count": 0
+  },
+  "gate_results": [
+    {
+      "window_id": "P1",
+      "criterion": "A",
+      "status": "PASS",
+      "evidence": "Frozen ETF36 exact universe and all 36 effective-span rows retained; source candidates reconcile; certified closure and portfolio validators pass; no identity, cash, leverage, cutoff, or support violations."
+    },
+    {
+      "window_id": "P1",
+      "criterion": "B",
+      "status": "PASS",
+      "evidence": "Buy/sell commission 0.015% and buy/sell slippage 0.10% rechecked on every fill; price and fee formula mismatch counts are zero; sell tax excluded."
+    },
+    {
+      "window_id": "P1",
+      "criterion": "C",
+      "status": "PASS",
+      "evidence": "Total return 118.23% > 0; CAGR 6.36% > 0."
+    },
+    {
+      "window_id": "P1",
+      "criterion": "D",
+      "status": "PASS",
+      "evidence": "Exact daily equity curve MDD -30.12% versus threshold >= -55%; coverage 100.0%; V2 relative MDD gate does not apply to this first independent ETF strategy."
+    },
+    {
+      "window_id": "P1",
+      "criterion": "E",
+      "status": "PASS",
+      "evidence": "Daily valuation coverage 100.0% (3107/3107); price mismatches and unresolved holding closes are zero; no synthetic or forward-filled rows."
+    },
+    {
+      "window_id": "P2-1",
+      "criterion": "A",
+      "status": "PASS",
+      "evidence": "Frozen ETF36 exact universe and all 36 effective-span rows retained; source candidates reconcile; certified closure and portfolio validators pass; no identity, cash, leverage, cutoff, or support violations."
+    },
+    {
+      "window_id": "P2-1",
+      "criterion": "B",
+      "status": "PASS",
+      "evidence": "Buy/sell commission 0.015% and buy/sell slippage 0.10% rechecked on every fill; price and fee formula mismatch counts are zero; sell tax excluded."
+    },
+    {
+      "window_id": "P2-1",
+      "criterion": "C",
+      "status": "PASS",
+      "evidence": "Total return 12.49% > 0; CAGR 2.71% > 0."
+    },
+    {
+      "window_id": "P2-1",
+      "criterion": "D",
+      "status": "PASS",
+      "evidence": "Exact daily equity curve MDD -19.26% versus threshold >= -40%; coverage 100.0%; V2 relative MDD gate does not apply to this first independent ETF strategy."
+    },
+    {
+      "window_id": "P2-1",
+      "criterion": "E",
+      "status": "PASS",
+      "evidence": "Daily valuation coverage 100.0% (1082/1082); price mismatches and unresolved holding closes are zero; no synthetic or forward-filled rows."
+    },
+    {
+      "window_id": "P2-2",
+      "criterion": "A",
+      "status": "PASS",
+      "evidence": "Frozen ETF36 exact universe and all 36 effective-span rows retained; source candidates reconcile; certified closure and portfolio validators pass; no identity, cash, leverage, cutoff, or support violations."
+    },
+    {
+      "window_id": "P2-2",
+      "criterion": "B",
+      "status": "PASS",
+      "evidence": "Buy/sell commission 0.015% and buy/sell slippage 0.10% rechecked on every fill; price and fee formula mismatch counts are zero; sell tax excluded."
+    },
+    {
+      "window_id": "P2-2",
+      "criterion": "C",
+      "status": "PASS",
+      "evidence": "Total return 67.19% > 0; CAGR 9.51% > 0."
+    },
+    {
+      "window_id": "P2-2",
+      "criterion": "D",
+      "status": "PASS",
+      "evidence": "Exact daily equity curve MDD -19.26% versus threshold >= -40%; coverage 100.0%; V2 relative MDD gate does not apply to this first independent ETF strategy."
+    },
+    {
+      "window_id": "P2-2",
+      "criterion": "E",
+      "status": "PASS",
+      "evidence": "Daily valuation coverage 100.0% (1387/1387); price mismatches and unresolved holding closes are zero; no synthetic or forward-filled rows."
+    },
+    {
+      "window_id": "P3-1",
+      "criterion": "A",
+      "status": "PASS",
+      "evidence": "Frozen ETF36 exact universe and all 36 effective-span rows retained; source candidates reconcile; certified closure and portfolio validators pass; no identity, cash, leverage, cutoff, or support violations."
+    },
+    {
+      "window_id": "P3-1",
+      "criterion": "B",
+      "status": "PASS",
+      "evidence": "Buy/sell commission 0.015% and buy/sell slippage 0.10% rechecked on every fill; price and fee formula mismatch counts are zero; sell tax excluded."
+    },
+    {
+      "window_id": "P3-1",
+      "criterion": "C",
+      "status": "PASS",
+      "evidence": "Total return 5.11% > 0; CAGR 1.47% > 0."
+    },
+    {
+      "window_id": "P3-1",
+      "criterion": "D",
+      "status": "PASS",
+      "evidence": "Exact daily equity curve MDD -14.62% versus threshold >= -40%; coverage 100.0%; V2 relative MDD gate does not apply to this first independent ETF strategy."
+    },
+    {
+      "window_id": "P3-1",
+      "criterion": "E",
+      "status": "PASS",
+      "evidence": "Daily valuation coverage 100.0% (834/834); price mismatches and unresolved holding closes are zero; no synthetic or forward-filled rows."
+    },
+    {
+      "window_id": "P3-2",
+      "criterion": "A",
+      "status": "PASS",
+      "evidence": "Frozen ETF36 exact universe and all 36 effective-span rows retained; source candidates reconcile; certified closure and portfolio validators pass; no identity, cash, leverage, cutoff, or support violations."
+    },
+    {
+      "window_id": "P3-2",
+      "criterion": "B",
+      "status": "PASS",
+      "evidence": "Buy/sell commission 0.015% and buy/sell slippage 0.10% rechecked on every fill; price and fee formula mismatch counts are zero; sell tax excluded."
+    },
+    {
+      "window_id": "P3-2",
+      "criterion": "C",
+      "status": "PASS",
+      "evidence": "Total return 62.40% > 0; CAGR 10.97% > 0."
+    },
+    {
+      "window_id": "P3-2",
+      "criterion": "D",
+      "status": "PASS",
+      "evidence": "Exact daily equity curve MDD -14.62% versus threshold >= -40%; coverage 100.0%; V2 relative MDD gate does not apply to this first independent ETF strategy."
+    },
+    {
+      "window_id": "P3-2",
+      "criterion": "E",
+      "status": "PASS",
+      "evidence": "Daily valuation coverage 100.0% (1139/1139); price mismatches and unresolved holding closes are zero; no synthetic or forward-filled rows."
+    }
+  ],
+  "window_metrics_15m": [
+    {
+      "window_id": "P1",
+      "window_start": "2014-01-02",
+      "cutoff_date": "2026-08-31",
+      "execution_support_date": "2026-09-01",
+      "final_equity_krw": 545580534.83,
+      "total_return_pct": 118.23221393,
+      "CAGR_pct": 6.35684109,
+      "MDD_pct": -30.1221457,
+      "recomputed_MDD_pct": -30.1221457,
+      "MDD_threshold_pct": -55.0,
+      "MDD_peak_date": "2018-01-29",
+      "MDD_trough_date": "2020-03-23",
+      "MDD_recovery_date": "2020-12-02",
+      "MDD_type": "EXACT",
+      "calendar_valuation_dates": 3107,
+      "observed_valuation_dates": 3107,
+      "missing_valuation_dates": 0,
+      "valuation_coverage_pct": 100.0,
+      "candidate_entries": 52,
+      "candidate_source_ledger_count": 52,
+      "filled_entries": 45,
+      "CASH_SKIP_count": 7,
+      "CASH_SKIP_rate_pct": 13.46,
+      "CASH_SKIP_reasons": {
+        "INSUFFICIENT_CASH_FOR_FULL_POSITION": 7
+      },
+      "realized_trades": 29,
+      "open_at_cutoff_positions": 16,
+      "support_exit_pending_positions": 2,
+      "cutoff_open_share_of_filled_pct": 35.56,
+      "average_capital_utilization_pct": 51.11,
+      "max_capital_utilization_pct": 99.78,
+      "average_concurrent_holdings": 10.87,
+      "max_concurrent_holdings": 24,
+      "mean_holding_sessions": 751.2,
+      "median_holding_sessions": 780.0,
+      "p90_holding_sessions": 1365.8,
+      "max_holding_sessions": 2086,
+      "turnover_multiple_initial_capital": 5.4515,
+      "category_pnl": {
+        "COMMODITY_RESOURCE": {
+          "pnl_krw": 53059726.6,
+          "share_of_net_pnl_pct": 17.95
+        },
+        "MARKET_INDEX": {
+          "pnl_krw": 65371984.16,
+          "share_of_net_pnl_pct": 22.12
+        },
+        "SECTOR_INDEX": {
+          "pnl_krw": 177148824.08,
+          "share_of_net_pnl_pct": 59.93
+        }
+      },
+      "ticker_pnl_concentration": {
+        "top_1": {
+          "tickers": [
+            "091160"
+          ],
+          "contribution_pct_of_net_pnl": 14.97
+        },
+        "top_3": {
+          "tickers": [
+            "091160",
+            "140700",
+            "144600"
+          ],
+          "contribution_pct_of_net_pnl": 34.2
+        },
+        "top_5": {
+          "tickers": [
+            "091160",
+            "140700",
+            "144600",
+            "091180",
+            "091170"
+          ],
+          "contribution_pct_of_net_pnl": 49.65
+        }
+      },
+      "direct_price_mismatch_count": 0,
+      "direct_commission_mismatch_count": 0,
+      "cash_and_terminal_pnl_reconciliation_pass": true
+    },
+    {
+      "window_id": "P2-1",
+      "window_start": "2021-01-04",
+      "cutoff_date": "2025-05-30",
+      "execution_support_date": "2025-06-02",
+      "final_equity_krw": 281217631.96,
+      "total_return_pct": 12.48705278,
+      "CAGR_pct": 2.70540352,
+      "MDD_pct": -19.25635792,
+      "recomputed_MDD_pct": -19.25635792,
+      "MDD_threshold_pct": -40.0,
+      "MDD_peak_date": "2021-06-07",
+      "MDD_trough_date": "2022-10-13",
+      "MDD_recovery_date": "2024-10-29",
+      "MDD_type": "EXACT",
+      "calendar_valuation_dates": 1082,
+      "observed_valuation_dates": 1082,
+      "missing_valuation_dates": 0,
+      "valuation_coverage_pct": 100.0,
+      "candidate_entries": 38,
+      "candidate_source_ledger_count": 38,
+      "filled_entries": 27,
+      "CASH_SKIP_count": 11,
+      "CASH_SKIP_rate_pct": 28.95,
+      "CASH_SKIP_reasons": {
+        "INSUFFICIENT_CASH_FOR_FULL_POSITION": 11
+      },
+      "realized_trades": 9,
+      "open_at_cutoff_positions": 18,
+      "support_exit_pending_positions": 0,
+      "cutoff_open_share_of_filled_pct": 66.67,
+      "average_capital_utilization_pct": 80.6,
+      "max_capital_utilization_pct": 98.83,
+      "average_concurrent_holdings": 14.74,
+      "max_concurrent_holdings": 18,
+      "mean_holding_sessions": 591.0,
+      "median_holding_sessions": 565.0,
+      "p90_holding_sessions": 1046.0,
+      "max_holding_sessions": 1072,
+      "turnover_multiple_initial_capital": 2.3222,
+      "category_pnl": {
+        "COMMODITY_RESOURCE": {
+          "pnl_krw": 13195673.19,
+          "share_of_net_pnl_pct": 42.27
+        },
+        "MARKET_INDEX": {
+          "pnl_krw": 7484081.25,
+          "share_of_net_pnl_pct": 23.97
+        },
+        "SECTOR_INDEX": {
+          "pnl_krw": 10537877.52,
+          "share_of_net_pnl_pct": 33.76
+        }
+      },
+      "ticker_pnl_concentration": {
+        "top_1": {
+          "tickers": [
+            "139230"
+          ],
+          "contribution_pct_of_net_pnl": 31.99
+        },
+        "top_3": {
+          "tickers": [
+            "139230",
+            "133690",
+            "140700"
+          ],
+          "contribution_pct_of_net_pnl": 82.64
+        },
+        "top_5": {
+          "tickers": [
+            "139230",
+            "133690",
+            "140700",
+            "271060",
+            "091170"
+          ],
+          "contribution_pct_of_net_pnl": 123.18
+        }
+      },
+      "direct_price_mismatch_count": 0,
+      "direct_commission_mismatch_count": 0,
+      "cash_and_terminal_pnl_reconciliation_pass": true
+    },
+    {
+      "window_id": "P2-2",
+      "window_start": "2021-01-04",
+      "cutoff_date": "2026-08-31",
+      "execution_support_date": "2026-09-01",
+      "final_equity_krw": 417987183.23,
+      "total_return_pct": 67.19487329,
+      "CAGR_pct": 9.51252373,
+      "MDD_pct": -19.25635792,
+      "recomputed_MDD_pct": -19.25635792,
+      "MDD_threshold_pct": -40.0,
+      "MDD_peak_date": "2021-06-07",
+      "MDD_trough_date": "2022-10-13",
+      "MDD_recovery_date": "2024-10-29",
+      "MDD_type": "EXACT",
+      "calendar_valuation_dates": 1387,
+      "observed_valuation_dates": 1387,
+      "missing_valuation_dates": 0,
+      "valuation_coverage_pct": 100.0,
+      "candidate_entries": 45,
+      "candidate_source_ledger_count": 45,
+      "filled_entries": 32,
+      "CASH_SKIP_count": 13,
+      "CASH_SKIP_rate_pct": 28.89,
+      "CASH_SKIP_reasons": {
+        "INSUFFICIENT_CASH_FOR_FULL_POSITION": 13
+      },
+      "realized_trades": 18,
+      "open_at_cutoff_positions": 14,
+      "support_exit_pending_positions": 0,
+      "cutoff_open_share_of_filled_pct": 43.75,
+      "average_capital_utilization_pct": 80.45,
+      "max_capital_utilization_pct": 98.83,
+      "average_concurrent_holdings": 15.24,
+      "max_concurrent_holdings": 19,
+      "mean_holding_sessions": 661.1,
+      "median_holding_sessions": 667.5,
+      "p90_holding_sessions": 1323.0,
+      "max_holding_sessions": 1377,
+      "turnover_multiple_initial_capital": 3.6563,
+      "category_pnl": {
+        "COMMODITY_RESOURCE": {
+          "pnl_krw": 42676822.68,
+          "share_of_net_pnl_pct": 25.4
+        },
+        "MARKET_INDEX": {
+          "pnl_krw": 22208030.0,
+          "share_of_net_pnl_pct": 13.22
+        },
+        "SECTOR_INDEX": {
+          "pnl_krw": 103102330.55,
+          "share_of_net_pnl_pct": 61.38
+        }
+      },
+      "ticker_pnl_concentration": {
+        "top_1": {
+          "tickers": [
+            "140700"
+          ],
+          "contribution_pct_of_net_pnl": 16.96
+        },
+        "top_3": {
+          "tickers": [
+            "140700",
+            "144600",
+            "367760"
+          ],
+          "contribution_pct_of_net_pnl": 43.87
+        },
+        "top_5": {
+          "tickers": [
+            "140700",
+            "144600",
+            "367760",
+            "117680",
+            "091170"
+          ],
+          "contribution_pct_of_net_pnl": 67.37
+        }
+      },
+      "direct_price_mismatch_count": 0,
+      "direct_commission_mismatch_count": 0,
+      "cash_and_terminal_pnl_reconciliation_pass": true
+    },
+    {
+      "window_id": "P3-1",
+      "window_start": "2022-01-03",
+      "cutoff_date": "2025-05-30",
+      "execution_support_date": "2025-06-02",
+      "final_equity_krw": 262766200.54,
+      "total_return_pct": 5.10648022,
+      "CAGR_pct": 1.47064644,
+      "MDD_pct": -14.62257633,
+      "recomputed_MDD_pct": -14.62257633,
+      "MDD_threshold_pct": -40.0,
+      "MDD_peak_date": "2023-07-25",
+      "MDD_trough_date": "2023-10-31",
+      "MDD_recovery_date": "2024-03-21",
+      "MDD_type": "EXACT",
+      "calendar_valuation_dates": 834,
+      "observed_valuation_dates": 834,
+      "missing_valuation_dates": 0,
+      "valuation_coverage_pct": 100.0,
+      "candidate_entries": 30,
+      "candidate_source_ledger_count": 30,
+      "filled_entries": 19,
+      "CASH_SKIP_count": 11,
+      "CASH_SKIP_rate_pct": 36.67,
+      "CASH_SKIP_reasons": {
+        "INSUFFICIENT_CASH_FOR_FULL_POSITION": 11
+      },
+      "realized_trades": 2,
+      "open_at_cutoff_positions": 17,
+      "support_exit_pending_positions": 0,
+      "cutoff_open_share_of_filled_pct": 89.47,
+      "average_capital_utilization_pct": 71.4,
+      "max_capital_utilization_pct": 96.21,
+      "average_concurrent_holdings": 12.2,
+      "max_concurrent_holdings": 17,
+      "mean_holding_sessions": 535.7,
+      "median_holding_sessions": 555.0,
+      "p90_holding_sessions": 796.0,
+      "max_holding_sessions": 829,
+      "turnover_multiple_initial_capital": 1.3299,
+      "category_pnl": {
+        "COMMODITY_RESOURCE": {
+          "pnl_krw": 6702280.39,
+          "share_of_net_pnl_pct": 52.5
+        },
+        "MARKET_INDEX": {
+          "pnl_krw": 8486718.63,
+          "share_of_net_pnl_pct": 66.48
+        },
+        "SECTOR_INDEX": {
+          "pnl_krw": -2422798.48,
+          "share_of_net_pnl_pct": -18.98
+        }
+      },
+      "ticker_pnl_concentration": {
+        "top_1": {
+          "tickers": [
+            "139230"
+          ],
+          "contribution_pct_of_net_pnl": 69.38
+        },
+        "top_3": {
+          "tickers": [
+            "139230",
+            "133690",
+            "140700"
+          ],
+          "contribution_pct_of_net_pnl": 176.64
+        },
+        "top_5": {
+          "tickers": [
+            "139230",
+            "133690",
+            "140700",
+            "091170",
+            "241180"
+          ],
+          "contribution_pct_of_net_pnl": 242.05
+        }
+      },
+      "direct_price_mismatch_count": 0,
+      "direct_commission_mismatch_count": 0,
+      "cash_and_terminal_pnl_reconciliation_pass": true
+    },
+    {
+      "window_id": "P3-2",
+      "window_start": "2022-01-03",
+      "cutoff_date": "2026-08-31",
+      "execution_support_date": "2026-09-01",
+      "final_equity_krw": 406003565.23,
+      "total_return_pct": 62.40142609,
+      "CAGR_pct": 10.9667019,
+      "MDD_pct": -14.62257633,
+      "recomputed_MDD_pct": -14.62257633,
+      "MDD_threshold_pct": -40.0,
+      "MDD_peak_date": "2023-07-25",
+      "MDD_trough_date": "2023-10-31",
+      "MDD_recovery_date": "2024-03-21",
+      "MDD_type": "EXACT",
+      "calendar_valuation_dates": 1139,
+      "observed_valuation_dates": 1139,
+      "missing_valuation_dates": 0,
+      "valuation_coverage_pct": 100.0,
+      "candidate_entries": 37,
+      "candidate_source_ledger_count": 37,
+      "filled_entries": 24,
+      "CASH_SKIP_count": 13,
+      "CASH_SKIP_rate_pct": 35.14,
+      "CASH_SKIP_reasons": {
+        "INSUFFICIENT_CASH_FOR_FULL_POSITION": 13
+      },
+      "realized_trades": 11,
+      "open_at_cutoff_positions": 13,
+      "support_exit_pending_positions": 1,
+      "cutoff_open_share_of_filled_pct": 54.17,
+      "average_capital_utilization_pct": 75.51,
+      "max_capital_utilization_pct": 99.81,
+      "average_concurrent_holdings": 13.42,
+      "max_concurrent_holdings": 18,
+      "mean_holding_sessions": 637.2,
+      "median_holding_sessions": 775.0,
+      "p90_holding_sessions": 1049.3,
+      "max_holding_sessions": 1134,
+      "turnover_multiple_initial_capital": 2.6574,
+      "category_pnl": {
+        "COMMODITY_RESOURCE": {
+          "pnl_krw": 36183429.87,
+          "share_of_net_pnl_pct": 23.19
+        },
+        "MARKET_INDEX": {
+          "pnl_krw": 36473532.84,
+          "share_of_net_pnl_pct": 23.38
+        },
+        "SECTOR_INDEX": {
+          "pnl_krw": 83346602.51,
+          "share_of_net_pnl_pct": 53.43
+        }
+      },
+      "ticker_pnl_concentration": {
+        "top_1": {
+          "tickers": [
+            "140700"
+          ],
+          "contribution_pct_of_net_pnl": 15.58
+        },
+        "top_3": {
+          "tickers": [
+            "140700",
+            "144600",
+            "367760"
+          ],
+          "contribution_pct_of_net_pnl": 44.55
+        },
+        "top_5": {
+          "tickers": [
+            "140700",
+            "144600",
+            "367760",
+            "091180",
+            "091170"
+          ],
+          "contribution_pct_of_net_pnl": 67.04
+        }
+      },
+      "direct_price_mismatch_count": 0,
+      "direct_commission_mismatch_count": 0,
+      "cash_and_terminal_pnl_reconciliation_pass": true
+    }
+  ],
+  "sizing_sensitivity_25m": [
+    {
+      "window_id": "P1",
+      "total_return_pct": 111.9,
+      "CAGR_pct": 6.11,
+      "MDD_pct": -40.98,
+      "CASH_SKIP_count": 21,
+      "CASH_SKIP_rate_pct": 40.38,
+      "average_capital_utilization_pct": 59.48,
+      "open_at_cutoff_positions": 12
+    },
+    {
+      "window_id": "P2-1",
+      "total_return_pct": 11.81,
+      "CAGR_pct": 2.56,
+      "MDD_pct": -26.73,
+      "CASH_SKIP_count": 20,
+      "CASH_SKIP_rate_pct": 52.63,
+      "average_capital_utilization_pct": 91.1,
+      "open_at_cutoff_positions": 11
+    },
+    {
+      "window_id": "P2-2",
+      "total_return_pct": 62.6,
+      "CAGR_pct": 8.97,
+      "MDD_pct": -26.73,
+      "CASH_SKIP_count": 23,
+      "CASH_SKIP_rate_pct": 51.11,
+      "average_capital_utilization_pct": 87.35,
+      "open_at_cutoff_positions": 8
+    },
+    {
+      "window_id": "P3-1",
+      "total_return_pct": 11.99,
+      "CAGR_pct": 3.38,
+      "MDD_pct": -14.94,
+      "CASH_SKIP_count": 17,
+      "CASH_SKIP_rate_pct": 56.67,
+      "average_capital_utilization_pct": 81.68,
+      "open_at_cutoff_positions": 11
+    },
+    {
+      "window_id": "P3-2",
+      "total_return_pct": 66.39,
+      "CAGR_pct": 11.55,
+      "MDD_pct": -14.94,
+      "CASH_SKIP_count": 20,
+      "CASH_SKIP_rate_pct": 54.05,
+      "average_capital_utilization_pct": 83.6,
+      "open_at_cutoff_positions": 11
+    }
+  ],
+  "integrity_rechecks": {
+    "closure_certified_pass": true,
+    "realistic_portfolio_certified_pass": true,
+    "all_nine_recorded_source_hashes_match": true,
+    "official_etf36_exact_set_group_counts_and_474800_exclusion": true,
+    "effective_span_180_rows_and_36_each_window": true,
+    "source_candidate_count_reconciliation": true,
+    "cash_skip_count_and_reason_reconciliation": true,
+    "daily_MDD_reconciliation_all_five_windows": true,
+    "realized_terminal_pnl_reconciliation_all_five_windows": true,
+    "direct_entry_exit_price_slippage_formula_mismatches": 0,
+    "direct_commission_formula_mismatches": 0,
+    "nonzero_sell_tax_rows": 0,
+    "preflight_exact_price_or_valuation_mismatch_counts": {
+      "entry_execution_price_mismatch": 0,
+      "realized_exit_execution_price_mismatch": 0,
+      "open_terminal_close_mismatch": 0,
+      "candidate_holding_close_missing_or_invalid": 0
+    },
+    "invalid_or_synthetic_forward_filled_price_rows": {
+      "invalid_ohlc": 0,
+      "synthetic_or_forward_filled": 0
+    },
+    "portfolio_missing_daily_equity_dates": 0,
+    "negative_cash_count": 0,
+    "leverage_result_count": 0,
+    "post_cutoff_entries": 0,
+    "execution_support_violations": 0,
+    "capital_utilization_and_concurrent_holdings_recomputed_from_curve_all_five_windows": true,
+    "holding_mean_median_max_recomputed_from_filled_ledger_all_five_windows": true,
+    "direct_commission_mismatch_count": 0
+  },
+  "quality_findings": [
+    {
+      "severity": "MINOR",
+      "finding": "stale_inline_validator_check_in_legacy_summary",
+      "gate_impact": "none",
+      "detail": "The legacy closure summary inline map says validation_replay_contract=false; current validation.json says true and finalizer passed with zero errors. The finalizer does not regenerate that earlier inline map. Source evidence was not modified."
+    }
+  ],
+  "decision_notes": [
+    "A-E are absolute per-window gates. V2 is diagnostic only and relative MDD is not applied for this independent first-time ETF-only adoption review.",
+    "P2-1 and P3-1 each have two fixed-span not-evaluable ETF rows due to strategy-ready dates after the window end; all remain within frozen ETF36 universe.",
+    "25M results are sizing sensitivity only.",
+    "No strategy rule/source, certified input, or historical archive was modified. This review performed no replay, market refetch, tuning, sizing sweep, or full pytest."
+  ],
+  "independent_diagnostic_rechecks": [
+    {
+      "window_id": "P1",
+      "average_capital_utilization_recomputed_from_equity_curve_pct": 51.109072940758324,
+      "average_capital_utilization_matches_summary": true,
+      "maximum_capital_utilization_recomputed_from_equity_curve_pct": 99.7763210745,
+      "maximum_capital_utilization_matches_summary": true,
+      "average_concurrent_holdings_recomputed_from_equity_curve": 10.86997103315095,
+      "average_concurrent_holdings_matches_summary": true,
+      "maximum_concurrent_holdings_recomputed_from_equity_curve": 24.0,
+      "maximum_concurrent_holdings_matches_summary": true,
+      "mean_holding_sessions_recomputed_from_filled_ledger": 751.1555555555556,
+      "mean_holding_sessions_matches_summary": true,
+      "median_holding_sessions_recomputed_from_filled_ledger": 780.0,
+      "median_holding_sessions_matches_summary": true,
+      "max_holding_sessions_recomputed_from_filled_ledger": 2086,
+      "max_holding_sessions_matches_summary": true,
+      "commission_formula_mismatch_count": 0
+    },
+    {
+      "window_id": "P2-1",
+      "average_capital_utilization_recomputed_from_equity_curve_pct": 80.60116676404049,
+      "average_capital_utilization_matches_summary": true,
+      "maximum_capital_utilization_recomputed_from_equity_curve_pct": 98.8303780464,
+      "maximum_capital_utilization_matches_summary": true,
+      "average_concurrent_holdings_recomputed_from_equity_curve": 14.738447319778189,
+      "average_concurrent_holdings_matches_summary": true,
+      "maximum_concurrent_holdings_recomputed_from_equity_curve": 18.0,
+      "maximum_concurrent_holdings_matches_summary": true,
+      "mean_holding_sessions_recomputed_from_filled_ledger": 590.9629629629629,
+      "mean_holding_sessions_matches_summary": true,
+      "median_holding_sessions_recomputed_from_filled_ledger": 565.0,
+      "median_holding_sessions_matches_summary": true,
+      "max_holding_sessions_recomputed_from_filled_ledger": 1072,
+      "max_holding_sessions_matches_summary": true,
+      "commission_formula_mismatch_count": 0
+    },
+    {
+      "window_id": "P2-2",
+      "average_capital_utilization_recomputed_from_equity_curve_pct": 80.44512629272162,
+      "average_capital_utilization_matches_summary": true,
+      "maximum_capital_utilization_recomputed_from_equity_curve_pct": 98.8303780464,
+      "maximum_capital_utilization_matches_summary": true,
+      "average_concurrent_holdings_recomputed_from_equity_curve": 15.239365537130498,
+      "average_concurrent_holdings_matches_summary": true,
+      "maximum_concurrent_holdings_recomputed_from_equity_curve": 19.0,
+      "maximum_concurrent_holdings_matches_summary": true,
+      "mean_holding_sessions_recomputed_from_filled_ledger": 661.09375,
+      "mean_holding_sessions_matches_summary": true,
+      "median_holding_sessions_recomputed_from_filled_ledger": 667.5,
+      "median_holding_sessions_matches_summary": true,
+      "max_holding_sessions_recomputed_from_filled_ledger": 1377,
+      "max_holding_sessions_matches_summary": true,
+      "commission_formula_mismatch_count": 0
+    },
+    {
+      "window_id": "P3-1",
+      "average_capital_utilization_recomputed_from_equity_curve_pct": 71.39831619255456,
+      "average_capital_utilization_matches_summary": true,
+      "maximum_capital_utilization_recomputed_from_equity_curve_pct": 96.2128651153,
+      "maximum_capital_utilization_matches_summary": true,
+      "average_concurrent_holdings_recomputed_from_equity_curve": 12.20263788968825,
+      "average_concurrent_holdings_matches_summary": true,
+      "maximum_concurrent_holdings_recomputed_from_equity_curve": 17.0,
+      "maximum_concurrent_holdings_matches_summary": true,
+      "mean_holding_sessions_recomputed_from_filled_ledger": 535.7368421052631,
+      "mean_holding_sessions_matches_summary": true,
+      "median_holding_sessions_recomputed_from_filled_ledger": 555.0,
+      "median_holding_sessions_matches_summary": true,
+      "max_holding_sessions_recomputed_from_filled_ledger": 829,
+      "max_holding_sessions_matches_summary": true,
+      "commission_formula_mismatch_count": 0
+    },
+    {
+      "window_id": "P3-2",
+      "average_capital_utilization_recomputed_from_equity_curve_pct": 75.50804033420263,
+      "average_capital_utilization_matches_summary": true,
+      "maximum_capital_utilization_recomputed_from_equity_curve_pct": 99.8092386428,
+      "maximum_capital_utilization_matches_summary": true,
+      "average_concurrent_holdings_recomputed_from_equity_curve": 13.417910447761194,
+      "average_concurrent_holdings_matches_summary": true,
+      "maximum_concurrent_holdings_recomputed_from_equity_curve": 18.0,
+      "maximum_concurrent_holdings_matches_summary": true,
+      "mean_holding_sessions_recomputed_from_filled_ledger": 637.25,
+      "mean_holding_sessions_matches_summary": true,
+      "median_holding_sessions_recomputed_from_filled_ledger": 775.0,
+      "median_holding_sessions_matches_summary": true,
+      "max_holding_sessions_recomputed_from_filled_ledger": 1134,
+      "max_holding_sessions_matches_summary": true,
+      "commission_formula_mismatch_count": 0
+    }
+  ]
+}

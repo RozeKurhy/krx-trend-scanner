@@ -1,0 +1,199 @@
+{
+  "review_id": "JULIA_V00_ETF_OFFICIAL_ADOPTION_V01",
+  "review_date": "2026-09-30",
+  "baseline_commit": "8db83df396c9469fb7f169431822272afea5d4eb",
+  "algorithm": "SHA-256",
+  "certified_run_input_hash_match_count": 9,
+  "certified_run_input_hash_expected_count": 9,
+  "sources": [
+    {
+      "name": "certified_trade_ledger",
+      "path": "artifacts/research/etf_36_zero_ohlc_sentinel_clean_eligibility_closure_v01/certified_trade_ledger.csv",
+      "sha256": "c2584be359a7041a0e823204e8a8976a3d30046b112429f7b0746606f1929307",
+      "expected_sha256_from_certified_run": "c2584be359a7041a0e823204e8a8976a3d30046b112429f7b0746606f1929307",
+      "matches_certified_run": true
+    },
+    {
+      "name": "certified_closure_validation",
+      "path": "artifacts/research/etf_36_zero_ohlc_sentinel_clean_eligibility_closure_v01/validation.json",
+      "sha256": "04eecf3face29e04cf1b31955a9f6b7ee990eb4b211d8a0a8bd99ed47ee70286",
+      "expected_sha256_from_certified_run": "04eecf3face29e04cf1b31955a9f6b7ee990eb4b211d8a0a8bd99ed47ee70286",
+      "matches_certified_run": true
+    },
+    {
+      "name": "closure_summary",
+      "path": "artifacts/research/etf_36_zero_ohlc_sentinel_clean_eligibility_closure_v01/summary.md",
+      "sha256": "4fba1b280ec8a6ef855288430a829d62e6173cbbe4d33393e41856e521322fe4",
+      "expected_sha256_from_certified_run": "4fba1b280ec8a6ef855288430a829d62e6173cbbe4d33393e41856e521322fe4",
+      "matches_certified_run": true
+    },
+    {
+      "name": "base_effective_span_audit",
+      "path": "artifacts/research/etf_36_afast_v2_vs_julia_5window_simple_v01/effective_span_audit.csv",
+      "sha256": "c560c600f0a4c385de090aed3db613f85f5af883fb976d2d3197c6266ec367af",
+      "expected_sha256_from_certified_run": "c560c600f0a4c385de090aed3db613f85f5af883fb976d2d3197c6266ec367af",
+      "matches_certified_run": true
+    },
+    {
+      "name": "affected_span_changes",
+      "path": "artifacts/research/etf_36_zero_ohlc_sentinel_clean_eligibility_closure_v01/affected_span_changes.csv",
+      "sha256": "0af1b4103f7185c6e4fdf4e5c828ad70c1da84d54cea393d8ac9a2e3a8271f6c",
+      "expected_sha256_from_certified_run": "0af1b4103f7185c6e4fdf4e5c828ad70c1da84d54cea393d8ac9a2e3a8271f6c",
+      "matches_certified_run": true
+    },
+    {
+      "name": "official_etf_universe_36",
+      "path": "artifacts/research/etf_36_afast_v2_vs_julia_5window_simple_v01/official_etf_universe_36.csv",
+      "sha256": "a41e363c5e0ba398b5361a1bb3cb7057394c0a7a4b168f48321be26eb2686b3d",
+      "expected_sha256_from_certified_run": "a41e363c5e0ba398b5361a1bb3cb7057394c0a7a4b168f48321be26eb2686b3d",
+      "matches_certified_run": true
+    },
+    {
+      "name": "realistic_portfolio_engine",
+      "path": "scripts/run_etf_v06_afast_vs_julia_realistic_portfolio_battle_v03.py",
+      "sha256": "c317129ce45e93cb388dbc458ad7667041127cd5c7587c7cf2c9ba1c49fa7a4f",
+      "expected_sha256_from_certified_run": "c317129ce45e93cb388dbc458ad7667041127cd5c7587c7cf2c9ba1c49fa7a4f",
+      "matches_certified_run": true
+    },
+    {
+      "name": "raw_price_database_builder",
+      "path": "scripts/run_etf_current_survivors_raw_price_three_strategy_simple_backtest_v03.py",
+      "sha256": "06c8c16a7351fddfe1bda4b284c4de0accc01cd7fe92d16de857aa37436a92b7",
+      "expected_sha256_from_certified_run": "06c8c16a7351fddfe1bda4b284c4de0accc01cd7fe92d16de857aa37436a92b7",
+      "matches_certified_run": true
+    },
+    {
+      "name": "raw_store_manifest",
+      "path": "data/market/raw/krx_stocks/v01/manifest.sqlite3",
+      "sha256": "50d64008e052c6824564ab25e67c366f7aafe2d8869b6ac3149f921bb34cb27a",
+      "expected_sha256_from_certified_run": "50d64008e052c6824564ab25e67c366f7aafe2d8869b6ac3149f921bb34cb27a",
+      "matches_certified_run": true
+    },
+    {
+      "name": "official_etf_universe_source_constant",
+      "path": "scripts/export_etf_ranking_web.py",
+      "sha256": "0ff7071338e59cca0e7f22f3c8dc61d605f1dfd91a1d6af67e1adcbddf5fcc87",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    },
+    {
+      "name": "simple_backtest_validation",
+      "path": "artifacts/research/etf_36_afast_v2_vs_julia_5window_simple_v01/validation.json",
+      "sha256": "2aeb6d6834383dd8226c094d37dbef02ebd6b26816d2ea45c8a457c652fc84c9",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    },
+    {
+      "name": "certified_window_comparison_summary",
+      "path": "artifacts/research/etf_36_zero_ohlc_sentinel_clean_eligibility_closure_v01/certified_window_comparison_summary.csv",
+      "sha256": "f1f1f8f706d71985db49b80fbdb164b525c39b295ca4c176a7fa094b78118cb9",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    },
+    {
+      "name": "portfolio_validation",
+      "path": "artifacts/research/etf_36_realistic_portfolio_afast_v2_vs_julia_15m_25m_v01/validation.json",
+      "sha256": "cf58fbb2d10ecf21424189a74dafe6a2b9b28837329c0c0b1410810572170ac2",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    },
+    {
+      "name": "portfolio_summary",
+      "path": "artifacts/research/etf_36_realistic_portfolio_afast_v2_vs_julia_15m_25m_v01/portfolio_summary.csv",
+      "sha256": "6b495297b3e2486a49839fe1f22b0155edd783a73ada5fbd29c3db0c7d31897a",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    },
+    {
+      "name": "equity_curve",
+      "path": "artifacts/research/etf_36_realistic_portfolio_afast_v2_vs_julia_15m_25m_v01/equity_curve.csv",
+      "sha256": "4e9c354e3678ef56a5f0179a85e642d450a35ca6448792addadb2b3cd39895de",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    },
+    {
+      "name": "filled_trade_ledger",
+      "path": "artifacts/research/etf_36_realistic_portfolio_afast_v2_vs_julia_15m_25m_v01/filled_trade_ledger.csv",
+      "sha256": "b28a8379645ed11082234aee034c724ecd775ba879aeea2671b04000603f0000",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    },
+    {
+      "name": "cash_skip_ledger",
+      "path": "artifacts/research/etf_36_realistic_portfolio_afast_v2_vs_julia_15m_25m_v01/cash_skip_ledger.csv",
+      "sha256": "2c528143ef666b1c768082c0e09b34f1750c1f93a053f34ecbf9000b177809a5",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    },
+    {
+      "name": "holding_period_summary",
+      "path": "artifacts/research/etf_36_realistic_portfolio_afast_v2_vs_julia_15m_25m_v01/holding_period_summary.csv",
+      "sha256": "213737d42a1fe31d9b2cefa569a75ffe05dcd37a3838c82b6cbb9058048b52c0",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    },
+    {
+      "name": "sizing_sensitivity_deltas",
+      "path": "artifacts/research/etf_36_realistic_portfolio_afast_v2_vs_julia_15m_25m_v01/sizing_sensitivity_deltas.csv",
+      "sha256": "383a65f8c9b17da095aa1fe0c1f85342bd4638e9e95281be46a239f2bad573de",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    },
+    {
+      "name": "julia_strategy_rule_source",
+      "path": "src/trend_scanner/validation/julia_strategy_v00.py",
+      "sha256": "683c3f42c3292de42991ef6a5b9fe0c5b9e6d053a6f1587441d52d0d5bcd2f4b",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    },
+    {
+      "name": "historical_julia_validation_plan",
+      "path": "docs/strategies/julia/archive/validation/validation_plan_v01.md",
+      "sha256": "a76b762b7008b79f6d69b397941b341f8b7a38efd27171c7b0a0e61ee110e1de",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    },
+    {
+      "name": "official_adoption_criteria",
+      "path": "docs/validation/official_strategy_adoption_criteria.md",
+      "sha256": "380f34cd7e24fd9881d7a154000d9b51512d905d7c7ef24b1940f5fa4e22cb88",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    },
+    {
+      "name": "backtest_common_rules",
+      "path": "docs/validation/backtest_common_rules.md",
+      "sha256": "e8783958064ddfc54f57bef3500ad41de6d3b6bc853fce2464845f9c4cc4d06b",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    },
+    {
+      "name": "strategy_lifecycle",
+      "path": "docs/strategies/strategy_lifecycle.md",
+      "sha256": "c89bad3f56b95a9bac3284fb9817067940534b52c87c29f57f3009ea5a1e25e8",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    },
+    {
+      "name": "julia_current_status_document",
+      "path": "docs/strategies/julia/README.md",
+      "sha256": "68edd85fe3086f21a0f5583ea01e7e3027e822012bff979fffa73ea8a785f456",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    },
+    {
+      "name": "official_strategy_index_document",
+      "path": "docs/strategies/README.md",
+      "sha256": "b5c820f58bbf734fe45af7e5c839c8f9775e0b938b67ecc14e70a27c87c886ca",
+      "expected_sha256_from_certified_run": null,
+      "matches_certified_run": null
+    }
+  ],
+  "review_output_sha256": {
+    "report.md": "98ffab87fd62665b779915f11ccc0844cb6625a7a1e4141d3463a73d651a838a",
+    "validation.json": "da97c3769bbc8267dbf43f738c0ac4573dce86f162bf139cd84d64ff1ee0c4a8"
+  },
+  "legacy_closure_summary_inline_validation_replay_contract_false": true,
+  "current_closure_validation_json_validation_replay_contract_true": true,
+  "current_validator_finalization_passed": true
+}
