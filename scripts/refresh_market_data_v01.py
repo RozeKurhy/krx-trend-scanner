@@ -231,6 +231,7 @@ def main(argv: list[str] | None = None) -> int:
         etf_adjusted_updater=RollingEtfAdjustedUpdater(
             NaverDirectAdjustedPriceDataProvider(),
             adjusted_store,
+            raw_store=raw_store,
             corporate_action_evidence_lookup=corporate_action_evidence_lookup,
         ),
         common_adjusted_updater=RollingAdjustedPriceUpdater(

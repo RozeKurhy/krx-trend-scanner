@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 
 import pandas as pd
@@ -61,16 +62,32 @@ def test_daily_update_and_market_refresh_use_the_live_etf_acceptance_scope():
         assert "ETF_VALIDATED_ACCEPTANCE_TICKERS" in source
         assert "RollingEtfAdjustedUpdater" in source
 
+        tree = ast.parse(source)
+        updater_calls = [
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "RollingEtfAdjustedUpdater"
+        ]
+        assert len(updater_calls) == (2 if relative_path.endswith("run_daily_update_v01.py") else 1)
+        for call in updater_calls:
+            keywords = {keyword.arg: keyword.value for keyword in call.keywords if keyword.arg is not None}
+            assert isinstance(keywords.get("raw_store"), ast.Name)
+            assert keywords["raw_store"].id == "raw_store"
+
 
 def test_rolling_dry_run_reuses_current_history_and_only_plans_next_session():
     sessions = (
-        "2023-01-03", "2023-01-05", "2023-04-21", "2026-09-23", "2026-09-24",
+        "2023-01-03", "2023-01-04", "2023-01-05", "2023-04-21", "2026-09-23", "2026-09-24",
     )
+    etf_sessions = tuple(day for day in sessions if day != "2023-01-04")
 
     class RawStore:
         def list_manifest(self, market):
-            if market in {"KOSPI", "ETF"}:
-                return [{"date": day, "status": "COMPLETE"} for day in sessions]
+            manifest_sessions = sessions if market == "KOSPI" else etf_sessions if market == "ETF" else ()
+            if manifest_sessions:
+                return [{"date": day, "status": "COMPLETE"} for day in manifest_sessions]
             return []
 
         def load_snapshot(self, market, day):
@@ -106,9 +123,12 @@ def test_rolling_dry_run_reuses_current_history_and_only_plans_next_session():
     next_records = {row["ticker"]: row for row in next_session_plan["ticker_records"]}
     assert set(current_records) == set(next_records) == OFFICIAL_36
     assert current_plan["missing_date_count"] == 0
+    assert "2023-01-04" not in current_plan["required_dates"]
     assert next_session_plan["missing_dates"] == ["2026-09-24"]
     assert all(row["missing_dates"] == [] for row in current_records.values())
     assert all(row["missing_dates"] == ["2026-09-24"] for row in next_records.values())
     assert current_records["453810"]["required_start"] == "2023-04-21"
+    assert current_records["453810"]["required_date_count"] == 2
     assert current_records["449450"]["required_start"] == "2023-01-05"
+    assert current_records["449450"]["required_date_count"] == 3
     assert adjusted_store.writes == 0
