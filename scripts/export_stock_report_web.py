@@ -21,9 +21,10 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SUPPORTED_STOCK_REPORT_VERSIONS = {"0.5", "0.7"}
+SUPPORTED_STOCK_REPORT_VERSIONS = {"0.5", "0.6", "0.7"}
 METADATA_PATH = ROOT / "data/reference/krx_instrument_metadata.csv"
 STOCK_REPORTS_ROOT = ROOT / "artifacts/reporting/stock_reports"
+ETF_STOCK_REPORTS_ROOT = ROOT / "artifacts/reporting/etf_stock_reports"
 ADJUSTED_STOCK_ROOT = ROOT / "data/market/adjusted/stocks"
 DEFAULT_OUTPUT_DIR = ROOT / "web/data"
 DATE_DIR_PATTERN = re.compile(r"^(\d{8})$")
@@ -56,6 +57,16 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 def _validate_report_contract(report: dict[str, Any], source_path: Path) -> None:
     version = report.get("report_version")
+    if version == "0.6":
+        if (
+            report.get("asset_type") != "ETF"
+            or "a_fast_core" in report
+            or not isinstance(report.get("official_strategy"), dict)
+            or report["official_strategy"].get("strategy_id") != "JULIA_ETF_STRATEGY_V01"
+            or report["official_strategy"].get("strategy_name") != "Julia V1"
+        ):
+            raise ValueError(f"Stock Report v0.6 ETF Julia contract missing: {source_path}")
+        return
     if not isinstance(version, str) or version not in SUPPORTED_STOCK_REPORT_VERSIONS:
         raise ValueError(f"Unsupported Stock Report version {version!r}: {source_path}")
     if version == "0.7" and (
@@ -202,6 +213,52 @@ def _compact_trade_history(strategy: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+def validate_exact_etf_report_corpus(
+    target_as_of: str,
+    reference_market_date: str,
+) -> tuple[Path, dict[str, dict[str, Any]], dict[str, Path]]:
+    """Validate the exact frozen ETF36 v0.6 source corpus without projection."""
+    from trend_scanner.reporting.julia_v1_report import load_official_etf36, validate_v06_report_payload
+
+    etf_dir = ETF_STOCK_REPORTS_ROOT / target_as_of.replace("-", "")
+    etf_json_dir = etf_dir / "json"
+    if not etf_json_dir.is_dir():
+        raise FileNotFoundError(f"exact-target ETF Stock Report directory not found: {etf_json_dir}")
+    official_identities, _universe_sha = load_official_etf36(ROOT)
+    frozen_tickers = {identity.ticker for identity in official_identities}
+    etf_reports: dict[str, dict[str, Any]] = {}
+    source_paths: dict[str, Path] = {}
+    for path in sorted(etf_json_dir.glob("*.json")):
+        report = _read_json(path)
+        ticker = str(report.get("ticker") or "").strip().upper()
+        if not ticker or ticker in etf_reports:
+            raise ValueError(f"invalid or duplicate ETF Stock Report ticker: {path}")
+        if ticker not in frozen_tickers:
+            raise ValueError(f"ETF Stock Report outside frozen Official ETF36: {path}")
+        if str(report.get("requested_as_of") or "")[:10] != target_as_of:
+            raise ValueError(f"ETF Stock Report date mismatch: {path}")
+        if str(report.get("reference_market_date") or "")[:10] != reference_market_date:
+            raise ValueError(f"ETF Stock Report reference_market_date mismatch: {path}")
+        _validate_report_contract(report, path)
+        markdown_path = etf_dir / f"{path.stem}.md"
+        if not markdown_path.is_file():
+            raise FileNotFoundError(f"ETF Stock Report Markdown authority missing: {markdown_path}")
+        validate_v06_report_payload(ROOT, report, markdown_path.read_text(encoding="utf-8"))
+        fundamentals = report.get("fundamentals")
+        if not isinstance(fundamentals, dict) or fundamentals.get("requested_as_of") != target_as_of:
+            raise ValueError(f"ETF Stock Report fundamentals date mismatch: {path}")
+        etf_reports[ticker] = report
+        source_paths[ticker] = path
+    if set(etf_reports) != frozen_tickers:
+        missing = sorted(frozen_tickers - set(etf_reports))
+        extra = sorted(set(etf_reports) - frozen_tickers)
+        raise ValueError(
+            "ETF Stock Report frozen ticker set mismatch: "
+            f"missing={missing[:5]} extra={extra[:5]} count={len(etf_reports)}"
+        )
+    return etf_dir, etf_reports, source_paths
+
+
 def _compact_fundamentals(source: Any) -> dict[str, Any]:
     if not isinstance(source, dict):
         raise ValueError("Stock Report fundamentals authority is missing")
@@ -231,13 +288,57 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
     sector_strength = report.get("sector_relative_strength") or {}
     flow = report.get("foreign_flow") or {}
     trading_value = report.get("trading_value_flow") or {}
-    strategy = report.get("a_fast_core") or {}
+    is_etf_v06 = report.get("report_version") == "0.6"
+    strategy = (report.get("official_strategy") if is_etf_v06 else report.get("a_fast_core")) or {}
     pattern_b = report.get("pattern_b")
     ticker = str(report.get("ticker") or header.get("ticker") or "").upper()
     asset_type = str(report.get("asset_type") or header.get("asset_type") or "UNKNOWN").upper()
     reference_market_date = str(report.get("reference_market_date") or "")[:10]
     daily_close = _load_exact_daily_close(ticker, reference_market_date)
     fundamentals = _compact_fundamentals(report.get("fundamentals"))
+    if is_etf_v06:
+        strategy_history = []
+        for trade in strategy.get("trade_history") or []:
+            if not isinstance(trade, dict):
+                continue
+            strategy_history.append({
+                "trade_id": trade.get("trade_id"),
+                "trade_sequence": trade.get("trade_sequence"),
+                "entry_signal_date": trade.get("entry_signal_date"),
+                "entry_execution_date": trade.get("entry_execution_date"),
+                "entry_open": trade.get("entry_open_krw"),
+                "entry_pattern_a_stage": trade.get("entry_pattern_a_stage"),
+                "exit_type": trade.get("exit_type"),
+                "exit_signal_date": trade.get("exit_signal_date"),
+                "exit_execution_date": trade.get("exit_execution_date"),
+                "exit_price": trade.get("exit_price_krw"),
+                "trade_status": trade.get("trade_status"),
+                "return_pct": trade.get("terminal_return_pct"),
+                "lifecycle_class": trade.get("lifecycle_class"),
+            })
+        strategy_public = {
+            "source": "official_strategy",
+            "id": strategy.get("strategy_id"),
+            "strategy_id": strategy.get("strategy_id"),
+            "strategy_name": strategy.get("strategy_name"),
+            "action": strategy.get("action"),
+            "state": strategy.get("strategy_state"),
+            "position": strategy.get("canonical_position"),
+            "reason": strategy.get("action_reason"),
+            "action_reason": strategy.get("action_reason"),
+            "interpretation": strategy.get("interpretation"),
+            "history": strategy_history,
+            "eligibility": copy.deepcopy((report.get("current_snapshot") or {}).get("etf_eligibility") or {}),
+        }
+    else:
+        strategy_public = {
+            "action": strategy.get("action"),
+            "state": strategy.get("strategy_state"),
+            "position": strategy.get("canonical_position"),
+            "reason": strategy.get("action_reason"),
+            "interpretation": strategy.get("interpretation"),
+            "history": _compact_trade_history(strategy),
+        }
 
     return {
         "schema_version": 1,
@@ -328,14 +429,7 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
             "explanation": flow.get("explanation"),
         },
         "fundamentals": fundamentals,
-        "strategy": {
-            "action": strategy.get("action"),
-            "state": strategy.get("strategy_state"),
-            "position": strategy.get("canonical_position"),
-            "reason": strategy.get("action_reason"),
-            "interpretation": strategy.get("interpretation"),
-            "history": _compact_trade_history(strategy),
-        },
+        "strategy": strategy_public,
         "technical_details": {
             "requested_as_of": report.get("requested_as_of"),
             "reference_market_date": reference_market_date,
@@ -371,6 +465,7 @@ def build_web_payload(
     *,
     target_as_of: str | None = None,
     reference_market_date: str | None = None,
+    include_etf: bool = False,
 ) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, Any]]:
     """``target_as_of``(선택, PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01)를 명시하면
     최신 디렉터리 자동 선택 대신 그 날짜의 exact 디렉터리만 사용하고,
@@ -422,6 +517,26 @@ def build_web_payload(
         status = reports[ticker]["fundamentals"]["status"]
         fundamentals_status_counts[status] = fundamentals_status_counts.get(status, 0) + 1
 
+    source_directories = [_relative(report_dir)]
+    etf_report_tickers: set[str] = set()
+    if include_etf:
+        if target_as_of is None:
+            raise ValueError("ETF v0.6 Web projection requires exact target_as_of")
+        etf_dir, etf_source_reports, etf_source_paths = validate_exact_etf_report_corpus(
+            requested_as_of, effective_reference_market_date,
+        )
+        for ticker, etf_report in etf_source_reports.items():
+            if ticker in reports:
+                raise ValueError(f"COMMON/ETF Stock Report ticker conflict: {ticker}")
+            path = etf_source_paths[ticker]
+            reports[ticker] = _compact_report(etf_report, path)
+            etf_report_tickers.add(ticker)
+            status = reports[ticker]["fundamentals"]["status"]
+            fundamentals_status_counts[status] = fundamentals_status_counts.get(status, 0) + 1
+        if len(reports) != len(source_json_paths) + len(etf_source_reports):
+            raise ValueError("COMMON/ETF Stock Report merged count mismatch")
+        source_directories.append(_relative(etf_dir))
+
     report_tickers = set(reports)
     items = [
         {
@@ -443,6 +558,7 @@ def build_web_payload(
         "reference_market_date": effective_reference_market_date,
         "universe_snapshot_date": snapshot_date,
         "source_report_directory": _relative(report_dir),
+        **({"source_report_directories": source_directories} if include_etf else {}),
         "count": len(items),
         "available_report_count": len(reports),
         "items": items,
@@ -456,14 +572,27 @@ def build_web_payload(
         "unavailable_report_count": len(items) - len(reports),
         "source_report_directory": _relative(report_dir),
         "source_json_directory": _relative(source_json_dir),
+        "source_report_directories": source_directories,
+        "common_report_count": len(source_json_paths),
+        "etf_report_count": len(etf_report_tickers),
         "fundamentals_integrated_count": len(reports),
         "fundamentals_status_counts": dict(sorted(fundamentals_status_counts.items())),
     }
     return index, reports, stats
 
 
-def export_stock_reports(output_dir: Path = DEFAULT_OUTPUT_DIR) -> dict[str, Any]:
-    index, reports, stats = build_web_payload()
+def export_stock_reports(
+    output_dir: Path = DEFAULT_OUTPUT_DIR,
+    *,
+    target_as_of: str | None = None,
+    reference_market_date: str | None = None,
+    include_etf: bool = False,
+) -> dict[str, Any]:
+    index, reports, stats = build_web_payload(
+        target_as_of=target_as_of,
+        reference_market_date=reference_market_date,
+        include_etf=include_etf,
+    )
     _write_json(output_dir / "stock-index.json", index)
     stock_dir = output_dir / "stocks"
     stock_dir.mkdir(parents=True, exist_ok=True)
@@ -475,8 +604,16 @@ def export_stock_reports(output_dir: Path = DEFAULT_OUTPUT_DIR) -> dict[str, Any
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument("--target-as-of", help="exact YYYY-MM-DD Stock Report target")
+    parser.add_argument("--reference-market-date", help="exact YYYY-MM-DD market-data date")
+    parser.add_argument("--include-etf", action="store_true", help="include exact frozen ETF36 v0.6 corpus")
     args = parser.parse_args()
-    stats = export_stock_reports(args.output)
+    stats = export_stock_reports(
+        args.output,
+        target_as_of=args.target_as_of,
+        reference_market_date=args.reference_market_date,
+        include_etf=args.include_etf,
+    )
     print(json.dumps(stats, ensure_ascii=False, sort_keys=True))
     return 0
 

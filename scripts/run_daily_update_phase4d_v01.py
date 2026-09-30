@@ -93,7 +93,12 @@ _STALE_PUBLISHED_CODES = frozenset(
 )
 
 
-def inspect_published_payload(root: Path, target_as_of: str) -> dict[str, Any] | None:
+def inspect_published_payload(
+    root: Path,
+    target_as_of: str,
+    *,
+    require_etf_source: bool = False,
+) -> dict[str, Any] | None:
     """Validate an already-published exact-target payload without writing.
 
     ``None`` means the publication is absent or belongs to another target, so the
@@ -125,11 +130,18 @@ def inspect_published_payload(root: Path, target_as_of: str) -> dict[str, Any] |
             "PHASE4D_REFERENCE_MARKET_DATE_AUTHORITY_MISMATCH: "
             f"expected {expected_reference_market_date}, got {reference_market_date}"
         )
+    if require_etf_source:
+        try:
+            stock_web.validate_exact_etf_report_corpus(target_as_of, reference_market_date)
+        except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
+            raise Phase4DError(f"PHASE4D_ETF36_SOURCE_INVALID: {exc}") from exc
     try:
-        validation = validate_staging(web_data, target_as_of, reference_market_date)
+        validation = validate_staging(
+            web_data, target_as_of, reference_market_date, require_etf36=require_etf_source,
+        )
     except Phase4DError as exc:
         code = str(exc).split(":", 1)[0]
-        if code in _STALE_PUBLISHED_CODES:
+        if code in _STALE_PUBLISHED_CODES or code == "PHASE4D_ETF36_SET_MISMATCH":
             return None
         raise
     return {
@@ -146,7 +158,7 @@ def _stage_payloads(
 ) -> dict[str, Any]:
     if phase4c_result is None:
         phase4c_result = phase4c.run_phase4c(target_as_of, root=ROOT)
-    if phase4c_result.get("status") != "PASS" or phase4c_result.get("network_calls") != 0:
+    if phase4c_result.get("status") not in {"PASS", "NOOP_ALREADY_COMPLETE"} or phase4c_result.get("network_calls") != 0:
         raise Phase4DError("PHASE4D_PHASE4C_PREREQUISITE_FAILED")
     if phase4c_result.get("web_data_writes") != 0:
         raise Phase4DError("PHASE4D_PHASE4C_WEB_WRITE_DETECTED")
@@ -155,7 +167,7 @@ def _stage_payloads(
         raise Phase4DError("PHASE4D_REFERENCE_MARKET_DATE_INVALID")
 
     index, reports, report_stats = stock_web.build_web_payload(
-        ROOT, target_as_of=target_as_of, reference_market_date=reference_market_date,
+        ROOT, target_as_of=target_as_of, reference_market_date=reference_market_date, include_etf=True,
     )
     _write_json(stage_data / "stock-index.json", index)
     stocks_dir = stage_data / "stocks"
@@ -215,7 +227,13 @@ def _stage_payloads(
     }
 
 
-def validate_staging(stage_data: Path, target_as_of: str, reference_market_date: str) -> dict[str, Any]:
+def validate_staging(
+    stage_data: Path,
+    target_as_of: str,
+    reference_market_date: str,
+    *,
+    require_etf36: bool = False,
+) -> dict[str, Any]:
     missing = [name for name in REQUIRED_FILES if not (stage_data / name).is_file()]
     if missing or not (stage_data / "stocks").is_dir():
         raise Phase4DError(f"PHASE4D_STAGE_REQUIRED_OUTPUT_MISSING: {missing}")
@@ -231,13 +249,46 @@ def validate_staging(stage_data: Path, target_as_of: str, reference_market_date:
     report_tickers = _report_tickers(index)
     if not report_tickers or report_tickers != set(stocks) or index.get("available_report_count") != len(report_tickers):
         raise Phase4DError("PHASE4D_STOCK_REPORT_SET_MISMATCH")
+    common_tickers = {
+        str(item.get("ticker") or "")
+        for item in index.get("items", [])
+        if isinstance(item, dict) and item.get("report_available") is True and item.get("asset_type", "COMMON") == "COMMON"
+    }
+    etf_tickers = {
+        str(item.get("ticker") or "")
+        for item in index.get("items", [])
+        if isinstance(item, dict) and item.get("report_available") is True and item.get("asset_type") == "ETF"
+    }
+    if common_tickers | etf_tickers != report_tickers or common_tickers & etf_tickers:
+        raise Phase4DError("PHASE4D_STOCK_ASSET_SET_MISMATCH")
+    if require_etf36:
+        from trend_scanner.reporting.julia_v1_report import load_official_etf36
+
+        expected_etf_tickers = {identity.ticker for identity in load_official_etf36(ROOT)[0]}
+        if etf_tickers != expected_etf_tickers:
+            raise Phase4DError(
+                "PHASE4D_ETF36_SET_MISMATCH: "
+                f"expected={len(expected_etf_tickers)} actual={len(etf_tickers)}"
+            )
     for ticker, report in stocks.items():
         technical = report.get("technical_details") or {}
         if technical.get("requested_as_of") != target_as_of or technical.get("reference_market_date") != reference_market_date:
             raise Phase4DError(f"PHASE4D_STOCK_DATE_MISMATCH: {ticker}")
-        if technical.get("report_version") != "0.7":
+        identity = report.get("identity") or {}
+        asset_type = identity.get("asset_type")
+        expected_version = "0.6" if asset_type == "ETF" else "0.7"
+        if technical.get("report_version") != expected_version:
             raise Phase4DError(f"PHASE4D_STOCK_REPORT_VERSION_MISMATCH: {ticker}")
-        if (report.get("strategy") or {}).get("id") not in {None, STRATEGY_ID}:
+        strategy_section = report.get("strategy") or {}
+        if asset_type == "ETF":
+            if (
+                strategy_section.get("source") != "official_strategy"
+                or strategy_section.get("strategy_id") != "JULIA_ETF_STRATEGY_V01"
+                or strategy_section.get("strategy_name") != "Julia V1"
+                or report.get("pattern_b") is not None
+            ):
+                raise Phase4DError(f"PHASE4D_ETF_REPORT_CONTRACT_MISMATCH: {ticker}")
+        elif strategy_section.get("id") not in {None, STRATEGY_ID}:
             raise Phase4DError(f"PHASE4D_STOCK_STRATEGY_MISMATCH: {ticker}")
 
     for name in REQUIRED_FILES:
@@ -248,11 +299,11 @@ def validate_staging(stage_data: Path, target_as_of: str, reference_market_date:
         raise Phase4DError("PHASE4D_STOCK_REPORT_VERSION_MISMATCH: health.json")
     market = documents["market-ranking.json"]
     strategy = documents["strategy-monitor.json"]
-    if {item.get("ticker") for item in market.get("items", [])} != report_tickers:
+    if {item.get("ticker") for item in market.get("items", [])} != common_tickers:
         raise Phase4DError("PHASE4D_MARKET_SET_MISMATCH")
-    if {item.get("ticker") for item in strategy.get("items", [])} != report_tickers:
+    if {item.get("ticker") for item in strategy.get("items", [])} != common_tickers:
         raise Phase4DError("PHASE4D_STRATEGY_SET_MISMATCH")
-    if market.get("scope", {}).get("report_count") != len(report_tickers) or strategy.get("scope", {}).get("report_count") != len(report_tickers):
+    if market.get("scope", {}).get("report_count") != len(common_tickers) or strategy.get("scope", {}).get("report_count") != len(common_tickers):
         raise Phase4DError("PHASE4D_REPORT_COUNT_MISMATCH")
     if strategy.get("strategy", {}).get("id") != STRATEGY_ID:
         raise Phase4DError("PHASE4D_STRATEGY_ID_MISMATCH")
@@ -261,9 +312,9 @@ def validate_staging(stage_data: Path, target_as_of: str, reference_market_date:
     foreign = documents["foreign-net-buy-ranking.json"]
     if sector.get("as_of") != reference_market_date or foreign.get("as_of") != reference_market_date:
         raise Phase4DError("PHASE4D_MARKET_AS_OF_MISMATCH")
-    if sum(bool(item.get("report_available")) for item in sector.get("items", [])) != len(report_tickers):
+    if sum(bool(item.get("report_available")) for item in sector.get("items", [])) != len(common_tickers):
         raise Phase4DError("PHASE4D_SECTOR_REPORT_COUNT_MISMATCH")
-    if sum(bool(item.get("report_available")) for item in foreign.get("items", [])) != len(report_tickers):
+    if sum(bool(item.get("report_available")) for item in foreign.get("items", [])) != len(common_tickers):
         raise Phase4DError("PHASE4D_FOREIGN_REPORT_COUNT_MISMATCH")
     health = documents["health.json"]
     readiness = health.get("stock_reports") or {}
@@ -279,12 +330,14 @@ def validate_staging(stage_data: Path, target_as_of: str, reference_market_date:
         "duplicate_payload_count",
     )):
         raise Phase4DError("PHASE4D_HEALTH_FUNDAMENTALS_INTEGRITY_FAILED")
-    if readiness.get("ready") is not True or readiness.get("source_json_count") != len(report_tickers):
+    if readiness.get("ready") is not True or readiness.get("source_json_count") != len(common_tickers):
         raise Phase4DError("PHASE4D_HEALTH_STAGING_READINESS_FAILED")
-    if readiness.get("web_compact_count") != len(report_tickers) or readiness.get("web_index_available_report_count") != len(report_tickers):
+    if readiness.get("web_compact_count") != len(common_tickers) or readiness.get("web_index_available_report_count") != len(common_tickers):
         raise Phase4DError("PHASE4D_HEALTH_STAGE_WEB_COUNT_MISMATCH")
     return {
         "stock_report_count": len(report_tickers),
+        "common_stock_report_count": len(common_tickers),
+        "etf_stock_report_count": len(etf_tickers),
         "sector_population_count": sector.get("scope", {}).get("population_count"),
         "foreign_population_count": foreign.get("coverage", {}).get("target_common_universe_count"),
         "foreign_flow_covered_count": foreign.get("coverage", {}).get("flow_covered_count"),
@@ -322,7 +375,7 @@ def run_phase4d(
 ) -> dict[str, Any]:
     if root != ROOT:
         raise Phase4DError("PHASE4D_REPOSITORY_ROOT_MISMATCH")
-    published = inspect_published_payload(root, target_as_of)
+    published = inspect_published_payload(root, target_as_of, require_etf_source=True)
     if published is not None:
         return {
             "status": "NOOP_ALREADY_COMPLETE",
@@ -340,10 +393,14 @@ def run_phase4d(
         stage_data = stage_root / "data"
         stage_data.mkdir()
         context = _stage_payloads(target_as_of, stage_data, phase4c_result=phase4c_result)
-        validation = validate_staging(stage_data, target_as_of, context["reference_market_date"])
+        validation = validate_staging(
+            stage_data, target_as_of, context["reference_market_date"], require_etf36=True,
+        )
         if execute_live:
             promote(stage_data, web_data)
-            readback = validate_staging(web_data, target_as_of, context["reference_market_date"])
+            readback = validate_staging(
+                web_data, target_as_of, context["reference_market_date"], require_etf36=True,
+            )
         else:
             readback = None
         return {

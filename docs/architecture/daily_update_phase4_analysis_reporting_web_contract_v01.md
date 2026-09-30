@@ -81,8 +81,10 @@ ETF 전용 공식 전략은 Julia V1 (JULIA_ETF_STRATEGY_V01)이며 공식 ETF 3
 적용한다. COMMON 4B 성공 뒤 같은 `target_as_of`와 4A가 확정한
 `reference_market_date`로 ETF36 전용 Stock Report v0.6
 (`official_strategy=JULIA_ETF_STRATEGY_V01`)을 자동 생성한다. 이 결과는
-COMMON 4A~4D 산출물과 별도 상태로 기록하며, ETF 리포트는 4C/4D 입력,
-전략 모니터, 웹/UI에 연결되지 않는다. 자동 주문은 승인되지 않았다.
+별도 artifact와 상태로 기록하고 Phase4D 종목 리포트 Web/UI에 투영한다.
+ETF 결과는 Market RS·Sector RS·외인 랭킹 또는 A FAST Strategy Monitor의
+모집단에 포함하지 않으며 Julia V1 Strategy Monitor 연결도 아니다. 자동 주문은
+승인되지 않았다.
 A FAST Core V2는 의사결정 지원 운영
 (PRODUCTION_DECISION_SUPPORT)이며 자동매매 권한이 아니다. V3/V4 또는
 다른 비공식 후보 전략을 4단계 운영 출력에 추가하지 않는다.
@@ -106,7 +108,7 @@ artifacts/reporting/stock_reports/{YYYYMMDD}/
 ```
 
 Official ETF 36 Julia V1 v0.6은 Phase 4E가 COMMON 4B 성공 뒤 자동 생성하며,
-웹 정적 투영 대상에는 포함되지 않는다.
+Phase4D 종목 리포트 Web/UI 투영에 사용한다.
 
 ```text
 artifacts/reporting/etf_stock_reports/{YYYYMMDD}/
@@ -130,18 +132,20 @@ ETF 리포트는 4A가 반환한 동일한 두 날짜를 명시적으로 전달�
 
 | 구분 | 입력 | 웹 출력 | 계약상 역할 |
 |---|---|---|---|
-| 종목 리포트 | 날짜별 Stock Report v0.7, PIT 메타데이터, 정확한 일별 종가 | `stock-index.json`, `stocks/*.json` | 필수 구성 요소 |
-| 마켓 RS | 공개 종목 리포트 웹 전달 데이터 | `market-ranking.json` | 필수 구성 요소 |
-| 전략 모니터 | `stock-index.json`, `stocks/*.json` | `strategy-monitor.json` | 필수 구성 요소 |
-| 섹터 RS | 업종 RS 권위, 메타데이터, 리포트 집합 | `sector-rs-ranking.json` | 필수 구성 요소 |
+| 종목 리포트 | 같은 날짜의 COMMON v0.7 + Official ETF36 v0.6, PIT 메타데이터, 정확한 일별 종가 | `stock-index.json`, `stocks/*.json` | 필수 구성 요소 |
+| 마켓 RS | 공개 COMMON 종목 리포트 웹 전달 데이터 | `market-ranking.json` | 필수 구성 요소 |
+| 전략 모니터 | `stock-index.json`, `stocks/*.json`의 COMMON 항목 | `strategy-monitor.json` | A FAST Core만 포함 |
+| 섹터 RS | 업종 RS 권위, 메타데이터, COMMON 리포트 집합 | `sector-rs-ranking.json` | 필수 구성 요소 |
 | 외인 순매수 | 외국인 수급, PIT COMMON 권위, 섹터 구성; `stock-index.json`은 리포트 보유 여부만 확인 | `foreign-net-buy-ranking.json` | 필수 구성 요소 |
 | 웹 상태 | 시장·PIT·펀더멘털·리포트의 로컬 상태 | `health.json` | 필수 구성 요소 |
 | 공포지수 | `artifacts/fear_index/research_v01/` 연구 산출물 | `fear-index.json` | 선택 보조 구성 요소 |
 | ETF 랭킹 | 고정 ETF 메타데이터와 Repository V2 | `etf-ranking.json` | 선택 보조 구성 요소 |
 
 `export_market_ranking_web.py`와 `export_strategy_monitor_web.py`는 Stock
-Report 웹 전달 데이터를 입력으로 사용한다. 따라서 둘은 종목 리포트 웹 투영 후에만
-실행한다. 외인 순매수의 `stock-index.json` 사용은 보통주 모집단을 정하는
+Report 웹 전달 데이터를 입력으로 사용한다. 전체 stock-index와 파일 집합의 날짜·무결성을
+확인한 뒤 COMMON 리포트만 결과에 투영한다. 따라서 둘은 종목 리포트 웹 투영 후에만
+실행한다. ETF36은 A FAST 전략 집계나 Market RS 순위에 포함하지 않는다. 외인
+순매수의 `stock-index.json` 사용은 보통주 모집단을 정하는
 근거가 아니라 `report_available` 표시에만 한정된다.
 
 대상 입력·출력은 모두 `requested_as_of == target_as_of`와 같은 실행의
@@ -163,7 +167,7 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
      → 4B A FAST Core V2 + Stock Report v0.7
      → ETF36 Julia V1 Stock Report v0.6 자동 생성 (4B 성공 후, 별도 상태)
      → 4C 필수 분석 표시 결과 검증
-     → 4D web/data 정적 투영
+     → 4D COMMON v0.7 + ETF36 v0.6 Web/UI 정적 투영
      → 전체 상태 합성
 ```
 
@@ -237,13 +241,20 @@ target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.jso
 
 ### 4D. `web/data` 정적 반영
 
-- 입력: 4B와 4C의 검증된 결과.
+- 입력: 4B와 4C의 검증된 COMMON 결과 및 같은 실행에서 생성되거나 유효한
+  NOOP로 확인된 exact-date Official ETF36 v0.6 corpus.
 - 처리: 기존 `export_*_web.py`만 사용해 `web/data/`에 투영한다. 웹 계층에서
-  전략·RS·펀더멘털을 재계산하지 않는다.
+  Julia·Pattern A·eligibility·COMMON 전략·RS·펀더멘털을 재계산하지 않는다.
+  ETF corpus는 frozen ETF36 전체 집합, v0.6 schema, Julia ID와 두 날짜가 모두
+  검증되어야 한다. ETF 전략 상세는 Julia V1 authority를 보존한다.
+- 범위 분리: 종목 index/JSON은 COMMON과 ETF36을 함께 포함한다. Market RS,
+  Sector RS, 외인 랭킹 및 A FAST Strategy Monitor는 기존 COMMON 집합만 포함한다.
+  ETF Pattern B는 적용하지 않으며 Julia V1을 Strategy Monitor에 연결하지 않는다.
 - 검증: `stock-index.json` 및 종목 JSON, 필수 순위·모니터·상태 JSON에
   `requested_as_of == target_as_of`와 동일 실행의 `reference_market_date`가
   일관되게 기록되고, 화면 입력 파일이 존재하며 JSON 형식이 유효한지 확인한다.
   비거래일에는 `reference_market_date < target_as_of`를 정상으로 처리한다.
+  ETF corpus가 없거나 불완전·무효이면 NOOP로 통과시키지 않고 4D를 실패 처리한다.
 - 배포: 이 단계는 `web/data` 생성까지만 정의한다. Pages 배포는 main 반영 후의
   기존 배포 흐름의 책임이며 웹 JSON 자체가 분석 권위가 되지 않는다.
 

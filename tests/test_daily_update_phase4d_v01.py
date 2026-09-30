@@ -155,6 +155,14 @@ def test_validate_staging_accepts_normal_health(monkeypatch: pytest.MonkeyPatch,
     assert result["stock_report_count"] == 1
 
 
+def test_phase4d_combined_contract_requires_exact_official_etf36(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    stage, documents = _health_validation_fixture(tmp_path)
+    monkeypatch.setattr(phase4d, "_read_json", lambda path: documents[path.relative_to(stage).as_posix()])
+
+    with pytest.raises(phase4d.Phase4DError, match="PHASE4D_ETF36_SET_MISMATCH"):
+        phase4d.validate_staging(stage, "2026-09-17", "2026-09-17", require_etf36=True)
+
+
 def test_foreign_ui_uses_date_contract_not_legacy_fixed_date():
     script = (Path(__file__).resolve().parents[1] / "web/js/foreign.js").read_text(encoding="utf-8")
     assert 'value.as_of === "2026-09-04"' not in script

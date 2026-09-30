@@ -165,7 +165,8 @@ def build_strategy_monitor(
             as_of_values.add(as_of)
         if ref:
             reference_market_date_values.add(ref)
-        items.append(_project_item(index_item, report))
+        if index_item.get("asset_type") == "COMMON":
+            items.append(_project_item(index_item, report))
 
     if target_as_of is not None and as_of_values != {target_as_of}:
         raise ValueError(
@@ -201,8 +202,8 @@ def build_strategy_monitor(
             "path": "web/data/stocks/*.json",
         },
         "scope": {
-            "type": "PUBLISHED_REPORTS",
-            "label": "현재 공개 리포트 기준",
+            "type": "PUBLISHED_COMMON_REPORTS",
+            "label": "현재 공개 COMMON 리포트 기준",
             "report_count": len(items),
         },
         "requested_as_of": resolved_as_of,

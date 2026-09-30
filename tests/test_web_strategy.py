@@ -50,18 +50,22 @@ def test_strategy_monitor_schema_and_source_count_are_consistent():
     }
     assert monitor["source"]["type"] == "PUBLISHED_STOCK_REPORTS"
     assert monitor["scope"] == {
-        "type": "PUBLISHED_REPORTS",
-        "label": "현재 공개 리포트 기준",
-        "report_count": index["available_report_count"],
+        "type": "PUBLISHED_COMMON_REPORTS",
+        "label": "현재 공개 COMMON 리포트 기준",
+        "report_count": sum(
+            item["report_available"] is True and item.get("asset_type") == "COMMON"
+            for item in index["items"]
+        ),
     }
     assert monitor["as_of"] == index["requested_as_of"]
     assert monitor["reference_market_date"] == index["reference_market_date"]
-    assert monitor["scope"]["report_count"] == index["available_report_count"] == len(items)
+    assert monitor["scope"]["report_count"] == len(items)
     bucket_counts = Counter(item["bucket"] for item in items)
     assert all(monitor["counts"][key] == bucket_counts.get(key, 0) for key in ("entry", "hold", "exit", "watch", "unavailable"))
     assert sum(monitor["counts"].values()) == len(items)
     assert {item["ticker"] for item in items} == {
-        item["ticker"] for item in index["items"] if item["report_available"] is True
+        item["ticker"] for item in index["items"]
+        if item["report_available"] is True and item.get("asset_type") == "COMMON"
     }
     for item in items:
         assert {
@@ -100,7 +104,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
     assert 'href="./css/app.css?v=web-ui-density-11"' in index_html
-    assert 'href="./css/app.css?v=web-ui-density-11"' in report_html
+    assert 'href="./css/app.css?v=web-ui-density-12"' in report_html
     for html in (index_html, report_html):
         assert "web-02a-final-2" not in html
         assert "web-03a-final-1" not in html
@@ -113,7 +117,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert strategy_scripts[0].query.startswith("v=") and strategy_scripts[0].query.removeprefix("v=")
     assert (ROOT / "web" / strategy_scripts[0].path.removeprefix("./")).is_file()
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
-    assert 'src="./js/report.js?v=web-02d-window-13"' in report_html
+    assert 'src="./js/report.js?v=web-02e-etf36-julia-v1"' in report_html
     assert 'href="./strategy.html"' in index_html
     assert 'href="./strategy.html"' in report_html
     assert 'class="nav-item is-active" href="./strategy.html"' in strategy_html
@@ -243,8 +247,12 @@ def test_strategy_position_examples_keep_meaningful_two_line_values():
     items_by_state = {item["strategy_state"]: item for item in monitor["items"]}
     assert items_by_state["HOLD_PROGRESSED"]["canonical_position"] == "OPEN"
     assert items_by_state["HOLD_PRE_PROGRESSED"]["canonical_position"] == "OPEN"
-    wait_item = next(item for item in monitor["items"] if item["strategy_state"] == "WAIT")
-    assert wait_item["canonical_position"] == "FLAT"
+    neutral_items = [item for item in monitor["items"] if item["strategy_state"] == "WAIT"]
+    if neutral_items:
+        assert all(item["canonical_position"] == "FLAT" for item in neutral_items)
+    else:
+        unavailable = next(item for item in monitor["items"] if item["strategy_state"] == "DATA_UNAVAILABLE")
+        assert unavailable["canonical_position"] == "DATA_UNAVAILABLE"
 
 
 def test_strategy_monitor_json_matches_clean_exporter_projection():

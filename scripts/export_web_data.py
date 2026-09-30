@@ -478,12 +478,17 @@ def _stock_report_readiness(
 
     web_stock_dir = web_data_root / "stocks"
     web_paths = sorted(web_stock_dir.glob("*.json")) if web_stock_dir.exists() else []
+    web_common_paths: list[Path] = []
     web_fundamentals_integrated_count = 0
     for path in web_paths:
         try:
             report = _read_json(path)
         except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
             continue
+        identity = report.get("identity")
+        if not isinstance(identity, Mapping) or identity.get("asset_type") != "COMMON":
+            continue
+        web_common_paths.append(path)
         fundamentals = report.get("fundamentals")
         if (
             isinstance(fundamentals, Mapping)
@@ -501,7 +506,13 @@ def _stock_report_readiness(
             web_index = _read_json(stock_index_path)
         except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
             web_index = {}
-    web_index_available_count = web_index.get("available_report_count")
+    web_index_available_count = sum(
+        1 for item in web_index.get("items", [])
+        if isinstance(item, Mapping)
+        and item.get("report_available") is True
+        and item.get("asset_type") == "COMMON"
+    )
+    web_index_total_available_count = web_index.get("available_report_count")
     expected_report_count = len(source_json_paths)
     effective_report_version = (
         "0.7" if expected_report_count > 0 and v07_count == expected_report_count
@@ -514,7 +525,7 @@ def _stock_report_readiness(
         effective_report_version is not None,
         fundamentals_integrated_count == expected_report_count,
         schema_errors == 0,
-        len(web_paths) == expected_report_count,
+        len(web_common_paths) == expected_report_count,
         web_fundamentals_integrated_count == expected_report_count,
         web_index_available_count == expected_report_count,
     ))
@@ -528,9 +539,10 @@ def _stock_report_readiness(
         "v07_count": v07_count,
         "schema_errors": schema_errors,
         "fundamentals_integrated_count": fundamentals_integrated_count,
-        "web_compact_count": len(web_paths),
+        "web_compact_count": len(web_common_paths),
         "web_fundamentals_integrated_count": web_fundamentals_integrated_count,
         "web_index_available_report_count": web_index_available_count,
+        "web_index_total_available_report_count": web_index_total_available_count,
     }
 
 

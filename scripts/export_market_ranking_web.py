@@ -129,9 +129,13 @@ def build_market_ranking(
             raise ValueError(f"published report is not available: {path}")
         reports[ticker] = report
 
+    common_tickers = {
+        ticker for ticker, index_item in published_by_ticker.items()
+        if index_item.get("asset_type") == "COMMON"
+    }
     items = [
         _project_item(published_by_ticker[ticker], reports[ticker], stocks_dir / f"{ticker}.json")
-        for ticker in sorted(reports, key=lambda value: (str(published_by_ticker[value].get("name") or ""), value))
+        for ticker in sorted(common_tickers, key=lambda value: (str(published_by_ticker[value].get("name") or ""), value))
     ]
     as_of_values = {str(item["technical_details"].get("requested_as_of"))[:10] for item in reports.values()}
     if len(as_of_values) != 1:

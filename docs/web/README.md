@@ -50,24 +50,26 @@
 | 마켓 RS | 공개 종목 리포트의 `stock-index.json`과 종목별 웹 리포트 | [`export_market_ranking_web.py`](../../scripts/export_market_ranking_web.py) | [`market-ranking.json`](../../web/data/market-ranking.json) | [`market.js`](../../web/js/market.js) | [`market.html`](../../web/market.html) |
 | 섹터 RS | Sector RS 권위 Parquet·메타데이터, 기준일별 KRX Basic Info, 종목 리포트 파일 집합 | [`export_sector_rs_ranking_web.py`](../../scripts/export_sector_rs_ranking_web.py) | [`sector-rs-ranking.json`](../../web/data/sector-rs-ranking.json) | [`sector.js`](../../web/js/sector.js) | [`sector.html`](../../web/sector.html) |
 | 외인 순매수 | 외인 수급 일별 원천과 보통주 권위 집합·섹터 구성. 1·5·10·20·60일 누적 순매수와 같은 기간 주가수익률을 계산하며, `stock-index.json`은 `report_available` 확인에만 사용 | [`export_foreign_net_buy_ranking_web.py`](../../scripts/export_foreign_net_buy_ranking_web.py) | [`foreign-net-buy-ranking.json`](../../web/data/foreign-net-buy-ranking.json) | [`foreign.js`](../../web/js/foreign.js) | [`foreign.html`](../../web/foreign.html) |
-| 종목 리포트 | 날짜별 Stock Report v0.5 JSON, PIT 종목 메타데이터, 수정주가의 기준일 종가 | [`export_stock_report_web.py`](../../scripts/export_stock_report_web.py) | `stock-index.json`, `stocks/*.json` | [`report.js`](../../web/js/report.js) | [`report.html`](../../web/report.html) |
-| 전략 운용 | 공개 종목 리포트의 `stock-index.json`과 `stocks/*.json` | [`export_strategy_monitor_web.py`](../../scripts/export_strategy_monitor_web.py) | [`strategy-monitor.json`](../../web/data/strategy-monitor.json) | [`strategy.js`](../../web/js/strategy.js) | [`strategy.html`](../../web/strategy.html) |
+| 종목 리포트 | 같은 exact-date COMMON v0.7 + Official ETF36 v0.6 JSON, PIT 종목 메타데이터, 기준일 종가 | [`export_stock_report_web.py`](../../scripts/export_stock_report_web.py) | `stock-index.json`, `stocks/*.json` | [`report.js`](../../web/js/report.js) | [`report.html`](../../web/report.html) |
+| 전략 운용 | 공개 COMMON 종목 리포트의 `stock-index.json`과 `stocks/*.json` | [`export_strategy_monitor_web.py`](../../scripts/export_strategy_monitor_web.py) | [`strategy-monitor.json`](../../web/data/strategy-monitor.json) | [`strategy.js`](../../web/js/strategy.js) | [`strategy.html`](../../web/strategy.html) |
 
 ### 종목 리포트와 후속 데이터
 
 종목 리포트 웹 JSON은 여러 화면의 공개 범위를 결정하는 선행 결과다.
 
-- `export_stock_report_web.py`가 Stock Report v0.5 원천을 `stock-index.json`과
-  종목별 `stocks/*.json`으로 만든다.
+- `export_stock_report_web.py`가 같은 exact-date COMMON v0.7 원천과 Official ETF36
+  v0.6 원천을 각 계약대로 검증한 뒤 `stock-index.json`과 종목별 `stocks/*.json`으로
+  투영한다. ETF36은 Julia V1 authority를 보존하고 Pattern B를 적용하지 않는다.
 - 마켓 RS는 공개 종목 리포트 집합을 대상으로 랭킹 JSON을 만든다. 외인 순매수는
   보통주 권위 집합을 대상으로 1·5·10·20·60일 수급 합계와 기간 주가수익률을
   웹 제공용으로 계산한다. 이때 `stock-index.json`은 종목 집합 권위가 아니라
   `report_available` 표시 여부 확인에만 사용한다.
 - 섹터 RS는 Sector RS 권위 값을 그대로 투영하고, 종목 리포트 파일 집합은
   `report_available` 표시 여부에 사용한다.
-- 전략 운용 모니터는 현재 구현상 공개된 종목 리포트 웹 JSON을 직접 읽어
-  전략 상태를 투영한다. 이는 웹 표시용 후속 투영 결과이며 전략 권위 자체를
-  대신하지 않는다.
+- 마켓 RS와 전략 운용 모니터는 공개된 모든 파일의 일치 여부를 확인한 뒤 기존
+  COMMON 리포트 집합만 투영한다. ETF가 report available이어도 A FAST 집계에는
+  포함되지 않는다. 이는 웹 표시용 후속 투영 결과이며 전략 권위 자체를 대신하지
+  않는다.
 
 ## 웹 데이터 생성 원칙
 

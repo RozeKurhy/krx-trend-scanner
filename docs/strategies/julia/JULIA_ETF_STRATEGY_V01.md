@@ -9,7 +9,7 @@
 - 일반 종목 적용: **금지**. JULIA_STRATEGY_V00의 일반 종목 상태는 NOT ADOPTED / RETIRED AS GENERAL-STOCK OFFICIAL STRATEGY로 유지한다.
 - 기본 전략/CONTROL: A FAST Core V2가 계속 담당한다. Julia V1은 기본 전략이나 CONTROL이 아니다.
 - 자동 주문: 승인하지 않는다.
-- 현재 연결 상태: COMMON 4B 성공 뒤 Phase 4E에서 Official ETF 36 전용 Stock Report v0.6 (`official_strategy=JULIA_ETF_STRATEGY_V01`) 자동 생성에 연결됐다. Strategy Monitor·웹/UI 및 자동 주문에는 연결되지 않았다.
+- 현재 연결 상태: COMMON 4B 성공 뒤 Phase 4E에서 Official ETF 36 전용 Stock Report v0.6 (`official_strategy=JULIA_ETF_STRATEGY_V01`) 자동 생성되고, Phase4D 종목 리포트 Web/UI에 연결됐다. Strategy Monitor와 자동 주문에는 연결되지 않았다.
 
 ## V00에서 V1로의 공식 계보
 
@@ -51,7 +51,7 @@ ETF 자산 적격성은 일반 종목용 investability 계약을 사용하지 �
 
 심사 결과에서 장기 보유와 낮은 회전, 일부 window의 높은 ETF 손익 집중도가 확인됐다. window별 평균 보유기간은 약 536~751 거래일이고, turnover는 초기 자본 대비 약 1.33~5.45회였다. 상위 5개 ETF의 순손익 기여율은 window에 따라 약 50%에서 242%까지 달랐다. 100% 초과는 손실 포지션의 상쇄로 순손익 분모가 줄어든 경우를 포함한다. 이 특성들은 사전 고정 심사 진단이며 새 채택 threshold는 아니다.
 
-공식 채택은 자동 주문 승인, 기본 전략 승격, 일반 종목 적용, Phase 4 전략 후보 실행 또는 전략 모니터 연결을 뜻하지 않는다. Official ETF 36 Stock Report v0.6은 Phase 4E에서 자동 생성되지만, 별도 artifact 경로를 사용하며 웹/UI 및 Strategy Monitor와 분리되어 있다.
+공식 채택은 자동 주문 승인, 기본 전략 승격, 일반 종목 적용, Phase 4 전략 후보 실행 또는 Strategy Monitor 연결을 뜻하지 않는다. Official ETF 36 Stock Report v0.6은 Phase 4E에서 자동 생성되어 종목 리포트 Web/UI에서 볼 수 있지만, A FAST Strategy Monitor의 집계에는 포함되지 않는다.
 
 ## 과거 기록
 

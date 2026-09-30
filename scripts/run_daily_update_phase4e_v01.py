@@ -285,13 +285,15 @@ def _phase4c_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
         "target_as_of": target_as_of,
         "requested_as_of": target_as_of,
         "reference_market_date": published["reference_market_date"],
+        "network_calls": 0,
+        "web_data_writes": 0,
         "validation": published["validation"],
         "reason": "VALID_PUBLISHED_PHASE4D_PAYLOAD",
     }
 
 
 def _phase4d_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] | None:
-    published = phase4d.inspect_published_payload(root, target_as_of)
+    published = phase4d.inspect_published_payload(root, target_as_of, require_etf_source=True)
     if published is None:
         return None
     return {

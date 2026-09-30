@@ -72,10 +72,11 @@ JSON:     artifacts/reporting/stock_reports/<YYYYMMDD>/json/*.json
 보관한다.
 
 Official ETF 36의 v0.6 산출물은 COMMON 4B 성공 뒤 Phase 4E에서 같은 실행의
-`target_as_of`와 `reference_market_date`로 자동 생성하며, 기존 일반 종목 및 웹
-exporter 결과와 섞이지 않게 별도 경로에 둔다. 완전하고 유효한 동일 기준일
-산출물이 있으면 `NOOP_ALREADY_COMPLETE`로 처리한다. 이 자동 생성 연결은 웹/UI,
-Strategy Monitor 또는 자동 주문 연결을 의미하지 않는다.
+`target_as_of`와 `reference_market_date`로 자동 생성하며, COMMON 산출물과 구분되는
+별도 경로에 둔다. 완전하고 유효한 동일 기준일 산출물이 있으면
+`NOOP_ALREADY_COMPLETE`로 처리한다. Phase4D는 COMMON v0.7과 ETF v0.6을 종목
+리포트 Web/UI에 함께 투영한다. ETF Julia V1은 Strategy Monitor에 연결하지 않는다.
+자동 주문도 승인하지 않는다.
 
 ```text
 Markdown: artifacts/reporting/etf_stock_reports/<YYYYMMDD>/*.md

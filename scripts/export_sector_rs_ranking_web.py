@@ -273,9 +273,13 @@ def _load_report_file_set(stocks_dir: Path) -> set[str]:
         identity = report.get("identity")
         if not isinstance(identity, dict) or _ticker(identity.get("ticker")) != ticker:
             raise ValueError(f"stock report internal identity mismatch: {path}")
+        asset_type = str(identity.get("asset_type") or "").upper()
+        if asset_type not in {"COMMON", "ETF"}:
+            raise ValueError(f"stock report asset_type is invalid: {path}")
         if ticker in report_tickers:
             raise ValueError(f"duplicate stock report ticker: {ticker}")
-        report_tickers.add(ticker)
+        if asset_type == "COMMON":
+            report_tickers.add(ticker)
     return report_tickers
 
 

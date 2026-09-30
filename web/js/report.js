@@ -318,6 +318,9 @@
     const fundamentals = report && report.fundamentals;
     if (!fundamentals) return "정보 없음";
     if (fundamentals.filter_status === "NOT_APPLICABLE") {
+      if (report.identity && report.identity.asset_type === "ETF") {
+        return "일반기업 펀더멘털은 ETF에 적용되지 않습니다.";
+      }
       return `펀더멘털 V1 적용 대상 아님 · ${fundamentals.reason || "회사 분류상 적용 대상이 아닙니다."}`;
     }
     if (fundamentals.status === "DATA_UNAVAILABLE") {
@@ -463,6 +466,9 @@
   }
 
   function buildSummary(report) {
+    if (report.strategy && report.strategy.strategy_name) {
+      return report.strategy.interpretation || `${report.strategy.strategy_name}: ${report.strategy.action}`;
+    }
     const trend = `추세는 ${stageLabel(report.summary.trend_stage)} 상태입니다.`;
     const market = `마켓 RS는 ${marketStrengthLabel(report.market_strength)}입니다.`;
     const flow = `수급은 ${flowLabel(report.summary.flow_state)}입니다.`;
@@ -1076,7 +1082,9 @@
   function renderPatternBDetail(report, container) {
     const section = report.pattern_b;
     if (!section) {
-      appendDetailEmpty(container, "Pattern B 분석이 이 리포트에 연결되지 않았습니다.");
+      appendDetailEmpty(container, report.identity && report.identity.asset_type === "ETF"
+        ? "ETF v0.6에는 Pattern B를 적용하지 않습니다."
+        : "Pattern B 분석이 이 리포트에 연결되지 않았습니다.");
       return;
     }
     if (section.applicability !== "APPLICABLE") {
@@ -1184,11 +1192,31 @@
   }
 
   function renderStrategyDetail(report, container) {
-    const history = Array.isArray(report.strategy.history) ? report.strategy.history : [];
-    if (!history.length) {
-      appendDetailEmpty(container, "표시할 전략 이력이 없습니다.");
-      return;
+    const strategy = report.strategy || {};
+    if (strategy.strategy_name) {
+      appendDetailNote(container, `${strategy.strategy_name} · ${strategy.strategy_id || strategy.id || ""}`.trim());
     }
+    if (strategy.action_reason) appendDetailNote(container, `판단 사유: ${strategy.action_reason}`);
+    if (strategy.interpretation) appendDetailNote(container, strategy.interpretation);
+    const eligibility = strategy.eligibility;
+    if (report.identity && report.identity.asset_type === "ETF" && eligibility) {
+      appendDetailNote(container, `ETF 적격성 기준일 ${formatDate(eligibility.as_of)}`);
+      const passLabel = (value) => value === true ? "PASS" : value === false ? "FAIL" : "확인 필요";
+      const eligibilityRows = [
+        ["Official ETF36 소속", passLabel(eligibility.official_etf36_membership)],
+        ["상장 2년 경과", `${passLabel(eligibility.listing_age_pass)} · ${formatDate(eligibility.listing_date)}`],
+        ["원시 종가 / 최소 기준", `${formatPrice(eligibility.raw_close_krw)} / ${formatPrice(eligibility.minimum_raw_close_krw)} · ${passLabel(eligibility.raw_close_pass)}`],
+        ["20일 평균 거래량 / 최소 기준", `${formatNumber(eligibility.avg_volume_20d_shares, 1)}주 / ${formatNumber(eligibility.minimum_avg_volume_20d_shares)}주 · ${passLabel(eligibility.volume_pass)}`],
+        ["최종 적격성", passLabel(eligibility.eligibility_pass)],
+        ["적격성 계약", eligibility.eligibility_contract],
+        ["전략 준비일", formatDate(eligibility.strategy_ready_date)],
+        ["Clean 준비일", formatDate(eligibility.clean_ready_date)],
+      ];
+      container.appendChild(createDetailTable(["ETF 적격성 항목", "값"], eligibilityRows, "etf-eligibility-table"));
+    }
+    const history = Array.isArray(strategy.history) ? strategy.history : [];
+    if (!history.length) appendDetailEmpty(container, "표시할 전략 이력이 없습니다.");
+    if (!history.length) return;
     const rows = history.map((trade) => [
       trade.trade_sequence == null ? "—" : `${formatNumber(trade.trade_sequence)}회`,
       formatDate(trade.entry_execution_date || trade.entry_signal_date),
@@ -1200,7 +1228,11 @@
       exitTypeLabel(trade.exit_type),
     ]);
     container.appendChild(createDetailTable(["회차", "진입일", "진입가", "청산일", "청산가", "수익률", "상태", "종료 사유"], rows, "strategy-history-table"));
-    appendDetailNote(container, "과거 전략 이력은 과거 데이터에 전략 규칙을 적용한 결과이며 미래 수익을 의미하지 않습니다.", "strategy-disclaimer");
+    if (strategy.strategy_name) {
+      appendDetailNote(container, "과거 Julia V1 거래 이력은 과거 데이터에 전략 규칙을 적용한 결과이며 미래 수익을 의미하지 않습니다.", "strategy-disclaimer");
+    } else {
+      appendDetailNote(container, "과거 전략 이력은 과거 데이터에 전략 규칙을 적용한 결과이며 미래 수익을 의미하지 않습니다.", "strategy-disclaimer");
+    }
   }
 
   function isMobileLayout() {
@@ -1341,7 +1373,9 @@
     const identityParts = [identity.ticker, market, assetLabel(identity.asset_type)];
     if (sector && sector !== "UNKNOWN" && sector !== "None") identityParts.push(sector);
     setText("report-identity", identityParts.join(" · "));
-    setText("decision-heading", actionLabel(report.decision.action));
+    setText("decision-heading", report.strategy.strategy_name
+      ? `${report.strategy.strategy_name} · ${report.strategy.action}`
+      : actionLabel(report.decision.action));
     setText("decision-summary", buildSummary(report));
     setText("price-value", formatPrice(report.price_trend.latest_close));
     setText("price-detail", report.price_trend.latest_close == null
@@ -1354,10 +1388,12 @@
     const patternBReady = Boolean(patternB && patternB.applicability === "APPLICABLE" && patternB.evaluation_status === "READY" && patternB.pattern_b_state);
     setText("pattern-b-value", patternBReady
       ? patternBStateLabel(patternB.pattern_b_state)
-      : (patternB && patternB.applicability === "NOT_APPLICABLE" ? "해당 없음" : "정보 없음"));
+      : (identity.asset_type === "ETF" || (patternB && patternB.applicability === "NOT_APPLICABLE") ? "해당 없음" : "정보 없음"));
     setText("pattern-b-detail", patternBReady
       ? `${patternB.pattern_b_state} · 36M ${formatPatternBRange(patternB.range_36m)} · 24M선 ${formatSignedRate(patternB.monthly_ma24_distance)}`
-      : (patternB && Array.isArray(patternB.reason_codes) && patternB.reason_codes.length ? patternB.reason_codes.join(", ") : "Pattern B 상태 데이터 없음"));
+      : (identity.asset_type === "ETF"
+        ? "ETF v0.6에는 Pattern B를 적용하지 않습니다."
+        : (patternB && Array.isArray(patternB.reason_codes) && patternB.reason_codes.length ? patternB.reason_codes.join(", ") : "Pattern B 상태 데이터 없음")));
     setText("market-value", marketStrengthLabel(report.market_strength));
     setText("market-detail", marketStrengthDetail(report.market_strength));
     setText("flow-value", flowLabel(report.flow.state));
@@ -1366,7 +1402,9 @@
     setText("fundamentals-detail", fundamentalDetail(report));
     fundamentalTrendMode = "quarterly";
     renderFundamentalsDetail(report);
-    setText("strategy-value", actionLabel(report.strategy.action));
+    setText("strategy-value", report.strategy.strategy_name
+      ? `${report.strategy.strategy_name} · ${report.strategy.action}`
+      : actionLabel(report.strategy.action));
     setText("strategy-detail", strategyDetail(report.strategy.state));
     renderTechnicalDetails(report);
     const naver = byId("naver-link");

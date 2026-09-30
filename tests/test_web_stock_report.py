@@ -83,6 +83,63 @@ def test_all_published_compact_reports_have_ticker_bound_naver_chart(payload):
         assert "toss_chart" not in links
 
 
+def test_exact_etf36_v06_projection_preserves_julia_and_common_sets(exporter):
+    target_as_of = "2026-09-25"
+    reference_market_date = "2026-09-23"
+    index, reports, stats = exporter.build_web_payload(
+        target_as_of=target_as_of,
+        reference_market_date=reference_market_date,
+        include_etf=True,
+    )
+    _etf_dir, etf_sources, _source_paths = exporter.validate_exact_etf_report_corpus(
+        target_as_of, reference_market_date,
+    )
+    common_dir = ROOT / "artifacts/reporting/stock_reports/20260925/json"
+    common_sources = [json.loads(path.read_text(encoding="utf-8")) for path in common_dir.glob("*.json")]
+    common_tickers = {source["ticker"] for source in common_sources}
+    expected_etf_tickers = set(etf_sources)
+    available = {item["ticker"] for item in index["items"] if item["report_available"] is True}
+
+    assert stats["common_report_count"] == 1451 == len(common_tickers)
+    assert stats["etf_report_count"] == 36 == len(expected_etf_tickers)
+    assert stats["available_report_count"] == 1487 == len(reports)
+    assert available == common_tickers | expected_etf_tickers
+    assert {ticker for ticker in reports if reports[ticker]["identity"]["asset_type"] == "COMMON"} == common_tickers
+    assert {ticker for ticker in reports if reports[ticker]["identity"]["asset_type"] == "ETF"} == expected_etf_tickers
+
+    for ticker, source in etf_sources.items():
+        compact = reports[ticker]
+        strategy = source["official_strategy"]
+        eligibility = source["current_snapshot"]["etf_eligibility"]
+        assert compact["identity"]["asset_type"] == "ETF"
+        assert compact["technical_details"]["report_version"] == "0.6"
+        assert compact["technical_details"]["requested_as_of"] == source["requested_as_of"] == target_as_of
+        assert compact["technical_details"]["reference_market_date"] == source["reference_market_date"] == reference_market_date
+        assert compact["pattern_b"] is None
+        assert compact["strategy"]["source"] == "official_strategy"
+        assert compact["strategy"]["strategy_id"] == strategy["strategy_id"] == "JULIA_ETF_STRATEGY_V01"
+        assert compact["strategy"]["strategy_name"] == strategy["strategy_name"] == "Julia V1"
+        assert compact["strategy"]["action"] == strategy["action"]
+        assert compact["strategy"]["state"] == strategy["strategy_state"]
+        assert compact["strategy"]["position"] == strategy["canonical_position"]
+        assert compact["strategy"]["action_reason"] == strategy["action_reason"]
+        assert compact["strategy"]["interpretation"] == strategy["interpretation"]
+        assert compact["strategy"]["eligibility"] == eligibility
+        assert compact["pattern"]["official_stage"] == source["current_snapshot"]["official_stage"]
+        assert compact["pattern"]["score"] == source["current_snapshot"]["pattern_a_score"]
+        assert compact["pattern"]["history_12m"] == exporter._compact_monthly_history(source["monthly_history"])
+        assert compact["flow"]["data_status"] == source["foreign_flow"]["data_status"]
+        assert compact["market_strength"]["applicability"] == source["relative_strength"]["applicability"]
+        assert compact["market_strength"]["data_status"] == source["relative_strength"]["data_status"]
+        assert compact["fundamentals"]["status"] == source["fundamentals"]["data_status"]
+
+    report = reports["069500"]
+    assert report["identity"]["name"] == "KODEX 200"
+    assert report["strategy"]["action"] == "WAIT"
+    assert report["price_trend"]["latest_close"] == 113145.0
+    assert report["price_trend"]["latest_close_as_of"] == reference_market_date
+
+
 def test_fundamentals_projection_preserves_source_status_and_applicability(payload, exporter):
     _index, reports, _stats = payload
     report_dir, _requested_as_of = exporter._resolve_report_directory()
@@ -275,10 +332,10 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-02d-window-13"' in html
+    assert 'src="./js/report.js?v=web-02e-etf36-julia-v1"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert html.count("web-ui-density-12") == 1
-    assert html.count("web-02d-window-13") == 1
+    assert html.count("web-02e-etf36-julia-v1") == 1
     assert index_html.count("web-ui-density-11") == 1
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html

@@ -503,7 +503,7 @@ def test_phase4b_valid_exact_corpus_skips_runner(monkeypatch: pytest.MonkeyPatch
     assert result["phases"]["4B"]["status"] == "NOOP_ALREADY_COMPLETE"
 
 
-def test_all_noop_uses_read_only_prechecks(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_common_only_publication_cannot_be_treated_as_complete_phase4d_noop(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _write_scanner_fixture(tmp_path)
     _patch_calendar(monkeypatch, "2026-09-17")
     reports = tmp_path / "artifacts/reporting/stock_reports"
@@ -518,16 +518,17 @@ def test_all_noop_uses_read_only_prechecks(monkeypatch: pytest.MonkeyPatch, tmp_
 
     result = phase4e.run_phase4e("2026-09-17", root=tmp_path)
 
-    assert result["overall_status"] == "NOOP_ALREADY_COMPLETE"
+    assert result["overall_status"] == "FAILED"
     assert [result["phases"][name]["status"] for name in ("4A", "4B", "4C", "4D")] == [
         "NOOP_ALREADY_COMPLETE",
         "NOOP_ALREADY_COMPLETE",
         "NOOP_ALREADY_COMPLETE",
-        "NOOP_ALREADY_COMPLETE",
+        "FAILED",
     ]
+    assert result["etf_stock_reports"]["status"] in {"PASS", "NOOP_ALREADY_COMPLETE"}
 
 
-def test_phase4d_standalone_valid_payload_returns_noop(
+def test_phase4d_standalone_payload_without_exact_etf_corpus_is_not_noop(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     _write_scanner_fixture(tmp_path)
@@ -535,10 +536,8 @@ def test_phase4d_standalone_valid_payload_returns_noop(
     _patch_calendar(monkeypatch, "2026-09-17")
     monkeypatch.setattr(phase4d, "ROOT", tmp_path)
 
-    result = phase4d.run_phase4d("2026-09-17", execute_live=True, root=tmp_path)
-
-    assert result["status"] == "NOOP_ALREADY_COMPLETE"
-    assert result["web_data_writes"] == 0
+    with pytest.raises(phase4d.Phase4DError, match="PHASE4D_ETF36_SOURCE_INVALID"):
+        phase4d.run_phase4d("2026-09-17", execute_live=True, root=tmp_path)
 
 
 def test_trading_day_reference_authority_allows_noop(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

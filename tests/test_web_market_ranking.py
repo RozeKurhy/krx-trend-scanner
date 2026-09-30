@@ -34,10 +34,14 @@ def test_market_ranking_schema_scope_and_generated_projection_match():
     assert ranking["scope"] == {
         "type": "PUBLISHED_REPORTS",
         "label": "현재 공개 리포트 기준",
-        "report_count": index["available_report_count"],
+        "report_count": sum(
+            item["report_available"] is True and item.get("asset_type") == "COMMON"
+            for item in index["items"]
+        ),
     }
     assert ranking["metric_scope"] == {"label": "마켓 RS는 전체 보통주 기준"}
-    assert ranking["as_of"] == index["reference_market_date"]
+    assert ranking["as_of"] == index["requested_as_of"]
+    assert ranking["reference_market_date"] == index["reference_market_date"]
     assert ranking["eligible_counts"] == {
         horizon: sum(exporter._is_eligible(item, horizon) for item in ranking["items"])
         for horizon in ("2w", "1m", "3m", "6m", "12m")
@@ -48,7 +52,10 @@ def test_market_ranking_schema_scope_and_generated_projection_match():
 def test_market_ranking_uses_published_reports_and_preserves_identity():
     ranking = _load_ranking()
     index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
-    published = {item["ticker"]: item for item in index["items"] if item["report_available"] is True}
+    published = {
+        item["ticker"]: item for item in index["items"]
+        if item["report_available"] is True and item.get("asset_type") == "COMMON"
+    }
 
     assert {item["ticker"] for item in ranking["items"]} == set(published)
     for item in ranking["items"]:
@@ -174,8 +181,8 @@ def test_market_page_has_accessible_controls_and_release_contract():
 def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     page_versions = {
         ROOT / "web/index.html": ("web-ui-density-11", "app", "web-fear-fix02-4"),
-        ROOT / "web/report.html": ("web-ui-density-11", "report", "web-02d-window-13"),
-        ROOT / "web/strategy.html": ("web-ui-density-11", "strategy", "web-02c-toss-5"),
+        ROOT / "web/report.html": ("web-ui-density-12", "report", "web-02e-etf36-julia-v1"),
+        ROOT / "web/strategy.html": ("web-strategy-sort-2", "strategy", "web-strategy-sort-2"),
         ROOT / "web/market.html": ("web-ui-density-11", "market", "web-02c-toss-4"),
     }
     pages = list(page_versions)

@@ -90,7 +90,10 @@ def test_health_uses_actual_resolved_authority_values(health, exporter):
     report_artifact_count = len(list(report_artifact_dir.glob("*.md")))
     stock_index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
     assert health["stock_reports"]["existing_artifact_count"] == report_artifact_count
-    assert health["stock_reports"]["existing_artifact_count"] == stock_index["available_report_count"]
+    assert health["stock_reports"]["existing_artifact_count"] == sum(
+        item["report_available"] is True and item.get("asset_type") == "COMMON"
+        for item in stock_index["items"]
+    )
     readiness = exporter._stock_report_readiness(
         requested_as_of, report_artifact_dir
     )
