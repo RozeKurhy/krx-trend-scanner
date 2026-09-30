@@ -15,6 +15,7 @@
     "name": {"type": "string"},
     "market": {"type": "string", "enum": ["KOSPI", "KOSDAQ", "KONEX", "UNKNOWN"]},
     "asset_type": {"type": "string", "enum": ["COMMON", "PREFERRED", "SPAC", "REIT", "ETF", "ETN", "OTHER", "UNKNOWN"]},
+    "pattern_b": {"$ref": "#/definitions/patternBSection"},
     "requested_as_of": {"type": "string"},
     "reference_market_date": {"type": "string"},
     "fundamentals": {
@@ -82,6 +83,57 @@
         "ttm_operating_cash_flow_margin_pct": {"$ref": "#/definitions/nullableNumber"}, "ttm_roe_pct": {"$ref": "#/definitions/nullableNumber"},
         "latest_debt_ratio_pct": {"$ref": "#/definitions/nullableNumber"}, "filter_status": {"type": "string"},
         "filter_passed": {"type": "boolean"}, "filter_reasons": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "patternBObservation": {
+      "type": "object",
+      "required": ["as_of", "evaluation_status", "pattern_b_state", "range_36m", "monthly_ma24_distance", "range_52w", "monthly_last_bar", "weekly_last_bar"],
+      "properties": {
+        "as_of": {"type": "string"},
+        "evaluation_status": {"type": "string", "enum": ["READY", "UNAVAILABLE"]},
+        "pattern_b_state": {"type": ["string", "null"], "enum": ["DEEP_DEPRESSED", "DEPRESSED", "NORMAL", "OVERHEATED", "EXTREME_OVERHEATED", null]},
+        "range_36m": {"$ref": "#/definitions/nullableNumber"},
+        "monthly_ma24_distance": {"$ref": "#/definitions/nullableNumber"},
+        "range_52w": {"$ref": "#/definitions/nullableNumber"},
+        "monthly_last_bar": {"type": ["string", "null"]},
+        "weekly_last_bar": {"type": ["string", "null"]}
+      }
+    },
+    "patternBProvenance": {
+      "type": "object",
+      "required": ["market_data_authority", "identity_authority", "source_artifact", "feature_contract_version", "state_rule_version", "operational_contract", "history_effective_from", "history_segment_count", "market_transfer_stitched", "history_stop_reason"],
+      "properties": {
+        "market_data_authority": {"type": "string", "enum": ["MarketDataRepositoryV2"]},
+        "identity_authority": {"type": "string"},
+        "source_artifact": {"type": "string"},
+        "feature_contract_version": {"type": "string"},
+        "state_rule_version": {"type": "string"},
+        "operational_contract": {"type": "string"},
+        "history_effective_from": {"type": ["string", "null"]},
+        "history_segment_count": {"type": "integer", "minimum": 0},
+        "market_transfer_stitched": {"type": "boolean"},
+        "history_stop_reason": {"type": ["string", "null"]}
+      }
+    },
+    "patternBSection": {
+      "type": "object",
+      "required": ["applicability", "evaluation_status", "pattern_b_state", "as_of", "freshness_status", "expected_weekly_bar", "range_36m", "monthly_ma24_distance", "range_52w", "monthly_last_bar", "weekly_last_bar", "reason_codes", "reason_details", "monthly_history", "provenance"],
+      "properties": {
+        "applicability": {"type": "string", "enum": ["APPLICABLE"]},
+        "evaluation_status": {"type": "string", "enum": ["READY", "UNAVAILABLE"]},
+        "pattern_b_state": {"type": ["string", "null"], "enum": ["DEEP_DEPRESSED", "DEPRESSED", "NORMAL", "OVERHEATED", "EXTREME_OVERHEATED", null]},
+        "as_of": {"type": "string"},
+        "freshness_status": {"type": ["string", "null"], "enum": ["CURRENT", "STALE", null]},
+        "expected_weekly_bar": {"type": ["string", "null"]},
+        "range_36m": {"$ref": "#/definitions/nullableNumber"},
+        "monthly_ma24_distance": {"$ref": "#/definitions/nullableNumber"},
+        "range_52w": {"$ref": "#/definitions/nullableNumber"},
+        "monthly_last_bar": {"type": ["string", "null"]},
+        "weekly_last_bar": {"type": ["string", "null"]},
+        "reason_codes": {"type": "array", "items": {"type": "string"}},
+        "reason_details": {"type": "array", "items": {"type": "string"}},
+        "monthly_history": {"type": "array", "items": {"$ref": "#/definitions/patternBObservation"}},
+        "provenance": {"$ref": "#/definitions/patternBProvenance"}
       }
     }
   }

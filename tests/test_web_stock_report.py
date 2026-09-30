@@ -40,6 +40,8 @@ def test_payload_covers_pit_universe_and_existing_reports(payload, exporter):
     assert stats["unavailable_report_count"] == len(universe) - len(source_reports)
     assert sum(item["report_available"] for item in index["items"]) == len(source_reports)
     assert index["requested_as_of"] == requested_as_of
+    assert index["reference_market_date"] == stats["reference_market_date"]
+    assert index["reference_market_date"] <= requested_as_of
     assert index["universe_snapshot_date"] == snapshot_date
 
 
@@ -206,6 +208,27 @@ def test_interaction_detail_payload_preserves_authority_history(payload, exporte
     assert history[-1]["trade_id"] == source_strategy["trade_history"][-1]["trade_id"]
 
 
+def test_pattern_b_compact_projection_is_verbatim_and_does_not_recalculate(exporter, monkeypatch):
+    report_dir, _requested_as_of = exporter._resolve_report_directory()
+    source_path = next((report_dir / "json").glob("005930_*.json"))
+    source = json.loads(source_path.read_text(encoding="utf-8"))
+    source["pattern_b"] = {
+        "applicability": "APPLICABLE",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "as_of": source["reference_market_date"],
+        "monthly_history": [{"as_of": source["reference_market_date"], "pattern_b_state": "NORMAL"}],
+        "provenance": {"market_data_authority": "MarketDataRepositoryV2"},
+    }
+    monkeypatch.setattr(exporter, "_load_exact_daily_close", lambda *_args: None)
+
+    compact = exporter._compact_report(source, source_path)
+
+    assert compact["pattern_b"] == source["pattern_b"]
+    assert not hasattr(exporter, "evaluate_pattern_b")
+    assert all(row["as_of"] <= source["reference_market_date"] for row in compact["pattern_b"]["monthly_history"])
+
+
 def test_exporter_writes_index_and_one_json_per_available_report(tmp_path, exporter):
     report_dir, requested_as_of = exporter._resolve_report_directory()
     universe, _snapshot_date = exporter._load_universe(requested_as_of)
@@ -292,11 +315,17 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'setHidden("search-no-results", true);' in js
     assert "PATTERN_STEPS" in js
     assert 'id="pattern-card"' in html
+    assert 'id="pattern-b-card"' in html
     assert 'id="price-card"' in html
     assert 'id="market-card"' in html
     assert 'id="flow-card"' in html
     assert 'id="strategy-card"' in html
-    assert html.count("상세 보기 ›") == 5
+    assert html.count("상세 보기 ›") == 6
+    card_order = [
+        html.index('id="price-card"'), html.index('id="flow-card"'), html.index('id="market-card"'),
+        html.index('id="pattern-card"'), html.index('id="pattern-b-card"'), html.index('id="strategy-card"'),
+    ]
+    assert card_order == sorted(card_order)
     assert "avg_trading_value_1d_eok" in js
     assert "avg_trading_value_10d_eok" in js
     assert "net_buy_value_10d_krw" in js
@@ -339,6 +368,8 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'aria-expanded="false"' in html
     assert "history_12m" in js
     assert "pattern-score-chart" in js
+    assert "pattern-b-state-chart" in js
+    assert "renderPatternBDetail" in js
     assert 'id: "pattern-score-chart"' in js
     assert 'role: "img"' in js
     assert "최근 패턴 점수 추이" in js

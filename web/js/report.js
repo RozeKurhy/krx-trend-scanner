@@ -64,6 +64,13 @@
     ["EARLY_TREND", "상승 초기"],
     ["PROGRESSED", "상승 진행"],
   ];
+  const PATTERN_B_STATES = [
+    ["DEEP_DEPRESSED", "심한 저평가"],
+    ["DEPRESSED", "저평가"],
+    ["NORMAL", "중립"],
+    ["OVERHEATED", "과열"],
+    ["EXTREME_OVERHEATED", "심한 과열"],
+  ];
   const TRADING_VALUE_LABELS = {
     TRADING_VALUE_EXPANDING: "증가 흐름",
     TRADING_VALUE_MIXED: "혼합 흐름",
@@ -101,7 +108,8 @@
   };
   const DETAIL_BUTTON_LABELS = {
     price: "가격·추세",
-    pattern: "패턴 점수",
+    pattern: "패턴 A",
+    patternB: "패턴 B",
     market: "마켓 RS",
     flow: "수급",
     strategy: "전략",
@@ -109,6 +117,7 @@
   const DETAIL_BUTTON_IDS = {
     price: "price-card",
     pattern: "pattern-card",
+    patternB: "pattern-b-card",
     market: "market-card",
     flow: "flow-card",
     strategy: "strategy-card",
@@ -267,6 +276,15 @@
   function assetLabel(value) { return label(ASSET_LABELS, value, value || "자산 유형 확인 필요"); }
   function actionLabel(value) { return label(ACTION_LABELS, value, "전략 판단 확인 필요"); }
   function stageLabel(value) { return label(STAGE_LABELS, value, "확인 필요"); }
+  function patternBStateLabel(value) {
+    const found = PATTERN_B_STATES.find(([state]) => state === value);
+    return found ? found[1] : "정보 없음";
+  }
+  function formatPatternBRange(value) {
+    return value == null || !Number.isFinite(Number(value))
+      ? "—"
+      : `${formatNumber(Number(value) * 100, 2)}%`;
+  }
   function flowLabel(value) { return label(FLOW_LABELS, value, "정보 없음"); }
   function tradingValueLabel(value) { return label(TRADING_VALUE_LABELS, value, "정보 없음"); }
   function strategyDetail(value) { return label(STRATEGY_STATE_DETAILS, value, "전략 상태 확인 필요"); }
@@ -975,6 +993,134 @@
     container.appendChild(svg);
   }
 
+  function renderPatternBStateChart(history, container) {
+    const SVG_NS = "http://www.w3.org/2000/svg";
+    const width = 720;
+    const height = 260;
+    const padding = { top: 16, right: 18, bottom: 38, left: 96 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+    const stateIndex = new Map(PATTERN_B_STATES.map(([state], index) => [state, index]));
+    const points = (Array.isArray(history) ? history : [])
+      .map((observation, index) => ({ observation, index }))
+      .filter(({ observation }) => observation && observation.evaluation_status === "READY" && stateIndex.has(observation.pattern_b_state))
+      .map(({ observation, index }) => ({ asOf: observation.as_of, state: observation.pattern_b_state, index, value: stateIndex.get(observation.pattern_b_state) }));
+    if (!points.length) return false;
+
+    const x = (index) => padding.left + (history.length <= 1 ? chartWidth / 2 : (index / (history.length - 1)) * chartWidth);
+    const y = (value) => padding.top + ((PATTERN_B_STATES.length - 1 - value) / (PATTERN_B_STATES.length - 1)) * chartHeight;
+    const createSvgElement = (tag, attributes) => {
+      const element = document.createElementNS(SVG_NS, tag);
+      Object.entries(attributes || {}).forEach(([name, value]) => element.setAttribute(name, String(value)));
+      return element;
+    };
+    const svg = createSvgElement("svg", {
+      id: "pattern-b-state-chart",
+      class: "pattern-b-state-chart",
+      viewBox: `0 0 ${width} ${height}`,
+      role: "img",
+      "aria-label": "Pattern B 상태 추이",
+    });
+    PATTERN_B_STATES.forEach(([state, labelText], index) => {
+      const stateY = y(index);
+      svg.appendChild(createSvgElement("line", {
+        class: "pattern-chart-grid",
+        x1: padding.left,
+        x2: width - padding.right,
+        y1: stateY,
+        y2: stateY,
+      }));
+      const label = createSvgElement("text", {
+        class: "pattern-chart-axis-label",
+        x: padding.left - 9,
+        y: stateY + 4,
+        "text-anchor": "end",
+      });
+      label.textContent = labelText;
+      svg.appendChild(label);
+    });
+    let line = "";
+    let previousIndex = -2;
+    points.forEach((point) => {
+      const command = point.index === previousIndex + 1 ? "L" : "M";
+      line += `${command}${x(point.index)} ${y(point.value)} `;
+      previousIndex = point.index;
+    });
+    svg.appendChild(createSvgElement("path", { class: "pattern-b-chart-line", d: line.trim() }));
+    points.forEach((point) => {
+      const circle = createSvgElement("circle", {
+        class: "pattern-b-chart-point",
+        cx: x(point.index),
+        cy: y(point.value),
+        r: 4,
+        tabindex: 0,
+        "aria-label": `${formatDate(point.asOf)} Pattern B ${point.state}`,
+      });
+      const title = createSvgElement("title");
+      title.textContent = `${formatDate(point.asOf)} · ${patternBStateLabel(point.state)} (${point.state})`;
+      circle.appendChild(title);
+      svg.appendChild(circle);
+      const date = createSvgElement("text", {
+        class: "pattern-chart-date",
+        x: x(point.index),
+        y: height - 12,
+        "text-anchor": "middle",
+      });
+      date.textContent = formatDate(point.asOf).slice(5);
+      svg.appendChild(date);
+    });
+    container.appendChild(svg);
+    return true;
+  }
+
+  function renderPatternBDetail(report, container) {
+    const section = report.pattern_b;
+    if (!section) {
+      appendDetailEmpty(container, "Pattern B 분석이 이 리포트에 연결되지 않았습니다.");
+      return;
+    }
+    if (section.applicability !== "APPLICABLE") {
+      appendDetailEmpty(container, "Pattern B는 보통주 대상 정보 분석입니다.");
+      return;
+    }
+
+    const chart = document.createElement("div");
+    chart.className = "pattern-score-chart-wrap";
+    if (renderPatternBStateChart(section.monthly_history, chart)) {
+      container.appendChild(chart);
+    } else {
+      appendDetailEmpty(container, "표시할 Pattern B 상태 이력이 없습니다.");
+    }
+
+    const rows = [
+      ["현재 상태", section.pattern_b_state ? `${patternBStateLabel(section.pattern_b_state)} (${section.pattern_b_state})` : "정보 없음"],
+      ["36개월 범위 위치", formatPatternBRange(section.range_36m)],
+      ["24개월선 이격률", formatSignedRate(section.monthly_ma24_distance)],
+      ["52주 범위 위치", formatPatternBRange(section.range_52w)],
+      ["평가 상태", section.evaluation_status || "UNAVAILABLE"],
+    ];
+    container.appendChild(createDetailTable(["현재 지표", "값"], rows));
+    appendDetailNote(container, `기준일 ${formatDate(section.as_of)} · 마지막 월봉 ${formatDate(section.monthly_last_bar)} · 마지막 주봉 ${formatDate(section.weekly_last_bar)} · 주봉 신선도 ${section.freshness_status || "정보 없음"}`);
+
+    const history = Array.isArray(section.monthly_history) ? section.monthly_history : [];
+    const historyRows = history.map((observation) => [
+      formatDate(observation.as_of),
+      observation.pattern_b_state ? `${patternBStateLabel(observation.pattern_b_state)} (${observation.pattern_b_state})` : "정보 없음",
+      formatPatternBRange(observation.range_36m),
+      formatSignedRate(observation.monthly_ma24_distance),
+      formatPatternBRange(observation.range_52w),
+    ]);
+    if (historyRows.length) {
+      container.appendChild(createDetailTable(["기준일", "상태", "36M 범위", "24M선 이격", "52W 범위"], historyRows));
+    }
+    if (section.reason_codes && section.reason_codes.length) {
+      appendDetailNote(container, `정보 부족 사유: ${section.reason_codes.join(", ")}`);
+    }
+    const provenance = section.provenance || {};
+    appendDetailNote(container, `가격 권위 ${provenance.market_data_authority || "정보 없음"} · 상태 규칙 ${provenance.state_rule_version || "정보 없음"} · 이력 시작 ${formatDate(provenance.history_effective_from)} · 연결 구간 ${formatNumber(provenance.history_segment_count)}`);
+    appendDetailNote(container, "Pattern B는 정보성 상태 분석이며 B Select Core V1의 매수·매도 전략 실행과 별개입니다.");
+  }
+
   function renderMarketDetail(report, container) {
     const market = report.market_strength;
     if (!market || market.applicability === "NOT_APPLICABLE") {
@@ -1068,7 +1214,7 @@
       if (selectedCard) selectedCard.insertAdjacentElement("afterend", panel);
       return;
     }
-    const slot = byId(key === "price" || key === "pattern" || key === "market" ? "top-detail-slot" : "bottom-detail-slot");
+    const slot = byId(key === "price" || key === "market" || key === "flow" ? "top-detail-slot" : "bottom-detail-slot");
     if (panel && slot) slot.appendChild(panel);
   }
 
@@ -1086,6 +1232,7 @@
     title.textContent = `${DETAIL_BUTTON_LABELS[key]} 상세`;
     if (key === "price") renderPriceDetail(report, content);
     else if (key === "pattern") renderPatternDetail(report, content);
+    else if (key === "patternB") renderPatternBDetail(report, content);
     else if (key === "market") renderMarketDetail(report, content);
     else if (key === "flow") renderFlowDetail(report, content);
     else if (key === "strategy") renderStrategyDetail(report, content);
@@ -1203,6 +1350,14 @@
     renderPatternStepper(report.pattern.official_stage);
     setText("pattern-value", `현재 단계 ${stageLabel(report.pattern.official_stage)}`);
     setText("pattern-detail", report.pattern.score == null ? "패턴 점수 확인 필요" : `패턴 점수 ${formatNumber(report.pattern.score, 2)}점`);
+    const patternB = report.pattern_b;
+    const patternBReady = Boolean(patternB && patternB.applicability === "APPLICABLE" && patternB.evaluation_status === "READY" && patternB.pattern_b_state);
+    setText("pattern-b-value", patternBReady
+      ? patternBStateLabel(patternB.pattern_b_state)
+      : (patternB && patternB.applicability === "NOT_APPLICABLE" ? "해당 없음" : "정보 없음"));
+    setText("pattern-b-detail", patternBReady
+      ? `${patternB.pattern_b_state} · 36M ${formatPatternBRange(patternB.range_36m)} · 24M선 ${formatSignedRate(patternB.monthly_ma24_distance)}`
+      : (patternB && Array.isArray(patternB.reason_codes) && patternB.reason_codes.length ? patternB.reason_codes.join(", ") : "Pattern B 상태 데이터 없음"));
     setText("market-value", marketStrengthLabel(report.market_strength));
     setText("market-detail", marketStrengthDetail(report.market_strength));
     setText("flow-value", flowLabel(report.flow.state));

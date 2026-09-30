@@ -60,6 +60,7 @@ from trend_scanner.reporting.models import (
     TradingValueState,
 )
 from trend_scanner.reporting.pattern_a_fast_report import build_pattern_a_fast_section
+from trend_scanner.reporting.pattern_b_report import build_pattern_b_section
 from trend_scanner.reporting.relative_strength_report import load_relative_strength_section
 from trend_scanner.reporting.sector_relative_strength_report import build_sector_relative_strength_section
 from trend_scanner.data.market_calendar import get_reference_market_month_ends as _get_ref_market_month_ends
@@ -420,6 +421,24 @@ def _render_fundamentals_section(section: FundamentalsSection) -> list[str]:
     return lines
 
 
+def _render_pattern_b_section(section) -> list[str]:
+    lines = [
+        "## 1.6. Pattern B 정보 분석",
+        "- **분석 구분**: 정보성 상태 분석 (B Select Core V1 전략 실행과 별도)",
+        f"- **평가 상태 / 현재 상태**: `{section.evaluation_status}` / `{section.pattern_b_state or 'N/A'}`",
+        f"- **기준일**: `{section.as_of}`",
+        f"- **마지막 월봉 / 주봉**: `{section.monthly_last_bar or 'N/A'}` / `{section.weekly_last_bar or 'N/A'}`",
+        f"- **주봉 신선도**: `{section.freshness_status or 'N/A'}` (예상 기준 `{section.expected_weekly_bar or 'N/A'}`)",
+        f"- **36개월 범위 위치 / 24개월선 이격 / 52주 범위 위치**: `{section.range_36m if section.range_36m is not None else 'N/A'}` / `{section.monthly_ma24_distance if section.monthly_ma24_distance is not None else 'N/A'}` / `{section.range_52w if section.range_52w is not None else 'N/A'}`",
+        f"- **가격 권위**: `{section.provenance.market_data_authority}` · **상태 규칙**: `{section.provenance.state_rule_version}` · **운영 계약**: `{section.provenance.operational_contract}`",
+        f"- **가격 이력 시작 / 연결 구간 수**: `{section.provenance.history_effective_from or 'N/A'}` / `{section.provenance.history_segment_count}`",
+    ]
+    if section.reason_codes:
+        lines.append(f"- **결측 사유**: `{', '.join(section.reason_codes)}`")
+    lines.extend(["", "---", ""])
+    return lines
+
+
 def render_markdown_report(report: StockReport) -> str:
     """StockReport JSON 객체를 사람이 읽기 쉬운 GitHub Flavored Markdown 보고서(v0.4)로 렌더링한다."""
     cur = report.current_snapshot
@@ -474,6 +493,8 @@ def render_markdown_report(report: StockReport) -> str:
 
     if report.fundamentals is not None:
         md.extend(_render_fundamentals_section(report.fundamentals))
+    if report.pattern_b is not None:
+        md.extend(_render_pattern_b_section(report.pattern_b))
 
     # Section 2. 패스트 코어 V2 전략 상태 (A FAST Core V2 Strategy State)
     seq_str = f"{core.current_trade.trade_sequence}번째 거래" if (core.current_trade and core.canonical_position == "OPEN") else ("N/A (FLAT)" if core.canonical_position == "FLAT" else "N/A")
@@ -1323,6 +1344,20 @@ def generate_stock_report(
         metadata_provenance_mode=metadata_provenance_mode,
         market_calendar=production_market_calendar,
     )
+
+    pattern_b_section = None
+    if emit_v05:
+        pattern_b_section = build_pattern_b_section(
+            ticker=clean_ticker,
+            name=name,
+            asset_type=asset_type,
+            metadata_provenance_mode=metadata_provenance_mode,
+            as_of=ref_market_date,
+            monthly_observations=full_monthly_history,
+            repo_root=root_path,
+            repository=repository,
+        )
+
     # 9. Header & Summary
     if (
         cur_score is not None
@@ -1432,6 +1467,7 @@ def generate_stock_report(
         provenance=provenance,
         asset_type=asset_type,
         fundamentals=fundamentals_section,
+        pattern_b=pattern_b_section,
     )
 
     # 10. Save Artifacts if requested (Default canonical output dir — production

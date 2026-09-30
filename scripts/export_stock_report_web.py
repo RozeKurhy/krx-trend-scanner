@@ -220,6 +220,7 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
     flow = report.get("foreign_flow") or {}
     trading_value = report.get("trading_value_flow") or {}
     strategy = report.get("a_fast_core") or {}
+    pattern_b = report.get("pattern_b")
     ticker = str(report.get("ticker") or header.get("ticker") or "").upper()
     asset_type = str(report.get("asset_type") or header.get("asset_type") or "UNKNOWN").upper()
     reference_market_date = str(report.get("reference_market_date") or "")[:10]
@@ -269,6 +270,9 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
             "score": snapshot.get("pattern_a_score"),
             "history_12m": _compact_monthly_history(monthly),
         },
+        # Pattern B is a report-owned informational analysis. This compact
+        # export intentionally copies it without recalculation or hydration.
+        "pattern_b": copy.deepcopy(pattern_b) if asset_type == "COMMON" and isinstance(pattern_b, dict) else None,
         "market_strength": {
             "applicability": relative_strength.get("applicability"),
             "data_status": relative_strength.get("data_status"),
@@ -378,6 +382,15 @@ def build_web_payload(
             "Stock Report source must contain at least one JSON file, "
             f"got {len(source_json_paths)}"
         )
+    if target_as_of is None and reference_market_date is None:
+        # A dated report bundle can be requested on a non-trading/certification
+        # date while all reports share an earlier actual market-data frontier.
+        # Preserve the source report's reference date and validate every file
+        # against it below instead of assuming it equals the request date.
+        first_report = _read_json(source_json_paths[0])
+        effective_reference_market_date = str(first_report.get("reference_market_date") or "")[:10]
+    if not effective_reference_market_date or effective_reference_market_date > requested_as_of:
+        raise ValueError("Stock Report reference_market_date is missing or after requested_as_of")
     reports: dict[str, dict[str, Any]] = {}
     fundamentals_status_counts: dict[str, int] = {}
     for path in source_json_paths:

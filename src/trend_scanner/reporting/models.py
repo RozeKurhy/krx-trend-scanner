@@ -118,6 +118,55 @@ class MonthlyHistorySection:
 
 
 @dataclass
+class PatternBObservation:
+    """Pattern B official state and feature observations at one report date."""
+
+    as_of: str
+    evaluation_status: str
+    pattern_b_state: str | None
+    range_36m: float | None
+    monthly_ma24_distance: float | None
+    range_52w: float | None
+    monthly_last_bar: str | None
+    weekly_last_bar: str | None
+
+
+@dataclass
+class PatternBProvenance:
+    market_data_authority: str
+    identity_authority: str
+    source_artifact: str
+    feature_contract_version: str
+    state_rule_version: str
+    operational_contract: str
+    history_effective_from: str | None
+    history_segment_count: int
+    market_transfer_stitched: bool
+    history_stop_reason: str | None
+
+
+@dataclass
+class PatternBSection:
+    """COMMON-only informational Pattern B analysis, separate from strategies."""
+
+    applicability: str
+    evaluation_status: str
+    pattern_b_state: str | None
+    as_of: str
+    freshness_status: str | None
+    expected_weekly_bar: str | None
+    range_36m: float | None
+    monthly_ma24_distance: float | None
+    range_52w: float | None
+    monthly_last_bar: str | None
+    weekly_last_bar: str | None
+    reason_codes: list[str]
+    reason_details: list[str]
+    monthly_history: list[PatternBObservation]
+    provenance: PatternBProvenance
+
+
+@dataclass
 class ForeignFlowSection:
     data_status: str
     flow_state: FlowState
@@ -518,6 +567,7 @@ class StockReport:
     a_fast_core: AFastCoreSection
     asset_type: str = "COMMON"
     fundamentals: FundamentalsSection | None = None
+    pattern_b: PatternBSection | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Convert report to JSON-serializable dictionary."""
@@ -526,4 +576,6 @@ class StockReport:
         # additive section was not injected; v0.5 always carries the section.
         if self.fundamentals is None:
             payload.pop("fundamentals", None)
+        if self.pattern_b is None:
+            payload.pop("pattern_b", None)
         return payload

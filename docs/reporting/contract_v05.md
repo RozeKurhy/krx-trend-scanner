@@ -6,6 +6,9 @@ v0.5는 [v0.4 계약](contract_v04.md)의 기술·전략·수급 구조를 바�
 `fundamentals` 섹션 하나를 추가한다. v0.4 계약과 기존 v0.4 산출물은 수정하지
 않는다.
 
+COMMON v0.5 산출물은 아래 Pattern B 정보 분석 필드를 추가로 포함할 수 있다.
+이는 v0.5의 additive 확장이며 report version을 올리지 않는다.
+
 ## 입력 경계
 
 `fundamentals_report.build_fundamentals_section`은 이미 계산된 F2
@@ -57,6 +60,26 @@ MultiPeriod 결과, F3 DerivedMetrics 결과, F4 FundamentalsFilter 결과,
   표시한다.
 - 핵심 요약에는 펀더멘털 상태와 핵심 수치를 요약 항목 하나로만 추가한다.
   Pattern A, A FAST Core, RS, 투자 적격성 산식은 바꾸지 않는다.
+
+## Pattern B 정보 분석 (COMMON 전용)
+
+- `pattern_b`는 정식 COMMON identity와 Repository V2 데이터가 확인된 종목에만
+  포함한다. 비 COMMON 리포트는 이 필드를 추가하지 않는다.
+- 현재 상태, 36개월 범위 위치, 24개월선 이격률, 52주 범위 위치, 월별 상태 이력,
+  마지막 월봉·주봉과 기준일 신선도를 기존 `evaluate_pattern_b` 및
+  `pattern_b_operational` 권위에서 가져온다.
+- 상태는 `DEEP_DEPRESSED`, `DEPRESSED`, `NORMAL`, `OVERHEATED`,
+  `EXTREME_OVERHEATED`만 허용한다. 입력 부족은 `evaluation_status=UNAVAILABLE`과
+  사유 코드로 기록한다.
+- `as_of`는 `reference_market_date`다. 가격 이력은 기준일 이후 행을 포함하지
+  않는다. 월별 점은 Stock Report의 기존 월별 관측 날짜를 따라 같은 evaluator를
+  재사용한다.
+- `provenance`에는 MarketDataRepositoryV2, PIT identity authority, 상태/운영 계약
+  버전과 시장 이전 연결 이력을 기록한다.
+- Pattern B는 정보성 분석이고 `B Select Core V1` 전략 실행, 매수/매도 신호,
+  A FAST Core V2 routing에 연결하지 않는다.
+- Web exporter는 `pattern_b`를 report에서 그대로 복사한다. 별도 계산, 네트워크
+  조회, 결측 대체를 하지 않는다.
 
 ## 호출 호환성과 범위
 
