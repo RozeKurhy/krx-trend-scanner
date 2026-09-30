@@ -80,8 +80,8 @@ def _resolve_scanner_summary() -> Path:
 
     There is no current-summary pointer in this repository, so candidates are
     resolved from the production scanner directory.  Selection is deterministic
-    by the exact requested/reference date encoded in each valid summary, never
-    by filesystem modification time.
+    by the exact requested date encoded in each valid summary, never by
+    filesystem modification time or the reference market date.
     """
 
     candidates: list[tuple[date, Path]] = []
@@ -94,17 +94,23 @@ def _resolve_scanner_summary() -> Path:
             summary = _read_json(path)
         except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
             continue
-        requested = str(summary.get("requested_as_of") or "")[:10]
-        reference = str(summary.get("reference_market_date") or "")[:10]
-        if not requested or requested != reference:
+        requested = str(summary.get("requested_as_of") or "")
+        reference = str(summary.get("reference_market_date") or "")
+        if not requested or not reference:
             continue
         try:
-            authority_date = date.fromisoformat(requested)
+            requested_date = date.fromisoformat(requested)
+            reference_date = date.fromisoformat(reference)
         except ValueError:
             continue
-        if authority_date.strftime("%Y%m%d") != match.group(1):
+        if (
+            requested_date.isoformat() != requested
+            or reference_date.isoformat() != reference
+            or reference_date > requested_date
+            or requested_date.strftime("%Y%m%d") != match.group(1)
+        ):
             continue
-        candidates.append((authority_date, path))
+        candidates.append((requested_date, path))
 
     if not candidates:
         raise FileNotFoundError("no valid production scanner summary authority found")
@@ -115,10 +121,19 @@ def _load_as_of() -> tuple[str, str]:
     """Read the exact requested/reference date from the scanner authority."""
 
     summary = _read_json(_resolve_scanner_summary())
-    requested = str(summary.get("requested_as_of") or "")[:10]
-    reference = str(summary.get("reference_market_date") or "")[:10]
-    if not requested or requested != reference:
-        raise ValueError("scanner authority does not expose one exact as_of date")
+    requested = str(summary.get("requested_as_of") or "")
+    reference = str(summary.get("reference_market_date") or "")
+    try:
+        requested_date = date.fromisoformat(requested)
+        reference_date = date.fromisoformat(reference)
+    except ValueError as exc:
+        raise ValueError("scanner authority does not expose valid requested/reference dates") from exc
+    if (
+        requested_date.isoformat() != requested
+        or reference_date.isoformat() != reference
+        or reference_date > requested_date
+    ):
+        raise ValueError("scanner authority requested/reference dates are inconsistent")
     return requested, reference
 
 
@@ -640,12 +655,11 @@ def build_health(
 ) -> dict[str, Any]:
     """Build the public-safe health document from local authorities.
 
-    ``target_as_of``(선택, PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01): 생략하면 기존과
-    완전히 동일하게 ``_load_as_of()``로 최신 유효 scanner summary를 자동 선택하고
-    requested_as_of == reference_market_date를 요구한다(하위 호환). 명시하면
-    latest 자동 선택 대신 그 target_as_of의 exact scanner summary만 사용하고,
-    reference_market_date < requested_as_of(비거래일)를 정상 처리하며, 이 둘을
-    payload 최상위에 명시적으로 포함한다."""
+    ``target_as_of``(선택, PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01): 생략하면
+    ``_load_as_of()``가 가장 큰 유효 ``requested_as_of``를 선택한다. 명시하면
+    latest 자동 선택 대신 해당 target의 exact scanner summary를 사용한다.
+    두 경로 모두 ``reference_market_date < requested_as_of``를 정상 처리하고,
+    두 날짜를 payload 최상위에 명시적으로 포함한다."""
 
     if repo_root != ROOT:
         raise ValueError("WEB-01 exporter is bound to the repository root")

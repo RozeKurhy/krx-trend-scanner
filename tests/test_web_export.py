@@ -28,6 +28,103 @@ def health(exporter):
     return exporter.build_health()
 
 
+def _write_scanner_summary(
+    directory: Path,
+    filename_date: str,
+    requested_as_of: str,
+    reference_market_date: str,
+) -> Path:
+    path = directory / f"pattern_a_universe_scan_{filename_date}_summary.json"
+    path.write_text(
+        json.dumps({
+            "requested_as_of": requested_as_of,
+            "reference_market_date": reference_market_date,
+        }),
+        encoding="utf-8",
+    )
+    return path
+
+
+@pytest.mark.parametrize(
+    ("requested_as_of", "reference_market_date"),
+    [
+        ("2026-09-22", "2026-09-22"),
+        ("2026-09-25", "2026-09-23"),
+    ],
+)
+def test_scanner_latest_resolver_accepts_same_and_prior_market_dates(
+    exporter, monkeypatch, tmp_path, requested_as_of, reference_market_date
+):
+    monkeypatch.setattr(exporter, "SCANNER_DIR", tmp_path)
+    filename_date = requested_as_of.replace("-", "")
+    expected = _write_scanner_summary(
+        tmp_path, filename_date, requested_as_of, reference_market_date
+    )
+
+    assert exporter._resolve_scanner_summary() == expected
+    assert exporter._load_as_of() == (requested_as_of, reference_market_date)
+
+
+def test_scanner_latest_resolver_selects_largest_requested_date(
+    exporter, monkeypatch, tmp_path
+):
+    monkeypatch.setattr(exporter, "SCANNER_DIR", tmp_path)
+    _write_scanner_summary(tmp_path, "20260917", "2026-09-17", "2026-09-17")
+    _write_scanner_summary(tmp_path, "20260922", "2026-09-22", "2026-09-22")
+    latest = _write_scanner_summary(
+        tmp_path, "20260925", "2026-09-25", "2026-09-23"
+    )
+
+    assert exporter._resolve_scanner_summary() == latest
+    assert exporter._load_as_of() == ("2026-09-25", "2026-09-23")
+
+
+def test_scanner_latest_resolver_excludes_future_reference_candidate(
+    exporter, monkeypatch, tmp_path
+):
+    monkeypatch.setattr(exporter, "SCANNER_DIR", tmp_path)
+    valid = _write_scanner_summary(
+        tmp_path, "20260922", "2026-09-22", "2026-09-22"
+    )
+    _write_scanner_summary(tmp_path, "20260925", "2026-09-25", "2026-09-26")
+
+    assert exporter._resolve_scanner_summary() == valid
+    assert exporter._load_as_of() == ("2026-09-22", "2026-09-22")
+
+
+def test_scanner_latest_resolver_fails_closed_without_valid_candidates(
+    exporter, monkeypatch, tmp_path
+):
+    monkeypatch.setattr(exporter, "SCANNER_DIR", tmp_path)
+    _write_scanner_summary(tmp_path, "20260925", "2026-09-25", "2026-09-26")
+
+    with pytest.raises(FileNotFoundError, match="no valid production scanner summary"):
+        exporter._resolve_scanner_summary()
+
+
+def test_scanner_latest_resolver_excludes_filename_date_mismatch(
+    exporter, monkeypatch, tmp_path
+):
+    monkeypatch.setattr(exporter, "SCANNER_DIR", tmp_path)
+    _write_scanner_summary(tmp_path, "20260925", "2026-09-24", "2026-09-23")
+
+    with pytest.raises(FileNotFoundError, match="no valid production scanner summary"):
+        exporter._resolve_scanner_summary()
+
+
+def test_scanner_latest_resolver_ignores_malformed_json(
+    exporter, monkeypatch, tmp_path
+):
+    monkeypatch.setattr(exporter, "SCANNER_DIR", tmp_path)
+    malformed = tmp_path / "pattern_a_universe_scan_20260925_summary.json"
+    malformed.write_text("{not-json", encoding="utf-8")
+    valid = _write_scanner_summary(
+        tmp_path, "20260922", "2026-09-22", "2026-09-22"
+    )
+
+    assert exporter._resolve_scanner_summary() == valid
+
+
 def test_exporter_writes_valid_compact_public_health_json(tmp_path, exporter, health):
     output_path = tmp_path / "data" / "health.json"
     exporter._write_checked(output_path, health)
@@ -51,6 +148,9 @@ def test_exporter_writes_valid_compact_public_health_json(tmp_path, exporter, he
 
 def test_health_uses_actual_resolved_authority_values(health, exporter):
     requested_as_of, reference_market_date = exporter._load_as_of()
+    assert (requested_as_of, reference_market_date) == ("2026-09-25", "2026-09-23")
+    assert health["requested_as_of"] == requested_as_of
+    assert health["reference_market_date"] == reference_market_date
     resolved_tickers, _, _ = exporter._load_universe(requested_as_of)
     market_manifest = exporter._read_json(exporter.MARKET_AUTHORITY_MANIFEST_PATH)
     certified_through = str(market_manifest["certified_through"])[:10]
@@ -95,15 +195,16 @@ def test_health_uses_actual_resolved_authority_values(health, exporter):
         for item in stock_index["items"]
     )
     readiness = exporter._stock_report_readiness(
-        requested_as_of, report_artifact_dir
+        requested_as_of, report_artifact_dir,
+        reference_market_date=reference_market_date,
     )
     expected_report_count = health["stock_reports"]["source_json_count"]
     assert readiness["ready"] is True
     assert health["stock_reports"]["status"] == "NORMAL"
-    assert health["stock_reports"]["report_version"] == "0.5"
+    assert health["stock_reports"]["report_version"] == "0.7"
     assert expected_report_count == report_artifact_count
     assert health["stock_reports"]["source_markdown_count"] == expected_report_count
-    assert health["stock_reports"]["v05_count"] == expected_report_count
+    assert health["stock_reports"]["v07_count"] == expected_report_count
     assert health["stock_reports"]["schema_errors"] == 0
     assert health["stock_reports"]["fundamentals_integrated_count"] == expected_report_count
     assert health["stock_reports"]["web_compact_count"] == expected_report_count
@@ -111,6 +212,14 @@ def test_health_uses_actual_resolved_authority_values(health, exporter):
     assert health["stock_reports"]["web_index_available_report_count"] == expected_report_count
     assert "analysis" not in health
     assert "backtest" not in health
+
+
+def test_current_repository_latest_resolver_selects_20260925(exporter):
+    assert exporter._resolve_scanner_summary().name == (
+        "pattern_a_universe_scan_20260925_summary.json"
+    )
+    assert exporter._load_as_of() == ("2026-09-25", "2026-09-23")
+    assert exporter._load_exact_as_of("2026-09-25") == "2026-09-23"
 
 
 def test_market_data_accepts_distinct_certification_and_market_frontiers(exporter, monkeypatch):
