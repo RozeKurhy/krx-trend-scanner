@@ -15,7 +15,25 @@
 
 JULIA_STRATEGY_V00은 ETF 공식 채택 심사의 실제 검증 후보 ID다. 해당 후보는 다섯 표준 window에서 공통 A~E gate를 모두 통과해 총 25/25 PASS를 기록했고 ETF 전용 공식 전략으로 채택되었다. 이번 문서는 그 공식 승격 이름과 ID를 Julia V1 / JULIA_ETF_STRATEGY_V01로 기록한다.
 
-전략 규칙 차이는 없다. Julia V1은 심사 당시 JULIA_STRATEGY_V00 규칙을 그대로 계승한다. A FAST Core V2와 비교한 기존 단일 전략 차이인 Pre-PROGRESSED -15% Loss Guard 비활성 상태도 그대로 유지한다. 새로운 진입·청산·보유 조건이나 threshold를 추가하지 않았다.
+### Lifecycle 규칙
+
+Julia V1은 검증 후보 `JULIA_STRATEGY_V00`의 진입·보유·청산 lifecycle 규칙을 변경 없이 계승한다. A FAST Core V2와 비교한 기존 단일 전략 차이인 `Pre-PROGRESSED -15% Loss Guard = disabled`도 그대로 유지한다. 새 threshold나 진입·보유·청산 조건을 추가하지 않았다.
+
+### ETF eligibility 계약
+
+ETF 자산 적격성은 일반 종목용 investability 계약을 사용하지 않는다. 공식 ETF 검증에서 사용한 ETF 전용 계약 `ETF_PIT_LISTED_2Y_CLOSE_1000_VOL20_10000_V01`을 적용한다. JULIA_STRATEGY_V00의 lifecycle 계승과 ETF eligibility는 별도 규칙이다.
+
+- Universe는 frozen **OFFICIAL ETF 36**이다.
+- 각 signal date는 해당 ETF의 상장일로부터 2년 이상 지난 날짜여야 한다.
+- 해당 signal date의 실제 KRX 원시 종가가 1,000원 이상이어야 한다.
+- 해당 signal date를 포함한 직전 20개 실제 KRX 거래일의 평균 거래량이 10,000주 이상이어야 한다.
+- 위 조건은 signal date별 point-in-time ETF eligibility로 판정하며, 그 날짜의 eligibility가 PASS여야 한다.
+- 신호는 장 마감 후 판정하고, 진입은 다음 실제 KRX 거래일의 해당 ETF 원시 시가가 존재할 때만 가능하다. 평가 window의 종료 뒤에 체결되는 신규 진입은 포함하지 않는다.
+- 각 ticker/window의 평가 span은 `max(window_start, strategy_ready_date, clean_ready_date)`부터 시작한다. strategy-ready가 window 시작보다 늦으면 그 실제 날짜를 effective start로 사용해 partial window로 평가하고, effective start가 window 종료 뒤면 해당 span은 평가 불가로 둔다.
+- clean-ready는 신호 입력에 필요한 일간·주간·월간 lookback에서 zero-OHLC sentinel 영향이 제거된 첫 유효 주간 기준일이다.
+- 상장 전 또는 strategy-ready/clean-ready 이전 날짜를 채워 넣지 않는다. nearest-date 대체, proxy 또는 synthetic eligibility/가격 데이터도 사용하지 않는다.
+
+구현 근거는 [ETF eligibility 및 Julia 실행 경로](../../../scripts/run_etf_current_survivors_raw_price_three_strategy_simple_backtest_v03.py), [5-window effective span 검증 경로](../../../scripts/run_etf_36_afast_v2_vs_julia_5window_simple_v01.py), [clean-ready span closure 결과](../../../artifacts/research/etf_36_zero_ohlc_sentinel_clean_eligibility_closure_v01/summary.md)에 있다.
 
 기존 V00 evaluator, 코드 심볼, ledger 및 연구 산출물은 실제 검증 이력을 보존하기 위해 JULIA_STRATEGY_V00 이름으로 유지한다. 별도의 Julia V1 evaluator 구현이나 코드 migration은 이 문서 승격 범위에 포함하지 않는다. 현재 ID는 공식 문서상의 전략 식별자이며 실행기 연결을 의미하지 않는다.
 
