@@ -825,6 +825,7 @@ def generate_stock_report(
     fundamentals_section: FundamentalsSection | None | object = _FUNDAMENTALS_UNSET,
     reference_market_date: str | None = None,
     instrument_metadata_resolver: Callable[..., Any] | None = None,
+    daily_override: pd.DataFrame | None = None,
 ) -> tuple[StockReport, Path | None, Path | None]:
     """단일 종목 리포트를 생성한다.
 
@@ -838,6 +839,11 @@ def generate_stock_report(
     Phase 4B production 호출은 이 값을 4A Scanner summary의 ``reference_market_date``로
     명시 전달해 비거래일 target_as_of에서 재계산하지 않는다. identity/metadata/전략
     기준(``canonical_as_of``/``req_as_of_ts``)에는 영향을 주지 않는다.
+
+    ``daily_override``: 명시적으로 주입된 exact local daily frame을 공통 리포트
+    계산에 사용한다. ETF v0.6에서만 raw KRX OHLCV를 주입해 조정/원시 세션 집합이
+    맞지 않는 경우에도 nearest/proxy 보정 없이 공통 계산을 재사용한다. 생략한
+    일반 v0.5/v0.4 호출 경로는 기존 Repository V2/legacy loader 동작을 유지한다.
     """
     emit_v05 = fundamentals_section is not _FUNDAMENTALS_UNSET
     root_path = Path(repo_root) if repo_root else Path(__file__).resolve().parent.parent.parent.parent
@@ -854,8 +860,22 @@ def generate_stock_report(
     ref_market_date = str(reference_market_date).strip()[:10] if reference_market_date else canonical_as_of
 
     # 2. 로컬 Universe 및 종목 메타데이터 로드 (Formal Authority, Zero-Network)
-    price_source = "MarketDataRepositoryV2" if repository is not None else "local parquet cache"
-    if repository is not None:
+    price_source = (
+        "MarketDataRepositoryV2:EXACT_RAW_ETF_OHLCV"
+        if daily_override is not None
+        else ("MarketDataRepositoryV2" if repository is not None else "local parquet cache")
+    )
+    if daily_override is not None:
+        daily = daily_override.copy()
+        daily.index = pd.DatetimeIndex(pd.to_datetime(daily.index)).normalize()
+        daily = daily[~daily.index.duplicated(keep="last")].sort_index()
+        data_end = min(req_as_of_ts, pd.Timestamp(ref_market_date))
+        daily = daily.loc[daily.index <= data_end]
+        required_override_columns = {"open", "high", "low", "close", "volume", "trading_value"}
+        if not required_override_columns.issubset(daily.columns):
+            missing_columns = sorted(required_override_columns - set(daily.columns))
+            raise ValueError(f"DAILY_OVERRIDE_REQUIRED_COLUMNS_MISSING:{','.join(missing_columns)}")
+    elif repository is not None:
         daily = RepositoryV2DailyLoader(repository, end=canonical_as_of).load(clean_ticker)
     else:
         # Explicit legacy cache mode is retained for isolated historical test

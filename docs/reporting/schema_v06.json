@@ -1,0 +1,174 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ETFStockReport_v0.6",
+  "type": "object",
+  "not": {"required": ["a_fast_core"]},
+  "required": [
+    "report_version", "ticker", "name", "market", "asset_type",
+    "requested_as_of", "reference_market_date", "header", "summary",
+    "current_snapshot", "official_strategy", "pattern_a_fast", "monthly_history",
+    "foreign_flow", "relative_strength", "sector_relative_strength",
+    "trading_value_flow", "data_quality", "provenance", "fundamentals",
+    "readiness_status", "readiness_reason"
+  ],
+  "properties": {
+    "report_version": {"type": "string", "enum": ["0.6"]},
+    "ticker": {"type": "string", "pattern": "^[0-9A-Z]{6}$"},
+    "name": {"type": "string"},
+    "market": {"type": "string", "enum": ["KOSPI", "KOSDAQ", "KONEX", "UNKNOWN"]},
+    "asset_type": {"type": "string", "enum": ["COMMON", "PREFERRED", "SPAC", "REIT", "ETF", "ETN", "OTHER", "UNKNOWN"]},
+    "requested_as_of": {"type": "string"},
+    "reference_market_date": {"type": "string"},
+    "readiness_status": {"type": "string", "enum": ["READY", "PARTIAL", "DATA_UNAVAILABLE"]},
+    "readiness_reason": {"type": "string"},
+    "current_snapshot": {
+      "type": "object",
+      "required": ["etf_eligibility"],
+      "properties": {"etf_eligibility": {"$ref": "#/definitions/etfEligibilitySnapshot"}}
+    },
+    "official_strategy": {"$ref": "#/definitions/officialStrategy"},
+    "fundamentals": {
+      "type": "object",
+      "required": [
+        "applicability", "data_status", "reason", "requested_as_of",
+        "company_family", "currency", "filter_status", "filter_passed",
+        "filter_reasons", "summary", "quarterly", "annual", "diagnostics"
+      ],
+      "properties": {
+        "applicability": {"type": "string", "enum": ["APPLICABLE", "NOT_APPLICABLE"]},
+        "data_status": {"type": "string", "enum": ["READY", "PARTIAL", "DATA_UNAVAILABLE", "NOT_APPLICABLE"]},
+        "reason": {"type": ["string", "null"]},
+        "requested_as_of": {"type": ["string", "null"]},
+        "company_family": {"type": ["string", "null"]},
+        "currency": {"type": "string", "enum": ["KRW"]},
+        "filter_status": {"type": "string"},
+        "filter_passed": {"type": "boolean"},
+        "filter_reasons": {"type": "array", "items": {"type": "string"}},
+        "summary": {"$ref": "#/definitions/fundamentalsSummary"},
+        "quarterly": {"type": "array", "items": {"$ref": "#/definitions/fundamentalsQuarterRow"}},
+        "annual": {"type": "array", "items": {"$ref": "#/definitions/fundamentalsAnnualRow"}},
+        "diagnostics": {"type": "array", "items": {"type": "object"}}
+      }
+    }
+  },
+  "definitions": {
+    "etfEligibilitySnapshot": {
+      "type": "object",
+      "required": [
+        "as_of", "official_etf36_membership", "listing_date", "listing_age_pass",
+        "raw_close_krw", "minimum_raw_close_krw", "raw_close_pass",
+        "avg_volume_20d_shares", "volume_window_sessions", "volume_window_start",
+        "volume_window_end", "volume_window_includes_signal_date",
+        "minimum_avg_volume_20d_shares", "volume_pass", "eligibility_pass",
+        "eligibility_contract", "strategy_ready_date", "clean_ready_date",
+        "effective_start_date", "market_cap_applicability", "phase10_investability_applicability"
+      ],
+      "properties": {
+        "as_of": {"type": "string"},
+        "official_etf36_membership": {"const": true},
+        "listing_date": {"type": "string"},
+        "listing_age_pass": {"type": ["boolean", "null"]},
+        "raw_close_krw": {"type": ["number", "null"]},
+        "minimum_raw_close_krw": {"const": 1000},
+        "raw_close_pass": {"type": "boolean"},
+        "avg_volume_20d_shares": {"type": ["number", "null"]},
+        "volume_window_sessions": {"type": ["integer", "null"]},
+        "volume_window_start": {"type": ["string", "null"]},
+        "volume_window_end": {"type": ["string", "null"]},
+        "volume_window_includes_signal_date": {"const": true},
+        "minimum_avg_volume_20d_shares": {"const": 10000},
+        "volume_pass": {"type": "boolean"},
+        "eligibility_pass": {"type": "boolean"},
+        "eligibility_contract": {"const": "ETF_PIT_LISTED_2Y_CLOSE_1000_VOL20_10000_V01"},
+        "strategy_ready_date": {"type": "string"},
+        "clean_ready_date": {"type": "string"},
+        "effective_start_date": {"type": "string"},
+        "market_cap_applicability": {"const": "NOT_APPLICABLE_TO_JULIA_ETF_ELIGIBILITY"},
+        "phase10_investability_applicability": {"const": "NOT_APPLICABLE"}
+      }
+    },
+    "officialStrategy": {
+      "type": "object",
+      "required": [
+        "strategy_id", "strategy_name", "strategy_version", "asset_scope", "applicability",
+        "strategy_state", "canonical_position", "action", "action_reason", "execution_timing",
+        "entry_conditions", "current_trade", "protection_state", "reentry_state", "trade_history",
+        "interpretation", "eligibility_contract", "provenance", "current_snapshot"
+      ],
+      "properties": {
+        "strategy_id": {"const": "JULIA_ETF_STRATEGY_V01"},
+        "strategy_name": {"const": "Julia V1"},
+        "strategy_version": {"const": "V1"},
+        "asset_scope": {"const": "OFFICIAL_ETF_36"},
+        "applicability": {"const": "APPLICABLE"},
+        "strategy_state": {"enum": ["WAIT", "ENTRY", "HOLD_PRE_PROGRESSED", "HOLD_PROGRESSED", "EXIT", "DATA_UNAVAILABLE"]},
+        "canonical_position": {"enum": ["FLAT", "OPEN", "DATA_UNAVAILABLE"]},
+        "action": {"type": "string"},
+        "action_reason": {"type": "string"},
+        "execution_timing": {"type": ["string", "null"]},
+        "entry_conditions": {"type": "object"},
+        "current_trade": {"type": ["object", "null"]},
+        "protection_state": {"type": ["object", "null"]},
+        "reentry_state": {"type": "object"},
+        "trade_history": {"type": "array", "items": {"type": "object"}},
+        "interpretation": {"type": "string"},
+        "eligibility_contract": {"const": "ETF_PIT_LISTED_2Y_CLOSE_1000_VOL20_10000_V01"},
+        "provenance": {
+          "type": "object",
+          "required": ["evaluator_id", "loss_guard_enabled", "data_source", "reference_market_date", "network_requests", "support_evaluator_errors"],
+          "properties": {
+            "evaluator_id": {"const": "JULIA_STRATEGY_V00"},
+            "loss_guard_enabled": {"const": false},
+            "data_source": {"const": "KRX_RAW_ETF_OHLCV"},
+            "reference_market_date": {"type": "string"},
+            "network_requests": {"const": 0},
+            "support_evaluator_errors": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "current_snapshot": {"$ref": "#/definitions/etfEligibilitySnapshot"}
+      }
+    },
+    "nullableNumber": {"type": ["number", "null"]},
+    "fundamentalsQuarterRow": {
+      "type": "object",
+      "required": ["quarter", "status", "reason", "revenue_krw", "revenue_yoy_pct", "operating_income_krw", "operating_income_yoy_pct", "operating_income_yoy_status", "operating_margin_pct", "net_income_krw", "net_margin_pct", "operating_cash_flow_krw"],
+      "properties": {
+        "quarter": {"type": "string"}, "status": {"type": "string"}, "reason": {"type": ["string", "null"]},
+        "revenue_krw": {"$ref": "#/definitions/nullableNumber"}, "revenue_yoy_pct": {"$ref": "#/definitions/nullableNumber"},
+        "operating_income_krw": {"$ref": "#/definitions/nullableNumber"}, "operating_income_yoy_pct": {"$ref": "#/definitions/nullableNumber"}, "operating_income_yoy_status": {"type": ["string", "null"]}, "operating_margin_pct": {"$ref": "#/definitions/nullableNumber"},
+        "net_income_krw": {"$ref": "#/definitions/nullableNumber"}, "net_margin_pct": {"$ref": "#/definitions/nullableNumber"},
+        "operating_cash_flow_krw": {"$ref": "#/definitions/nullableNumber"}
+      }
+    },
+    "fundamentalsAnnualRow": {
+      "type": "object",
+      "required": ["fiscal_year", "status", "reason", "revenue_krw", "revenue_yoy_pct", "operating_income_krw", "operating_income_yoy_pct", "operating_income_yoy_status", "operating_margin_pct", "net_income_krw", "net_margin_pct", "roe_pct", "debt_ratio_pct"],
+      "properties": {
+        "fiscal_year": {"type": "string"}, "status": {"type": "string"}, "reason": {"type": ["string", "null"]},
+        "revenue_krw": {"$ref": "#/definitions/nullableNumber"}, "revenue_yoy_pct": {"$ref": "#/definitions/nullableNumber"},
+        "operating_income_krw": {"$ref": "#/definitions/nullableNumber"}, "operating_income_yoy_pct": {"$ref": "#/definitions/nullableNumber"}, "operating_income_yoy_status": {"type": ["string", "null"]}, "operating_margin_pct": {"$ref": "#/definitions/nullableNumber"},
+        "net_income_krw": {"$ref": "#/definitions/nullableNumber"}, "net_margin_pct": {"$ref": "#/definitions/nullableNumber"},
+        "roe_pct": {"$ref": "#/definitions/nullableNumber"}, "debt_ratio_pct": {"$ref": "#/definitions/nullableNumber"}
+      }
+    },
+    "fundamentalsSummary": {
+      "type": "object",
+      "required": [
+        "latest_fy", "latest_quarter", "latest_fy_revenue_krw", "latest_4q_avg_revenue_krw",
+        "ttm_revenue_krw", "ttm_operating_income_krw", "ttm_net_income_krw", "ttm_operating_cash_flow_krw",
+        "ttm_operating_margin_pct", "ttm_net_margin_pct", "ttm_operating_cash_flow_margin_pct", "ttm_roe_pct",
+        "latest_debt_ratio_pct", "filter_status", "filter_passed", "filter_reasons"
+      ],
+      "properties": {
+        "latest_fy": {"type": ["string", "null"]}, "latest_quarter": {"type": ["string", "null"]},
+        "latest_fy_revenue_krw": {"$ref": "#/definitions/nullableNumber"}, "latest_4q_avg_revenue_krw": {"$ref": "#/definitions/nullableNumber"},
+        "ttm_revenue_krw": {"$ref": "#/definitions/nullableNumber"}, "ttm_operating_income_krw": {"$ref": "#/definitions/nullableNumber"},
+        "ttm_net_income_krw": {"$ref": "#/definitions/nullableNumber"}, "ttm_operating_cash_flow_krw": {"$ref": "#/definitions/nullableNumber"},
+        "ttm_operating_margin_pct": {"$ref": "#/definitions/nullableNumber"}, "ttm_net_margin_pct": {"$ref": "#/definitions/nullableNumber"},
+        "ttm_operating_cash_flow_margin_pct": {"$ref": "#/definitions/nullableNumber"}, "ttm_roe_pct": {"$ref": "#/definitions/nullableNumber"},
+        "latest_debt_ratio_pct": {"$ref": "#/definitions/nullableNumber"}, "filter_status": {"type": "string"},
+        "filter_passed": {"type": "boolean"}, "filter_reasons": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

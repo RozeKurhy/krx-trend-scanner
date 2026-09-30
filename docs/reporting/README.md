@@ -7,10 +7,11 @@ Core V2, 외국인 수급, 시장·업종 RS, 펀더멘털 결과를 종목별 J
 
 ## 현재 버전
 
-현재 운영 버전은 v0.5(`report_version="0.5"`)다. 일일 운영 경로의 생성
+일반 종목의 운영 버전은 v0.5(`report_version="0.5"`)다. 일일 운영 경로의 생성
 대상과 검증은 [분석·리포트·웹 반영 기준 V01](../architecture/daily_update_phase4_analysis_reporting_web_contract_v01.md)
-4B를 따른다. 생성기에 펀더멘털 섹션(`fundamentals_section`)을 넘기지 않으면
-v0.4 리포트가 만들어진다.
+4B를 따른다. Official ETF 36에는 별도 산출 경로의 v0.6
+(`report_version="0.6"`)을 사용한다. 생성기에 펀더멘털 섹션
+(`fundamentals_section`)을 넘기지 않은 기존 호출은 v0.4 리포트를 만든다.
 
 ## 계약 구성과 읽는 순서
 
@@ -23,6 +24,7 @@ v0.5 계약은 한 문서가 아니다. 기반 계약 위에 버전별 추가분
 | 2 | [v0.3](contract_v03.md) | 시장 RS (`relative_strength`) | [schema_v03.json](schema_v03.json) |
 | 3 | [v0.4](contract_v04.md) | 업종 RS (`sector_relative_strength`), 가격 원천 `MarketDataRepositoryV2` | [schema_v04.json](schema_v04.json) |
 | 4 | [v0.5](contract_v05.md) | 펀더멘털 (`fundamentals`) | [schema_v05.json](schema_v05.json) |
+| 5 | [ETF v0.6](contract_v06.md) | Official ETF 36의 Julia V1 전략 및 ETF PIT 적격성 | [schema_v06.json](schema_v06.json) |
 
 버전별 스키마는 해당 버전 리포트의 검증과 기존 테스트에 쓰이므로 제자리에
 유지한다. 현재 리포트 검증에는 `schema_v05.json`을 쓴다. 이 스키마는 최상위
@@ -50,6 +52,9 @@ v0.5 계약은 한 문서가 아니다. 기반 계약 위에 버전별 추가분
 
 생성 코드가 출력하는 정확한 절 제목은 각 버전 계약에서 확인한다.
 
+v0.6은 v0.5의 일반 종목 계약을 변경하지 않는다. ETF 보고서의 공식 전략은
+`official_strategy`이며 `a_fast_core`를 Julia V1 용도로 재사용하지 않는다.
+
 ## 산출물 위치
 
 ```text
@@ -60,6 +65,15 @@ JSON:     artifacts/reporting/stock_reports/<YYYYMMDD>/json/*.json
 버전별 폴더는 쓰지 않는다. 버전은 `report_version`, 스키마, 계약, Git 이력으로
 관리한다. 대체된 과거 산출물은 `artifacts/reporting/stock_reports/archive/`에
 보관한다.
+
+Official ETF 36의 v0.6 산출물은 기존 일반 종목 및 웹 exporter 결과와 섞이지 않게
+별도 경로에 둔다.
+
+```text
+Markdown: artifacts/reporting/etf_stock_reports/<YYYYMMDD>/*.md
+JSON:     artifacts/reporting/etf_stock_reports/<YYYYMMDD>/json/*.json
+Summary:  artifacts/reporting/etf_stock_reports/<YYYYMMDD>/generation_summary.json
+```
 
 ## 역사 기록
 

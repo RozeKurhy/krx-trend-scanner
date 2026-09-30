@@ -78,7 +78,9 @@ artifacts/patterns/pattern_a/production/scanner/
 CONTROL이고, B Select Core V1은 기본 전략·CONTROL이 아닌 독립 공식 전략이다.
 ETF 전용 공식 전략은 Julia V1 (JULIA_ETF_STRATEGY_V01)이며 공식 ETF 36에만
 적용한다. Julia V1은 현재 Phase 4의 Stock Report와 전략 모니터 운영 출력에
-연결되어 있지 않으며, ETF 리포트 연결은 별도 후속 작업이다. 이 문서는 Julia V1을
+연결되어 있지 않다. 별도 로컬 산출 작업에서 Official ETF 36용 Stock Report
+v0.6 (`official_strategy=JULIA_ETF_STRATEGY_V01`) 생성은 연결됐지만,
+Phase 4 후보 실행·전략 모니터·웹/UI 경로에는 추가되지 않았다. 이 문서는 Julia V1을
 Phase 4 실행 경로에 추가하지 않는다. A FAST Core V2는 의사결정 지원 운영
 (PRODUCTION_DECISION_SUPPORT)이며 자동매매 권한이 아니다. V3/V4 또는
 다른 비공식 후보 전략을 4단계 운영 출력에 추가하지 않는다.
@@ -93,10 +95,19 @@ Phase 4 실행 경로에 추가하지 않는다. A FAST Core V2는 의사결정 
 계산하며, 그 스냅샷이 없으면 업종 RS 섹션만 산출 불가(`DATA_UNAVAILABLE`)로
 두고 리포트 생성은 계속한다.
 
-리포트 공식 버전은 Stock Report v0.5뿐이며 출력 위치는 다음과 같다.
+Phase 4 COMMON 리포트는 Stock Report v0.5이며 출력 위치는 다음과 같다.
 
 ```text
 artifacts/reporting/stock_reports/{YYYYMMDD}/
+  *.md
+  json/*.json
+```
+
+Official ETF 36 Julia V1 v0.6은 독립 생성 경로만 제공하며 Phase 4 및 웹 정적
+투영 대상에 포함되지 않는다.
+
+```text
+artifacts/reporting/etf_stock_reports/{YYYYMMDD}/
   *.md
   json/*.json
 ```
@@ -259,6 +270,7 @@ web/data/
 - [데일리 업데이트 기준 V01](daily_update_contract_v01.md)
 - [분석 입력 갱신 기준 V01](daily_update_phase3_analysis_inputs_contract_v01.md)
 - [A FAST Core V2 현재 기본 전략](../patterns/pattern_a_fast/strategy/version_02/README.md)
-- [Stock Report v0.5 안내](../reporting/README.md)
+- [Stock Report 안내 및 버전 색인](../reporting/README.md)
 - [Stock Report v0.5 계약](../reporting/contract_v05.md)
+- [Official ETF 36 Stock Report v0.6 계약](../reporting/contract_v06.md)
 - [웹 영역 안내](../web/README.md)
