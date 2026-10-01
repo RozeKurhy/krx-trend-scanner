@@ -132,7 +132,7 @@ def test_v03_web_fundamentals_layout_and_formatting_contract():
     js = (ROOT / "web/js/report.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert html.count("web-report-flow-ui-v1") == 1
+    assert html.count("web-report-pattern-card-v2") == 1
     assert "fundamentals-summary-grid" not in html
     assert html.index('id="price-card"') < html.index('id="pattern-card"')
     assert "fundamentals-detail-meta" not in html

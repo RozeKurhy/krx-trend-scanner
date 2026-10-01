@@ -63,7 +63,7 @@ def test_v06_web_polish_contract():
     app_js = (ROOT / "web/js/app.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert report_html.count("web-report-flow-ui-v1") == 1
+    assert report_html.count("web-report-pattern-card-v2") == 1
     assert "function formatFundamentalTableKrw" in report_js
     assert "formatKrwAsEok" in report_js
     quarter = report_js[report_js.index('renderFundamentalPeriodTable("최근 12개 분기"'):report_js.index('const annual =', report_js.index('renderFundamentalPeriodTable("최근 12개 분기"'))]

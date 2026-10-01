@@ -326,17 +326,17 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-13"' in html
-    assert 'href="./css/app.css?v=web-ui-density-13"' in index_html
+    assert 'href="./css/app.css?v=web-pattern-card-cleanup-14"' in html
+    assert 'href="./css/app.css?v=web-pattern-card-cleanup-14"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-report-flow-ui-v1"' in html
+    assert 'src="./js/report.js?v=web-report-pattern-card-v2"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
-    assert html.count("web-ui-density-13") == 1
-    assert html.count("web-report-flow-ui-v1") == 1
-    assert index_html.count("web-ui-density-13") == 1
+    assert html.count("web-pattern-card-cleanup-14") == 1
+    assert html.count("web-report-pattern-card-v2") == 1
+    assert index_html.count("web-pattern-card-cleanup-14") == 1
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
     assert "web-02a-final-2" not in html
@@ -442,6 +442,10 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert "pattern-score-chart" in js
     assert "pattern-b-state-chart" in js
     assert 'id="pattern-b-stepper"' in html
+    assert 'id="pattern-value"' not in html
+    assert 'id="pattern-b-value"' not in html
+    assert 'setText("pattern-value"' not in js
+    assert 'setText("pattern-b-value"' not in js
     assert '["DEEP_DEPRESSED", "깊은 침체"]' in js
     assert '["DEPRESSED", "침체"]' in js
     assert '["NORMAL", "정상"]' in js
@@ -449,6 +453,15 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'renderStatusStepper(' in js and '"pattern-b-stepper"' in js
     assert 'createDetailTable(["기준일", "종가", "상태", "36M 범위", "24M선 이격", "52W 범위"]' in js
     assert 'patternACloses.get(monthlyLastBar)' in js
+    pattern_b_detail = js[js.index("function renderPatternBDetail"):js.index("function renderMarketDetail")]
+    assert 'createDetailTable(["현재 지표", "값"]' not in pattern_b_detail
+    assert '"현재 상태"' not in pattern_b_detail
+    card_render = js[js.index('renderPatternStepper(report.pattern.official_stage)'):js.index('setText("market-value"')]
+    assert 'setText("pattern-value"' not in card_render
+    assert 'patternBStateLabel(patternB.pattern_b_state)' not in card_render
+    assert '36M ${formatPatternBRange(patternB.range_36m)} · 24M ${formatSignedRate(patternB.monthly_ma24_distance)} · 52W ${formatPatternBRange(patternB.range_52w)}' in card_render
+    assert "해당 없음 · ETF v0.6에는 Pattern B를 적용하지 않습니다." in card_render
+    assert "정보 없음 · Pattern B 상태 데이터 없음" in card_render
     for removed in (
         "가격 권위 ",
         "Pattern B는 정보성 상태 분석이며 B Select Core V1의 매수·매도 전략 실행과 별개입니다.",

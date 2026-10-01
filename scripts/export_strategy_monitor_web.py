@@ -52,7 +52,7 @@ def _item_bucket(item: dict[str, Any]) -> str:
         return "entry"
     if action == "HOLD":
         return "hold"
-    if action == "EXIT":
+    if action in {"EXIT", "EXIT_NEXT_OPEN"}:
         return "exit"
     if action in {"WATCH", "WAIT"}:
         return "watch"

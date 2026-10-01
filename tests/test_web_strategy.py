@@ -113,6 +113,22 @@ def test_etf_is_not_in_action_counts_and_has_no_fake_trade():
     assert sum(julia["counts"].values()) == julia["scope"]["report_count"]
 
 
+def test_exit_next_open_and_exit_actions_map_to_exit_bucket():
+    exporter = _load_exporter()
+    cases = (
+        ("A FAST Core V2", "EXIT_NEXT_OPEN"),
+        ("Julia V1", "EXIT_NEXT_OPEN"),
+        ("B Select Core V1", "EXIT"),
+    )
+    for strategy_name, action in cases:
+        item = {
+            "data_status": "READY",
+            "canonical_position": "OPEN",
+            "action": action,
+        }
+        assert exporter._item_bucket(item) == "exit", (strategy_name, action)
+
+
 def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_html = (ROOT / "web/strategy.html").read_text(encoding="utf-8")
     index_html = (ROOT / "web/index.html").read_text(encoding="utf-8")
@@ -120,8 +136,8 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-13"' in index_html
-    assert 'href="./css/app.css?v=web-ui-density-13"' in report_html
+    assert 'href="./css/app.css?v=web-pattern-card-cleanup-14"' in index_html
+    assert 'href="./css/app.css?v=web-pattern-card-cleanup-14"' in report_html
     for html in (index_html, report_html):
         assert "web-02a-final-2" not in html
         assert "web-03a-final-1" not in html
@@ -134,7 +150,8 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert strategy_scripts[0].query.startswith("v=") and strategy_scripts[0].query.removeprefix("v=")
     assert (ROOT / "web" / strategy_scripts[0].path.removeprefix("./")).is_file()
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
-    assert 'src="./js/report.js?v=web-report-flow-ui-v1"' in report_html
+    assert 'EXIT: "다음 시가 청산 대기"' in strategy_js
+    assert 'src="./js/report.js?v=web-report-pattern-card-v2"' in report_html
     assert 'href="./strategy.html"' in index_html
     assert 'href="./strategy.html"' in report_html
     assert 'class="nav-item is-active" href="./strategy.html"' in strategy_html

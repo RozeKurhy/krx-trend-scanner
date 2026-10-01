@@ -1106,15 +1106,6 @@
       appendDetailEmpty(container, "표시할 Pattern B 상태 이력이 없습니다.");
     }
 
-    const rows = [
-      ["현재 상태", section.pattern_b_state ? `${patternBStateLabel(section.pattern_b_state)} (${section.pattern_b_state})` : "정보 없음"],
-      ["36개월 범위 위치", formatPatternBRange(section.range_36m)],
-      ["24개월선 이격률", formatSignedRate(section.monthly_ma24_distance)],
-      ["52주 범위 위치", formatPatternBRange(section.range_52w)],
-      ["평가 상태", section.evaluation_status || "UNAVAILABLE"],
-    ];
-    container.appendChild(createDetailTable(["현재 지표", "값"], rows));
-
     const patternACloses = new Map(
       (Array.isArray(report.pattern.history_12m) ? report.pattern.history_12m : [])
         .filter((observation) => observation && typeof observation.as_of === "string")
@@ -1395,7 +1386,6 @@
       ? "가격 정보 없음"
       : `기준일 ${formatDate(report.price_trend.latest_close_as_of)} · 거래대금 ${tradingValueLabel(report.price_trend.trading_value_state)}`);
     renderPatternStepper(report.pattern.official_stage);
-    setText("pattern-value", `현재 단계 ${stageLabel(report.pattern.official_stage)}`);
     setText("pattern-detail", report.pattern.score == null ? "패턴 점수 확인 필요" : `패턴 점수 ${formatNumber(report.pattern.score, 2)}점`);
     const patternB = report.pattern_b;
     const patternBReady = Boolean(patternB && patternB.applicability === "APPLICABLE" && patternB.evaluation_status === "READY" && patternB.pattern_b_state);
@@ -1405,14 +1395,15 @@
       patternB && patternB.pattern_b_state,
       !patternB || patternB.applicability !== "APPLICABLE",
     );
-    setText("pattern-b-value", patternBReady
-      ? patternBStateLabel(patternB.pattern_b_state)
-      : (identity.asset_type === "ETF" || (patternB && patternB.applicability === "NOT_APPLICABLE") ? "해당 없음" : "정보 없음"));
     setText("pattern-b-detail", patternBReady
-      ? `${patternBStateLabel(patternB.pattern_b_state)} · 36M ${formatPatternBRange(patternB.range_36m)} · 24M선 ${formatSignedRate(patternB.monthly_ma24_distance)}`
+      ? `36M ${formatPatternBRange(patternB.range_36m)} · 24M ${formatSignedRate(patternB.monthly_ma24_distance)} · 52W ${formatPatternBRange(patternB.range_52w)}`
       : (identity.asset_type === "ETF"
-        ? "ETF v0.6에는 Pattern B를 적용하지 않습니다."
-        : (patternB && Array.isArray(patternB.reason_codes) && patternB.reason_codes.length ? patternB.reason_codes.join(", ") : "Pattern B 상태 데이터 없음")));
+        ? "해당 없음 · ETF v0.6에는 Pattern B를 적용하지 않습니다."
+        : (patternB && patternB.applicability === "NOT_APPLICABLE"
+          ? "해당 없음 · Pattern B는 보통주 대상 정보 분석입니다."
+          : (patternB && Array.isArray(patternB.reason_codes) && patternB.reason_codes.length
+            ? `정보 없음 · ${patternB.reason_codes.join(", ")}`
+            : "정보 없음 · Pattern B 상태 데이터 없음"))));
     setText("market-value", marketStrengthLabel(report.market_strength));
     setText("market-detail", marketStrengthDetail(report.market_strength));
     setText("flow-value", flowLabel(report.flow.state));

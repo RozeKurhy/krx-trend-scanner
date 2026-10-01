@@ -26,7 +26,7 @@ def _load_payload() -> dict:
 def test_sector_page_activates_only_sector_rs_and_exposes_accessible_controls():
     html = _read(SECTOR_PAGE)
 
-    assert 'href="./css/app.css?v=web-ui-density-13"' in html
+    assert 'href="./css/app.css?v=web-pattern-card-cleanup-14"' in html
     assert '<a class="ranking-tab" href="./etf.html">ETF</a>' in html
     assert 'src="./js/sector.js?v=web-sector-rs-2w-v1"' in html
     assert '<section class="page-intro"' not in html

@@ -14,6 +14,7 @@
     WAIT: "진입 전 관찰",
     ENTRY: "진입 조건 충족",
     ENTRY_PENDING: "다음 시가 진입 대기",
+    EXIT: "다음 시가 청산 대기",
     EXIT_PENDING: "다음 시가 청산 대기",
     HOLD: "보유 유지",
     DATA_UNAVAILABLE: "전략 데이터 없음",
