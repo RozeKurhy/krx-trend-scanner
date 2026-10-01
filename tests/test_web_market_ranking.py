@@ -188,7 +188,7 @@ def test_market_page_has_accessible_controls_and_release_contract():
 def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     page_versions = {
         ROOT / "web/index.html": ("web-dual-strategy-report-v1", "app", "web-fear-fix02-4"),
-        ROOT / "web/report.html": ("web-dual-strategy-report-v1", "report", "web-stock-dual-strategy-v1"),
+        ROOT / "web/report.html": ("web-dual-strategy-report-v1", "report", "web-stock-dual-strategy-v2"),
         ROOT / "web/strategy.html": ("web-dual-strategy-report-v1", "strategy", "web-pattern-columns-v1"),
         ROOT / "web/market.html": ("web-dual-strategy-report-v1", "market", "web-market-ranking-cta-v2"),
     }

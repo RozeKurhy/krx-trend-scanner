@@ -201,6 +201,13 @@
     if (element) element.hidden = hidden;
   }
 
+  function createElement(tag, className, text) {
+    const element = document.createElement(tag);
+    if (className) element.className = className;
+    if (text != null) element.textContent = String(text);
+    return element;
+  }
+
   function formatNumber(value, maximumFractionDigits) {
     if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
     return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: maximumFractionDigits == null ? 0 : maximumFractionDigits }).format(Number(value));

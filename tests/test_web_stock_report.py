@@ -332,10 +332,10 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-stock-dual-strategy-v1"' in html
+    assert 'src="./js/report.js?v=web-stock-dual-strategy-v2"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert html.count("web-dual-strategy-report-v1") == 1
-    assert html.count("web-stock-dual-strategy-v1") == 1
+    assert html.count("web-stock-dual-strategy-v2") == 1
     assert index_html.count("web-dual-strategy-report-v1") == 1
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
@@ -555,6 +555,7 @@ def test_common_report_dual_strategy_ui_reuses_monitor_and_fails_closed():
 
     assert 'id="decision-strategies"' in html
     assert 'const STRATEGY_MONITOR_URL = "./data/strategy-monitor.json";' in js
+    assert 'function createElement(tag, className, text)' in js
     assert "let strategyMonitorPromise = null;" in js
     assert "strategyMonitorPromise = fetch(STRATEGY_MONITOR_URL" in js
     assert 'value.schema_version !== 2' in js
