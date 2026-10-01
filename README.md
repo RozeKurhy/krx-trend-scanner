@@ -28,16 +28,23 @@
 
 Pattern A의 가격 구조에서 빠른 전환 징후를 살피는 패턴이다.
 
-### A FAST Core V2
+### Pattern B
 
-일반 종목의 진입·보유·청산 규칙을 정의하는 전략이다.
+종목 자신의 장기 가격 사이클을 바탕으로 가격이 침체 또는 과열 쪽 어디에 가까운지 분류하는 패턴이다.
+기업가치 평가는 다루지 않으며, Pattern B 상태 자체는 매매 신호가 아니다. 개념과 세부 문서는
+[Pattern B 안내](docs/patterns/pattern_b/README.md)에서 확인한다.
 
-- 공식 전략 ID: `PATTERN_A_FAST_FINAL_STRATEGY_V02`
-- 자동매매가 아닌 투자 의사결정 지원을 위한 규칙
+### 전략
 
-패턴과 전략의 세부 규격은 [Pattern A 공식 규격](docs/patterns/pattern_a/spec/production_authority.md),
+전략은 패턴과 다른 조건을 진입·보유·청산 규칙에 연결한다. 전략별 적용 범위, 세부 규칙, 채택·검증 기록은 해당 문서에서 확인한다.
+
+- **A FAST Core V2** — Pattern A FAST 기반 일반 종목 전략. [전략 계약](docs/patterns/pattern_a_fast/strategy/version_02/README.md)
+- **B Select Core V1** — Pattern A Stage와 Pattern B 상태를 결합하는 전략. [전략 문서](docs/patterns/pattern_b/strategy/PATTERN_B_SELECT_CORE_V01.md)
+- **Julia V1** — ETF 적용을 위한 전략. [전략 문서](docs/strategies/julia/JULIA_ETF_STRATEGY_V01.md)
+
+패턴의 세부 규격은 [Pattern A 공식 규격](docs/patterns/pattern_a/spec/production_authority.md),
 [Pattern A FAST 명세](docs/patterns/pattern_a_fast/spec/README.md),
-[A FAST Core V2 계약](docs/patterns/pattern_a_fast/strategy/version_02/README.md)에서 확인한다.
+[Pattern B 안내](docs/patterns/pattern_b/README.md)에서 확인한다. 자동 주문을 승인하는 문서는 아니며, 이 시스템은 분석과 검토를 지원한다.
 
 ## 주요 기능
 
@@ -94,6 +101,7 @@ Stock Report는 한 종목의 가격 패턴, 투자 적합성, 전략 규칙, �
 - [프로젝트 확장 방향과 작업 선택 원칙](ROADMAP.md)
 - [아키텍처 안내](docs/architecture/README.md)
 - [패턴 안내](docs/patterns/README.md)
+- [Pattern B 안내](docs/patterns/pattern_b/README.md)
 - [전략 문서](docs/strategies/README.md)
 - [Fundamentals 안내](docs/fundamentals/README.md)
 - [Stock Report 안내](docs/reporting/README.md)
