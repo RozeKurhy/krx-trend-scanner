@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-sector-ranking-v1">
+    <link rel="stylesheet" href="./css/app.css?v=web-sector-ranking-v2">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -64,18 +64,17 @@
         <span class="ranking-tab" aria-disabled="true">순이익 성장률 <small>준비 중</small></span>
       </nav>
 
-      <section class="panel cross-sector-ranking-controls" aria-label="섹터 랭킹 기간">
-        <div class="cross-sector-ranking-primary-row">
-          <div id="cross-sector-horizon-controls" class="market-control-group cross-sector-horizon-group" role="group" aria-label="랭킹 기간">
+      <section class="panel etf-controls cross-sector-ranking-controls" aria-label="섹터 랭킹 기간">
+        <div class="etf-primary-row cross-sector-ranking-primary-row">
+          <div id="cross-sector-horizon-controls" class="market-control-group etf-horizon-group cross-sector-horizon-group" role="group" aria-label="랭킹 기간">
             <button class="market-control is-active" type="button" data-horizon="2w" aria-pressed="true">2주</button>
             <button class="market-control" type="button" data-horizon="1m" aria-pressed="false">1개월</button>
             <button class="market-control" type="button" data-horizon="3m" aria-pressed="false">3개월</button>
             <button class="market-control" type="button" data-horizon="6m" aria-pressed="false">6개월</button>
             <button class="market-control" type="button" data-horizon="12m" aria-pressed="false">12개월</button>
           </div>
-          <span id="cross-sector-as-of" class="cross-sector-as-of">기준일 —</span>
+          <p id="cross-sector-scope" class="market-scope etf-scope cross-sector-scope" role="status" aria-live="polite">기준일 확인 중 · 섹터 확인 중</p>
         </div>
-        <p id="cross-sector-ranking-meta" class="report-search-meta" role="status" aria-live="polite">섹터 랭킹 불러오는 중</p>
       </section>
 
       <section id="cross-sector-ranking-list" class="cross-sector-ranking-list" aria-live="polite" aria-label="섹터 랭킹"></section>
@@ -87,6 +86,6 @@
       </section>
     </main>
 
-    <script src="./js/sector-ranking.js?v=web-sector-ranking-v1" defer></script>
+    <script src="./js/sector-ranking.js?v=web-sector-ranking-v2" defer></script>
   </body>
 </html>

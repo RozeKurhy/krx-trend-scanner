@@ -188,6 +188,10 @@
     return row;
   }
 
+  function renderScope(sectorCount) {
+    setText("cross-sector-scope", `기준일 ${formatDate(payload.as_of)} · ${formatNumber(sectorCount)}개 섹터`);
+  }
+
   function renderRanking() {
     if (!payload) return;
     document.querySelectorAll("[data-horizon]").forEach((button) => {
@@ -195,14 +199,13 @@
       button.classList.toggle("is-active", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
-    setText("cross-sector-as-of", `기준일 ${formatDate(payload.as_of)}`);
     const sectors = rankedSectors(payload.sectors, activeHorizon);
+    renderScope(sectors.length);
     const list = byId("cross-sector-ranking-list");
     list.replaceChildren(...sectors.map((sector, index) => createSectorRow(sector, index + 1)));
     if (!sectors.length) {
       list.appendChild(createElement("p", "cross-sector-ranking-empty", "선택한 기간에 비교 가능한 섹터가 없습니다."));
     }
-    setText("cross-sector-ranking-meta", `${HORIZON_LABELS[activeHorizon]} · 비교 가능 섹터 ${sectors.length}개`);
   }
 
   function initInteractions() {

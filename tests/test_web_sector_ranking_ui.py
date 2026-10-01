@@ -75,8 +75,8 @@ def test_sector_ranking_page_and_all_ranking_tabs_are_connected():
     assert html.count('aria-current="page"') == 2  # primary menu and the single active ranking tab
     assert 'id="market-select"' not in html
     assert 'type="search"' not in html
-    assert 'href="./css/app.css?v=web-sector-ranking-v1"' in html
-    assert 'src="./js/sector-ranking.js?v=web-sector-ranking-v1"' in html
+    assert 'href="./css/app.css?v=web-sector-ranking-v2"' in html
+    assert 'src="./js/sector-ranking.js?v=web-sector-ranking-v2"' in html
 
 
 def test_page_exposes_five_horizons_with_two_weeks_as_default():
@@ -86,9 +86,134 @@ def test_page_exposes_five_horizons_with_two_weeks_as_default():
     assert 'data-horizon="2w" aria-pressed="true"' in html
     for horizon in ("1m", "3m", "6m", "12m"):
         assert f'data-horizon="{horizon}" aria-pressed="false"' in html
-    assert 'id="cross-sector-as-of"' in html
-    assert 'id="cross-sector-ranking-meta"' in html
+    assert 'id="cross-sector-scope"' in html
+    assert 'id="cross-sector-as-of"' not in html
+    assert 'id="cross-sector-ranking-meta"' not in html
     assert 'aria-label="섹터 랭킹"' in html
+
+
+def test_period_header_reuses_etf_control_layout_and_has_one_scope_line():
+    html = _read(PAGE_PATH)
+    etf_html = _read(ROOT / "web/etf.html")
+    css = _read(CSS_PATH)
+
+    assert 'class="panel etf-controls cross-sector-ranking-controls"' in html
+    assert 'class="etf-primary-row cross-sector-ranking-primary-row"' in html
+    assert 'class="market-control-group etf-horizon-group cross-sector-horizon-group"' in html
+    assert 'id="cross-sector-scope" class="market-scope etf-scope cross-sector-scope"' in html
+    assert "기준일 확인 중 · 섹터 확인 중" in html
+    assert 'id="cross-sector-ranking-meta"' not in html
+    assert "cross-sector-as-of" not in html
+
+    for etf_class in ("etf-controls", "etf-primary-row", "etf-horizon-group", "etf-scope"):
+        assert etf_class in etf_html
+        assert f".{etf_class}" in css
+    assert ".cross-sector-as-of" not in css
+    assert ".cross-sector-ranking-meta" not in css
+
+
+def test_scope_tracks_ranked_sector_count_when_horizon_changes():
+    payload = {
+        "schema_version": 1,
+        "as_of": "2026-09-23",
+        "metric_scope": {"type": "WITHIN_SECTOR", "group_key": ["market", "sector_code"]},
+        "horizons": list(HORIZONS),
+        "sectors": [
+            {
+                "sector_key": "KOSPI:1001",
+                "market": "KOSPI",
+                "sector_code": "1001",
+                "sector_name": "에너지",
+                "member_count": 1,
+                "sector_return_2w": 0.1,
+                "sector_return_1m": 0.2,
+                "sector_return_3m": None,
+                "sector_return_6m": 0.3,
+                "sector_return_12m": 0.4,
+            },
+            {
+                "sector_key": "KOSDAQ:2001",
+                "market": "KOSDAQ",
+                "sector_code": "2001",
+                "sector_name": "소재",
+                "member_count": 1,
+                "sector_return_2w": 0.2,
+                "sector_return_1m": None,
+                "sector_return_3m": None,
+                "sector_return_6m": 0.1,
+                "sector_return_12m": 0.2,
+            },
+        ],
+        "items": [],
+    }
+    encoded_payload = json.dumps(json.dumps(payload, ensure_ascii=False))
+    node = f"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+class FakeElement {{
+  constructor(tagName = "div", dataset = {{}}) {{
+    this.tagName = tagName;
+    this.dataset = dataset;
+    this.children = [];
+    this.attributes = {{}};
+    this.listeners = {{}};
+    this.classes = new Set();
+    this.classList = {{
+      toggle: (name, force) => {{
+        if (force) this.classes.add(name);
+        else this.classes.delete(name);
+      }},
+    }};
+  }}
+  setAttribute(name, value) {{ this.attributes[name] = String(value); }}
+  addEventListener(name, callback) {{ this.listeners[name] = callback; }}
+  appendChild(child) {{ this.children.push(child); return child; }}
+  append(...children) {{ this.children.push(...children); }}
+  replaceChildren(...children) {{ this.children = children; }}
+}}
+
+const horizons = ["2w", "1m", "3m", "6m", "12m"];
+const buttons = horizons.map((horizon) => new FakeElement("button", {{horizon}}));
+const scope = new FakeElement("p");
+const list = new FakeElement("section");
+const elements = {{
+  "cross-sector-scope": scope,
+  "cross-sector-ranking-list": list,
+}};
+const document = {{
+  documentElement: {{dataset: {{}}}},
+  getElementById: (id) => elements[id] || null,
+  querySelectorAll: (selector) => selector === "[data-horizon]" ? buttons : [],
+  createElement: (tagName) => new FakeElement(tagName),
+}};
+const payload = JSON.parse({encoded_payload});
+const context = {{
+  document,
+  window: {{matchMedia: () => ({{matches: false}})}},
+  localStorage: {{getItem: () => null, setItem: () => {{}}}},
+  fetch: async () => ({{ok: true, json: async () => payload}}),
+}};
+
+vm.runInNewContext(fs.readFileSync("web/js/sector-ranking.js", "utf8"), context);
+setImmediate(() => {{
+  const articleCount = () => list.children.filter((child) => child.tagName === "article").length;
+  assert.equal(scope.textContent, "기준일 2026.09.23 · 2개 섹터");
+  assert.equal(articleCount(), 2);
+
+  buttons[1].listeners.click();
+  assert.equal(buttons[1].attributes["aria-pressed"], "true");
+  assert.equal(scope.textContent, "기준일 2026.09.23 · 1개 섹터");
+  assert.equal(articleCount(), 1);
+
+  buttons[2].listeners.click();
+  assert.equal(scope.textContent, "기준일 2026.09.23 · 0개 섹터");
+  assert.equal(articleCount(), 0);
+}});
+"""
+    result = subprocess.run(["node", "-e", node], cwd=ROOT, capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr or result.stdout
 
 
 def test_existing_payload_has_canonical_sector_returns_and_authority_parity():
