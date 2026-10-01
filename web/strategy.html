@@ -21,6 +21,7 @@
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="./css/app.css?v=web-pattern-card-cleanup-14">
+    <link rel="stylesheet" href="./css/strategy-history.css?v=strategy-trade-history-v1">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -74,6 +75,14 @@
         </div>
       </section>
 
+      <section class="panel strategy-view-tabs" aria-label="전략 보기">
+        <div id="strategy-view-tabs" class="strategy-filter-group" role="tablist" aria-label="전략 보기 모드">
+          <button id="current-state-tab" class="strategy-filter is-active" type="button" role="tab" aria-selected="true" aria-controls="current-state-view" data-view="current">현재 상태</button>
+          <button id="trade-history-tab" class="strategy-filter" type="button" role="tab" aria-selected="false" aria-controls="trade-history-view" data-view="history">거래 이력</button>
+        </div>
+      </section>
+
+      <div id="current-state-view" role="tabpanel" aria-labelledby="current-state-tab">
       <section class="panel strategy-controls" aria-label="전략 검색 및 필터">
         <label class="visually-hidden" for="strategy-search">종목명 또는 종목코드 검색</label>
         <input id="strategy-search" class="report-search-input" type="search" placeholder="종목명 또는 종목코드 검색" autocomplete="off" aria-controls="strategy-sections">
@@ -114,6 +123,31 @@
           <div id="unavailable-list" class="strategy-item-list"></div>
         </section>
       </section>
+      </div>
+
+      <div id="trade-history-view" role="tabpanel" aria-labelledby="trade-history-tab" hidden>
+        <section class="panel strategy-controls strategy-history-controls" aria-label="거래 이력 검색 및 필터">
+          <div class="strategy-history-subtabs" role="tablist" aria-label="거래 이력 보기">
+            <button id="history-trades-tab" class="strategy-filter is-active" type="button" role="tab" aria-selected="true" aria-controls="history-trades-view" data-history-view="trades">전체 거래</button>
+            <button id="history-monthly-tab" class="strategy-filter" type="button" role="tab" aria-selected="false" aria-controls="history-monthly-view" data-history-view="monthly">월별</button>
+          </div>
+          <label class="visually-hidden" for="history-search">종목명 또는 종목코드 검색</label>
+          <input id="history-search" class="report-search-input" type="search" placeholder="종목명 또는 종목코드 검색" autocomplete="off" aria-controls="history-trades-view history-monthly-view">
+          <div class="strategy-filter-toolbar">
+            <div id="history-filters" class="strategy-filter-group" role="group" aria-label="거래 이력 유형">
+              <button class="strategy-filter is-active" type="button" data-history-filter="all" aria-pressed="true">전체</button>
+              <button class="strategy-filter" type="button" data-history-filter="buy" aria-pressed="false">매수</button>
+              <button class="strategy-filter" type="button" data-history-filter="sell" aria-pressed="false">매도</button>
+            </div>
+          </div>
+        </section>
+        <section id="history-trades-view" class="panel strategy-history-panel" role="tabpanel" aria-labelledby="history-trades-tab" aria-live="polite">
+          <div id="history-trades-list" class="strategy-trade-list"></div>
+        </section>
+        <section id="history-monthly-view" class="strategy-history-panel" role="tabpanel" aria-labelledby="history-monthly-tab" aria-live="polite" hidden>
+          <div id="history-monthly-list" class="strategy-month-list"></div>
+        </section>
+      </div>
 
       <section id="strategy-error" class="error-card" hidden aria-live="assertive" aria-labelledby="strategy-error-heading">
         <p class="eyebrow">데이터 불러오기 오류</p>
@@ -122,6 +156,6 @@
       </section>
     </main>
 
-    <script src="./js/strategy.js?v=web-strategy-exit-next-open-v2" defer></script>
+    <script src="./js/strategy.js?v=strategy-trade-history-v1" defer></script>
   </body>
 </html>

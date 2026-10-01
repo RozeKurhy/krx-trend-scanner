@@ -57,6 +57,55 @@ def test_next_open_fill_uses_immediate_exact_session_and_normal_exit_stays_pendi
     assert result["position"]["exit_signal_date"] == "2026-09-03"
 
 
+def test_completed_trade_is_recorded_at_exact_next_open_without_changing_lifecycle():
+    result = replay_lifecycle(
+        [
+            {"date": "2026-09-01", "state": "DEPRESSED"},
+            {"date": "2026-09-03", "state": "NORMAL"},
+        ],
+        [{
+            "date": "2026-09-01",
+            "pattern_a_stage": "PROGRESSED",
+            "previous_pattern_a_stage": "TRANSITION",
+        }],
+        trading_dates=["2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04"],
+        exact_opens={"2026-09-02": 100.0, "2026-09-04": 125.0},
+        reference_market_date="2026-09-04",
+    )
+
+    assert result["position"] is None
+    assert result["pending"] is None
+    assert result["completed_trades"] == [{
+        "trade_sequence": 1,
+        "entry_signal_date": "2026-09-01",
+        "entry_execution_date": "2026-09-02",
+        "entry_open": 100.0,
+        "exit_signal_date": "2026-09-03",
+        "exit_execution_date": "2026-09-04",
+        "exit_price": 125.0,
+        "exit_reason": "PATTERN_B_NORMAL_NEXT_OPEN",
+        "trade_status": "REALIZED",
+        "return_pct": 25.0,
+    }]
+
+
+def test_replay_continues_trade_sequence_after_completed_history():
+    result = replay_lifecycle(
+        [{"date": "2026-09-08", "state": "DEPRESSED"}],
+        [{
+            "date": "2026-09-08",
+            "pattern_a_stage": "PROGRESSED",
+            "previous_pattern_a_stage": "TRANSITION",
+        }],
+        trading_dates=["2026-09-08", "2026-09-09"],
+        exact_opens={},
+        reference_market_date="2026-09-08",
+        initial_trade_sequence=4,
+    )
+
+    assert result["pending"]["sequence"] == 5
+
+
 def test_future_next_open_is_not_read_or_filled():
     calendar = ["2026-09-01", "2026-09-02", "2026-09-03"]
     result = replay_lifecycle(

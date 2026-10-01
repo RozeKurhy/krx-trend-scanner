@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +43,79 @@ def _trade_projection(trade: dict[str, Any]) -> dict[str, Any]:
         "return_pct": trade.get("return_pct"),
         "trade_status": trade.get("trade_status"),
     }
+
+
+def _first_value(item: dict[str, Any], *keys: str) -> Any:
+    for key in keys:
+        if item.get(key) is not None:
+            return item[key]
+    return None
+
+
+def _normalize_trade(
+    strategy_id: str,
+    trade: dict[str, Any],
+    *,
+    ticker: str,
+    name: str,
+    market: str,
+    asset_type: str,
+) -> dict[str, Any]:
+    """Normalize an authoritative source trade without recalculating it."""
+    sequence = _first_value(trade, "trade_sequence", "sequence")
+    entry_date = _first_value(trade, "entry_execution_date", "entry_date")
+    entry_price = _first_value(trade, "entry_open", "entry_open_krw", "entry_price")
+    exit_date = _first_value(trade, "exit_execution_date", "exit_date")
+    exit_price = _first_value(trade, "exit_price", "exit_price_krw")
+    return_pct = _first_value(trade, "return_pct", "terminal_return_pct")
+    trade_status = trade.get("trade_status")
+    if not sequence or not entry_date or entry_price is None or not trade_status:
+        raise ValueError(f"incomplete {strategy_id} trade source: {ticker}")
+    try:
+        entry_price = float(entry_price)
+        exit_price = float(exit_price) if exit_price is not None else None
+        return_pct = float(return_pct) if return_pct is not None else None
+        sequence = int(sequence)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"invalid {strategy_id} trade source value: {ticker}") from exc
+    if not math.isfinite(entry_price) or entry_price <= 0:
+        raise ValueError(f"invalid {strategy_id} entry price: {ticker}")
+    if exit_price is not None and (not math.isfinite(exit_price) or exit_price <= 0):
+        raise ValueError(f"invalid {strategy_id} exit price: {ticker}")
+    if return_pct is not None and not math.isfinite(return_pct):
+        raise ValueError(f"invalid {strategy_id} return: {ticker}")
+    entry_execution_date = str(entry_date)[:10]
+    exit_execution_date = str(exit_date)[:10] if exit_date else None
+    if trade_status == "REALIZED" and (not exit_execution_date or exit_price is None or return_pct is None):
+        raise ValueError(f"incomplete realized {strategy_id} trade: {ticker}")
+    exit_reason = None
+    if exit_execution_date:
+        exit_reason = _first_value(trade, "exit_type", "exit_reason")
+    return {
+        "ticker": ticker,
+        "name": name,
+        "market": market,
+        "asset_type": asset_type,
+        "trade_sequence": sequence,
+        "entry_signal_date": str(trade.get("entry_signal_date") or "")[:10] or None,
+        "entry_execution_date": entry_execution_date,
+        "entry_price": entry_price,
+        "exit_signal_date": str(trade.get("exit_signal_date") or "")[:10] or None,
+        "exit_execution_date": exit_execution_date,
+        "exit_price": exit_price,
+        "return_pct": return_pct,
+        "trade_status": str(trade_status),
+        "exit_reason": str(exit_reason) if exit_reason is not None else None,
+    }
+
+
+def _validate_history_identities(strategy_id: str, trades: list[dict[str, Any]]) -> None:
+    identities = [
+        (strategy_id, trade["ticker"], trade["trade_sequence"], trade["entry_execution_date"])
+        for trade in trades
+    ]
+    if len(identities) != len(set(identities)):
+        raise ValueError(f"duplicate {strategy_id} trade identity")
 
 
 def _item_bucket(item: dict[str, Any]) -> str:
@@ -160,6 +234,8 @@ def build_strategy_monitor(
 
     common_items: list[dict[str, Any]] = []
     etf_items: list[dict[str, Any]] = []
+    fast_history: list[dict[str, Any]] = []
+    julia_history: list[dict[str, Any]] = []
     as_of_values: set[str] = set()
     reference_market_date_values: set[str] = set()
     for index_item in available:
@@ -174,6 +250,17 @@ def build_strategy_monitor(
             reference_market_date_values.add(ref)
         if index_item.get("asset_type") == "COMMON":
             common_items.append(_project_item(index_item, report))
+            for trade in (report.get("strategy") or {}).get("history") or []:
+                if not isinstance(trade, dict):
+                    raise ValueError(f"invalid A FAST trade history row: {ticker}")
+                fast_history.append(_normalize_trade(
+                    STRATEGY_ID,
+                    trade,
+                    ticker=ticker,
+                    name=str(index_item.get("name") or ticker),
+                    market=str(index_item.get("market") or ""),
+                    asset_type="COMMON",
+                ))
         elif index_item.get("asset_type") == "ETF":
             strategy = report.get("strategy") or {}
             if (
@@ -183,6 +270,17 @@ def build_strategy_monitor(
             ):
                 raise ValueError(f"Julia source strategy mismatch: {ticker}")
             etf_items.append(_project_item(index_item, report))
+            for trade in strategy.get("history") or []:
+                if not isinstance(trade, dict):
+                    raise ValueError(f"invalid Julia trade history row: {ticker}")
+                julia_history.append(_normalize_trade(
+                    JULIA_ID,
+                    trade,
+                    ticker=ticker,
+                    name=str(index_item.get("name") or ticker),
+                    market=str(index_item.get("market") or ""),
+                    asset_type="ETF",
+                ))
 
     if target_as_of is not None and as_of_values != {target_as_of}:
         raise ValueError(
@@ -248,6 +346,30 @@ def build_strategy_monitor(
     if len(etf_items) != 36:
         raise ValueError(f"Official ETF 36 report count mismatch: {len(etf_items)}")
 
+    b_history: list[dict[str, Any]] = []
+    for item in b_items:
+        source_history = item.get("trade_history")
+        if not isinstance(source_history, list):
+            raise ValueError(f"B Select trade history is missing: {item.get('ticker')}")
+        for trade in source_history:
+            if not isinstance(trade, dict):
+                raise ValueError(f"invalid B Select trade history row: {item.get('ticker')}")
+            b_history.append(_normalize_trade(
+                B_SELECT_ID,
+                trade,
+                ticker=str(item.get("ticker") or "").zfill(6),
+                name=str(item.get("name") or item.get("ticker") or ""),
+                market=str(item.get("market") or ""),
+                asset_type="COMMON",
+            ))
+    _validate_history_identities(STRATEGY_ID, fast_history)
+    _validate_history_identities(B_SELECT_ID, b_history)
+    _validate_history_identities(JULIA_ID, julia_history)
+    b_current_items = [
+        {key: value for key, value in item.items() if key != "trade_history"}
+        for item in b_items
+    ]
+
     def counts_for(items: list[dict[str, Any]]) -> dict[str, int]:
         counts = {"entry": 0, "hold": 0, "exit": 0, "watch": 0, "unavailable": 0}
         for item in items:
@@ -269,6 +391,7 @@ def build_strategy_monitor(
             },
             "counts": counts_for(common_items),
             "items": common_items,
+            "trade_history": fast_history,
         },
         {
             "id": B_SELECT_ID,
@@ -280,7 +403,8 @@ def build_strategy_monitor(
                 "report_count": len(b_items),
             },
             "counts": dict(b_select_status.get("counts") or {}),
-            "items": b_items,
+            "items": b_current_items,
+            "trade_history": b_history,
         },
         {
             "id": JULIA_ID,
@@ -293,6 +417,7 @@ def build_strategy_monitor(
             },
             "counts": counts_for(etf_items),
             "items": etf_items,
+            "trade_history": julia_history,
         },
     ]
     for strategy in strategies:

@@ -451,6 +451,14 @@ def build_b_select_status(
         set(identity_by_ticker),
     )
     prior_status = _latest_prior_status(root, reference_market_date, trading_dates)
+    # The first history-aware build must replay the complete sealed authority
+    # instead of starting from a legacy current-state snapshot with no ledger.
+    if prior_status and any(
+        not isinstance(item.get("trade_history"), list)
+        for item in prior_status.get("items", [])
+        if isinstance(item, dict)
+    ):
+        prior_status = None
     prior_by_identity: dict[tuple[str, str], dict[str, Any]] = {}
     if prior_status:
         for item in prior_status.get("items", []):
@@ -509,6 +517,7 @@ def build_b_select_status(
                 "previous_pattern_a_stage": None,
                 "previous_pattern_a_stage_date": None,
                 "current_trade": None,
+                "trade_history": [],
                 "pending_event": None,
                 "latest_close": None,
                 "latest_close_as_of": None,
@@ -540,6 +549,14 @@ def build_b_select_status(
         exact_opens: dict[str, float] = {}
         initial_position: dict[str, Any] | None = None
         initial_pending: dict[str, Any] | None = None
+        initial_trade_sequence = max(
+            (
+                int(trade.get("trade_sequence") or 0)
+                for trade in ((prior_item or {}).get("trade_history") or [])
+                if isinstance(trade, dict)
+            ),
+            default=0,
+        )
         if prior_item and prior_item.get("component_id") == identity["component_id"]:
             prior_ref = str(prior_status["reference_market_date"])[:10]
             observations.append({"date": prior_ref, "state": prior_item.get("pattern_b_state")})
@@ -679,6 +696,7 @@ def build_b_select_status(
                     raise BSelectStatusError(f"B_SELECT_EXACT_NEXT_OPEN_INVALID:{ticker}:{day}")
                 exact_opens[day] = price
 
+        lifecycle = None
         if b_state is None:
             data_status = "UNAVAILABLE"
             action = "NONE"
@@ -697,6 +715,7 @@ def build_b_select_status(
                     reference_market_date=reference_market_date,
                     initial_position=initial_position,
                     initial_pending=initial_pending,
+                    initial_trade_sequence=initial_trade_sequence,
                 )
             except BSelectLifecycleError as exc:
                 lifecycle_errors += 1
@@ -754,6 +773,50 @@ def build_b_select_status(
                 if pending_event and pending_event.get("execution_date") and pending_event["execution_date"] <= reference_market_date:
                     future_reference_count += 1
 
+        # Keep a per-identity execution ledger separate from the current-state
+        # projection. On later daily runs, carry realized rows forward, replace
+        # the prior open projection, and append any newly completed executions.
+        history_lifecycle = lifecycle
+        if history_lifecycle is None and b_state is None:
+            try:
+                history_lifecycle = replay_lifecycle(
+                    observations,
+                    entry_signals,
+                    trading_dates=trading_dates,
+                    exact_opens=exact_opens,
+                    reference_market_date=reference_market_date,
+                    initial_position=initial_position,
+                    initial_pending=initial_pending,
+                    initial_trade_sequence=initial_trade_sequence,
+                )
+            except BSelectLifecycleError:
+                lifecycle_errors += 1
+                history_lifecycle = None
+
+        prior_history = (prior_item or {}).get("trade_history") or []
+        trade_history = [
+            dict(trade) for trade in prior_history
+            if isinstance(trade, dict) and trade.get("trade_status") != "OPEN_AT_REFERENCE"
+        ]
+        if history_lifecycle is not None:
+            trade_history.extend(dict(trade) for trade in history_lifecycle["completed_trades"])
+            open_position = history_lifecycle.get("position")
+            if open_position:
+                close = latest_close if latest_close_as_of == reference_market_date else None
+                entry_open = float(open_position["entry_open"])
+                trade_history.append({
+                    "trade_sequence": open_position.get("trade_sequence"),
+                    "entry_signal_date": open_position.get("entry_signal_date"),
+                    "entry_execution_date": open_position.get("entry_execution_date"),
+                    "entry_open": entry_open,
+                    "exit_signal_date": open_position.get("exit_signal_date"),
+                    "exit_execution_date": None,
+                    "exit_price": None,
+                    "exit_reason": None,
+                    "trade_status": "OPEN_AT_REFERENCE",
+                    "return_pct": (close / entry_open - 1.0) * 100.0 if close is not None else None,
+                })
+
         item = {
             "ticker": ticker,
             "isu_cd": identity["isu_cd"],
@@ -770,6 +833,7 @@ def build_b_select_status(
             "previous_pattern_a_stage": previous_stage,
             "previous_pattern_a_stage_date": previous_context.get("previous_pattern_a_stage_date") if previous_context else None,
             "current_trade": current_trade,
+            "trade_history": trade_history,
             "pending_event": pending_event,
             "latest_close": latest_close,
             "latest_close_as_of": latest_close_as_of,

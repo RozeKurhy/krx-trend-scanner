@@ -80,6 +80,7 @@ def test_strategy_monitor_schema_and_source_count_are_consistent():
             "latest_close", "latest_close_as_of", "report_status", "data_status",
             "current_trade", "bucket",
         } <= item.keys()
+        assert "trade_history" not in item
     assert {item["ticker"] for item in b_select["items"]} == {item["ticker"] for item in items}
     assert b_select["scope"]["type"] == "PUBLISHED_COMMON_REPORTS"
     assert sum(b_select["counts"].values()) == b_select["scope"]["report_count"]
@@ -304,3 +305,153 @@ def test_strategy_position_examples_keep_meaningful_two_line_values():
 def test_strategy_monitor_json_matches_clean_exporter_projection():
     exporter = _load_exporter()
     assert _load_monitor() == exporter.build_strategy_monitor()
+
+
+def test_three_strategy_trade_history_counts_identity_and_source_parity():
+    exporter = _load_exporter()
+    monitor = _load_monitor()
+    strategies = {strategy["id"]: strategy for strategy in monitor["strategies"]}
+    index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
+
+    fast_source_count = 0
+    julia_source_count = 0
+    for item in index["items"]:
+        if item.get("report_available") is not True:
+            continue
+        report = json.loads((ROOT / "web/data/stocks" / f"{item['ticker']}.json").read_text(encoding="utf-8"))
+        history = (report.get("strategy") or {}).get("history") or []
+        if item.get("asset_type") == "COMMON":
+            fast_source_count += len(history)
+        elif item.get("asset_type") == "ETF":
+            julia_source_count += len(history)
+
+    fast = strategies["PATTERN_A_FAST_FINAL_STRATEGY_V02"]["trade_history"]
+    b_select = strategies["PATTERN_B_SELECT_CORE_V01"]["trade_history"]
+    julia = strategies["JULIA_ETF_STRATEGY_V01"]["trade_history"]
+    assert strategies["PATTERN_A_FAST_FINAL_STRATEGY_V02"]["counts"] == {
+        "entry": 0, "hold": 241, "exit": 0, "watch": 0, "unavailable": 1210,
+    }
+    assert strategies["PATTERN_B_SELECT_CORE_V01"]["counts"] == {
+        "entry": 0, "hold": 23, "exit": 1, "watch": 1275, "unavailable": 152,
+    }
+    assert strategies["JULIA_ETF_STRATEGY_V01"]["counts"] == {
+        "entry": 0, "hold": 18, "exit": 0, "watch": 18, "unavailable": 0,
+    }
+    assert len(fast) == fast_source_count
+    assert len(julia) == julia_source_count
+
+    b_status_path = ROOT / "artifacts/strategies/b_select_core_v1/production/20260925/status.json"
+    b_status = json.loads(b_status_path.read_text(encoding="utf-8"))
+    b_status_trades = [trade for item in b_status["items"] for trade in item.get("trade_history", [])]
+    assert len(b_select) == len(b_status_trades)
+    assert b_status["counts"] == {"entry": 0, "hold": 23, "exit": 1, "watch": 1275, "unavailable": 152}
+
+    for strategy_id, trades in (
+        ("PATTERN_A_FAST_FINAL_STRATEGY_V02", fast),
+        ("PATTERN_B_SELECT_CORE_V01", b_select),
+        ("JULIA_ETF_STRATEGY_V01", julia),
+    ):
+        identities = [
+            (strategy_id, trade["ticker"], trade["trade_sequence"], trade["entry_execution_date"])
+            for trade in trades
+        ]
+        assert len(identities) == len(set(identities))
+
+    source_report = json.loads((ROOT / "web/data/stocks/005930.json").read_text(encoding="utf-8"))
+    source_trade = source_report["strategy"]["history"][0]
+    projected = next(
+        trade for trade in fast
+        if trade["ticker"] == "005930" and trade["trade_sequence"] == source_trade["trade_sequence"]
+    )
+    assert projected["entry_execution_date"] == source_trade["entry_execution_date"]
+    assert projected["entry_price"] == source_trade["entry_open"]
+    assert projected["exit_execution_date"] == source_trade["exit_execution_date"]
+    assert projected["exit_price"] == source_trade["exit_price"]
+    assert projected["return_pct"] == source_trade["return_pct"]
+    assert projected["trade_status"] == source_trade["trade_status"]
+    source_open = next(trade for trade in source_report["strategy"]["history"] if trade["trade_status"].startswith("OPEN"))
+    projected_open = next(
+        trade for trade in fast
+        if trade["ticker"] == "005930" and trade["trade_sequence"] == source_open["trade_sequence"]
+    )
+    assert projected_open["entry_execution_date"] == source_open["entry_execution_date"]
+    assert projected_open["entry_price"] == source_open["entry_open"]
+    assert projected_open["return_pct"] == source_open["return_pct"]
+    assert projected_open["trade_status"] == source_open["trade_status"]
+
+    julia_report = json.loads((ROOT / "web/data/stocks/069500.json").read_text(encoding="utf-8"))
+    julia_source = julia_report["strategy"]["history"][0]
+    julia_projected = next(
+        trade for trade in julia
+        if trade["ticker"] == "069500" and trade["trade_sequence"] == julia_source["trade_sequence"]
+    )
+    assert julia_projected["entry_execution_date"] == julia_source["entry_execution_date"]
+    assert julia_projected["entry_price"] == julia_source["entry_open"]
+    assert julia_projected["exit_execution_date"] == julia_source["exit_execution_date"]
+    assert julia_projected["exit_price"] == julia_source["exit_price"]
+    assert julia_projected["return_pct"] == julia_source["return_pct"]
+    assert julia_projected["trade_status"] == julia_source["trade_status"]
+    julia_open_ticker = None
+    julia_open_source = None
+    for item in index["items"]:
+        if item.get("report_available") is not True or item.get("asset_type") != "ETF":
+            continue
+        candidate = json.loads((ROOT / "web/data/stocks" / f"{item['ticker']}.json").read_text(encoding="utf-8"))
+        candidate_trade = next(
+            (trade for trade in (candidate.get("strategy") or {}).get("history", [])
+             if trade.get("trade_status", "").startswith("OPEN")),
+            None,
+        )
+        if candidate_trade:
+            julia_open_ticker = item["ticker"]
+            julia_open_source = candidate_trade
+            break
+    assert julia_open_source is not None and julia_open_ticker is not None
+    julia_open_projected = next(
+        trade for trade in julia
+        if trade["ticker"] == julia_open_ticker and trade["trade_sequence"] == julia_open_source["trade_sequence"]
+    )
+    assert julia_open_projected["entry_execution_date"] == julia_open_source["entry_execution_date"]
+    assert julia_open_projected["entry_price"] == julia_open_source["entry_open"]
+    assert julia_open_projected["return_pct"] == julia_open_source["return_pct"]
+    assert julia_open_projected["trade_status"] == julia_open_source["trade_status"]
+
+    realized_b = next(trade for trade in b_status_trades if trade["trade_status"] == "REALIZED")
+    realized_b_projected = next(
+        trade for trade in b_select
+        if trade["ticker"] == next(
+            item["ticker"] for item in b_status["items"]
+            if realized_b in item.get("trade_history", [])
+        ) and trade["trade_sequence"] == realized_b["trade_sequence"]
+    )
+    assert realized_b_projected["entry_execution_date"] == realized_b["entry_execution_date"]
+    assert realized_b_projected["entry_price"] == realized_b["entry_open"]
+    assert realized_b_projected["exit_execution_date"] == realized_b["exit_execution_date"]
+    assert realized_b_projected["exit_price"] == realized_b["exit_price"]
+    assert realized_b_projected["return_pct"] == realized_b["return_pct"]
+    assert realized_b_projected["trade_status"] == "REALIZED"
+    open_b_item = next(item for item in b_status["items"] if item.get("canonical_position") == "OPEN")
+    open_b = next(trade for trade in open_b_item["trade_history"] if trade["trade_status"] == "OPEN_AT_REFERENCE")
+    open_b_projected = next(
+        trade for trade in b_select
+        if trade["ticker"] == open_b_item["ticker"] and trade["trade_sequence"] == open_b["trade_sequence"]
+    )
+    assert open_b_projected["entry_execution_date"] == open_b["entry_execution_date"]
+    assert open_b_projected["entry_price"] == open_b["entry_open"]
+    assert open_b_projected["return_pct"] == open_b_item["current_trade"]["return_pct"]
+    assert open_b_projected["trade_status"] == "OPEN_AT_REFERENCE"
+
+
+def test_trade_history_views_map_execution_dates_to_monthly_events():
+    strategy_html = (ROOT / "web/strategy.html").read_text(encoding="utf-8")
+    strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
+
+    for label in ("현재 상태", "거래 이력", "전체 거래", "월별", "전체", "매수", "매도"):
+        assert label in strategy_html
+    assert 'date: trade.entry_execution_date' in strategy_js
+    assert 'type: "buy"' in strategy_js
+    assert 'date: trade.exit_execution_date' in strategy_js
+    assert 'type: "sell"' in strategy_js
+    assert 'String(event.date || "").slice(0, 7)' in strategy_js
+    assert 'b.localeCompare(a)' in strategy_js
+    assert '표시할 거래 이력이 없습니다.' in strategy_js

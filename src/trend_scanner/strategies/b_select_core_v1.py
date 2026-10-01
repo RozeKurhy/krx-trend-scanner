@@ -115,6 +115,7 @@ def replay_lifecycle(
     reference_market_date: str,
     initial_position: Mapping[str, Any] | None = None,
     initial_pending: Mapping[str, Any] | None = None,
+    initial_trade_sequence: int = 0,
 ) -> dict[str, Any]:
     """Replay one identity's completed Pattern B observations through reference.
 
@@ -151,8 +152,10 @@ def replay_lifecycle(
     event_days = sorted(set(by_date) | set(signal_by_date))
     position: dict[str, Any] | None = dict(initial_position) if initial_position else None
     pending: dict[str, Any] | None = dict(initial_pending) if initial_pending else None
+    completed_trades: list[dict[str, Any]] = []
     suppressed_entry_count = 0
     sequence = max(
+        int(initial_trade_sequence or 0),
         int(position.get("trade_sequence") or 0) if position else 0,
         int(pending.get("sequence") or 0) if pending else 0,
     )
@@ -177,6 +180,21 @@ def replay_lifecycle(
                 "exit_execution_date": None,
             }
         else:
+            if position is not None:
+                exit_price = float(price)
+                entry_price = float(position["entry_open"])
+                completed_trades.append({
+                    "trade_sequence": position.get("trade_sequence"),
+                    "entry_signal_date": position.get("entry_signal_date"),
+                    "entry_execution_date": position.get("entry_execution_date"),
+                    "entry_open": entry_price,
+                    "exit_signal_date": pending.get("signal_date") or position.get("exit_signal_date"),
+                    "exit_execution_date": day,
+                    "exit_price": exit_price,
+                    "exit_reason": "PATTERN_B_NORMAL_NEXT_OPEN",
+                    "trade_status": "REALIZED",
+                    "return_pct": (exit_price / entry_price - 1.0) * 100.0,
+                })
             position = None
         pending = None
 
@@ -243,6 +261,7 @@ def replay_lifecycle(
     return {
         "position": position,
         "pending": pending,
+        "completed_trades": completed_trades,
         "suppressed_entry_count": suppressed_entry_count,
         "last_observation_date": max(by_date) if by_date else None,
         "last_pattern_b_state": by_date[max(by_date)].get("state") if by_date else None,

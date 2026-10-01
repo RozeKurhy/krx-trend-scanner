@@ -49,6 +49,10 @@
   let activeStrategyId = "PATTERN_A_FAST_FINAL_STRATEGY_V02";
   let activeFilter = "all";
   let searchQuery = "";
+  let activeView = "current";
+  let historySubView = "trades";
+  let historyFilter = "all";
+  let historySearchQuery = "";
   let holdSort = "entry-date";
 
   function setText(id, value) {
@@ -298,6 +302,204 @@
     return items.slice().sort(compareHoldItems);
   }
 
+  function historyMatches(trade) {
+    const normalized = historySearchQuery.trim().toLocaleLowerCase("ko-KR");
+    if (!normalized) return true;
+    return [trade.ticker, trade.name].some((value) =>
+      String(value || "").toLocaleLowerCase("ko-KR").includes(normalized)
+    );
+  }
+
+  function isOpenTrade(trade) {
+    return String(trade.trade_status || "").startsWith("OPEN");
+  }
+
+  function historyTrades() {
+    const selected = activeStrategy();
+    const trades = (selected && selected.trade_history) || [];
+    return trades.filter((trade) => {
+      if (!historyMatches(trade)) return false;
+      if (historyFilter === "buy") return Boolean(trade.entry_execution_date);
+      if (historyFilter === "sell") return Boolean(trade.exit_execution_date);
+      return true;
+    });
+  }
+
+  function compareHistoryTrades(a, b) {
+    const dateA = parseSortableDate(a.entry_execution_date);
+    const dateB = parseSortableDate(b.entry_execution_date);
+    if (dateA != null && dateB != null && dateA !== dateB) return dateB - dateA;
+    if (dateA == null && dateB != null) return 1;
+    if (dateA != null && dateB == null) return -1;
+    return compareTicker(a, b);
+  }
+
+  function createTradeHistoryRow(trade) {
+    const row = createElement("a", "strategy-trade-row");
+    row.href = `./report.html?ticker=${encodeURIComponent(trade.ticker)}`;
+    row.setAttribute("aria-label", `${trade.name || trade.ticker} ${trade.ticker} 거래 이력, 리포트 보기`);
+    const identity = createElement("span", "strategy-trade-identity");
+    identity.appendChild(createElement("strong", "strategy-trade-name", trade.name || trade.ticker));
+    identity.appendChild(createElement("span", "strategy-trade-meta", `${trade.ticker} · ${marketLabel(trade.market)}`));
+    const status = isOpenTrade(trade) ? "보유 중" : trade.trade_status === "REALIZED" ? "완료" : String(trade.trade_status || "—");
+    const returnClass = Number(trade.return_pct) > 0 ? "detail-value-positive" : Number(trade.return_pct) < 0 ? "detail-value-negative" : "";
+    const fields = [
+      createField("매수 체결일", formatDate(trade.entry_execution_date)),
+      createField("매수가", formatPrice(trade.entry_price)),
+      createField("매도 체결일", isOpenTrade(trade) ? "—" : formatDate(trade.exit_execution_date)),
+      createField("매도가", isOpenTrade(trade) ? "—" : formatPrice(trade.exit_price)),
+      createField("수익률", formatReturn(trade.return_pct), returnClass),
+      createField("상태", status),
+      createField("청산 사유", trade.exit_reason || "—"),
+    ];
+    row.append(identity, ...fields, createElement("span", "strategy-trade-link", "리포트 보기 ›"));
+    return row;
+  }
+
+  function makeTradeEvents(trades) {
+    const events = [];
+    trades.forEach((trade) => {
+      if (trade.entry_execution_date) {
+        events.push({
+          date: trade.entry_execution_date,
+          type: "buy",
+          ticker: trade.ticker,
+          name: trade.name,
+          market: trade.market,
+          price: trade.entry_price,
+          return_pct: null,
+        });
+      }
+      if (trade.exit_execution_date) {
+        events.push({
+          date: trade.exit_execution_date,
+          type: "sell",
+          ticker: trade.ticker,
+          name: trade.name,
+          market: trade.market,
+          price: trade.exit_price,
+          return_pct: trade.return_pct,
+        });
+      }
+    });
+    return events;
+  }
+
+  function monthLabel(monthKey) {
+    const [year, month] = monthKey.split("-");
+    return `${year}년 ${Number(month)}월`;
+  }
+
+  function renderTradeHistory() {
+    const selected = activeStrategy();
+    if (!selected) return;
+    const trades = historyTrades().slice().sort(compareHistoryTrades);
+    const tradeList = byId("history-trades-list");
+    if (tradeList) {
+      while (tradeList.firstChild) tradeList.removeChild(tradeList.firstChild);
+      if (historySubView !== "trades") {
+        // Keep the inactive view empty so large ledgers do not create two DOM trees.
+      } else if (!trades.length) {
+        tradeList.appendChild(createElement("p", "strategy-empty", "표시할 거래 이력이 없습니다."));
+      } else {
+        const heading = createElement("div", "strategy-trade-heading");
+        ["종목", "매수 체결일", "매수가", "매도 체결일", "매도가", "수익률", "상태", "청산 사유", "리포트"].forEach((label) => {
+          heading.appendChild(createElement("span", "strategy-trade-heading-cell", label));
+        });
+        tradeList.appendChild(heading);
+        trades.forEach((trade) => tradeList.appendChild(createTradeHistoryRow(trade)));
+      }
+    }
+
+    const monthlyList = byId("history-monthly-list");
+    if (!monthlyList) return;
+    while (monthlyList.firstChild) monthlyList.removeChild(monthlyList.firstChild);
+    if (historySubView !== "monthly") return;
+    const events = makeTradeEvents(trades).filter((event) => historyFilter === "all" || event.type === historyFilter);
+    const months = new Map();
+    events.forEach((event) => {
+      const month = String(event.date || "").slice(0, 7);
+      if (!/^\d{4}-\d{2}$/.test(month)) return;
+      if (!months.has(month)) months.set(month, []);
+      months.get(month).push(event);
+    });
+    const sortedMonths = Array.from(months.keys()).sort((a, b) => b.localeCompare(a));
+    if (!sortedMonths.length) {
+      monthlyList.appendChild(createElement("p", "strategy-empty", "표시할 거래 이력이 없습니다."));
+      return;
+    }
+    sortedMonths.forEach((month) => {
+      const monthEvents = months.get(month).sort((a, b) => {
+        const dateOrder = String(b.date).localeCompare(String(a.date));
+        return dateOrder || compareTicker(a, b);
+      });
+      const buys = monthEvents.filter((event) => event.type === "buy").length;
+      const sells = monthEvents.filter((event) => event.type === "sell").length;
+      const section = createElement("section", "strategy-month-card");
+      section.appendChild(createElement("h3", "strategy-month-heading", `${monthLabel(month)} · 매수 ${buys} · 매도 ${sells}`));
+      const list = createElement("div", "strategy-month-events");
+      monthEvents.forEach((event) => {
+        const row = createElement("div", `strategy-month-event strategy-month-event-${event.type}`);
+        const day = event.date.slice(5).replace("-", ".");
+        row.appendChild(createElement("time", "strategy-month-date", day));
+        row.appendChild(createElement("span", `strategy-month-type strategy-month-type-${event.type}`, event.type === "buy" ? "매수" : "매도"));
+        const identity = createElement("a", "strategy-month-identity", event.name || event.ticker);
+        identity.href = `./report.html?ticker=${encodeURIComponent(event.ticker)}`;
+        identity.title = `${event.ticker} · ${marketLabel(event.market)} 리포트 보기`;
+        row.appendChild(identity);
+        row.appendChild(createElement("strong", "strategy-month-price", formatPrice(event.price)));
+        if (event.type === "sell" && event.return_pct != null) {
+          const returnClass = Number(event.return_pct) > 0 ? "detail-value-positive" : Number(event.return_pct) < 0 ? "detail-value-negative" : "";
+          row.appendChild(createElement("span", `strategy-month-return ${returnClass}`, formatReturn(event.return_pct)));
+        }
+        list.appendChild(row);
+      });
+      section.appendChild(list);
+      monthlyList.appendChild(section);
+    });
+  }
+
+  function setView(view) {
+    activeView = view === "history" ? "history" : "current";
+    const current = activeView === "current";
+    const currentPanel = byId("current-state-view");
+    const historyPanel = byId("trade-history-view");
+    if (currentPanel) currentPanel.hidden = !current;
+    if (historyPanel) historyPanel.hidden = current;
+    document.querySelectorAll("[data-view]").forEach((button) => {
+      const selected = button.dataset.view === activeView;
+      button.classList.toggle("is-active", selected);
+      button.setAttribute("aria-selected", String(selected));
+    });
+    if (current) renderSections();
+    else renderTradeHistory();
+  }
+
+  function setHistorySubView(view) {
+    historySubView = view === "monthly" ? "monthly" : "trades";
+    const showTrades = historySubView === "trades";
+    const tradesPanel = byId("history-trades-view");
+    const monthlyPanel = byId("history-monthly-view");
+    if (tradesPanel) tradesPanel.hidden = !showTrades;
+    if (monthlyPanel) monthlyPanel.hidden = showTrades;
+    document.querySelectorAll("[data-history-view]").forEach((button) => {
+      const selected = button.dataset.historyView === historySubView;
+      button.classList.toggle("is-active", selected);
+      button.setAttribute("aria-selected", String(selected));
+    });
+    renderTradeHistory();
+  }
+
+  function setHistoryFilter(filter) {
+    historyFilter = ["all", "buy", "sell"].includes(filter) ? filter : "all";
+    document.querySelectorAll("[data-history-filter]").forEach((button) => {
+      const selected = button.dataset.historyFilter === historyFilter;
+      button.classList.toggle("is-active", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
+    renderTradeHistory();
+  }
+
   function syncHoldSortVisibility() {
     const row = byId("strategy-hold-sort-row");
     const select = byId("strategy-hold-sort");
@@ -417,11 +619,26 @@
         || !strategy.scope || strategy.scope.type !== expectedScopeType
         || !Number.isInteger(strategy.scope.report_count)
         || !strategy.counts || !Array.isArray(strategy.items)
+        || !Array.isArray(strategy.trade_history)
         || strategy.items.length !== strategy.scope.report_count
         || (expectedScope === "OFFICIAL_ETF_36" && strategy.scope.report_count !== 36)
       ) return false;
       const seen = new Set();
       const counts = { entry: 0, hold: 0, exit: 0, watch: 0, unavailable: 0 };
+      const historySeen = new Set();
+      for (const trade of strategy.trade_history) {
+        if (
+          !trade || !trade.ticker || !Number.isInteger(Number(trade.trade_sequence))
+          || !/^\d{4}-\d{2}-\d{2}$/.test(trade.entry_execution_date || "")
+          || !Number.isFinite(Number(trade.entry_price)) || Number(trade.entry_price) <= 0
+          || !trade.trade_status
+          || (trade.exit_execution_date && !/^\d{4}-\d{2}-\d{2}$/.test(trade.exit_execution_date))
+          || (trade.return_pct != null && !Number.isFinite(Number(trade.return_pct)))
+        ) return false;
+        const identity = `${id}\u0000${trade.ticker}\u0000${trade.trade_sequence}\u0000${trade.entry_execution_date}`;
+        if (historySeen.has(identity)) return false;
+        historySeen.add(identity);
+      }
       for (const item of strategy.items) {
         if (!item || !item.ticker || seen.has(String(item.ticker))) return false;
         seen.add(String(item.ticker));
@@ -471,6 +688,7 @@
     activeStrategyId = strategyId;
     renderScope();
     renderSections();
+    if (activeView === "history") renderTradeHistory();
   }
 
   function initInteractions() {
@@ -480,10 +698,24 @@
     document.querySelectorAll("[data-filter]").forEach((button) => {
       button.addEventListener("click", () => setFilter(button.dataset.filter));
     });
+    document.querySelectorAll("[data-view]").forEach((button) => {
+      button.addEventListener("click", () => setView(button.dataset.view));
+    });
+    document.querySelectorAll("[data-history-view]").forEach((button) => {
+      button.addEventListener("click", () => setHistorySubView(button.dataset.historyView));
+    });
+    document.querySelectorAll("[data-history-filter]").forEach((button) => {
+      button.addEventListener("click", () => setHistoryFilter(button.dataset.historyFilter));
+    });
     const search = byId("strategy-search");
     if (search) search.addEventListener("input", () => {
       searchQuery = search.value;
       renderSections();
+    });
+    const historySearch = byId("history-search");
+    if (historySearch) historySearch.addEventListener("input", () => {
+      historySearchQuery = historySearch.value;
+      renderTradeHistory();
     });
     const holdSortSelect = byId("strategy-hold-sort");
     if (holdSortSelect) holdSortSelect.addEventListener("change", () => {

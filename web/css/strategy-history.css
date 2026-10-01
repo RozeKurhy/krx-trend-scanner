@@ -1,0 +1,47 @@
+.strategy-view-tabs { margin-bottom: 16px; padding: 8px 14px; }
+.strategy-view-tabs .strategy-filter-group { padding: 3px 1px; }
+.strategy-history-controls { display: grid; gap: 10px; }
+.strategy-history-subtabs { display: flex; gap: 7px; overflow-x: auto; }
+.strategy-history-panel { margin-bottom: 16px; }
+.strategy-trade-list { display: grid; gap: 7px; }
+.strategy-trade-heading, .strategy-trade-row { display: grid; grid-template-columns: minmax(135px, 1.45fr) repeat(7, minmax(68px, .72fr)) auto; align-items: center; gap: 10px; min-width: 0; }
+.strategy-trade-heading { padding: 0 13px 5px; color: var(--ink-faint); font-size: 10px; font-weight: 750; }
+.strategy-trade-heading-cell { min-width: 0; }
+.strategy-trade-row { min-height: 68px; border: 1px solid var(--line); padding: 11px 13px; color: var(--ink); background: var(--surface); border-radius: 8px; text-decoration: none; }
+.strategy-trade-row:hover { border-color: var(--line-strong); background: var(--surface-muted); }
+.strategy-trade-row:focus-visible, .strategy-month-identity:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.strategy-trade-identity { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.strategy-trade-name { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.strategy-trade-meta { overflow: hidden; color: var(--ink-faint); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.strategy-trade-row .strategy-item-field { gap: 3px; }
+.strategy-trade-row .strategy-item-label { font-size: 9px; }
+.strategy-trade-row .strategy-item-value { font-size: 11px; }
+.strategy-trade-link { color: var(--brand-red-dark); font-size: 10px; font-weight: 800; white-space: nowrap; }
+.strategy-month-list { display: grid; gap: 12px; }
+.strategy-month-card { border: 1px solid var(--line); padding: 16px; background: var(--surface); border-radius: 9px; }
+.strategy-month-heading { margin: 0 0 11px; font-size: 13px; letter-spacing: -.015em; }
+.strategy-month-events { display: grid; gap: 5px; }
+.strategy-month-event { display: grid; grid-template-columns: 48px 42px minmax(100px, 1fr) minmax(92px, auto) minmax(56px, auto); align-items: center; gap: 8px; min-height: 34px; border-top: 1px solid var(--line); padding-top: 5px; font-size: 12px; }
+.strategy-month-date { color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.strategy-month-type { color: var(--ink-soft); font-weight: 750; }
+.strategy-month-identity { overflow: hidden; color: var(--ink); text-decoration: none; text-overflow: ellipsis; white-space: nowrap; }
+.strategy-month-identity:hover { color: var(--brand-red-dark); text-decoration: underline; }
+.strategy-month-price { color: var(--ink-soft); font-size: 11px; text-align: right; white-space: nowrap; }
+.strategy-month-return { font-size: 11px; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.strategy-month-return.detail-value-positive { color: var(--market-up-red); }
+.strategy-month-return.detail-value-negative { color: var(--market-down-blue); }
+
+@media (max-width: 960px) {
+  .strategy-trade-heading { display: none; }
+  .strategy-trade-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; padding: 14px; }
+  .strategy-trade-identity, .strategy-trade-link { grid-column: 1 / -1; }
+  .strategy-month-event { grid-template-columns: 44px 40px minmax(70px, 1fr) minmax(86px, auto) minmax(52px, auto); }
+}
+
+@media (max-width: 560px) {
+  .strategy-view-tabs { padding: 6px 10px; }
+  .strategy-trade-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .strategy-month-event { grid-template-columns: 42px 38px minmax(70px, 1fr) auto; gap: 6px; font-size: 11px; }
+  .strategy-month-price { font-size: 10px; }
+  .strategy-month-return { grid-column: 4; }
+}
