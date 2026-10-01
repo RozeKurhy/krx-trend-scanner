@@ -59,6 +59,95 @@ def test_previous_stage_uses_exact_current_snapshot_after_monthly_history():
     assert context["previous_pattern_a_stage_date"] == "2026-08-31"
 
 
+def test_entry_pattern_a_context_uses_one_exact_qualified_authority_row():
+    source = {
+        "ticker": "001380",
+        "isu_cd": "KR7001380005",
+        "component_id": "001380:KR7001380005:000",
+        "entry_signal_date": "2025-04-30",
+        "entry_pattern_a_stage_recomputed": "PROGRESSED",
+        "previous_pattern_a_stage": "EARLY_TREND",
+        "previous_pattern_a_stage_date": "2024-07-31",
+    }
+    assert status_builder._entry_pattern_a_context(
+        [source],
+        ticker="001380",
+        isu_cd="KR7001380005",
+        component_id="001380:KR7001380005:000",
+        entry_signal_date="2025-04-30",
+    ) == {
+        "entry_pattern_a_stage": "PROGRESSED",
+        "entry_previous_pattern_a_stage": "EARLY_TREND",
+        "entry_previous_pattern_a_stage_date": "2024-07-31",
+    }
+
+
+def test_entry_pattern_a_context_fails_closed_on_missing_duplicate_or_unqualified_source():
+    source = {
+        "ticker": "001380",
+        "isu_cd": "KR7001380005",
+        "component_id": "001380:KR7001380005:000",
+        "entry_signal_date": "2025-04-30",
+        "entry_pattern_a_stage_recomputed": "PROGRESSED",
+        "previous_pattern_a_stage": "EARLY_TREND",
+        "previous_pattern_a_stage_date": "2024-07-31",
+    }
+    kwargs = {
+        "ticker": "001380",
+        "isu_cd": "KR7001380005",
+        "component_id": "001380:KR7001380005:000",
+        "entry_signal_date": "2025-04-30",
+    }
+    with pytest.raises(status_builder.BSelectStatusError, match="SOURCE_MATCH_COUNT"):
+        status_builder._entry_pattern_a_context([], **kwargs)
+    with pytest.raises(status_builder.BSelectStatusError, match="SOURCE_MATCH_COUNT"):
+        status_builder._entry_pattern_a_context([source, source], **kwargs)
+    unqualified = {**source, "previous_pattern_a_stage": "WEAK"}
+    with pytest.raises(status_builder.BSelectStatusError, match="SOURCE_NOT_QUALIFIED"):
+        status_builder._entry_pattern_a_context([unqualified], **kwargs)
+
+
+def test_tracked_open_status_keeps_entry_lineage_separate_from_current_snapshot():
+    status_path = status_builder.ROOT / status_builder.STATUS_RELATIVE / "20260925/status.json"
+    status = json.loads(status_path.read_text(encoding="utf-8"))
+    candidate_rows = status_builder._load_candidate_signals(status_builder.ROOT)
+    open_items = [item for item in status["items"] if item.get("canonical_position") == "OPEN"]
+
+    assert len(open_items) == 24
+    assert len([item for item in open_items if item.get("action") == "HOLD"]) == 23
+    assert len([item for item in open_items if item.get("action") == "EXIT"]) == 1
+    for item in open_items:
+        trade = item["current_trade"]
+        expected = status_builder._entry_pattern_a_context(
+            candidate_rows,
+            ticker=item["ticker"],
+            isu_cd=item["isu_cd"],
+            component_id=item["component_id"],
+            entry_signal_date=trade["entry_signal_date"],
+        )
+        assert item["entry_pattern_a_stage"] == expected["entry_pattern_a_stage"] == "PROGRESSED"
+        assert item["entry_previous_pattern_a_stage"] == expected["entry_previous_pattern_a_stage"]
+        assert item["entry_previous_pattern_a_stage"] in {"EARLY_TREND", "TRANSITION"}
+        assert item["entry_previous_pattern_a_stage_date"] == expected["entry_previous_pattern_a_stage_date"]
+
+    current_weak = next(item for item in open_items if item["pattern_a_stage"] == "WEAK")
+    current_progressed_weak_predecessor = next(
+        item for item in open_items
+        if item["pattern_a_stage"] == "PROGRESSED" and item["previous_pattern_a_stage"] == "WEAK"
+    )
+    exit_pending = next(item for item in open_items if item["action"] == "EXIT")
+    early_lineage = next(item for item in open_items if item["entry_previous_pattern_a_stage"] == "EARLY_TREND")
+    transition_lineage = next(item for item in open_items if item["entry_previous_pattern_a_stage"] == "TRANSITION")
+    assert current_weak["entry_pattern_a_stage"] == "PROGRESSED"
+    assert current_progressed_weak_predecessor["entry_previous_pattern_a_stage"] != "WEAK"
+    assert exit_pending["entry_pattern_a_stage"] == "PROGRESSED"
+    assert early_lineage["entry_pattern_a_stage"] == transition_lineage["entry_pattern_a_stage"] == "PROGRESSED"
+
+    non_entry_items = [item for item in status["items"] if item.get("canonical_position") != "OPEN" and item.get("action") not in {"ENTRY", "ENTER_NEXT_OPEN"}]
+    assert all(item.get("entry_pattern_a_stage") is None for item in non_entry_items)
+    assert all(item.get("entry_previous_pattern_a_stage") is None for item in non_entry_items)
+
+
 def test_monthly_state_authority_applies_exact_permanent_identity_exclusion(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     excluded_ticker, excluded_isu = sorted(PERMANENT_IDENTITY_EXCLUSIONS)[0]
     retained_isu = "KR7999999999"

@@ -171,6 +171,9 @@
       item.pattern_b_state,
       item.pattern_a_stage,
       item.previous_pattern_a_stage,
+      item.entry_pattern_a_stage,
+      item.entry_previous_pattern_a_stage,
+      item.entry_previous_pattern_a_stage_date,
       item.strategy_state,
     ].some((value) => String(value || "").toLocaleLowerCase("ko-KR").includes(normalized));
   }
@@ -277,8 +280,16 @@
     const position = createPositionField(item);
     let detailFields = [];
     if (strategyId === "PATTERN_B_SELECT_CORE_V01") {
+      const hasEntryPatternAContext =
+        item.entry_pattern_a_stage != null || item.entry_previous_pattern_a_stage != null;
+      const previousPatternAStage = hasEntryPatternAContext
+        ? item.entry_previous_pattern_a_stage
+        : item.previous_pattern_a_stage;
+      const currentPatternAStage = hasEntryPatternAContext
+        ? item.entry_pattern_a_stage
+        : item.pattern_a_stage;
       detailFields = [
-        createField("Pattern A", `${stageLabel(item.previous_pattern_a_stage)} → ${stageLabel(item.pattern_a_stage)}`),
+        createField("Pattern A", `${stageLabel(previousPatternAStage)} → ${stageLabel(currentPatternAStage)}`),
         createField("Pattern B", patternBLabel(item.pattern_b_state)),
       ];
     } else if (strategyId === "JULIA_ETF_STRATEGY_V01") {

@@ -103,6 +103,65 @@ def test_representative_common_open_trade_is_projected_without_recalculation():
     assert item["current_trade"] == source["current_trade"]
 
 
+def test_b_select_open_entry_pattern_a_context_matches_exact_authority():
+    exporter = _load_exporter()
+    monitor = _load_monitor()
+    b_select = next(
+        strategy for strategy in monitor["strategies"]
+        if strategy["id"] == "PATTERN_B_SELECT_CORE_V01"
+    )
+    authority = exporter._read_entry_stage_authority(ROOT)
+    exporter._validate_b_select_entry_contexts(b_select["items"], authority)
+    open_items = [item for item in b_select["items"] if item["canonical_position"] == "OPEN"]
+
+    assert len(open_items) == 24
+    assert all(item["entry_pattern_a_stage"] == "PROGRESSED" for item in open_items)
+    assert all(item["entry_previous_pattern_a_stage"] in {"EARLY_TREND", "TRANSITION"} for item in open_items)
+
+
+def test_b_select_entry_pattern_a_validator_fails_closed_on_ambiguous_source():
+    exporter = _load_exporter()
+    source = {
+        "entry_pattern_a_stage_recomputed": "PROGRESSED",
+        "previous_pattern_a_stage": "EARLY_TREND",
+        "previous_pattern_a_stage_date": "2024-07-31",
+    }
+    key = ("001380", "KR7001380005", "001380:KR7001380005:000", "2025-04-30")
+    item = {
+        "ticker": key[0],
+        "isu_cd": key[1],
+        "component_id": key[2],
+        "canonical_position": "OPEN",
+        "action": "HOLD",
+        "current_trade": {"entry_signal_date": key[3]},
+        "pending_event": None,
+        "entry_pattern_a_stage": "PROGRESSED",
+        "entry_previous_pattern_a_stage": "EARLY_TREND",
+        "entry_previous_pattern_a_stage_date": "2024-07-31",
+    }
+    import pytest
+
+    with pytest.raises(ValueError, match="match count is not one"):
+        exporter._validate_b_select_entry_contexts([item], {key: [source, source]})
+
+
+def test_b_select_watch_item_does_not_receive_fake_entry_pattern_a_context():
+    exporter = _load_exporter()
+    item = {
+        "ticker": "001380",
+        "action": "WAIT",
+        "canonical_position": "FLAT",
+        "pending_event": None,
+        "entry_pattern_a_stage": "PROGRESSED",
+        "entry_previous_pattern_a_stage": "EARLY_TREND",
+        "entry_previous_pattern_a_stage_date": "2024-07-31",
+    }
+    import pytest
+
+    with pytest.raises(ValueError, match="fake entry Pattern A context"):
+        exporter._validate_b_select_entry_contexts([item], {})
+
+
 def test_etf_is_not_in_action_counts_and_has_no_fake_trade():
     monitor = _load_monitor()
     strategies = {strategy["id"]: strategy for strategy in monitor["strategies"]}
@@ -212,13 +271,18 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert 'createField("이전 Stage"' not in strategy_js
     assert 'item.asset_type !== "COMMON"' in strategy_js
     assert 'meta.join(" · ")' in strategy_js
-    assert 'createField("Pattern A", `${stageLabel(item.previous_pattern_a_stage)} → ${stageLabel(item.pattern_a_stage)}`)' in strategy_js
+    assert "item.entry_pattern_a_stage != null || item.entry_previous_pattern_a_stage != null" in strategy_js
+    assert "item.entry_previous_pattern_a_stage" in strategy_js
+    assert "item.entry_pattern_a_stage" in strategy_js
+    assert 'createField("Pattern A", `${stageLabel(previousPatternAStage)} → ${stageLabel(currentPatternAStage)}`)' in strategy_js
     assert 'createField("Pattern B", patternBLabel(item.pattern_b_state))' in strategy_js
     assert 'function stageLabel(value) { return STAGE_LABELS[value] || "확인 필요"; }' in strategy_js
     assert 'function patternBLabel(value) { return PATTERN_B_LABELS[value] || (value ? "확인 필요" : "확인 필요"); }' in strategy_js
     b_select_fields = strategy_js[strategy_js.index('if (strategyId === "PATTERN_B_SELECT_CORE_V01")'):strategy_js.index('} else if (strategyId === "JULIA_ETF_STRATEGY_V01")')]
     assert "previous_pattern_a_stage" in b_select_fields
     assert "pattern_a_stage" in b_select_fields
+    assert "entry_previous_pattern_a_stage" in b_select_fields
+    assert "entry_pattern_a_stage" in b_select_fields
     assert "pattern_b_state" in b_select_fields
     assert "progressed_segment_start_date" not in b_select_fields
     assert 'detailFields = [];' in strategy_js

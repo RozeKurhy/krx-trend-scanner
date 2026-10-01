@@ -255,6 +255,53 @@ def _rebind_candidate_components(
     return rows
 
 
+def _entry_pattern_a_context(
+    candidate_rows: list[dict[str, Any]],
+    *,
+    ticker: str,
+    isu_cd: str,
+    component_id: str,
+    entry_signal_date: str,
+) -> dict[str, str]:
+    """Resolve one stage-qualified entry row from the sealed candidate authority."""
+    day = str(entry_signal_date or "")[:10]
+    matches = [
+        row for row in candidate_rows
+        if str(row.get("ticker", "")).zfill(6) == str(ticker).zfill(6)
+        and str(row.get("isu_cd", "")).upper() == str(isu_cd).upper()
+        and str(row.get("component_id", "")) == str(component_id)
+        and str(row.get("entry_signal_date", ""))[:10] == day
+    ]
+    if len(matches) != 1:
+        raise BSelectStatusError(
+            f"B_SELECT_ENTRY_PATTERN_A_SOURCE_MATCH_COUNT:{str(ticker).zfill(6)}:{day}:{len(matches)}"
+        )
+    source = matches[0]
+    entry_stage = str(source.get("entry_pattern_a_stage_recomputed", "")).strip().upper()
+    previous_stage = str(source.get("previous_pattern_a_stage", "")).strip().upper()
+    previous_date_value = source.get("previous_pattern_a_stage_date")
+    previous_date = (
+        None
+        if previous_date_value is None or pd.isna(previous_date_value)
+        else str(previous_date_value).strip()[:10]
+    )
+    if not previous_date or previous_date.lower() == "nan":
+        previous_date = ""
+    if (
+        entry_stage != "PROGRESSED"
+        or previous_stage not in ALLOWED_PREVIOUS_STAGES
+        or not previous_date
+    ):
+        raise BSelectStatusError(
+            f"B_SELECT_ENTRY_PATTERN_A_SOURCE_NOT_QUALIFIED:{str(ticker).zfill(6)}:{day}"
+        )
+    return {
+        "entry_pattern_a_stage": entry_stage,
+        "entry_previous_pattern_a_stage": previous_stage,
+        "entry_previous_pattern_a_stage_date": previous_date,
+    }
+
+
 def _report_previous_stage(
     report: Mapping[str, Any],
     *,
@@ -817,6 +864,31 @@ def build_b_select_status(
                     "return_pct": (close / entry_open - 1.0) * 100.0 if close is not None else None,
                 })
 
+        entry_context = None
+        if canonical_position == "OPEN":
+            if not isinstance(current_trade, dict):
+                raise BSelectStatusError(f"B_SELECT_OPEN_TRADE_MISSING_FOR_ENTRY_CONTEXT:{ticker}")
+            entry_signal_date = str(current_trade.get("entry_signal_date") or "")[:10]
+            entry_context = _entry_pattern_a_context(
+                candidate_rows,
+                ticker=ticker,
+                isu_cd=identity["isu_cd"],
+                component_id=identity["component_id"],
+                entry_signal_date=entry_signal_date,
+            )
+        elif action in {"ENTRY", "ENTER_NEXT_OPEN"} or (
+            isinstance(pending_event, dict) and pending_event.get("kind") == "ENTRY"
+        ):
+            if not isinstance(pending_event, dict) or pending_event.get("kind") != "ENTRY":
+                raise BSelectStatusError(f"B_SELECT_PENDING_ENTRY_EVENT_MISSING:{ticker}")
+            entry_context = _entry_pattern_a_context(
+                candidate_rows,
+                ticker=ticker,
+                isu_cd=identity["isu_cd"],
+                component_id=identity["component_id"],
+                entry_signal_date=str(pending_event.get("signal_date") or "")[:10],
+            )
+
         item = {
             "ticker": ticker,
             "isu_cd": identity["isu_cd"],
@@ -832,6 +904,7 @@ def build_b_select_status(
             "pattern_a_stage": current_stage,
             "previous_pattern_a_stage": previous_stage,
             "previous_pattern_a_stage_date": previous_context.get("previous_pattern_a_stage_date") if previous_context else None,
+            **(entry_context or {}),
             "current_trade": current_trade,
             "trade_history": trade_history,
             "pending_event": pending_event,

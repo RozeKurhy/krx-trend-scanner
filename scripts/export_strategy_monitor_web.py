@@ -9,6 +9,8 @@ external provider.
 from __future__ import annotations
 
 import argparse
+import csv
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -19,6 +21,14 @@ ROOT = Path(__file__).resolve().parents[1]
 INDEX_PATH = ROOT / "web/data/stock-index.json"
 STOCKS_PATH = ROOT / "web/data/stocks"
 OUTPUT_PATH = ROOT / "web/data/strategy-monitor.json"
+ENTRY_STAGE_HISTORY_REL = Path(
+    "artifacts/patterns/pattern_b/progressed_previous_pattern_a_stage_v01/"
+    "candidate_signal_stage_history.csv"
+)
+ENTRY_STAGE_HISTORY_METADATA_REL = Path(
+    "artifacts/patterns/pattern_b/progressed_previous_pattern_a_stage_v01/metadata.json"
+)
+ALLOWED_ENTRY_PREVIOUS_STAGES = {"EARLY_TREND", "TRANSITION"}
 STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
 STRATEGY_LABEL = "A FAST Core V2"
 B_SELECT_ID = "PATTERN_B_SELECT_CORE_V01"
@@ -33,6 +43,91 @@ def _read_json(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"JSON object expected: {path}")
     return value
+
+
+def _read_entry_stage_authority(repo_root: Path) -> dict[tuple[str, str, str, str], list[dict[str, str]]]:
+    path = repo_root / ENTRY_STAGE_HISTORY_REL
+    metadata_path = repo_root / ENTRY_STAGE_HISTORY_METADATA_REL
+    metadata = _read_json(metadata_path)
+    expected_hash = (
+        metadata.get("generated_files", {})
+        .get(ENTRY_STAGE_HISTORY_REL.name, {})
+        .get("sha256")
+    )
+    if not path.is_file() or not expected_hash:
+        raise ValueError("B Select entry Pattern A authority is missing")
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    if digest != expected_hash:
+        raise ValueError("B Select entry Pattern A authority hash mismatch")
+    authority: dict[tuple[str, str, str, str], list[dict[str, str]]] = {}
+    with path.open(encoding="utf-8", newline="") as stream:
+        for row in csv.DictReader(stream):
+            key = (
+                str(row.get("ticker", "")).zfill(6),
+                str(row.get("isu_cd", "")).upper(),
+                str(row.get("component_id", "")),
+                str(row.get("entry_signal_date", ""))[:10],
+            )
+            authority.setdefault(key, []).append(row)
+    return authority
+
+
+def _validate_b_select_entry_contexts(
+    items: list[dict[str, Any]],
+    authority: dict[tuple[str, str, str, str], list[dict[str, str]]],
+) -> None:
+    fields = (
+        "entry_pattern_a_stage",
+        "entry_previous_pattern_a_stage",
+        "entry_previous_pattern_a_stage_date",
+    )
+    for item in items:
+        is_open = item.get("canonical_position") == "OPEN"
+        pending = item.get("pending_event")
+        is_pending_entry = (
+            item.get("action") in {"ENTRY", "ENTER_NEXT_OPEN"}
+            or (isinstance(pending, dict) and pending.get("kind") == "ENTRY")
+        )
+        has_context = any(item.get(field) is not None for field in fields)
+        if not is_open and not is_pending_entry:
+            if has_context:
+                raise ValueError(f"B Select non-entry item has fake entry Pattern A context: {item.get('ticker')}")
+            continue
+
+        if is_open:
+            trade = item.get("current_trade")
+            if not isinstance(trade, dict):
+                raise ValueError(f"B Select OPEN item has no current trade: {item.get('ticker')}")
+            entry_signal_date = str(trade.get("entry_signal_date") or "")[:10]
+        else:
+            if not isinstance(pending, dict) or pending.get("kind") != "ENTRY":
+                raise ValueError(f"B Select pending entry item has no ENTRY event: {item.get('ticker')}")
+            entry_signal_date = str(pending.get("signal_date") or "")[:10]
+
+        key = (
+            str(item.get("ticker", "")).zfill(6),
+            str(item.get("isu_cd", "")).upper(),
+            str(item.get("component_id", "")),
+            entry_signal_date,
+        )
+        matches = authority.get(key, [])
+        if len(matches) != 1:
+            raise ValueError(
+                f"B Select entry Pattern A authority match count is not one: {key[0]} {entry_signal_date}"
+            )
+        source = matches[0]
+        expected = {
+            "entry_pattern_a_stage": str(source.get("entry_pattern_a_stage_recomputed", "")).strip().upper(),
+            "entry_previous_pattern_a_stage": str(source.get("previous_pattern_a_stage", "")).strip().upper(),
+            "entry_previous_pattern_a_stage_date": str(source.get("previous_pattern_a_stage_date", ""))[:10],
+        }
+        if (
+            expected["entry_pattern_a_stage"] != "PROGRESSED"
+            or expected["entry_previous_pattern_a_stage"] not in ALLOWED_ENTRY_PREVIOUS_STAGES
+            or not expected["entry_previous_pattern_a_stage_date"]
+            or any(item.get(field) != expected[field] for field in fields)
+        ):
+            raise ValueError(f"B Select entry Pattern A context does not match authority: {key[0]} {entry_signal_date}")
 
 
 def _trade_projection(trade: dict[str, Any]) -> dict[str, Any]:
@@ -320,6 +415,7 @@ def build_strategy_monitor(
     common_tickers = {item["ticker"] for item in common_items}
     if {str(item.get("ticker", "")).zfill(6) for item in b_items} != common_tickers:
         raise ValueError("B Select current status COMMON scope does not match published reports")
+    _validate_b_select_entry_contexts(b_items, _read_entry_stage_authority(repo_root))
     b_counts = b_select_status.get("counts") or {}
     expected_bucket_counts = {"entry": 0, "hold": 0, "exit": 0, "watch": 0, "unavailable": 0}
     for item in b_items:
