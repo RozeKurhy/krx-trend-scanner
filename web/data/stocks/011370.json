@@ -19,7 +19,7 @@
   },
   "summary": {
     "trend_stage": "UNAVAILABLE",
-    "flow_state": "FLOW_UNAVAILABLE"
+    "flow_state": "FLOW_DISTRIBUTION"
   },
   "price_trend": {
     "latest_close": 3690.0,
@@ -328,8 +328,8 @@
     "explanation": "12개월 기준으로는 시장 대비 약세였으나 6개월, 3개월로 갈수록 상대강도가 연속 개선되며 최근 시장 대비 강도가 뚜렷하게 회복되고 있습니다."
   },
   "flow": {
-    "data_status": "DATA_UNAVAILABLE",
-    "state": "FLOW_UNAVAILABLE",
+    "data_status": "READY",
+    "state": "FLOW_DISTRIBUTION",
     "net_buy_value_1d_krw": -4113455.0,
     "net_buy_value_5d_krw": -57318620.0,
     "net_buy_value_10d_krw": -99438710.0,
@@ -345,7 +345,7 @@
     "positive_days_10d": 1,
     "positive_days_20d": 4,
     "positive_days_60d": 28,
-    "explanation": "외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다."
+    "explanation": "5일, 20일, 60일 모두 외국인 누적 순매도 상태로, 중단기 외국인 수급은 전반적인 매도 우위(이탈) 흐름입니다 (5일 순매수 강도: -17.21%)."
   },
   "fundamentals": {
     "status": "PARTIAL",
@@ -688,7 +688,7 @@
     "pattern_stage": "UNAVAILABLE",
     "pattern_score": 55.44,
     "candidate_state": "insufficient_data",
-    "flow_state": "FLOW_UNAVAILABLE",
+    "flow_state": "FLOW_DISTRIBUTION",
     "market_strength_applicability": "APPLICABLE",
     "market_strength_status": "READY",
     "relative_strength_status": "READY",

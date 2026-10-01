@@ -19,7 +19,7 @@
   },
   "summary": {
     "trend_stage": "UNAVAILABLE",
-    "flow_state": "FLOW_UNAVAILABLE"
+    "flow_state": "FLOW_MIXED"
   },
   "price_trend": {
     "latest_close": 12160.0,
@@ -302,8 +302,8 @@
     "explanation": "일부 기간의 시장 상대강도 데이터가 없어 전체 기간 흐름은 제한적으로 해석됩니다."
   },
   "flow": {
-    "data_status": "DATA_UNAVAILABLE",
-    "state": "FLOW_UNAVAILABLE",
+    "data_status": "READY",
+    "state": "FLOW_MIXED",
     "net_buy_value_1d_krw": 116699510.0,
     "net_buy_value_5d_krw": 175507170.0,
     "net_buy_value_10d_krw": -119396705.0,
@@ -319,7 +319,7 @@
     "positive_days_10d": 5,
     "positive_days_20d": 8,
     "positive_days_60d": 32,
-    "explanation": "외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다."
+    "explanation": "외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: +3.11%)."
   },
   "fundamentals": {
     "status": "PARTIAL",
@@ -616,7 +616,7 @@
     "pattern_stage": "UNAVAILABLE",
     "pattern_score": null,
     "candidate_state": "insufficient_data",
-    "flow_state": "FLOW_UNAVAILABLE",
+    "flow_state": "FLOW_MIXED",
     "market_strength_applicability": "APPLICABLE",
     "market_strength_status": "PARTIAL",
     "relative_strength_status": "PARTIAL",

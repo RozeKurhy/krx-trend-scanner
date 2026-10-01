@@ -24,12 +24,12 @@
       "펀더멘털: Filter PASS, 최근 FY 매출 15,475.3억원, TTM 영업이익 3,230.8억원, TTM 순이익 2,346.4억원.",
       "현재 Pattern A Score는 47.66점(Stage: PROGRESSED, Candidate: NO)입니다.",
       "필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 Phase 10 Investability 판정이 불가능합니다.",
-      "외국인 수급: 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
+      "외국인 수급: 5일, 20일, 60일 모두 외국인 누적 순매도 상태로, 중단기 외국인 수급은 전반적인 매도 우위(이탈) 흐름입니다 (5일 순매수 강도: -7.97%).",
       "시장 상대강도: 기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다.",
       "업종 상대강도: 업종 상대강도 데이터를 사용할 수 없습니다.",
       "거래대금 추세: 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 519.65억원, 20일: 641.33억원, 60일: 592.40억원)"
     ],
-    "combined_narrative": "현재 한미약품은(는) Pattern A Score 47.66점, PROGRESSED 단계이며 필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 투자 적격성 판정이 보류되었습니다. 최근 12개월 동안 TRANSITION(68.53점)에서 PROGRESSED(47.05점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_UNAVAILABLE 상태로, 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다. 거래대금은 TRADING_VALUE_MIXED 상태로, 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 519.65억원, 20일: 641.33억원, 60일: 592.40억원) 시장 상대강도는 기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다. 업종 상대강도는 업종 상대강도 데이터를 사용할 수 없습니다.",
+    "combined_narrative": "현재 한미약품은(는) Pattern A Score 47.66점, PROGRESSED 단계이며 필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 투자 적격성 판정이 보류되었습니다. 최근 12개월 동안 TRANSITION(68.53점)에서 PROGRESSED(47.05점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_DISTRIBUTION 상태로, 5일, 20일, 60일 모두 외국인 누적 순매도 상태로, 중단기 외국인 수급은 전반적인 매도 우위(이탈) 흐름입니다 (5일 순매수 강도: -7.97%). 거래대금은 TRADING_VALUE_MIXED 상태로, 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 519.65억원, 20일: 641.33억원, 60일: 592.40억원) 시장 상대강도는 기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다. 업종 상대강도는 업종 상대강도 데이터를 사용할 수 없습니다.",
     "strategy_headline": "투자 유동성 및 시가총액 데이터 결측으로 패스트 코어 V2 신규 진입 적격성을 판정할 수 없습니다."
   },
   "current_snapshot": {
@@ -2119,9 +2119,9 @@
     "pattern_a_available_observation_count": 151
   },
   "foreign_flow": {
-    "data_status": "DATA_UNAVAILABLE",
-    "flow_state": "FLOW_UNAVAILABLE",
-    "explanation": "외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
+    "data_status": "READY",
+    "flow_state": "FLOW_DISTRIBUTION",
+    "explanation": "5일, 20일, 60일 모두 외국인 누적 순매도 상태로, 중단기 외국인 수급은 전반적인 매도 우위(이탈) 흐름입니다 (5일 순매수 강도: -7.97%).",
     "foreign_net_buy_value_1d_krw": 3750045000.0,
     "foreign_net_buy_value_5d_krw": -20699311500.0,
     "foreign_net_buy_value_20d_krw": -33980696500.0,

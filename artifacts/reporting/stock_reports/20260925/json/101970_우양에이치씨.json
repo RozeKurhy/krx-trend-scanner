@@ -24,7 +24,7 @@
       "펀더멘털: DATA_UNAVAILABLE (F4_DATA_UNAVAILABLE)",
       "현재 Pattern A Score는 산출 불가(Stage: UNAVAILABLE) 상태입니다.",
       "필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 Phase 10 Investability 판정이 불가능합니다.",
-      "외국인 수급: 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
+      "외국인 수급: 외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: +16.22%).",
       "시장 상대강도: 12개월 기준으로는 시장 대비 약세였으나 6개월, 3개월로 갈수록 상대강도가 연속 개선되며 최근 시장 대비 강도가 뚜렷하게 회복되고 있습니다.",
       "업종 상대강도: 업종 상대강도 데이터를 사용할 수 없습니다.",
       "거래대금 추세: 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 0.48억원, 20일: 1.58억원, 60일: 1.54억원)"
@@ -1717,9 +1717,9 @@
     "pattern_a_available_observation_count": 0
   },
   "foreign_flow": {
-    "data_status": "DATA_UNAVAILABLE",
-    "flow_state": "FLOW_UNAVAILABLE",
-    "explanation": "외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
+    "data_status": "READY",
+    "flow_state": "FLOW_MIXED",
+    "explanation": "외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: +16.22%).",
     "foreign_net_buy_value_1d_krw": 20200160.0,
     "foreign_net_buy_value_5d_krw": 39194190.0,
     "foreign_net_buy_value_20d_krw": -108271300.0,

@@ -22,7 +22,11 @@ import pandas as pd
 import pytest
 
 from trend_scanner.data.cache import ParquetCache
-from trend_scanner.flow.foreign_flow import FlowDataStatus, ForeignFlowFeatureResult
+from trend_scanner.flow.foreign_flow import (
+    FlowDataStatus,
+    ForeignFlowFeatureResult,
+    compute_foreign_flow_features,
+)
 from trend_scanner.reporting.models import (
     CurrentSnapshot,
     FlowState,
@@ -277,6 +281,40 @@ def test_stock_report_foreign_flow_parity(report_001540_20260814: StockReport):
     assert flow.foreign_net_buy_value_20d_krw == pytest.approx(1126081525.0, abs=1.0)
     assert flow.foreign_net_buy_value_60d_krw == pytest.approx(1685532055.0, abs=1.0)
     assert flow.foreign_flow_intensity_5d == pytest.approx(0.0665, abs=1e-4)
+
+
+def test_stock_report_foreign_flow_uses_reference_market_date_for_non_trading_target():
+    requested_as_of = "2026-09-25"
+    reference_market_date = "2026-09-23"
+    flow_path = REPO_ROOT / "artifacts/patterns/pattern_a/production/flow/source/foreign_flow_daily_20260925.parquet"
+    flow_df = pd.read_parquet(flow_path)
+    ticker_rows = flow_df.loc[flow_df["ticker"].astype(str).str.zfill(6) == "005930"]
+
+    assert str(flow_df["date"].astype(str).max()) == reference_market_date
+    assert str(ticker_rows["date"].astype(str).max()) == reference_market_date
+    assert not (ticker_rows["date"].astype(str) > reference_market_date).any()
+
+    expected = compute_foreign_flow_features("005930", reference_market_date, flow_df)
+    assert expected.data_status == FlowDataStatus.READY
+    assert expected.foreign_flow_last_observation_date == reference_market_date
+
+    report, _, _ = generate_stock_report(
+        ticker="005930",
+        as_of=requested_as_of,
+        reference_market_date=reference_market_date,
+        repo_root=REPO_ROOT,
+        fundamentals_section=None,
+        save_artifacts=False,
+    )
+    assert report.header.requested_as_of == requested_as_of
+    assert report.header.reference_market_date == reference_market_date
+    flow = report.foreign_flow
+    assert flow.data_status == "READY"
+    assert flow.flow_state != FlowState.FLOW_UNAVAILABLE
+    for window in (1, 5, 10, 20, 60):
+        actual_value = getattr(flow, f"foreign_net_buy_value_{window}d_krw")
+        expected_value = getattr(expected, f"foreign_net_buy_value_{window}d")
+        assert actual_value == pytest.approx(expected_value, abs=1.0)
 
 
 def test_stock_report_trading_value_arithmetic(report_001540_20260814: StockReport):

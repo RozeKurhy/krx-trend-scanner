@@ -24,12 +24,12 @@
       "펀더멘털: Filter PASS, 최근 FY 매출 45,468.9억원, TTM 영업이익 3,154.8억원, TTM 순이익 2,211.3억원.",
       "현재 Pattern A Score는 70.21점(Stage: TRANSITION, Candidate: YES)입니다.",
       "필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 Phase 10 Investability 판정이 불가능합니다.",
-      "외국인 수급: 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
+      "외국인 수급: 5일, 20일, 60일 모두 외국인 누적 순매도 상태로, 중단기 외국인 수급은 전반적인 매도 우위(이탈) 흐름입니다 (5일 순매수 강도: -21.03%).",
       "시장 상대강도: 12개월 기준으로는 시장 대비 약세였으나 6개월, 3개월로 갈수록 상대강도가 연속 개선되며 최근 시장 대비 강도가 뚜렷하게 회복되고 있습니다.",
       "업종 상대강도: 업종 상대강도 데이터를 사용할 수 없습니다.",
       "거래대금 추세: 최근 거래대금이 지속 확대되는 흐름입니다. 5일 평균 거래대금(106.48억원)은 20일 평균의 약 1.48배이며 60일 평균(64.31억원)을 상회하고 있습니다."
     ],
-    "combined_narrative": "현재 제일기획은(는) Pattern A Score 70.21점, TRANSITION 단계이며 필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 투자 적격성 판정이 보류되었습니다. 최근 12개월 동안 TRANSITION(78.39점)에서 TRANSITION(73.23점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_UNAVAILABLE 상태로, 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다. 거래대금은 TRADING_VALUE_EXPANDING 상태로, 최근 거래대금이 지속 확대되는 흐름입니다. 5일 평균 거래대금(106.48억원)은 20일 평균의 약 1.48배이며 60일 평균(64.31억원)을 상회하고 있습니다. 시장 상대강도는 12개월 기준으로는 시장 대비 약세였으나 6개월, 3개월로 갈수록 상대강도가 연속 개선되며 최근 시장 대비 강도가 뚜렷하게 회복되고 있습니다. 업종 상대강도는 업종 상대강도 데이터를 사용할 수 없습니다.",
+    "combined_narrative": "현재 제일기획은(는) Pattern A Score 70.21점, TRANSITION 단계이며 필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 투자 적격성 판정이 보류되었습니다. 최근 12개월 동안 TRANSITION(78.39점)에서 TRANSITION(73.23점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_DISTRIBUTION 상태로, 5일, 20일, 60일 모두 외국인 누적 순매도 상태로, 중단기 외국인 수급은 전반적인 매도 우위(이탈) 흐름입니다 (5일 순매수 강도: -21.03%). 거래대금은 TRADING_VALUE_EXPANDING 상태로, 최근 거래대금이 지속 확대되는 흐름입니다. 5일 평균 거래대금(106.48억원)은 20일 평균의 약 1.48배이며 60일 평균(64.31억원)을 상회하고 있습니다. 시장 상대강도는 12개월 기준으로는 시장 대비 약세였으나 6개월, 3개월로 갈수록 상대강도가 연속 개선되며 최근 시장 대비 강도가 뚜렷하게 회복되고 있습니다. 업종 상대강도는 업종 상대강도 데이터를 사용할 수 없습니다.",
     "strategy_headline": "패스트 코어 V2 전략 포지션을 보유 중이며 아직 PROGRESSED 이전입니다. Pre-PROGRESSED Loss Guard(-15%)가 활성화되어 있습니다."
   },
   "current_snapshot": {
@@ -2238,9 +2238,9 @@
     "pattern_a_available_observation_count": 165
   },
   "foreign_flow": {
-    "data_status": "DATA_UNAVAILABLE",
-    "flow_state": "FLOW_UNAVAILABLE",
-    "explanation": "외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
+    "data_status": "READY",
+    "flow_state": "FLOW_DISTRIBUTION",
+    "explanation": "5일, 20일, 60일 모두 외국인 누적 순매도 상태로, 중단기 외국인 수급은 전반적인 매도 우위(이탈) 흐름입니다 (5일 순매수 강도: -21.03%).",
     "foreign_net_buy_value_1d_krw": -951824010.0,
     "foreign_net_buy_value_5d_krw": -11196882805.0,
     "foreign_net_buy_value_20d_krw": -23405951795.0,

@@ -24,12 +24,12 @@
       "펀더멘털: Filter PASS, 최근 FY 매출 2,676.6억원, TTM 영업이익 360.8억원, TTM 순이익 457.8억원.",
       "현재 Pattern A Score는 58.39점(Stage: TRANSITION, Candidate: YES)입니다.",
       "필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 Phase 10 Investability 판정이 불가능합니다.",
-      "외국인 수급: 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
+      "외국인 수급: 최근 5일, 20일, 60일 모두 외국인 누적 순매수가 플러스를 유지하며 중단기 전 구간에서 순매수 우위(매집) 기조입니다 (5일 순매수 강도: +24.91%).",
       "시장 상대강도: 기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다.",
       "업종 상대강도: 업종 상대강도 데이터를 사용할 수 없습니다.",
       "거래대금 추세: 최근 거래대금이 지속 확대되는 흐름입니다. 5일 평균 거래대금(94.83억원)은 20일 평균의 약 2.11배이며 60일 평균(31.92억원)을 상회하고 있습니다."
     ],
-    "combined_narrative": "현재 안랩은(는) Pattern A Score 58.39점, TRANSITION 단계이며 필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 투자 적격성 판정이 보류되었습니다. 최근 12개월 동안 TRANSITION(63.50점)에서 WEAK(58.39점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_UNAVAILABLE 상태로, 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다. 거래대금은 TRADING_VALUE_EXPANDING 상태로, 최근 거래대금이 지속 확대되는 흐름입니다. 5일 평균 거래대금(94.83억원)은 20일 평균의 약 2.11배이며 60일 평균(31.92억원)을 상회하고 있습니다. 시장 상대강도는 기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다. 업종 상대강도는 업종 상대강도 데이터를 사용할 수 없습니다.",
+    "combined_narrative": "현재 안랩은(는) Pattern A Score 58.39점, TRANSITION 단계이며 필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 투자 적격성 판정이 보류되었습니다. 최근 12개월 동안 TRANSITION(63.50점)에서 WEAK(58.39점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_ACCUMULATION 상태로, 최근 5일, 20일, 60일 모두 외국인 누적 순매수가 플러스를 유지하며 중단기 전 구간에서 순매수 우위(매집) 기조입니다 (5일 순매수 강도: +24.91%). 거래대금은 TRADING_VALUE_EXPANDING 상태로, 최근 거래대금이 지속 확대되는 흐름입니다. 5일 평균 거래대금(94.83억원)은 20일 평균의 약 2.11배이며 60일 평균(31.92억원)을 상회하고 있습니다. 시장 상대강도는 기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다. 업종 상대강도는 업종 상대강도 데이터를 사용할 수 없습니다.",
     "strategy_headline": "패스트 코어 V2 전략 포지션은 PROGRESSED 구간에 있습니다. 초기 Loss Guard는 비활성화되었으며 Exit3 / Exit4 기준으로 추세 종료 여부를 관찰합니다."
   },
   "current_snapshot": {
@@ -2238,9 +2238,9 @@
     "pattern_a_available_observation_count": 165
   },
   "foreign_flow": {
-    "data_status": "DATA_UNAVAILABLE",
-    "flow_state": "FLOW_UNAVAILABLE",
-    "explanation": "외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
+    "data_status": "READY",
+    "flow_state": "FLOW_ACCUMULATION",
+    "explanation": "최근 5일, 20일, 60일 모두 외국인 누적 순매수가 플러스를 유지하며 중단기 전 구간에서 순매수 우위(매집) 기조입니다 (5일 순매수 강도: +24.91%).",
     "foreign_net_buy_value_1d_krw": 1959500300.0,
     "foreign_net_buy_value_5d_krw": 11811735900.0,
     "foreign_net_buy_value_20d_krw": 10433300000.0,

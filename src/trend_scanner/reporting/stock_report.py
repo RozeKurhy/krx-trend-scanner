@@ -1206,9 +1206,11 @@ def generate_stock_report(
         except Exception as exc:
             logger.warning("Failed loading flow file: %s", exc)
 
+    # Keep the flow source selected by requested/current snapshot authority,
+    # while freshness and window evaluation follow the resolved market date.
     flow_feat: ForeignFlowFeatureResult = compute_foreign_flow_features(
         ticker=clean_ticker,
-        as_of=canonical_as_of,
+        as_of=ref_market_date,
         flow_df=flow_df_loaded,
         price_df=daily_slice if not daily_slice.empty else None,
     )

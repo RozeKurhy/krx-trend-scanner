@@ -24,12 +24,12 @@
       "펀더멘털: Filter PASS, 최근 FY 매출 1,631.7억원, TTM 영업이익 281.7억원, TTM 순이익 227.1억원.",
       "현재 Pattern A Score는 57.00점(Stage: TRANSITION, Candidate: YES)입니다.",
       "필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 Phase 10 Investability 판정이 불가능합니다.",
-      "외국인 수급: 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
+      "외국인 수급: 최근 5일, 20일, 60일 모두 외국인 누적 순매수가 플러스를 유지하며 중단기 전 구간에서 순매수 우위(매집) 기조입니다 (5일 순매수 강도: +21.45%).",
       "시장 상대강도: 12개월 기준으로는 시장 대비 약세였으나 6개월, 3개월로 갈수록 상대강도가 연속 개선되며 최근 시장 대비 강도가 뚜렷하게 회복되고 있습니다.",
       "업종 상대강도: 업종 상대강도 데이터를 사용할 수 없습니다.",
       "거래대금 추세: 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 2.00억원, 20일: 1.00억원, 60일: 1.15억원)"
     ],
-    "combined_narrative": "현재 BYC은(는) Pattern A Score 57.00점, TRANSITION 단계이며 필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 투자 적격성 판정이 보류되었습니다. 최근 12개월 동안 TRANSITION(60.37점)에서 TRANSITION(56.97점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_UNAVAILABLE 상태로, 외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다. 거래대금은 TRADING_VALUE_MIXED 상태로, 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 2.00억원, 20일: 1.00억원, 60일: 1.15억원) 시장 상대강도는 12개월 기준으로는 시장 대비 약세였으나 6개월, 3개월로 갈수록 상대강도가 연속 개선되며 최근 시장 대비 강도가 뚜렷하게 회복되고 있습니다. 업종 상대강도는 업종 상대강도 데이터를 사용할 수 없습니다.",
+    "combined_narrative": "현재 BYC은(는) Pattern A Score 57.00점, TRANSITION 단계이며 필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 투자 적격성 판정이 보류되었습니다. 최근 12개월 동안 TRANSITION(60.37점)에서 TRANSITION(56.97점)로 국면 이동이 관찰되었습니다. 외국인 수급은 FLOW_ACCUMULATION 상태로, 최근 5일, 20일, 60일 모두 외국인 누적 순매수가 플러스를 유지하며 중단기 전 구간에서 순매수 우위(매집) 기조입니다 (5일 순매수 강도: +21.45%). 거래대금은 TRADING_VALUE_MIXED 상태로, 최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 2.00억원, 20일: 1.00억원, 60일: 1.15억원) 시장 상대강도는 12개월 기준으로는 시장 대비 약세였으나 6개월, 3개월로 갈수록 상대강도가 연속 개선되며 최근 시장 대비 강도가 뚜렷하게 회복되고 있습니다. 업종 상대강도는 업종 상대강도 데이터를 사용할 수 없습니다.",
     "strategy_headline": "투자 유동성 및 시가총액 데이터 결측으로 패스트 코어 V2 신규 진입 적격성을 판정할 수 없습니다."
   },
   "current_snapshot": {
@@ -2178,9 +2178,9 @@
     "pattern_a_available_observation_count": 165
   },
   "foreign_flow": {
-    "data_status": "DATA_UNAVAILABLE",
-    "flow_state": "FLOW_UNAVAILABLE",
-    "explanation": "외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다.",
+    "data_status": "READY",
+    "flow_state": "FLOW_ACCUMULATION",
+    "explanation": "최근 5일, 20일, 60일 모두 외국인 누적 순매수가 플러스를 유지하며 중단기 전 구간에서 순매수 우위(매집) 기조입니다 (5일 순매수 강도: +21.45%).",
     "foreign_net_buy_value_1d_krw": 29991150.0,
     "foreign_net_buy_value_5d_krw": 214389350.0,
     "foreign_net_buy_value_20d_krw": 176181500.0,

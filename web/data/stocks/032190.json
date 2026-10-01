@@ -19,7 +19,7 @@
   },
   "summary": {
     "trend_stage": "PROGRESSED",
-    "flow_state": "FLOW_UNAVAILABLE"
+    "flow_state": "FLOW_ACCUMULATION"
   },
   "price_trend": {
     "latest_close": 19840.0,
@@ -328,8 +328,8 @@
     "explanation": "최근으로 갈수록 시장 대비 상대강도가 개선되는 흐름입니다."
   },
   "flow": {
-    "data_status": "DATA_UNAVAILABLE",
-    "state": "FLOW_UNAVAILABLE",
+    "data_status": "READY",
+    "state": "FLOW_ACCUMULATION",
     "net_buy_value_1d_krw": 325854655.0,
     "net_buy_value_5d_krw": 673903200.0,
     "net_buy_value_10d_krw": 1174167200.0,
@@ -345,7 +345,7 @@
     "positive_days_10d": 7,
     "positive_days_20d": 13,
     "positive_days_60d": 34,
-    "explanation": "외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다."
+    "explanation": "최근 5일, 20일, 60일 모두 외국인 누적 순매수가 플러스를 유지하며 중단기 전 구간에서 순매수 우위(매집) 기조입니다 (5일 순매수 강도: +19.75%)."
   },
   "fundamentals": {
     "status": "PARTIAL",
@@ -718,7 +718,7 @@
     "pattern_stage": "PROGRESSED",
     "pattern_score": 40.23,
     "candidate_state": "late",
-    "flow_state": "FLOW_UNAVAILABLE",
+    "flow_state": "FLOW_ACCUMULATION",
     "market_strength_applicability": "APPLICABLE",
     "market_strength_status": "READY",
     "relative_strength_status": "READY",

@@ -19,7 +19,7 @@
   },
   "summary": {
     "trend_stage": "TRANSITION",
-    "flow_state": "FLOW_UNAVAILABLE"
+    "flow_state": "FLOW_RECENT_WEAKENING"
   },
   "price_trend": {
     "latest_close": 265000.0,
@@ -328,8 +328,8 @@
     "explanation": "기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다."
   },
   "flow": {
-    "data_status": "DATA_UNAVAILABLE",
-    "state": "FLOW_UNAVAILABLE",
+    "data_status": "READY",
+    "state": "FLOW_RECENT_WEAKENING",
     "net_buy_value_1d_krw": -1162679750.0,
     "net_buy_value_5d_krw": -3690359500.0,
     "net_buy_value_10d_krw": 2836233750.0,
@@ -345,7 +345,7 @@
     "positive_days_10d": 6,
     "positive_days_20d": 16,
     "positive_days_60d": 48,
-    "explanation": "외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다."
+    "explanation": "20일 및 60일 누적 기준 외국인 순매수 기조는 유지되고 있으나, 최근 5일은 순매도로 전환되어 단기 수급이 다소 둔화된 상태입니다 (5일 순매수 강도: -10.36%)."
   },
   "fundamentals": {
     "status": "PARTIAL",
@@ -703,7 +703,7 @@
     "pattern_stage": "TRANSITION",
     "pattern_score": 85.36,
     "candidate_state": "candidate",
-    "flow_state": "FLOW_UNAVAILABLE",
+    "flow_state": "FLOW_RECENT_WEAKENING",
     "market_strength_applicability": "APPLICABLE",
     "market_strength_status": "READY",
     "relative_strength_status": "READY",

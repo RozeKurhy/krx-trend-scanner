@@ -19,7 +19,7 @@
   },
   "summary": {
     "trend_stage": "WEAK",
-    "flow_state": "FLOW_UNAVAILABLE"
+    "flow_state": "FLOW_RECENT_RECOVERY"
   },
   "price_trend": {
     "latest_close": 10130.0,
@@ -328,8 +328,8 @@
     "explanation": "기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다."
   },
   "flow": {
-    "data_status": "DATA_UNAVAILABLE",
-    "state": "FLOW_UNAVAILABLE",
+    "data_status": "READY",
+    "state": "FLOW_RECENT_RECOVERY",
     "net_buy_value_1d_krw": 70593160.0,
     "net_buy_value_5d_krw": 318623605.0,
     "net_buy_value_10d_krw": 712428805.0,
@@ -345,7 +345,7 @@
     "positive_days_10d": 7,
     "positive_days_20d": 9,
     "positive_days_60d": 23,
-    "explanation": "외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다."
+    "explanation": "최근 5일과 20일 외국인 수급은 순매수로 개선되었으나 60일 누적으로는 아직 순매도 상태로, 단기 수급 반등 및 회복 국면입니다 (5일 순매수 강도: +8.13%)."
   },
   "fundamentals": {
     "status": "PARTIAL",
@@ -707,7 +707,7 @@
     "pattern_stage": "WEAK",
     "pattern_score": 0.0,
     "candidate_state": "blocked",
-    "flow_state": "FLOW_UNAVAILABLE",
+    "flow_state": "FLOW_RECENT_RECOVERY",
     "market_strength_applicability": "APPLICABLE",
     "market_strength_status": "READY",
     "relative_strength_status": "READY",
