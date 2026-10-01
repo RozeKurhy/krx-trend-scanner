@@ -3,6 +3,7 @@
 
   const INDEX_URL = "./data/stock-index.json";
   const STOCKS_PATH = "./data/stocks/";
+  const STRATEGY_MONITOR_URL = "./data/strategy-monitor.json";
   const DART_SEARCH_URL = "https://dart.fss.or.kr/html/search/SearchCompanyIR3_M.html";
   const THEME_STORAGE_KEY = "krx-theme";
   const THEME_VALUES = new Set(["light", "dark"]);
@@ -99,6 +100,7 @@
   const TRADE_STATUS_LABELS = {
     REALIZED: "청산 완료",
     OPEN_AT_CUTOFF: "보유 중",
+    OPEN_AT_REFERENCE: "보유 중",
   };
   const EXIT_TYPE_LABELS = {
     LOSS_GUARD_CLOSE_LE_NEG_15: "손실 제한",
@@ -131,6 +133,9 @@
   let currentReport = null;
   let activeDetailKey = null;
   let fundamentalTrendMode = "quarterly";
+  let strategyMonitorPromise = null;
+  let strategyMonitorData = null;
+  let activeCommonStrategyId = "PATTERN_A_FAST_FINAL_STRATEGY_V02";
 
   function readStoredTheme() {
     try {
@@ -344,6 +349,111 @@
     );
   }
 
+  function loadStrategyMonitorOnce() {
+    if (!strategyMonitorPromise) {
+      strategyMonitorPromise = fetch(STRATEGY_MONITOR_URL, { cache: "no-store" })
+        .then((response) => {
+          if (!response.ok) throw new Error("strategy monitor request failed");
+          return response.json();
+        })
+        .then((value) => {
+          if (!value || value.schema_version !== 2 || value.source?.type !== "PUBLISHED_STOCK_REPORTS" || !Array.isArray(value.strategies)) return null;
+          strategyMonitorData = value;
+          return value;
+        })
+        .catch(() => null);
+    }
+    return strategyMonitorPromise;
+  }
+
+  function monitorStrategy(monitor, strategyId) {
+    return monitor && Array.isArray(monitor.strategies)
+      ? monitor.strategies.find((strategy) => strategy && strategy.id === strategyId) || null
+      : null;
+  }
+
+  function monitorStrategyItem(monitor, strategyId, ticker) {
+    const strategy = monitorStrategy(monitor, strategyId);
+    if (!strategy || !Array.isArray(strategy.items)) return null;
+    return strategy.items.find((item) => item && item.asset_type === "COMMON" && item.ticker === ticker) || null;
+  }
+
+  function strategyActionLabel(action, state, position) {
+    if (typeof action !== "string" || typeof state !== "string" || typeof position !== "string") return "정보 없음";
+    const unavailable = new Set(["NONE", "NOT_APPLICABLE", "DATA_UNAVAILABLE"]);
+    if (unavailable.has(action) || unavailable.has(state) || unavailable.has(position)) return "정보 없음";
+    if (action === "HOLD") return position === "OPEN" && state.startsWith("HOLD") ? "보유" : "정보 없음";
+    if (action === "ENTRY" || action === "ENTER_NEXT_OPEN") return position === "FLAT" && (state.startsWith("ENTRY") || state === "ENTER_NEXT_OPEN") ? "진입" : "정보 없음";
+    if (action === "EXIT" || action === "EXIT_NEXT_OPEN" || action === "EXIT_PENDING") return position === "OPEN" && state.startsWith("EXIT") ? "청산 대기" : "정보 없음";
+    if (action === "WATCH" || action === "WAIT") return position === "FLAT" ? "관찰" : "정보 없음";
+    return "정보 없음";
+  }
+
+  function renderStrategyActionList(container, rows) {
+    if (!container) return;
+    while (container.firstChild) container.removeChild(container.firstChild);
+    rows.forEach(({ name, action }) => {
+      const row = createElement("span", "report-strategy-action-row");
+      row.appendChild(createElement("span", "report-strategy-action-name", name));
+      row.appendChild(createElement("strong", "report-strategy-action-value", action));
+      container.appendChild(row);
+    });
+  }
+
+  function commonStrategyActions(report, bSelectItem) {
+    const aFast = report.strategy || {};
+    return [
+      {
+        name: "A FAST Core V2",
+        action: strategyActionLabel(aFast.action, aFast.state, aFast.position),
+      },
+      {
+        name: "B Select Core V1",
+        action: strategyActionLabel(
+          bSelectItem && bSelectItem.action,
+          bSelectItem && bSelectItem.strategy_state,
+          bSelectItem && bSelectItem.canonical_position,
+        ),
+      },
+    ];
+  }
+
+  function renderCommonStrategySummary(report, bSelectItem) {
+    const rows = commonStrategyActions(report, bSelectItem);
+    const decisionHeading = byId("decision-heading");
+    if (decisionHeading) {
+      decisionHeading.textContent = "전략별 현재 판단";
+      decisionHeading.classList.add("visually-hidden");
+    }
+    setHidden("decision-strategies", false);
+    renderStrategyActionList(byId("decision-strategies"), rows);
+    const strategyValue = byId("strategy-value");
+    if (strategyValue) strategyValue.classList.add("report-strategy-action-list");
+    renderStrategyActionList(strategyValue, rows);
+    setHidden("strategy-detail", true);
+  }
+
+  function renderStrategySummary(report, bSelectItem = null) {
+    const strategy = report.strategy || {};
+    if (report.identity && report.identity.asset_type === "COMMON") {
+      renderCommonStrategySummary(report, bSelectItem);
+      return;
+    }
+    const decisionHeading = byId("decision-heading");
+    if (decisionHeading) decisionHeading.classList.remove("visually-hidden");
+    setHidden("decision-strategies", true);
+    setText("decision-heading", strategy.strategy_name
+      ? `${strategy.strategy_name} · ${actionLabel(strategy.action)}`
+      : actionLabel(report.decision.action));
+    const strategyValue = byId("strategy-value");
+    if (strategyValue) strategyValue.classList.remove("report-strategy-action-list");
+    setText("strategy-value", strategy.strategy_name
+      ? `${strategy.strategy_name} · ${actionLabel(strategy.action)}`
+      : actionLabel(strategy.action));
+    setHidden("strategy-detail", false);
+    setText("strategy-detail", strategyDetail(strategy.state));
+  }
+
   function currentTicker() {
     return new URL(window.location.href).searchParams.get("ticker");
   }
@@ -467,13 +577,13 @@
   }
 
   function buildSummary(report) {
-    if (report.strategy && report.strategy.strategy_name) {
+    if (report.identity && report.identity.asset_type === "ETF" && report.strategy && report.strategy.strategy_name) {
       return report.strategy.interpretation || `${report.strategy.strategy_name}: ${report.strategy.action}`;
     }
-    const trend = `추세는 ${stageLabel(report.summary.trend_stage)} 상태입니다.`;
-    const market = `마켓 RS는 ${marketStrengthLabel(report.market_strength)}입니다.`;
-    const flow = `수급은 ${flowLabel(report.summary.flow_state)}입니다.`;
-    return `${trend} ${market} ${flow}`;
+    const trend = `Pattern A ${stageLabel(report.summary.trend_stage)}`;
+    const market = `마켓 RS ${marketStrengthLabel(report.market_strength)}`;
+    const flow = `수급 ${flowLabel(report.summary.flow_state)}`;
+    return `${trend} · ${market} · ${flow}`;
   }
 
   function renderStatusStepper(elementId, steps, currentState, hidden = false) {
@@ -1204,14 +1314,59 @@
     const rows = history.map((trade) => [
       trade.trade_sequence == null ? "—" : `${formatNumber(trade.trade_sequence)}회`,
       formatDate(trade.entry_execution_date || trade.entry_signal_date),
-      formatPrice(trade.entry_open),
+      formatPrice(trade.entry_open ?? trade.entry_price),
       formatDate(trade.exit_execution_date),
       formatPrice(trade.exit_price),
       { value: formatSignedPercentPoints(trade.return_pct), className: signedValueClass(trade.return_pct) },
       tradeStatusLabel(trade.trade_status),
-      exitTypeLabel(trade.exit_type),
+      exitTypeLabel(trade.exit_type || trade.exit_reason),
     ]);
     container.appendChild(createDetailTable(["회차", "진입일", "진입가", "청산일", "청산가", "수익률", "상태", "종료 사유"], rows, "strategy-history-table"));
+  }
+
+  function monitorTradeHistory(monitor, strategyId, ticker) {
+    const strategy = monitorStrategy(monitor, strategyId);
+    if (!strategy || !Array.isArray(strategy.trade_history)) return [];
+    return strategy.trade_history.filter((trade) => trade && trade.ticker === ticker);
+  }
+
+  function renderCommonStrategyDetail(report, container) {
+    const tabGroup = createElement("div", "report-strategy-tabs");
+    tabGroup.setAttribute("role", "group");
+    tabGroup.setAttribute("aria-label", "전략 거래 이력 선택");
+    const historyPanel = createElement("div", "report-strategy-history");
+    const tabs = [
+      ["PATTERN_A_FAST_FINAL_STRATEGY_V02", "A FAST Core V2"],
+      ["PATTERN_B_SELECT_CORE_V01", "B Select Core V1"],
+    ];
+    const renderSelectedHistory = () => {
+      while (historyPanel.firstChild) historyPanel.removeChild(historyPanel.firstChild);
+      const history = activeCommonStrategyId === "PATTERN_B_SELECT_CORE_V01"
+        ? monitorTradeHistory(strategyMonitorData, "PATTERN_B_SELECT_CORE_V01", report.identity.ticker)
+        : (Array.isArray(report.strategy && report.strategy.history) ? report.strategy.history : []);
+      appendStrategyHistory(history, historyPanel);
+      if (history.length) {
+        appendDetailNote(historyPanel, "과거 전략 이력은 과거 데이터에 전략 규칙을 적용한 결과이며 미래 수익을 의미하지 않습니다.", "strategy-disclaimer");
+      }
+    };
+    tabs.forEach(([strategyId, labelText]) => {
+      const selected = strategyId === activeCommonStrategyId;
+      const button = createElement("button", `strategy-filter${selected ? " is-active" : ""}`, labelText);
+      button.type = "button";
+      button.setAttribute("aria-pressed", String(selected));
+      button.addEventListener("click", () => {
+        activeCommonStrategyId = strategyId;
+        tabGroup.querySelectorAll("button").forEach((tab) => {
+          const isSelected = tab === button;
+          tab.classList.toggle("is-active", isSelected);
+          tab.setAttribute("aria-pressed", String(isSelected));
+        });
+        renderSelectedHistory();
+      });
+      tabGroup.appendChild(button);
+    });
+    container.append(tabGroup, historyPanel);
+    renderSelectedHistory();
   }
 
   function renderStrategyDetail(report, container) {
@@ -1222,14 +1377,7 @@
       appendStrategyHistory(history, container);
       return;
     }
-    if (strategy.strategy_name) {
-      appendDetailNote(container, `${strategy.strategy_name} · ${strategy.strategy_id || strategy.id || ""}`.trim());
-    }
-    if (strategy.action_reason) appendDetailNote(container, `판단 사유: ${strategy.action_reason}`);
-    if (strategy.interpretation) appendDetailNote(container, strategy.interpretation);
-    appendStrategyHistory(history, container);
-    if (!history.length) return;
-    appendDetailNote(container, "과거 전략 이력은 과거 데이터에 전략 규칙을 적용한 결과이며 미래 수익을 의미하지 않습니다.", "strategy-disclaimer");
+    renderCommonStrategyDetail(report, container);
   }
 
   function isMobileLayout() {
@@ -1370,10 +1518,16 @@
     const identityParts = [identity.ticker, market, assetLabel(identity.asset_type)];
     if (sector && sector !== "UNKNOWN" && sector !== "None") identityParts.push(sector);
     setText("report-identity", identityParts.join(" · "));
-    setText("decision-heading", report.strategy.strategy_name
-      ? `${report.strategy.strategy_name} · ${report.strategy.action}`
-      : actionLabel(report.decision.action));
+    activeCommonStrategyId = "PATTERN_A_FAST_FINAL_STRATEGY_V02";
+    renderStrategySummary(report);
     setText("decision-summary", buildSummary(report));
+    if (identity.asset_type === "COMMON") {
+      loadStrategyMonitorOnce().then((monitor) => {
+        if (currentReport !== report) return;
+        renderStrategySummary(report, monitorStrategyItem(monitor, "PATTERN_B_SELECT_CORE_V01", identity.ticker));
+        if (activeDetailKey === "strategy") renderDetail("strategy", report);
+      });
+    }
     setText("price-value", formatPrice(report.price_trend.latest_close));
     setText("price-detail", report.price_trend.latest_close == null
       ? "가격 정보 없음"
@@ -1405,10 +1559,6 @@
     setText("fundamentals-detail", fundamentalDetail(report));
     fundamentalTrendMode = "quarterly";
     renderFundamentalsDetail(report);
-    setText("strategy-value", report.strategy.strategy_name
-      ? `${report.strategy.strategy_name} · ${report.strategy.action}`
-      : actionLabel(report.strategy.action));
-    setText("strategy-detail", strategyDetail(report.strategy.state));
     renderTechnicalDetails(report);
     const naver = byId("naver-link");
     const naverChart = byId("naver-chart-link");

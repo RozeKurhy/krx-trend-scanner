@@ -134,7 +134,7 @@ def test_etf_page_has_required_tabs_controls_and_report_links_without_search_ui(
     js = (ROOT / "web/js/etf.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     assert '<title>ETF 랭킹 · KRX Trend Scanner</title>' in html
-    assert 'href="./css/app.css?v=web-ranking-report-link-v1"' in html
+    assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in html
     assert 'src="./js/etf.js?v=web-etf-report-link-v1"' in html
     assert '<a class="ranking-tab is-active" href="./etf.html" aria-current="page">ETF</a>' in html
     expected_tabs = ("마켓 RS", "섹터 RS", "섹터 랭킹", "외인 순매수", "매출액 성장률", "영업이익 성장률", "순이익 성장률")
@@ -180,7 +180,7 @@ def test_all_ranking_pages_expose_etf_first_and_primary_ranking_link():
     for name in ("etf", "market", "sector", "foreign"):
         html = (ROOT / f"web/{name}.html").read_text(encoding="utf-8")
         assert 'href="./etf.html"' in html
-        assert 'href="./css/app.css?v=web-ranking-report-link-v1"' in html
+        assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in html
         tabs = html.split('<nav class="ranking-tabs"', 1)
         if len(tabs) == 2:
             assert tabs[1].index('href="./etf.html"') < tabs[1].index('마켓 RS') if name != "etf" else 'aria-current="page">ETF</a>' in tabs[1]

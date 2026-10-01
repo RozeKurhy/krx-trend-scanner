@@ -278,8 +278,8 @@
     let detailFields = [];
     if (strategyId === "PATTERN_B_SELECT_CORE_V01") {
       detailFields = [
-        createField("Pattern A", stageLabel(item.pattern_a_stage)),
-        createField("Pattern B", `${stageLabel(item.previous_pattern_a_stage)} → ${patternBLabel(item.pattern_b_state)}`),
+        createField("Pattern A", `${stageLabel(item.previous_pattern_a_stage)} → ${stageLabel(item.pattern_a_stage)}`),
+        createField("Pattern B", patternBLabel(item.pattern_b_state)),
       ];
     } else if (strategyId === "JULIA_ETF_STRATEGY_V01") {
       detailFields = [];

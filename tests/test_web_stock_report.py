@@ -326,17 +326,17 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ranking-report-link-v1"' in html
-    assert 'href="./css/app.css?v=web-ranking-report-link-v1"' in index_html
+    assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in html
+    assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-julia-report-polish-v1"' in html
+    assert 'src="./js/report.js?v=web-stock-dual-strategy-v1"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
-    assert html.count("web-ranking-report-link-v1") == 1
-    assert html.count("web-julia-report-polish-v1") == 1
-    assert index_html.count("web-ranking-report-link-v1") == 1
+    assert html.count("web-dual-strategy-report-v1") == 1
+    assert html.count("web-stock-dual-strategy-v1") == 1
+    assert index_html.count("web-dual-strategy-report-v1") == 1
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
     assert "web-02a-final-2" not in html
@@ -524,11 +524,12 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert "가격 authority" not in js
     assert "report-detail-subtitle" not in html
     assert "선택 상세" not in html
-    assert "canonical" not in js
+    assert "bSelectItem && bSelectItem.canonical_position" in js
+    assert 'createField("canonical_position"' not in js
     assert "과거 전략 이력은 과거 데이터에 전략 규칙을 적용한 결과이며 미래 수익을 의미하지 않습니다." in js
     assert "과거 Julia V1 거래 이력은" not in js
     strategy_detail = js[js.index("function renderStrategyDetail"):js.index("function isMobileLayout")]
-    etf_detail = strategy_detail[strategy_detail.index("if (isEtf)"):strategy_detail.index("if (strategy.strategy_name)")]
+    etf_detail = strategy_detail[strategy_detail.index("if (isEtf)"):strategy_detail.index("renderCommonStrategyDetail(report, container);")]
     assert 'report.identity.asset_type === "ETF"' in strategy_detail
     assert 'appendStrategyHistory(history, container)' in etf_detail
     history_renderer = js[js.index("function appendStrategyHistory"):js.index("function renderStrategyDetail")]
@@ -540,6 +541,65 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert "signedValueClass" in js
     assert "--market-down-blue" in css
     assert "history[-12:]" not in (ROOT / "scripts/export_stock_report_web.py").read_text(encoding="utf-8")
+
+
+def test_common_report_dual_strategy_ui_reuses_monitor_and_fails_closed():
+    html = (ROOT / "web/report.html").read_text(encoding="utf-8")
+    js = (ROOT / "web/js/report.js").read_text(encoding="utf-8")
+    css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
+    monitor = json.loads((ROOT / "web/data/strategy-monitor.json").read_text(encoding="utf-8"))
+    b_select = next(
+        strategy for strategy in monitor["strategies"]
+        if strategy["id"] == "PATTERN_B_SELECT_CORE_V01"
+    )
+
+    assert 'id="decision-strategies"' in html
+    assert 'const STRATEGY_MONITOR_URL = "./data/strategy-monitor.json";' in js
+    assert "let strategyMonitorPromise = null;" in js
+    assert "strategyMonitorPromise = fetch(STRATEGY_MONITOR_URL" in js
+    assert 'value.schema_version !== 2' in js
+    assert 'value.source?.type !== "PUBLISHED_STOCK_REPORTS"' in js
+    assert 'item.asset_type === "COMMON" && item.ticker === ticker' in js
+    assert 'name: "A FAST Core V2"' in js
+    assert 'name: "B Select Core V1"' in js
+    assert 'action: strategyActionLabel(' in js
+    assert 'typeof action !== "string" || typeof state !== "string" || typeof position !== "string"' in js
+    for label in ('"진입"', '"보유"', '"청산 대기"', '"관찰"', '"정보 없음"'):
+        assert label in js
+    assert 'setHidden("decision-strategies", false);' in js
+    assert 'return "정보 없음";' in js
+
+    assert 'function monitorTradeHistory(monitor, strategyId, ticker)' in js
+    assert 'trade && trade.ticker === ticker' in js
+    assert '"PATTERN_A_FAST_FINAL_STRATEGY_V02", "A FAST Core V2"' in js
+    assert '"PATTERN_B_SELECT_CORE_V01", "B Select Core V1"' in js
+    assert '(Array.isArray(report.strategy && report.strategy.history) ? report.strategy.history : [])' in js
+    assert 'monitorTradeHistory(strategyMonitorData, "PATTERN_B_SELECT_CORE_V01", report.identity.ticker)' in js
+    assert 'createDetailTable(["회차", "진입일", "진입가", "청산일", "청산가", "수익률", "상태", "종료 사유"]' in js
+    assert 'trade.entry_open ?? trade.entry_price' in js
+    assert 'trade.exit_type || trade.exit_reason' in js
+    assert 'OPEN_AT_REFERENCE: "보유 중"' in js
+    assert b_select["scope"]["report_count"] == 1451
+    assert len(b_select["trade_history"]) == 312
+
+    summary = js[js.index("function buildSummary(report)"):js.index("function renderStatusStepper")]
+    assert 'report.identity.asset_type === "ETF"' in summary
+    assert 'report.strategy.interpretation' in summary
+    assert 'Pattern A ${stageLabel(report.summary.trend_stage)}' in summary
+    assert '마켓 RS ${marketStrengthLabel(report.market_strength)}' in summary
+    assert '수급 ${flowLabel(report.summary.flow_state)}' in summary
+    detail = js[js.index("function renderStrategyDetail"):js.index("function isMobileLayout")]
+    assert 'const isEtf = report.identity && report.identity.asset_type === "ETF";' in detail
+    assert 'if (isEtf)' in detail
+    assert 'appendStrategyHistory(history, container);\n      return;' in detail
+    assert 'renderCommonStrategyDetail(report, container);' in detail
+
+    for selector in (
+        ".report-strategy-action-list", ".report-strategy-action-row",
+        ".report-card-value.report-strategy-action-list", ".report-strategy-tabs",
+        ".report-strategy-history",
+    ):
+        assert selector in css
 
 
 def test_report_cards_share_three_column_desktop_rows():

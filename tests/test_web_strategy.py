@@ -137,8 +137,8 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ranking-report-link-v1"' in index_html
-    assert 'href="./css/app.css?v=web-ranking-report-link-v1"' in report_html
+    assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in index_html
+    assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in report_html
     for html in (index_html, report_html):
         assert "web-02a-final-2" not in html
         assert "web-03a-final-1" not in html
@@ -152,7 +152,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert (ROOT / "web" / strategy_scripts[0].path.removeprefix("./")).is_file()
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert 'EXIT: "다음 시가 청산 대기"' in strategy_js
-    assert 'src="./js/report.js?v=web-julia-report-polish-v1"' in report_html
+    assert 'src="./js/report.js?v=web-stock-dual-strategy-v1"' in report_html
     assert 'href="./strategy.html"' in index_html
     assert 'href="./strategy.html"' in report_html
     assert 'class="nav-item is-active" href="./strategy.html"' in strategy_html
@@ -212,8 +212,15 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert 'createField("이전 Stage"' not in strategy_js
     assert 'item.asset_type !== "COMMON"' in strategy_js
     assert 'meta.join(" · ")' in strategy_js
-    assert 'createField("Pattern A", stageLabel(item.pattern_a_stage))' in strategy_js
-    assert 'createField("Pattern B", `${stageLabel(item.previous_pattern_a_stage)} → ${patternBLabel(item.pattern_b_state)}`)' in strategy_js
+    assert 'createField("Pattern A", `${stageLabel(item.previous_pattern_a_stage)} → ${stageLabel(item.pattern_a_stage)}`)' in strategy_js
+    assert 'createField("Pattern B", patternBLabel(item.pattern_b_state))' in strategy_js
+    assert 'function stageLabel(value) { return STAGE_LABELS[value] || "확인 필요"; }' in strategy_js
+    assert 'function patternBLabel(value) { return PATTERN_B_LABELS[value] || (value ? "확인 필요" : "확인 필요"); }' in strategy_js
+    b_select_fields = strategy_js[strategy_js.index('if (strategyId === "PATTERN_B_SELECT_CORE_V01")'):strategy_js.index('} else if (strategyId === "JULIA_ETF_STRATEGY_V01")')]
+    assert "previous_pattern_a_stage" in b_select_fields
+    assert "pattern_a_stage" in b_select_fields
+    assert "pattern_b_state" in b_select_fields
+    assert "progressed_segment_start_date" not in b_select_fields
     assert 'detailFields = [];' in strategy_js
     assert 'item.data_status === "NOT_APPLICABLE"' in strategy_js
     assert 'item.data_status === "CHECK_REQUIRED"' in strategy_js

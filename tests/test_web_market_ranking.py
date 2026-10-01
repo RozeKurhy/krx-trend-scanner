@@ -122,7 +122,7 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
     assert '<a class="nav-item is-active" href="./etf.html" aria-current="page">랭킹</a>' in html
-    assert 'href="./css/app.css?v=web-ranking-report-link-v1"' in html
+    assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in html
     assert 'src="./js/market.js?v=web-market-ranking-cta-v2"' in html
     assert '<nav class="ranking-tabs" aria-label="랭킹 종류">' in html
     assert '<a class="ranking-tab" href="./etf.html">ETF</a>' in html
@@ -187,10 +187,10 @@ def test_market_page_has_accessible_controls_and_release_contract():
 
 def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     page_versions = {
-        ROOT / "web/index.html": ("web-ranking-report-link-v1", "app", "web-fear-fix02-4"),
-        ROOT / "web/report.html": ("web-ranking-report-link-v1", "report", "web-julia-report-polish-v1"),
-        ROOT / "web/strategy.html": ("web-ranking-report-link-v1", "strategy", "strategy-history-filter-polish-v1"),
-        ROOT / "web/market.html": ("web-ranking-report-link-v1", "market", "web-market-ranking-cta-v2"),
+        ROOT / "web/index.html": ("web-dual-strategy-report-v1", "app", "web-fear-fix02-4"),
+        ROOT / "web/report.html": ("web-dual-strategy-report-v1", "report", "web-stock-dual-strategy-v1"),
+        ROOT / "web/strategy.html": ("web-dual-strategy-report-v1", "strategy", "web-pattern-columns-v1"),
+        ROOT / "web/market.html": ("web-dual-strategy-report-v1", "market", "web-market-ranking-cta-v2"),
     }
     pages = list(page_versions)
     for path, (css_version, script_name, js_version) in page_versions.items():
