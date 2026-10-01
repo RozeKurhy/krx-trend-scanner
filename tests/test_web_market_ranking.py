@@ -128,7 +128,8 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert '<a class="ranking-tab" href="./etf.html">ETF</a>' in html
     assert '<a class="ranking-tab is-active" href="./market.html" aria-current="page">마켓 RS</a>' in html
     assert '<a class="ranking-tab" href="./sector.html">섹터 RS</a>' in html
-    for label in ("섹터 랭킹", "매출액 성장률", "영업이익 성장률", "순이익 성장률"):
+    assert '<a class="ranking-tab" href="./sector-ranking.html">섹터 랭킹</a>' in html
+    for label in ("매출액 성장률", "영업이익 성장률", "순이익 성장률"):
         assert f'<span class="ranking-tab" aria-disabled="true">{label} <small>준비 중</small></span>' in html
     assert 'data-horizon="2w" aria-pressed="true"' in html
     assert 'data-horizon="1m" aria-pressed="false"' in html

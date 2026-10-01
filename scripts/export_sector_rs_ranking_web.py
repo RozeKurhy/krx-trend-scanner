@@ -23,6 +23,7 @@ PERCENTILE_COLUMNS = tuple(f"within_sector_rs_percentile_{horizon}" for horizon 
 ELIGIBLE_COUNT_COLUMNS = tuple(f"sector_eligible_count_{horizon}" for horizon in HORIZONS)
 SECTOR_ANCHOR_COLUMNS = tuple(f"sector_anchor_date_{horizon}" for horizon in HORIZONS)
 SECTOR_STOCK_RETURN_COLUMNS = tuple(f"sector_stock_return_{horizon}" for horizon in HORIZONS)
+SECTOR_RETURN_COLUMNS = tuple(f"sector_return_{horizon}" for horizon in HORIZONS)
 DISPLAY_COLUMNS = ("latest_close", "latest_close_as_of", *SECTOR_ANCHOR_COLUMNS, *SECTOR_STOCK_RETURN_COLUMNS)
 MEMBERSHIP_STATUSES = ("MAPPED", "AGGREGATE_ONLY", "UNMAPPED")
 EXPECTED_MARKETS = ("KOSPI", "KOSDAQ")
@@ -289,6 +290,20 @@ def _sector_key(market: str | None, sector_code: str | None) -> str | None:
     return f"{market}:{sector_code}"
 
 
+def _canonical_sector_return(group: pd.DataFrame, horizon: str) -> float | None:
+    column = f"sector_return_{horizon}"
+    raw = group[column]
+    values = pd.to_numeric(raw, errors="coerce")
+    if (raw.notna() & values.isna()).any():
+        raise ValueError(f"sector benchmark return is invalid: {horizon}")
+    if values.notna().any() and not bool(values.dropna().map(math.isfinite).all()):
+        raise ValueError(f"sector benchmark return is non-finite: {horizon}")
+    unique = values.dropna().astype(float).unique()
+    if len(unique) > 1:
+        raise ValueError(f"sector benchmark return is not canonical: {horizon}")
+    return None if len(unique) == 0 else float(unique[0])
+
+
 def _build_sectors(ranking: pd.DataFrame) -> list[dict[str, Any]]:
     rankable = ranking[ranking["membership_status"].isin(("MAPPED", "AGGREGATE_ONLY"))].copy()
     sectors: list[dict[str, Any]] = []
@@ -307,6 +322,7 @@ def _build_sectors(ranking: pd.DataFrame) -> list[dict[str, Any]]:
             "member_count": member_count,
         }
         for horizon in HORIZONS:
+            item[f"sector_return_{horizon}"] = _canonical_sector_return(group, horizon)
             rank_column = f"within_sector_rs_rank_{horizon}"
             eligible_count = int(pd.to_numeric(group[rank_column], errors="coerce").notna().sum())
             authority_counts = pd.to_numeric(group[f"sector_eligible_count_{horizon}"], errors="coerce")
@@ -352,6 +368,7 @@ def _project_items(
         }
         for horizon in HORIZONS:
             item[f"sector_rs_{horizon}"] = _json_value(row.get(f"sector_rs_{horizon}"))
+            item[f"sector_return_{horizon}"] = _json_value(row.get(f"sector_return_{horizon}"))
             item[f"sector_anchor_date_{horizon}"] = _normalise_date(row.get(f"sector_anchor_date_{horizon}"))
             item[f"sector_stock_return_{horizon}"] = _json_value(row.get(f"sector_stock_return_{horizon}"))
         for column in RANK_COLUMNS + PERCENTILE_COLUMNS + ("sector_member_count",) + ELIGIBLE_COUNT_COLUMNS:
@@ -385,6 +402,7 @@ def _validate_payload(
     authority_by_ticker = ranking.set_index("ticker").to_dict(orient="index")
     parity_fields = (
         *(f"sector_rs_{horizon}" for horizon in HORIZONS),
+        *SECTOR_RETURN_COLUMNS,
         *RANK_COLUMNS,
         *PERCENTILE_COLUMNS,
         "sector_member_count",
@@ -408,7 +426,10 @@ def _validate_payload(
         if item["report_available"] != (ticker in report_tickers):
             raise ValueError(f"payload report availability mismatch: {ticker}")
         if item["membership_status"] == "UNMAPPED":
-            if any(item[column] is not None for column in ("sector_key", "sector_code", "sector_name", *RANK_COLUMNS, *PERCENTILE_COLUMNS)):
+            if any(item[column] is not None for column in (
+                "sector_key", "sector_code", "sector_name", *SECTOR_RETURN_COLUMNS,
+                *RANK_COLUMNS, *PERCENTILE_COLUMNS,
+            )):
                 raise ValueError(f"UNMAPPED payload row is not null: {ticker}")
         elif item["sector_key"] != _sector_key(item["market"], item["sector_code"]):
             raise ValueError(f"payload sector key mismatch: {ticker}")
@@ -424,6 +445,20 @@ def _validate_payload(
             item_field = "sector_member_count" if field == "member_count" else f"sector_{field}"
             if item[item_field] != sector[field]:
                 raise ValueError(f"payload sector metadata mismatch: {item['ticker']}:{field}")
+
+    sector_return_resolved = {horizon: 0 for horizon in HORIZONS}
+    for sector in sectors:
+        group = ranking.loc[
+            ranking["market"].eq(sector["market"])
+            & ranking["sector_code"].astype(str).eq(sector["sector_code"])
+        ]
+        for horizon in HORIZONS:
+            expected_return = _canonical_sector_return(group, horizon)
+            actual_return = sector[f"sector_return_{horizon}"]
+            if actual_return != expected_return:
+                raise ValueError(f"payload sector return mismatch: {sector['sector_key']}:{horizon}")
+            if expected_return is not None:
+                sector_return_resolved[horizon] += 1
 
     report_available_count = sum(bool(item["report_available"]) for item in items)
     report_set_mismatches = len({item["ticker"] for item in items if item["report_available"]} ^ (set(ranking["ticker"]) & report_tickers))
@@ -479,6 +514,10 @@ def _validate_payload(
         **{
             f"sector_stock_return_{horizon}_resolved": count
             for horizon, count in sector_stock_return_resolved.items()
+        },
+        **{
+            f"rankable_sector_count_{horizon}": count
+            for horizon, count in sector_return_resolved.items()
         },
     }
 

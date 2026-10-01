@@ -33,7 +33,7 @@ def test_sector_page_activates_only_sector_rs_and_exposes_accessible_controls():
     assert 'id="page-title"' not in html
     assert '<a class="ranking-tab" href="./market.html">마켓 RS</a>' in html
     assert '<a class="ranking-tab is-active" href="./sector.html" aria-current="page">섹터 RS</a>' in html
-    assert '<span class="ranking-tab" aria-disabled="true">섹터 랭킹 <small>준비 중</small></span>' in html
+    assert '<a class="ranking-tab" href="./sector-ranking.html">섹터 랭킹</a>' in html
     assert 'id="sector-select"' in html
     assert 'for="sector-select"' in html
     assert 'id="sector-search"' in html

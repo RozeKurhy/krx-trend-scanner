@@ -12,15 +12,15 @@ def _read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def test_foreign_tab_is_after_disabled_sector_ranking_on_all_ranking_pages():
+def test_foreign_tab_is_after_sector_ranking_on_all_ranking_pages():
     for path in (ROOT / "web/market.html", ROOT / "web/sector.html", ROOT / "web/foreign.html"):
         html = _read(path)
-        disabled = '<span class="ranking-tab" aria-disabled="true">섹터 랭킹 <small>준비 중</small></span>'
+        sector_ranking = '<a class="ranking-tab" href="./sector-ranking.html">섹터 랭킹</a>'
         foreign = '<a class="ranking-tab" href="./foreign.html">외인 순매수</a>'
         active_foreign = '<a class="ranking-tab is-active" href="./foreign.html" aria-current="page">외인 순매수</a>'
-        assert disabled in html
+        assert sector_ranking in html
         assert foreign in html or active_foreign in html
-        assert html.index(disabled) < html.index(foreign if foreign in html else active_foreign)
+        assert html.index(sector_ranking) < html.index(foreign if foreign in html else active_foreign)
 
 
 def test_foreign_page_exposes_default_5d_filters_search_and_report_contract():

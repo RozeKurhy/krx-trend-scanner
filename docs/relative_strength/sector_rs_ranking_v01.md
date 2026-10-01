@@ -69,6 +69,14 @@ benchmark_return_H = 업종 지수 기준일 종가 / 업종 지수 기준점 �
 sector_rs_H        = (1 + stock_return_H) / (1 + benchmark_return_H) - 1
 ```
 
+기존 계산 결과의 `sector_return_H`는 위 `benchmark_return_H`, 즉 해당 종목이
+속한 업종 지수의 기간 수익률이다. 빌더는 이를 `sector_return_2w/1m/3m/6m/12m`로
+각 행에 보존한다. 같은 `(market, sector_code)` 그룹과 기간에서는 유효한 값이
+하나의 값으로 일치해야 한다. 서로 다른 유한값이 있으면 빌드를 중단한다.
+유효값이 하나 이상이면 그 값을 섹터 수익률로 쓰고, 모두 비어 있으면 `null`로
+전달한다. `UNMAPPED` 행은 다섯 값을 모두 비운다. 이 benchmark return은 기존
+섹터 RS 계산 결과이며 업종 내 종목 순위 계산에 사용하지 않는다.
+
 업종 RS 상태(`sector_rs_data_status`)는 다음과 같다.
 
 - 정상 산출 (`READY`): 3M·6M·12M이 모두 산출됨
@@ -165,7 +173,12 @@ latest_close
 latest_close_as_of
 sector_anchor_date_2w/1m/3m/6m/12m
 sector_stock_return_2w/1m/3m/6m/12m
+sector_return_2w/1m/3m/6m/12m
 ```
+
+`sector_return_*`는 기존 RS 계산이 만든 업종 benchmark 수익률을 그대로 보존한다.
+`sector_rs_*`, 업종 내 순위·백분위, 구성원 수, 참여 종목 수와는 다른 값이며
+기존 종목 순위를 바꾸지 않는다.
 
 - `latest_close`는 기준일 당일의 양수 종가만 쓴다. 가까운 날짜나 미래 날짜로
   대체하지 않는다.

@@ -272,6 +272,7 @@ def test_3f_consumer_records_selected_prior_membership_snapshot(tmp_path: Path, 
             }
             for horizon in HORIZONS:
                 row[f"sector_rs_{horizon}"] = float(offset + 1)
+                row[f"sector_return_{horizon}"] = 0.025
                 row[f"sector_anchor_date_{horizon}"] = None
                 row[f"sector_stock_return_{horizon}"] = None
             rows.append(row)
@@ -319,4 +320,7 @@ def test_3f_consumer_records_selected_prior_membership_snapshot(tmp_path: Path, 
     assert new_common["membership_status"] == "UNMAPPED"
     assert new_common["sector_rs_data_status"] == "DATA_UNAVAILABLE"
     assert new_common["sector_rs_input_reason"] == "SECTOR_MEMBERSHIP_UNMAPPED"
+    assert all(pd.isna(new_common[f"sector_return_{horizon}"]) for horizon in HORIZONS)
     assert pd.isna(new_common["within_sector_rs_rank_2w"])
+    mapped = output.loc[output["membership_status"].ne("UNMAPPED")]
+    assert all(mapped[f"sector_return_{horizon}"].eq(0.025).all() for horizon in HORIZONS)

@@ -45,7 +45,10 @@
   순위 산출물 값을 그대로 쓴다.
 - `sectors`는 `market:sector_code`를 키로 하는 업종 그룹 목록이다. 그룹 수는
   순위 메타데이터의 `sector_group_count`와 같아야 하고, 그룹마다 업종명은 하나여야
-  한다.
+  한다. 각 그룹의 `sector_return_2w/1m/3m/6m/12m`는 해당 그룹에 속한 순위
+  산출물 행에서 기존 업종 benchmark 수익률을 모아 만든 canonical projection이다.
+  유한값이 서로 다르면 중단하고, 유효값이 있으면 그 값을, 모두 비어 있으면
+  `null`을 기록한다.
 - 업종 미배정(`UNMAPPED`) 행의 `sector_key`, `sector_code`, `sector_name`, 순위·
   백분위 값은 `null`이다. 나머지 행의 `sector_key`는 `market:sector_code`다.
 - 모든 종목은 KRX Basic Info에서 종목명을 찾을 수 있어야 하고, 시장도 순위
@@ -55,6 +58,10 @@
   않는다.
 - 지원 기간은 `2w`, `1m`, `3m`, `6m`, `12m`이다. 다섯 기간의 업종 RS, 업종 내
   순위와 백분위, 업종 구성원 수와 참여 종목 수를 순위 산출물에서 그대로 전달한다.
+- `sector_return_*`는 `compute_relative_strength_features()`가 기존에 계산한 업종
+  benchmark 기간 수익률이다. `items[]`에는 행별 원본 값을 전달하고, `sectors[]`에는
+  동일한 `(market, sector_code)`의 일관성을 확인한 섹터 단위 값을 전달한다.
+  exporter나 브라우저에서 업종 지수 수익률을 다시 계산하지 않는다.
 - `sector_anchor_date_*`, `sector_stock_return_*`, `latest_close` 같은 화면 표시
   값도 순위 산출물에서 전달하며, 반올림하거나 의미를 바꾸지 않는다.
 - `items`는 `market`, `sector_code`, `ticker` 순으로, `sectors`는 `market`,
@@ -70,10 +77,10 @@
 | `as_of` | 순위 산출물의 기준일 |
 | `requested_as_of`, `reference_market_date` | 4단계 운영에서 호출할 때만 기록 |
 | `scope` | 모집단 유형과 행 수, 섹터 구성 상태별 건수, 업종 그룹 수. `scope.type`은 코드에 `EXACT_SECTOR_MEMBERSHIP_POPULATION`으로 고정되어 있어, 순위 산출물 메타데이터의 범위 유형(`TARGET_PIT_COMMON_POPULATION`)과 다를 수 있다 |
-| `metric_scope` | 업종 내 비교(`WITHIN_SECTOR`)와 그룹 키 |
+| `metric_scope` | 업종 내 종목 비교(`WITHIN_SECTOR`)와 그룹 키 |
 | `horizons`, `eligible_counts` | 지원 기간과 기간별 참여 종목 수 |
 | `source` | 순위 스키마 버전, 순위 기준일, 종목명 원천 날짜 |
-| `sectors`, `items` | 업종 그룹 목록과 종목 행 |
+| `sectors`, `items` | 업종 그룹 목록과 종목 행. `sectors[]`는 섹터 자체 기간 수익률을 제공하고, `items[]`는 업종 RS와 업종 내 종목 순위를 제공한다 |
 
 ## 생성 스크립트
 
@@ -84,6 +91,12 @@ scripts/export_sector_rs_ranking_web.py
 생성 스크립트는 실행 중 네트워크 연결을 차단하므로 로컬 입력만 사용한다.
 순위 산출물을 다시 계산하지 않고, `sector-rs-ranking.json`을 만드는 웹 표시용
 변환만 수행한다.
+
+같은 JSON은 서로 다른 두 화면에서 읽는다. `sector.html`은 `items[]`의
+`within_sector_rs_*`로 업종 내 종목을 정렬하고, `sector-ranking.html`은 `sectors[]`의
+`sector_return_*`로 업종 간 표시 순서를 정한다. 후자는 웹 표시용 cross-sector
+ordering일 뿐 새 전략이나 새 분석 권위가 아니며, 상승 종목 수는 설명용 집계로만
+사용한다.
 
 ## 전체 웹 구조 문서와의 관계
 

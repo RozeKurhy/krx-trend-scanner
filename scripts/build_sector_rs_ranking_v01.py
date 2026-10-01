@@ -134,6 +134,7 @@ def _empty_result_row(ticker: str, market: str, membership: pd.Series, as_of: st
     }
     for horizon in HORIZONS:
         row[f"sector_rs_{horizon}"] = None
+        row[f"sector_return_{horizon}"] = None
         row[f"sector_anchor_date_{horizon}"] = None
         row[f"sector_stock_return_{horizon}"] = None
     return row
@@ -229,6 +230,11 @@ def _compute_rows(
             "sector_rs_6m": result.sector_rs_6m,
             "sector_rs_12m": result.sector_rs_12m,
         }
+        for horizon in DISPLAY_HORIZONS:
+            value = getattr(result, f"sector_return_{horizon}")
+            row[f"sector_return_{horizon}"] = (
+                float(value) if value is not None and math.isfinite(float(value)) else None
+            )
         row.update(_display_fields(stock, as_of, result))
         rows.append(row)
     return pd.DataFrame(rows)
@@ -303,6 +309,29 @@ def _validate_output(frame: pd.DataFrame, target_common: pd.DataFrame, as_of: st
             raise ValueError(f"sector anchor is after as_of: {horizon}")
         sector_return_resolved[horizon] = int(returns.notna().sum())
 
+    benchmark_return_resolved: dict[str, int] = {}
+    mapped_groups = frame.loc[frame["sector_code"].notna()]
+    unmapped_mask = frame["membership_status"].astype(str).str.upper().eq("UNMAPPED")
+    for horizon in DISPLAY_HORIZONS:
+        column = f"sector_return_{horizon}"
+        raw = frame[column]
+        if raw.loc[unmapped_mask].notna().any():
+            raise ValueError(f"unmapped row has sector benchmark return: {horizon}")
+        returns = pd.to_numeric(raw, errors="coerce")
+        if (raw.notna() & returns.isna()).any():
+            raise ValueError(f"sector benchmark return has invalid {horizon} values")
+        if returns.notna().any() and not np.isfinite(returns.dropna()).all():
+            raise ValueError(f"sector benchmark return has non-finite {horizon} values")
+        for (market, sector_code), group in mapped_groups.groupby(
+            ["market", "sector_code"], sort=False, dropna=False
+        ):
+            values = pd.to_numeric(group[column], errors="coerce").dropna().astype(float).unique()
+            if len(values) > 1:
+                raise ValueError(
+                    f"sector benchmark return is not canonical: {market}:{sector_code}:{horizon}"
+                )
+        benchmark_return_resolved[horizon] = int(returns.notna().sum())
+
     group_mask = frame["sector_code"].notna()
     sector_group_count = int(frame.loc[group_mask, ["market", "sector_code"]].drop_duplicates().shape[0])
     return {
@@ -325,6 +354,10 @@ def _validate_output(frame: pd.DataFrame, target_common: pd.DataFrame, as_of: st
         **{
             f"sector_stock_return_{horizon}_resolved": count
             for horizon, count in sector_return_resolved.items()
+        },
+        **{
+            f"sector_return_{horizon}_resolved": count
+            for horizon, count in benchmark_return_resolved.items()
         },
     }
 

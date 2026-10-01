@@ -48,7 +48,7 @@
 | 공포 지수 | 공포 지수의 승인된 일별 상태 CSV와 요약·산식 산출물 | [`export_fear_index_web.py`](../../scripts/export_fear_index_web.py) | [`fear-index.json`](../../web/data/fear-index.json) | [`app.js`](../../web/js/app.js), [`fear.js`](../../web/js/fear.js) | [`index.html`](../../web/index.html), [`fear.html`](../../web/fear.html) |
 | ETF 랭킹 | 공식 ETF 36개 메타데이터와 Repository V2 | [`export_etf_ranking_web.py`](../../scripts/export_etf_ranking_web.py) | [`etf-ranking.json`](../../web/data/etf-ranking.json) | [`etf.js`](../../web/js/etf.js) | [`etf.html`](../../web/etf.html) |
 | 마켓 RS | 공개 종목 리포트의 `stock-index.json`과 종목별 웹 리포트 | [`export_market_ranking_web.py`](../../scripts/export_market_ranking_web.py) | [`market-ranking.json`](../../web/data/market-ranking.json) | [`market.js`](../../web/js/market.js) | [`market.html`](../../web/market.html) |
-| 섹터 RS | Sector RS 권위 Parquet·메타데이터, 기준일별 KRX Basic Info, 종목 리포트 파일 집합 | [`export_sector_rs_ranking_web.py`](../../scripts/export_sector_rs_ranking_web.py) | [`sector-rs-ranking.json`](../../web/data/sector-rs-ranking.json) | [`sector.js`](../../web/js/sector.js) | [`sector.html`](../../web/sector.html) |
+| 섹터 RS·섹터 랭킹 | Sector RS 권위 Parquet·메타데이터, 기준일별 KRX Basic Info, 종목 리포트 파일 집합 | [`export_sector_rs_ranking_web.py`](../../scripts/export_sector_rs_ranking_web.py) | [`sector-rs-ranking.json`](../../web/data/sector-rs-ranking.json) | [`sector.js`](../../web/js/sector.js), [`sector-ranking.js`](../../web/js/sector-ranking.js) | [`sector.html`](../../web/sector.html), [`sector-ranking.html`](../../web/sector-ranking.html) |
 | 외인 순매수 | 외인 수급 일별 원천과 보통주 권위 집합·섹터 구성. 1·5·10·20·60일 누적 순매수와 같은 기간 주가수익률을 계산하며, `stock-index.json`은 `report_available` 확인에만 사용 | [`export_foreign_net_buy_ranking_web.py`](../../scripts/export_foreign_net_buy_ranking_web.py) | [`foreign-net-buy-ranking.json`](../../web/data/foreign-net-buy-ranking.json) | [`foreign.js`](../../web/js/foreign.js) | [`foreign.html`](../../web/foreign.html) |
 | 종목 리포트 | 같은 exact-date COMMON v0.7 + Official ETF36 v0.6 JSON, PIT 종목 메타데이터, 기준일 종가 | [`export_stock_report_web.py`](../../scripts/export_stock_report_web.py) | `stock-index.json`, `stocks/*.json` | [`report.js`](../../web/js/report.js) | [`report.html`](../../web/report.html) |
 | 전략 운용 | 공개 COMMON·ETF36 종목 리포트와 B Select exact-date current status | [`build_b_select_core_v1_status.py`](../../scripts/build_b_select_core_v1_status.py), [`export_strategy_monitor_web.py`](../../scripts/export_strategy_monitor_web.py) | [`strategy-monitor.json`](../../web/data/strategy-monitor.json) v2 | [`strategy.js`](../../web/js/strategy.js) | [`strategy.html`](../../web/strategy.html) |
@@ -65,7 +65,12 @@
   웹 제공용으로 계산한다. 이때 `stock-index.json`은 종목 집합 권위가 아니라
   `report_available` 표시 여부 확인에만 사용한다.
 - 섹터 RS는 Sector RS 권위 값을 그대로 투영하고, 종목 리포트 파일 집합은
-  `report_available` 표시 여부에 사용한다.
+  `report_available` 표시 여부에 사용한다. `sector.html`은 `items[]`의 업종 내 종목
+  순위를 표시하고, `sector-ranking.html`은 같은 JSON의 `sectors[]`에서 기존 계산
+  결과인 `sector_return_*`를 읽어 업종 사이 표시 순서를 정한다. 두 화면은 데이터와
+  비교 단위가 다르며, 브라우저는 수익률을 다시 계산하지 않는다. 섹터 순위는
+  표시용 교차 업종 정렬이고 새 전략이나 새 분석 권위가 아니다. 상승 종목 수는
+  설명용 집계이며 순위 기준에 포함하지 않는다.
 - 마켓 RS는 공개된 모든 파일의 일치 여부를 확인한 뒤 기존 COMMON 리포트 집합만
   투영한다. Strategy Monitor v2는 A FAST Core V2와 B Select Core V1을 공개 COMMON
   범위로, Julia V1을 Official ETF 36으로 별도 투영한다. 기본 선택은 A FAST Core V2다.

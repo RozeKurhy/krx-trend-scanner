@@ -22,6 +22,7 @@ RANKING_DIR = ROOT / "data/analytics/sector_rs_ranking/v01"
 HORIZONS = ("2w", "1m", "3m", "6m", "12m")
 PARITY_FIELDS = (
     *(f"sector_rs_{horizon}" for horizon in HORIZONS),
+    *(f"sector_return_{horizon}" for horizon in HORIZONS),
     *(f"within_sector_rs_rank_{horizon}" for horizon in HORIZONS),
     *(f"within_sector_rs_percentile_{horizon}" for horizon in HORIZONS),
     "sector_member_count",
