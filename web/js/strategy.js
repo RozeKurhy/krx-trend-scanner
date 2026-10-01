@@ -7,16 +7,6 @@
   const SYSTEM_THEME_QUERY = "(prefers-color-scheme: dark)";
   const MARKET_LABELS = { KOSPI: "코스피", KOSDAQ: "코스닥", KONEX: "코넥스" };
   const ASSET_LABELS = { COMMON: "보통주", ETF: "ETF" };
-  const ACTION_LABELS = {
-    ENTRY: "진입 조건 충족",
-    ENTER_NEXT_OPEN: "진입 조건 충족",
-    HOLD: "보유 유지",
-    EXIT: "매도 조건 충족",
-    WATCH: "관찰 중",
-    WAIT: "관찰 중",
-    NONE: "전략 데이터 없음",
-    NOT_APPLICABLE: "해당 없음",
-  };
   const POSITION_LABELS = { OPEN: "보유 중", FLAT: "미보유", NOT_APPLICABLE: "해당 없음" };
   const STATE_LABELS = {
     HOLD_PROGRESSED: "상승 진행 구간 보유",
@@ -67,11 +57,6 @@
 
   function marketLabel(value) { return MARKET_LABELS[value] || "마켓 확인 필요"; }
   function assetLabel(value) { return ASSET_LABELS[value] || "자산 확인 필요"; }
-  function actionLabel(value, dataStatus) {
-    if (dataStatus === "NOT_APPLICABLE") return "해당 없음";
-    if (dataStatus === "CHECK_REQUIRED") return "확인 필요";
-    return ACTION_LABELS[value] || "전략 데이터 없음";
-  }
   function positionLabel(value) { return POSITION_LABELS[value] || "상태 확인 필요"; }
   function stateLabel(value) { return STATE_LABELS[value] || "상태 확인 필요"; }
   function stageLabel(value) { return STAGE_LABELS[value] || "확인 필요"; }
@@ -260,27 +245,32 @@
   }
 
   function createStrategyItem(item) {
-    const link = createElement("a", "strategy-item");
+    const strategyId = activeStrategyId;
+    const layoutClass = strategyId === "PATTERN_B_SELECT_CORE_V01"
+      ? "strategy-item-b-select"
+      : strategyId === "JULIA_ETF_STRATEGY_V01"
+        ? "strategy-item-julia"
+        : "strategy-item-a-fast";
+    const link = createElement("a", `strategy-item ${layoutClass}`);
     link.href = `./report.html?ticker=${encodeURIComponent(item.ticker)}`;
     link.setAttribute("aria-label", `${item.name} ${item.ticker} 리포트 보기`);
 
     const identity = createElement("span", "strategy-item-identity");
     identity.appendChild(createElement("strong", "strategy-item-name", item.name || item.ticker));
-    const sector = item.sector_name ? ` · ${item.sector_name}` : "";
-    identity.appendChild(createElement("span", "strategy-item-meta", `${item.ticker} · ${marketLabel(item.market)} · ${assetLabel(item.asset_type)}${sector}`));
+    const meta = [item.ticker, marketLabel(item.market)];
+    if (item.asset_type !== "COMMON") meta.push(assetLabel(item.asset_type));
+    if (item.sector_name) meta.push(item.sector_name);
+    identity.appendChild(createElement("span", "strategy-item-meta", meta.join(" · ")));
 
-    const action = createField("전략 판단", actionLabel(item.action, item.data_status), `strategy-item-action action-${item.bucket}`);
     const position = createPositionField(item);
-    const strategyId = activeStrategyId;
     let detailFields = [];
     if (strategyId === "PATTERN_B_SELECT_CORE_V01") {
       detailFields = [
-        createField("Pattern B", patternBLabel(item.pattern_b_state)),
         createField("Pattern A", stageLabel(item.pattern_a_stage)),
-        createField("이전 Stage", stageLabel(item.previous_pattern_a_stage)),
+        createField("Pattern B", `${stageLabel(item.previous_pattern_a_stage)} → ${patternBLabel(item.pattern_b_state)}`),
       ];
     } else if (strategyId === "JULIA_ETF_STRATEGY_V01") {
-      detailFields = [createField("전략 상태", stateLabel(item.strategy_state))];
+      detailFields = [];
     } else {
       const pattern = item.canonical_position === "NOT_APPLICABLE"
         ? createField("패턴", "해당 없음")
@@ -296,7 +286,7 @@
     const returnField = createField("수익률", trade ? formatReturn(trade.return_pct) : "—", returnClass);
     const arrow = createElement("span", "strategy-item-link", "리포트 보기 ›");
 
-    link.append(identity, action, position, ...detailFields, price, entry, returnField, arrow);
+    link.append(identity, position, ...detailFields, price, entry, returnField, arrow);
     return link;
   }
 
@@ -384,7 +374,7 @@
     if (!selected) return;
     setText(
       "strategy-scope",
-      `기준일 ${formatDate(monitor.requested_as_of || monitor.as_of)} · ${selected.scope.label} · ${formatNumber(selected.scope.report_count)}개`
+      `기준일 ${formatDate(monitor.requested_as_of || monitor.as_of)} · ${formatNumber(selected.scope.report_count)}개`
     );
     document.querySelectorAll("[data-strategy-id]").forEach((button) => {
       const available = (monitor.strategies || []).some((strategy) => strategy.id === button.dataset.strategyId);

@@ -65,11 +65,11 @@
     ["PROGRESSED", "상승 진행"],
   ];
   const PATTERN_B_STATES = [
-    ["DEEP_DEPRESSED", "심한 저평가"],
-    ["DEPRESSED", "저평가"],
-    ["NORMAL", "중립"],
+    ["DEEP_DEPRESSED", "깊은 침체"],
+    ["DEPRESSED", "침체"],
+    ["NORMAL", "정상"],
     ["OVERHEATED", "과열"],
-    ["EXTREME_OVERHEATED", "심한 과열"],
+    ["EXTREME_OVERHEATED", "극단 과열"],
   ];
   const TRADING_VALUE_LABELS = {
     TRADING_VALUE_EXPANDING: "증가 흐름",
@@ -475,21 +475,23 @@
     return `${trend} ${market} ${flow}`;
   }
 
-  function renderPatternStepper(currentStage) {
-    const stepper = byId("pattern-stepper");
+  function renderStatusStepper(elementId, steps, currentState, hidden = false) {
+    const stepper = byId(elementId);
     if (!stepper) return;
     while (stepper.firstChild) stepper.removeChild(stepper.firstChild);
-    PATTERN_STEPS.forEach(([code, text], index) => {
+    stepper.hidden = hidden;
+    if (hidden) return;
+    steps.forEach(([code, text], index) => {
       const step = document.createElement("span");
       step.className = "pattern-step";
       step.setAttribute("role", "listitem");
       step.textContent = text;
-      if (code === currentStage) {
+      if (code === currentState) {
         step.classList.add("is-current");
         step.setAttribute("aria-current", "step");
       }
       stepper.appendChild(step);
-      if (index < PATTERN_STEPS.length - 1) {
+      if (index < steps.length - 1) {
         const arrow = document.createElement("span");
         arrow.className = "pattern-arrow";
         arrow.setAttribute("aria-hidden", "true");
@@ -497,6 +499,10 @@
         stepper.appendChild(arrow);
       }
     });
+  }
+
+  function renderPatternStepper(currentStage) {
+    renderStatusStepper("pattern-stepper", PATTERN_STEPS, currentStage);
   }
 
   function appendTableCell(row, value, className, title) {
@@ -1108,25 +1114,32 @@
       ["평가 상태", section.evaluation_status || "UNAVAILABLE"],
     ];
     container.appendChild(createDetailTable(["현재 지표", "값"], rows));
-    appendDetailNote(container, `기준일 ${formatDate(section.as_of)} · 마지막 월봉 ${formatDate(section.monthly_last_bar)} · 마지막 주봉 ${formatDate(section.weekly_last_bar)} · 주봉 신선도 ${section.freshness_status || "정보 없음"}`);
 
+    const patternACloses = new Map(
+      (Array.isArray(report.pattern.history_12m) ? report.pattern.history_12m : [])
+        .filter((observation) => observation && typeof observation.as_of === "string")
+        .map((observation) => [observation.as_of.slice(0, 10), observation.close])
+    );
     const history = Array.isArray(section.monthly_history) ? section.monthly_history : [];
-    const historyRows = history.map((observation) => [
-      formatDate(observation.as_of),
-      observation.pattern_b_state ? `${patternBStateLabel(observation.pattern_b_state)} (${observation.pattern_b_state})` : "정보 없음",
-      formatPatternBRange(observation.range_36m),
-      formatSignedRate(observation.monthly_ma24_distance),
-      formatPatternBRange(observation.range_52w),
-    ]);
+    const historyRows = history.map((observation) => {
+      const monthlyLastBar = typeof observation.monthly_last_bar === "string"
+        ? observation.monthly_last_bar.slice(0, 10)
+        : null;
+      return [
+        formatDate(observation.as_of),
+        formatPrice(monthlyLastBar ? patternACloses.get(monthlyLastBar) : null),
+        observation.pattern_b_state ? `${patternBStateLabel(observation.pattern_b_state)} (${observation.pattern_b_state})` : "정보 없음",
+        formatPatternBRange(observation.range_36m),
+        formatSignedRate(observation.monthly_ma24_distance),
+        formatPatternBRange(observation.range_52w),
+      ];
+    });
     if (historyRows.length) {
-      container.appendChild(createDetailTable(["기준일", "상태", "36M 범위", "24M선 이격", "52W 범위"], historyRows));
+      container.appendChild(createDetailTable(["기준일", "종가", "상태", "36M 범위", "24M선 이격", "52W 범위"], historyRows));
     }
     if (section.reason_codes && section.reason_codes.length) {
       appendDetailNote(container, `정보 부족 사유: ${section.reason_codes.join(", ")}`);
     }
-    const provenance = section.provenance || {};
-    appendDetailNote(container, `가격 권위 ${provenance.market_data_authority || "정보 없음"} · 상태 규칙 ${provenance.state_rule_version || "정보 없음"} · 이력 시작 ${formatDate(provenance.history_effective_from)} · 연결 구간 ${formatNumber(provenance.history_segment_count)}`);
-    appendDetailNote(container, "Pattern B는 정보성 상태 분석이며 B Select Core V1의 매수·매도 전략 실행과 별개입니다.");
   }
 
   function renderMarketDetail(report, container) {
@@ -1386,11 +1399,17 @@
     setText("pattern-detail", report.pattern.score == null ? "패턴 점수 확인 필요" : `패턴 점수 ${formatNumber(report.pattern.score, 2)}점`);
     const patternB = report.pattern_b;
     const patternBReady = Boolean(patternB && patternB.applicability === "APPLICABLE" && patternB.evaluation_status === "READY" && patternB.pattern_b_state);
+    renderStatusStepper(
+      "pattern-b-stepper",
+      PATTERN_B_STATES,
+      patternB && patternB.pattern_b_state,
+      !patternB || patternB.applicability !== "APPLICABLE",
+    );
     setText("pattern-b-value", patternBReady
       ? patternBStateLabel(patternB.pattern_b_state)
       : (identity.asset_type === "ETF" || (patternB && patternB.applicability === "NOT_APPLICABLE") ? "해당 없음" : "정보 없음"));
     setText("pattern-b-detail", patternBReady
-      ? `${patternB.pattern_b_state} · 36M ${formatPatternBRange(patternB.range_36m)} · 24M선 ${formatSignedRate(patternB.monthly_ma24_distance)}`
+      ? `${patternBStateLabel(patternB.pattern_b_state)} · 36M ${formatPatternBRange(patternB.range_36m)} · 24M선 ${formatSignedRate(patternB.monthly_ma24_distance)}`
       : (identity.asset_type === "ETF"
         ? "ETF v0.6에는 Pattern B를 적용하지 않습니다."
         : (patternB && Array.isArray(patternB.reason_codes) && patternB.reason_codes.length ? patternB.reason_codes.join(", ") : "Pattern B 상태 데이터 없음")));

@@ -15,7 +15,7 @@ def test_v04_web_heading_reason_and_cache_contract():
     html = (ROOT / "web/report.html").read_text(encoding="utf-8")
     js = (ROOT / "web/js/report.js").read_text(encoding="utf-8")
 
-    assert html.count("web-02e-etf36-julia-v1") == 1
+    assert html.count("web-report-flow-ui-v1") == 1
     assert 'id="fundamentals-detail-heading">펀더멘탈</h3>' in html
     assert 'id="fundamentals-detail-meta"' not in html
     assert "Fundamentals 상세" not in html

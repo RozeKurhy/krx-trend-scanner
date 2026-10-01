@@ -134,13 +134,14 @@ def test_etf_page_has_required_tabs_controls_and_no_report_or_search_ui():
     js = (ROOT / "web/js/etf.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     assert '<title>ETF 랭킹 · KRX Trend Scanner</title>' in html
-    assert 'href="./css/app.css?v=web-ui-density-11"' in html
-    assert 'src="./js/etf.js?v=web-etf-ranking-3"' in html
+    assert 'href="./css/app.css?v=web-ui-density-13"' in html
+    assert 'src="./js/etf.js?v=web-etf-ranking-2w-v1"' in html
     assert '<a class="ranking-tab is-active" href="./etf.html" aria-current="page">ETF</a>' in html
     expected_tabs = ("마켓 RS", "섹터 RS", "섹터 랭킹", "외인 순매수", "매출액 성장률", "영업이익 성장률", "순이익 성장률")
     assert [text for text in expected_tabs if text in html] == list(expected_tabs)
     assert html.count('data-horizon=') == 5
-    assert 'data-horizon="1m" aria-pressed="true"' in html
+    assert 'data-horizon="2w" aria-pressed="true"' in html
+    assert 'data-horizon="1m" aria-pressed="false"' in html
     assert '기준일 확인 중 · 36개 ETF' in html
     assert 'id="etf-ranking-list"' in html
     assert "기간 수익률" not in html and "기간 수익률" not in js
@@ -152,7 +153,7 @@ def test_etf_page_has_required_tabs_controls_and_no_report_or_search_ui():
     ranking_section = html.split('<section id="etf-ranking-list"', 1)[1].split('</section>', 1)[0]
     assert "report.html" not in ranking_section and "report.html" not in js
     assert 'const RANKING_URL = "./data/etf-ranking.json";' in js
-    assert 'let activeHorizon = "1m";' in js
+    assert 'let activeHorizon = "2w";' in js
     assert 'Number(right[field]) - Number(left[field])' in js
     assert 'value.as_of !== value.reference_market_date' in js
     assert 'value.scope.count !== 36' in js and 'value.items.length !== 36' in js
@@ -170,13 +171,14 @@ def test_all_ranking_pages_expose_etf_first_and_primary_ranking_link():
     for name in ("etf", "market", "sector", "foreign"):
         html = (ROOT / f"web/{name}.html").read_text(encoding="utf-8")
         assert 'href="./etf.html"' in html
-        assert 'href="./css/app.css?v=web-ui-density-11"' in html
+        assert 'href="./css/app.css?v=web-ui-density-13"' in html
         tabs = html.split('<nav class="ranking-tabs"', 1)
         if len(tabs) == 2:
             assert tabs[1].index('href="./etf.html"') < tabs[1].index('마켓 RS') if name != "etf" else 'aria-current="page">ETF</a>' in tabs[1]
     for name in ("index", "fear", "market", "sector", "foreign", "report", "strategy", "etf"):
         html = (ROOT / f"web/{name}.html").read_text(encoding="utf-8")
         assert '<a class="nav-item' in html and 'href="./etf.html"' in html
+        assert "전략 설명" not in html
 
 
 def test_etf_page_uses_common_external_link_shape_and_icon_path():

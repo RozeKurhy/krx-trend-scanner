@@ -590,7 +590,10 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .strategy-filter.is-active .strategy-filter-count { color: var(--brand-red); }
 .strategy-section { margin-bottom: 16px; }
 .strategy-item-list { display: grid; gap: 8px; }
-.strategy-item { display: grid; grid-template-columns: minmax(190px, 1.55fr) repeat(6, minmax(80px, 1fr)) auto; align-items: center; gap: 12px; min-width: 0; min-height: 108px; border: 1px solid var(--line); padding: 16px; color: var(--ink); background: var(--surface); border-radius: 9px; text-decoration: none; }
+.strategy-item { display: grid; align-items: center; gap: 12px; min-width: 0; min-height: 108px; border: 1px solid var(--line); padding: 16px; color: var(--ink); background: var(--surface); border-radius: 9px; text-decoration: none; }
+.strategy-item-a-fast { grid-template-columns: minmax(190px, 1.55fr) repeat(5, minmax(80px, 1fr)) auto; }
+.strategy-item-b-select { grid-template-columns: minmax(190px, 1.55fr) repeat(6, minmax(80px, 1fr)) auto; }
+.strategy-item-julia { grid-template-columns: minmax(190px, 1.55fr) repeat(4, minmax(80px, 1fr)) auto; }
 .strategy-item:hover { border-color: var(--line-strong); background: var(--surface-muted); }
 .strategy-item:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .strategy-item-identity, .strategy-item-field { min-width: 0; }
@@ -606,7 +609,6 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .strategy-item-position-sub { font-weight: 650; }
 .strategy-item-price-date { display: flex; flex-direction: column; gap: 2px; overflow: visible; line-height: 1.25; white-space: normal; }
 .strategy-item-date { color: var(--ink-faint); font-size: 10px; font-weight: 650; line-height: 1.25; }
-.strategy-item-action .strategy-item-value { color: var(--brand-red-dark); }
 .strategy-item-field.detail-value-positive .strategy-item-value { color: var(--market-up-red); }
 .strategy-item-field.detail-value-negative .strategy-item-value { color: var(--market-down-blue); }
 .strategy-item-link { flex: 0 0 auto; color: var(--brand-red-dark); font-size: 11px; font-weight: 800; white-space: nowrap; }
@@ -627,7 +629,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .market-select:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; border-color: var(--brand-red); }
 .market-select-chevron { position: absolute; top: 50%; right: 16px; width: 8px; height: 8px; border-right: 1.5px solid var(--ink-soft); border-bottom: 1.5px solid var(--ink-soft); transform: translateY(-65%) rotate(45deg); pointer-events: none; }
 .market-horizon-group { flex: 0 1 auto; min-width: 0; overflow-x: auto; padding: 1px; }
-.market-horizon-group .market-control { min-height: 46px; display: inline-flex; align-items: center; }
+.market-horizon-group .market-control, .etf-horizon-group .market-control, .sector-horizon-group .market-control { display: inline-flex; align-items: center; min-height: 0; padding: 9px 13px; font-size: 12px; line-height: 1.2; }
 .market-search-input { display: block; min-height: 46px; margin-top: 14px; padding-block: 10px; }
 .market-ranking-list { display: grid; gap: 8px; }
 .market-ranking-row { display: grid; grid-template-columns: minmax(190px, 1.7fr) repeat(6, minmax(86px, 1fr)) auto; align-items: center; gap: 12px; min-width: 0; min-height: 98px; border: 1px solid var(--line); padding: 16px; color: var(--ink); background: var(--surface); border-radius: 9px; text-decoration: none; }
@@ -653,7 +655,6 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .etf-primary-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .etf-scope { min-height: 46px; display: flex; align-items: center; margin-left: auto; }
 .etf-horizon-group { flex: 0 1 auto; min-width: 0; overflow-x: auto; padding: 1px; }
-.etf-horizon-group .market-control { min-height: 46px; display: inline-flex; align-items: center; }
 .etf-ranking-list { display: grid; gap: 8px; }
 .etf-ranking-row { display: grid; grid-template-columns: minmax(230px, 2fr) repeat(7, minmax(82px, 1fr)); align-items: center; gap: 12px; min-width: 0; min-height: 92px; border: 1px solid var(--line); padding: 15px 16px; color: var(--ink); background: var(--surface); border-radius: 9px; }
 .etf-ranking-row:hover { border-color: var(--line-strong); background: var(--surface-muted); }

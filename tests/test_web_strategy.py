@@ -120,8 +120,8 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-11"' in index_html
-    assert 'href="./css/app.css?v=web-ui-density-12"' in report_html
+    assert 'href="./css/app.css?v=web-ui-density-13"' in index_html
+    assert 'href="./css/app.css?v=web-ui-density-13"' in report_html
     for html in (index_html, report_html):
         assert "web-02a-final-2" not in html
         assert "web-03a-final-1" not in html
@@ -134,7 +134,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert strategy_scripts[0].query.startswith("v=") and strategy_scripts[0].query.removeprefix("v=")
     assert (ROOT / "web" / strategy_scripts[0].path.removeprefix("./")).is_file()
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
-    assert 'src="./js/report.js?v=web-02e-etf36-julia-v1"' in report_html
+    assert 'src="./js/report.js?v=web-report-flow-ui-v1"' in report_html
     assert 'href="./strategy.html"' in index_html
     assert 'href="./strategy.html"' in report_html
     assert 'class="nav-item is-active" href="./strategy.html"' in strategy_html
@@ -149,7 +149,8 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert "현재 판단 요약" not in strategy_html
     assert "현재 공개 리포트 기준" not in strategy_html
     assert 'formatDate(monitor.requested_as_of || monitor.as_of)' in strategy_js
-    assert 'selected.scope.label' in strategy_js
+    assert 'selected.scope.label' not in strategy_js
+    assert '`기준일 ${formatDate(monitor.requested_as_of || monitor.as_of)} · ${formatNumber(selected.scope.report_count)}개`' in strategy_js
     assert 'id="strategy-search"' in strategy_html
     assert 'data-filter="hold"' in strategy_html
     assert 'data-filter="entry"' in strategy_html
@@ -188,11 +189,21 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert 'createField("현재 상태", "해당 없음", "strategy-item-position")' in strategy_js
     assert 'createField("현재 상태", "확인 필요", "strategy-item-position")' in strategy_js
     assert "positionLabel(item.canonical_position)} · ${stateLabel" not in strategy_js
-    assert 'actionLabel(item.action, item.data_status)' in strategy_js
-    assert "dataStatus === \"NOT_APPLICABLE\"" in strategy_js
-    assert "dataStatus === \"CHECK_REQUIRED\"" in strategy_js
+    assert 'createField("전략 판단"' not in strategy_js
+    assert 'createField("전략 상태"' not in strategy_js
+    assert 'createField("이전 Stage"' not in strategy_js
+    assert 'item.asset_type !== "COMMON"' in strategy_js
+    assert 'meta.join(" · ")' in strategy_js
+    assert 'createField("Pattern A", stageLabel(item.pattern_a_stage))' in strategy_js
+    assert 'createField("Pattern B", `${stageLabel(item.previous_pattern_a_stage)} → ${patternBLabel(item.pattern_b_state)}`)' in strategy_js
+    assert 'detailFields = [];' in strategy_js
+    assert 'item.data_status === "NOT_APPLICABLE"' in strategy_js
+    assert 'item.data_status === "CHECK_REQUIRED"' in strategy_js
     assert "window.matchMedia" in strategy_js
     assert ".strategy-item" in css
+    assert ".strategy-item-a-fast { grid-template-columns: minmax(190px, 1.55fr) repeat(5, minmax(80px, 1fr)) auto; }" in css
+    assert ".strategy-item-b-select { grid-template-columns: minmax(190px, 1.55fr) repeat(6, minmax(80px, 1fr)) auto; }" in css
+    assert ".strategy-item-julia { grid-template-columns: minmax(190px, 1.55fr) repeat(4, minmax(80px, 1fr)) auto; }" in css
     assert ".strategy-summary-card" not in css
     assert ".strategy-summary-grid" not in css
     assert "grid-template-columns: repeat(3, minmax(0, 1fr))" in css

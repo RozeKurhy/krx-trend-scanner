@@ -68,7 +68,7 @@ def test_fix02_keeps_raw_flow_and_uses_the_new_chart_contract():
     assert "Npay 증권" in html
     assert "차트</a>" in html
     assert "전자공시</a>" in html
-    assert "web-02e-etf36-julia-v1" in html
+    assert "web-report-flow-ui-v1" in html
     assert "Math.floor(absolute / 1e7)" in js
     assert "return `${sign}${formatNumber(absolute)}원`;" not in js
     assert "naver_chart" in js and "toss_chart" not in js

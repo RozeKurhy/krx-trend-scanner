@@ -326,17 +326,17 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-ui-density-12"' in html
-    assert 'href="./css/app.css?v=web-ui-density-11"' in index_html
+    assert 'href="./css/app.css?v=web-ui-density-13"' in html
+    assert 'href="./css/app.css?v=web-ui-density-13"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-02e-etf36-julia-v1"' in html
+    assert 'src="./js/report.js?v=web-report-flow-ui-v1"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
-    assert html.count("web-ui-density-12") == 1
-    assert html.count("web-02e-etf36-julia-v1") == 1
-    assert index_html.count("web-ui-density-11") == 1
+    assert html.count("web-ui-density-13") == 1
+    assert html.count("web-report-flow-ui-v1") == 1
+    assert index_html.count("web-ui-density-13") == 1
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
     assert "web-02a-final-2" not in html
@@ -441,6 +441,20 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert "history_12m" in js
     assert "pattern-score-chart" in js
     assert "pattern-b-state-chart" in js
+    assert 'id="pattern-b-stepper"' in html
+    assert '["DEEP_DEPRESSED", "깊은 침체"]' in js
+    assert '["DEPRESSED", "침체"]' in js
+    assert '["NORMAL", "정상"]' in js
+    assert '["EXTREME_OVERHEATED", "극단 과열"]' in js
+    assert 'renderStatusStepper(' in js and '"pattern-b-stepper"' in js
+    assert 'createDetailTable(["기준일", "종가", "상태", "36M 범위", "24M선 이격", "52W 범위"]' in js
+    assert 'patternACloses.get(monthlyLastBar)' in js
+    for removed in (
+        "가격 권위 ",
+        "Pattern B는 정보성 상태 분석이며 B Select Core V1의 매수·매도 전략 실행과 별개입니다.",
+        "마지막 월봉 ",
+    ):
+        assert removed not in js
     assert "renderPatternBDetail" in js
     assert 'id: "pattern-score-chart"' in js
     assert 'role: "img"' in js

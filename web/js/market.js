@@ -38,7 +38,7 @@
   const byId = (id) => document.getElementById(id);
   const numberFormat = new Intl.NumberFormat("ko-KR");
   let ranking = null;
-  let activeHorizon = "1m";
+  let activeHorizon = "2w";
   let activeMarket = "ALL";
   let searchQuery = "";
 

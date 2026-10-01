@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-11">
+    <link rel="stylesheet" href="./css/app.css?v=web-ui-density-13">
   </head>
   <body>
     <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
@@ -39,7 +39,6 @@
             <a class="nav-item is-active" href="./etf.html" aria-current="page">랭킹</a>
             <a class="nav-item" href="./report.html">종목 리포트</a>
             <a class="nav-item" href="./strategy.html">전략 운용</a>
-            <span class="nav-item" aria-disabled="true">전략 설명 <small>준비 중</small></span>
           </nav>
           <button id="theme-toggle" class="theme-toggle" type="button" aria-label="어둡게 보기" title="어둡게 보기" aria-pressed="false">
             <span id="theme-icon-sun" class="theme-icon" aria-hidden="true">
@@ -75,8 +74,8 @@
             <span class="sector-select-chevron" aria-hidden="true"></span>
           </div>
           <div id="sector-horizon-controls" class="market-control-group sector-horizon-group" role="group" aria-label="랭킹 기간">
-            <button class="market-control" type="button" data-horizon="2w" aria-pressed="false">2주</button>
-            <button class="market-control is-active" type="button" data-horizon="1m" aria-pressed="true">1개월</button>
+            <button class="market-control is-active" type="button" data-horizon="2w" aria-pressed="true">2주</button>
+            <button class="market-control" type="button" data-horizon="1m" aria-pressed="false">1개월</button>
             <button class="market-control" type="button" data-horizon="3m" aria-pressed="false">3개월</button>
             <button class="market-control" type="button" data-horizon="6m" aria-pressed="false">6개월</button>
             <button class="market-control" type="button" data-horizon="12m" aria-pressed="false">12개월</button>
@@ -97,6 +96,6 @@
       </section>
     </main>
 
-    <script src="./js/sector.js?v=web-sector-rs-final-2" defer></script>
+    <script src="./js/sector.js?v=web-sector-rs-2w-v1" defer></script>
   </body>
 </html>

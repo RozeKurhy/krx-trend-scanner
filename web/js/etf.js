@@ -15,7 +15,7 @@
   const EXPECTED_HORIZONS = { "2w": 10, "1m": 21, "3m": 63, "6m": 126, "12m": 252 };
   const byId = (id) => document.getElementById(id);
   let ranking = null;
-  let activeHorizon = "1m";
+  let activeHorizon = "2w";
 
   function createElement(tagName, className, text) {
     const element = document.createElement(tagName);

@@ -23,7 +23,7 @@ def test_foreign_tab_is_after_disabled_sector_ranking_on_all_ranking_pages():
         assert html.index(disabled) < html.index(foreign if foreign in html else active_foreign)
 
 
-def test_foreign_page_exposes_default_20d_filters_search_and_report_contract():
+def test_foreign_page_exposes_default_5d_filters_search_and_report_contract():
     html = _read(ROOT / "web/foreign.html")
     script = _read(ROOT / "web/js/foreign.js")
     css = _read(ROOT / "web/css/app.css")
@@ -32,11 +32,12 @@ def test_foreign_page_exposes_default_20d_filters_search_and_report_contract():
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
     assert '외국인 누적 순매수대금으로 보는 종목 흐름' not in html
-    assert 'href="./css/app.css?v=web-ui-density-11"' in html
-    assert 'src="./js/foreign.js?v=web-foreign-net-buy-5"' in html
+    assert 'href="./css/app.css?v=web-ui-density-13"' in html
+    assert 'src="./js/foreign.js?v=web-foreign-ranking-5d-v1"' in html
     assert 'data-horizon="1d"' in html and 'data-horizon="5d"' in html
     assert 'data-horizon="10d"' in html and 'data-horizon="20d"' in html and 'data-horizon="60d"' in html
-    assert 'data-horizon="20d" aria-pressed="true"' in html
+    assert 'data-horizon="5d" aria-pressed="true"' in html
+    assert 'data-horizon="20d" aria-pressed="false"' in html
     assert 'id="foreign-market-select" class="market-select"' in html
     assert '<option value="ALL">전체</option>' in html
     assert '<option value="KOSPI">코스피</option>' in html
@@ -53,7 +54,7 @@ def test_foreign_page_exposes_default_20d_filters_search_and_report_contract():
     assert 'id="foreign-ranking-list"' in html
     assert 'const PAYLOAD_URL = "./data/foreign-net-buy-ranking.json";' in script
     assert 'const HORIZONS = ["1d", "5d", "10d", "20d", "60d"];' in script
-    assert 'let activeHorizon = "20d";' in script
+    assert 'let activeHorizon = "5d";' in script
     assert 'foreign_net_buy_${activeHorizon}' in script
     assert 'function validFlow(value)' in script
     assert '.filter((item) => validFlow(item[field]))' in script

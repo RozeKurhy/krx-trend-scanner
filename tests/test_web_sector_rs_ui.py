@@ -26,9 +26,9 @@ def _load_payload() -> dict:
 def test_sector_page_activates_only_sector_rs_and_exposes_accessible_controls():
     html = _read(SECTOR_PAGE)
 
-    assert 'href="./css/app.css?v=web-ui-density-11"' in html
+    assert 'href="./css/app.css?v=web-ui-density-13"' in html
     assert '<a class="ranking-tab" href="./etf.html">ETF</a>' in html
-    assert 'src="./js/sector.js?v=web-sector-rs-final-2"' in html
+    assert 'src="./js/sector.js?v=web-sector-rs-2w-v1"' in html
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
     assert '<a class="ranking-tab" href="./market.html">마켓 RS</a>' in html
@@ -60,6 +60,8 @@ def test_sector_page_activates_only_sector_rs_and_exposes_accessible_controls():
     assert '섹터 RS 랭킹을 불러올 수 없습니다.' in html
     assert html.count('data-horizon=') == 5
     assert 'data-horizon="2w"' in html
+    assert 'data-horizon="2w" aria-pressed="true"' in html
+    assert 'data-horizon="1m" aria-pressed="false"' in html
     assert 'data-horizon="1m"' in html
     assert 'data-horizon="3m"' in html
     assert 'data-horizon="6m"' in html
@@ -72,7 +74,7 @@ def test_sector_script_uses_static_payload_and_payload_authority_for_rendering()
 
     assert 'const PAYLOAD_URL = "./data/sector-rs-ranking.json";' in script
     assert 'const HORIZONS = ["2w", "1m", "3m", "6m", "12m"];' in script
-    assert 'let activeHorizon = "1m";' in script
+    assert 'let activeHorizon = "2w";' in script
     assert 'value.schema_version === 1' in script
     assert 'value.metric_scope.type === "WITHIN_SECTOR"' in script
     assert 'JSON.stringify(value.metric_scope.group_key) === JSON.stringify(["market", "sector_code"])' in script

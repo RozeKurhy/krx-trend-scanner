@@ -122,15 +122,16 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
     assert '<a class="nav-item is-active" href="./etf.html" aria-current="page">랭킹</a>' in html
-    assert 'href="./css/app.css?v=web-ui-density-11"' in html
-    assert 'src="./js/market.js?v=web-02c-toss-4"' in html
+    assert 'href="./css/app.css?v=web-ui-density-13"' in html
+    assert 'src="./js/market.js?v=web-market-ranking-2w-v1"' in html
     assert '<nav class="ranking-tabs" aria-label="랭킹 종류">' in html
     assert '<a class="ranking-tab" href="./etf.html">ETF</a>' in html
     assert '<a class="ranking-tab is-active" href="./market.html" aria-current="page">마켓 RS</a>' in html
     assert '<a class="ranking-tab" href="./sector.html">섹터 RS</a>' in html
     for label in ("섹터 랭킹", "매출액 성장률", "영업이익 성장률", "순이익 성장률"):
         assert f'<span class="ranking-tab" aria-disabled="true">{label} <small>준비 중</small></span>' in html
-    assert 'data-horizon="2w"' in html and 'data-horizon="1m"' in html
+    assert 'data-horizon="2w" aria-pressed="true"' in html
+    assert 'data-horizon="1m" aria-pressed="false"' in html
     assert 'data-horizon="3m"' in html and 'data-horizon="6m"' in html and 'data-horizon="12m"' in html
     assert 'id="market-select" class="market-select"' in html
     assert '<option value="ALL">전체</option>' in html
@@ -180,10 +181,10 @@ def test_market_page_has_accessible_controls_and_release_contract():
 
 def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     page_versions = {
-        ROOT / "web/index.html": ("web-ui-density-11", "app", "web-fear-fix02-4"),
-        ROOT / "web/report.html": ("web-ui-density-12", "report", "web-02e-etf36-julia-v1"),
-        ROOT / "web/strategy.html": ("web-strategy-monitor-v2-1", "strategy", "web-strategy-monitor-v2-1"),
-        ROOT / "web/market.html": ("web-ui-density-11", "market", "web-02c-toss-4"),
+        ROOT / "web/index.html": ("web-ui-density-13", "app", "web-fear-fix02-4"),
+        ROOT / "web/report.html": ("web-ui-density-13", "report", "web-report-flow-ui-v1"),
+        ROOT / "web/strategy.html": ("web-ui-density-13", "strategy", "web-strategy-ui-polish-v1"),
+        ROOT / "web/market.html": ("web-ui-density-13", "market", "web-market-ranking-2w-v1"),
     }
     pages = list(page_versions)
     for path, (css_version, script_name, js_version) in page_versions.items():
@@ -222,7 +223,7 @@ def test_market_ranking_sort_and_filter_keep_canonical_percentiles():
 
     expected = sorted(eligible, key=lambda item: (-item["percentile_1m"], item["name"], item["ticker"]))
     assert expected[0]["percentile_1m"] >= expected[-1]["percentile_1m"]
-    assert 'activeHorizon = "1m"' in js
+    assert 'activeHorizon = "2w"' in js
     assert "activeMarket === \"ALL\" || item.market === activeMarket" in js
     assert ".filter((item) => isEligible(item, activeHorizon))" in js
     assert ".sort((left, right) =>" in js

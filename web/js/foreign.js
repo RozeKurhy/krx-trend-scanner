@@ -12,7 +12,7 @@
   const byId = (id) => document.getElementById(id);
   const numberFormat = new Intl.NumberFormat("ko-KR");
   let payload = null;
-  let activeHorizon = "20d";
+  let activeHorizon = "5d";
   let activeMarket = "ALL";
   let searchQuery = "";
 

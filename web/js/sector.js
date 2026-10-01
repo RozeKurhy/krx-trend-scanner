@@ -17,7 +17,7 @@
   const byId = (id) => document.getElementById(id);
   let payload = null;
   let activeSectorKey = null;
-  let activeHorizon = "1m";
+  let activeHorizon = "2w";
   let searchQuery = "";
 
   function setText(id, value) {
