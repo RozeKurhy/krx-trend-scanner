@@ -43,6 +43,7 @@ from trend_scanner.reporting.stock_report import (
     _calculate_trading_value_window_averages,
     _determine_trading_value_state_and_explanation,
     _get_reference_market_month_ends,
+    _inclusive_monthly_window,
     _resolve_latest_local_as_of,
     generate_stock_report,
     render_markdown_report,
@@ -154,6 +155,25 @@ def test_stock_report_full_history_coverage(report_001540_20260814: StockReport)
     assert hist.observation_count == 60
     assert len(hist.full_monthly_history) == 60
     assert hist.recent_12m_observation_count == 13
+
+
+def test_stock_report_24m_window_is_additive_inclusive_tail(report_001540_20260814: StockReport):
+    history = report_001540_20260814.monthly_history
+    assert history.recent_12m_observation_count == 13
+    assert history.recent_12m_history == history.full_monthly_history[-13:]
+    assert history.recent_24m_observation_count == 25
+    assert history.recent_24m_history == history.full_monthly_history[-25:]
+    assert history.recent_24m_history[0].as_of == "2024-07-31"
+    assert history.recent_24m_history[-1].as_of == history.full_monthly_history[-1].as_of
+
+
+def test_inclusive_monthly_window_keeps_all_short_listing_history():
+    dates = ["2026-01-30", "2026-02-27", "2026-03-31", "2026-04-30"]
+    available = [MonthlyObservation(
+        as_of=as_of, close=100.0, score=None, stage="UNAVAILABLE",
+        candidate_state="insufficient_data", data_available=False, reason="INSUFFICIENT_LOOKBACK",
+    ) for as_of in dates]
+    assert _inclusive_monthly_window(available, 24) == available
 
 
 def test_stock_report_initial_insufficient_lookback(report_001540_20260814: StockReport):

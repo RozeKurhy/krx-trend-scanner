@@ -41,6 +41,13 @@ v0.7의 JSON 구조는 [schema_v07.json](schema_v07.json)을 따른다. 이 스�
 - exporter에서 Pattern B 계산, 네트워크 조회, proxy 또는 결측 대체를 하지 않는다.
 - UI의 카드·그래프·상세 표시는 정보 제공이며 매매 전략 실행을 뜻하지 않는다.
 
+## 12개월 및 24개월 표시 이력
+
+- `monthly_history.recent_12m_history`와 기존 Pattern B `monthly_history`는 기존 계약 그대로 유지한다. B Select 및 기존 소비자는 이 필드를 계속 사용한다.
+- Pattern A에는 `monthly_history.recent_24m_history`를 추가한다. 기존 `full_monthly_history`의 tail projection이며 t-24M부터 현재 관측까지 최대 25개 월말 행을 담는다. 상장 이력이 짧으면 존재하는 행만 담는다.
+- Pattern B에는 `monthly_history_24m`를 추가한다. 기존 `evaluate_pattern_b`와 동일 daily authority / PIT identity chain으로 t-24M 범위와 현재 `as_of`를 평가해 최대 25개 행을 담는다. lookback 부족은 기존 evaluator처럼 `UNAVAILABLE`로 남기며 추정하거나 nearest-date 대체를 하지 않는다.
+- Web의 `pattern.history_24m`는 Pattern A source history의 projection이고, `pattern_b.monthly_history_24m`는 source report 값을 그대로 전달한다. 새 계산 권위나 전략 semantics를 추가하지 않는다.
+
 ## Markdown 위치
 
 Markdown 리포트는 현재 스냅샷 다음에 기존 `1.5. 펀더멘털`을 유지하고,

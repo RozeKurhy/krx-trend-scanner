@@ -10,7 +10,11 @@ import numpy as np
 import pandas as pd
 
 from trend_scanner.patterns.pattern_b_evaluator import evaluate_pattern_b
-from trend_scanner.reporting.pattern_b_report import build_pattern_b_section
+from trend_scanner.reporting.pattern_b_report import (
+    _monthly_query_dates,
+    _monthly_query_dates_24m,
+    build_pattern_b_section,
+)
 
 
 TARGET = "2026-09-25"
@@ -66,13 +70,17 @@ def test_common_stock_report_uses_pattern_b_evaluator_and_cuts_history_at_as_of(
     future_row = daily.iloc[[-1]].copy()
     future_row.index = [pd.Timestamp("2026-09-28")]
     repository = FakeRepository(pd.concat([daily, future_row]).sort_index())
+    monthly_observations = [
+        SimpleNamespace(as_of=value.strftime("%Y-%m-%d"))
+        for value in pd.date_range("2024-09-01", "2026-09-30", freq=pd.offsets.MonthEnd())
+    ]
     section = build_pattern_b_section(
         ticker="005930",
         name="삼성전자",
         asset_type="COMMON",
         metadata_provenance_mode="CURRENT_VERIFIED",
         as_of=TARGET,
-        monthly_observations=[SimpleNamespace(as_of="2026-08-31")],
+        monthly_observations=monthly_observations,
         repo_root=tmp_path,
         repository=repository,
     )
@@ -89,6 +97,60 @@ def test_common_stock_report_uses_pattern_b_evaluator_and_cuts_history_at_as_of(
     assert section.provenance.state_rule_version == "PATTERN_B_STATE_RULE_V02"
     assert all(point.as_of <= TARGET for point in section.monthly_history)
     assert section.monthly_history[-1].as_of == TARGET
+    assert len(section.monthly_history) == 12
+    assert [point.as_of for point in section.monthly_history] == _monthly_query_dates(monthly_observations, TARGET)
+    assert len(section.monthly_history_24m) == 25
+    assert section.monthly_history_24m[0].as_of == "2024-09-30"
+    assert section.monthly_history_24m[-1].as_of == TARGET
+    assert section.monthly_history == [
+        point for point in section.monthly_history_24m
+        if point.as_of in set(_monthly_query_dates(monthly_observations, TARGET))
+    ]
+    assert all(point.as_of <= TARGET for point in section.monthly_history_24m)
+
+
+def test_pattern_b_24m_month_end_is_inclusive_and_short_history_is_not_filled():
+    complete_month_ends = [
+        SimpleNamespace(as_of=value.strftime("%Y-%m-%d"))
+        for value in pd.date_range("2024-08-01", "2026-08-31", freq=pd.offsets.MonthEnd())
+    ]
+    month_end_dates = _monthly_query_dates_24m(complete_month_ends, "2026-08-31")
+    assert len(month_end_dates) == 25
+    assert month_end_dates[0] == "2024-08-31"
+    assert month_end_dates[-1] == "2026-08-31"
+
+    short_history = complete_month_ends[-4:]
+    short_dates = _monthly_query_dates_24m(short_history, "2026-08-31")
+    assert short_dates == [item.as_of for item in short_history]
+
+
+def test_pattern_b_24m_insufficient_lookback_stays_unavailable(tmp_path):
+    _write_authorities(tmp_path)
+    as_of = "2017-12-29"
+    daily = _daily_frame()
+    repository = FakeRepository(daily)
+    monthly_observations = [
+        SimpleNamespace(as_of=value.strftime("%Y-%m-%d"))
+        for value in pd.date_range("2015-01-01", "2017-11-30", freq=pd.offsets.MonthEnd())
+    ]
+    section = build_pattern_b_section(
+        ticker="005930",
+        name="삼성전자",
+        asset_type="COMMON",
+        metadata_provenance_mode="CURRENT_VERIFIED",
+        as_of=as_of,
+        monthly_observations=monthly_observations,
+        repo_root=tmp_path,
+        repository=repository,
+    )
+
+    assert section is not None
+    assert section.evaluation_status == "UNAVAILABLE"
+    assert section.pattern_b_state is None
+    assert section.monthly_history_24m
+    assert all(point.as_of <= as_of for point in section.monthly_history_24m)
+    assert all(point.evaluation_status == "UNAVAILABLE" for point in section.monthly_history_24m)
+    assert all(point.pattern_b_state is None for point in section.monthly_history_24m)
 
 
 def test_non_common_report_does_not_receive_pattern_b_section(tmp_path):

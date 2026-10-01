@@ -128,6 +128,7 @@ def test_exact_etf36_v06_projection_preserves_julia_and_common_sets(exporter):
         assert compact["pattern"]["official_stage"] == source["current_snapshot"]["official_stage"]
         assert compact["pattern"]["score"] == source["current_snapshot"]["pattern_a_score"]
         assert compact["pattern"]["history_12m"] == exporter._compact_monthly_history(source["monthly_history"])
+        assert compact["pattern"]["history_24m"] == exporter._compact_monthly_history_24m(source["monthly_history"])
         assert compact["flow"]["data_status"] == source["foreign_flow"]["data_status"]
         assert compact["market_strength"]["applicability"] == source["relative_strength"]["applicability"]
         assert compact["market_strength"]["data_status"] == source["relative_strength"]["data_status"]
@@ -226,6 +227,25 @@ def test_interaction_detail_payload_preserves_authority_history(payload, exporte
         "data_available": True,
     }
     assert compact["pattern"]["history_12m"][-1]["as_of"] == "2026-08-31"
+    expected_pattern_24m = [
+        {
+            "as_of": item["as_of"],
+            "close": item["close"],
+            "score": item["score"],
+            "stage": item["stage"],
+            "candidate_state": item["candidate_state"],
+            "data_available": item["data_available"],
+        }
+        for item in source["monthly_history"]["recent_24m_history"]
+    ]
+    assert compact["pattern"]["history_24m"] == expected_pattern_24m
+    assert len(compact["pattern"]["history_24m"]) == min(25, len(source["monthly_history"]["full_monthly_history"]))
+    assert compact["pattern"]["history_24m"][0]["as_of"] == "2024-08-30"
+    assert compact["pattern_b"]["monthly_history"] == source["pattern_b"]["monthly_history"]
+    assert compact["pattern_b"]["monthly_history_24m"] == source["pattern_b"]["monthly_history_24m"]
+    assert len(compact["pattern_b"]["monthly_history"]) == 12
+    assert len(compact["pattern_b"]["monthly_history_24m"]) == 25
+    assert compact["pattern_b"]["monthly_history_24m"][-1]["as_of"] == source["reference_market_date"]
 
     source_rs = source["relative_strength"]
     assert compact["market_strength"]["market_rs_3m"] == source_rs["market_rs_3m"]
@@ -277,6 +297,7 @@ def test_pattern_b_compact_projection_is_verbatim_and_does_not_recalculate(expor
         "pattern_b_state": "NORMAL",
         "as_of": source["reference_market_date"],
         "monthly_history": [{"as_of": source["reference_market_date"], "pattern_b_state": "NORMAL"}],
+        "monthly_history_24m": [{"as_of": source["reference_market_date"], "pattern_b_state": "NORMAL"}],
         "provenance": {"market_data_authority": "MarketDataRepositoryV2"},
     }
     exporter._validate_report_contract(source, source_path)
@@ -439,6 +460,10 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'id="bottom-detail-slot"' in html
     assert 'aria-expanded="false"' in html
     assert "history_12m" in js
+    assert "history_24m" in js
+    assert "monthly_history_24m" in js
+    assert '최근 24개월 패턴 이력이 없습니다.' in js
+    assert "function chartDateLabelIndices(length, maxLabels = 13)" in js
     assert "pattern-score-chart" in js
     assert "pattern-b-state-chart" in js
     assert 'id="pattern-b-stepper"' in html

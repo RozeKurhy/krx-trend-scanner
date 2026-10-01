@@ -1031,10 +1031,19 @@
     panel.hidden = false;
   }
 
+  function chartDateLabelIndices(length, maxLabels = 13) {
+    const count = Math.min(Math.max(0, length), maxLabels);
+    if (count <= 0) return [];
+    if (count === 1) return [0];
+    return Array.from({ length: count }, (_unused, index) => Math.round(index * (length - 1) / (count - 1)));
+  }
+
   function renderPatternDetail(report, container) {
-    const history = Array.isArray(report.pattern.history_12m) ? report.pattern.history_12m : [];
+    const history = Array.isArray(report.pattern.history_24m)
+      ? report.pattern.history_24m
+      : (Array.isArray(report.pattern.history_12m) ? report.pattern.history_12m : []);
     if (!history.length) {
-      appendDetailEmpty(container, "최근 12개월 패턴 이력이 없습니다.");
+      appendDetailEmpty(container, "최근 24개월 패턴 이력이 없습니다.");
       return;
     }
     const chart = document.createElement("div");
@@ -1052,15 +1061,17 @@
 
   function renderPatternScoreChart(history, container) {
     const SVG_NS = "http://www.w3.org/2000/svg";
+    const observations = Array.isArray(history) ? history : [];
     const width = 720;
     const height = 250;
     const padding = { top: 16, right: 18, bottom: 38, left: 42 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
-    const points = history
-      .filter((observation) => observation && observation.score != null && Number.isFinite(Number(observation.score)))
-      .map((observation) => ({ asOf: observation.as_of, score: Number(observation.score) }));
-    const x = (index) => padding.left + (points.length <= 1 ? chartWidth / 2 : (index / (points.length - 1)) * chartWidth);
+    const points = observations
+      .map((observation, index) => ({ observation, index }))
+      .filter(({ observation }) => observation && observation.score != null && Number.isFinite(Number(observation.score)))
+      .map(({ observation, index }) => ({ asOf: observation.as_of, score: Number(observation.score), index }));
+    const x = (index) => padding.left + (observations.length <= 1 ? chartWidth / 2 : (index / (observations.length - 1)) * chartWidth);
     const y = (score) => padding.top + ((100 - Math.max(0, Math.min(100, score))) / 100) * chartHeight;
     const createSvgElement = (tag, attributes) => {
       const element = document.createElementNS(SVG_NS, tag);
@@ -1093,12 +1104,12 @@
       svg.appendChild(label);
     });
     if (points.length) {
-      const line = points.map((point, index) => `${index === 0 ? "M" : "L"}${x(index)} ${y(point.score)}`).join(" ");
+      const line = points.map((point, index) => `${index === 0 ? "M" : "L"}${x(point.index)} ${y(point.score)}`).join(" ");
       svg.appendChild(createSvgElement("path", { class: "pattern-chart-line", d: line }));
-      points.forEach((point, index) => {
+      points.forEach((point) => {
         const circle = createSvgElement("circle", {
           class: "pattern-chart-point",
-          cx: x(index),
+          cx: x(point.index),
           cy: y(point.score),
           r: 4,
           tabindex: 0,
@@ -1109,14 +1120,16 @@
         circle.appendChild(title);
         svg.appendChild(circle);
       });
-      points.forEach((point, index) => {
+      chartDateLabelIndices(observations.length).forEach((index) => {
+        const observation = observations[index];
+        if (!observation || typeof observation.as_of !== "string") return;
         const date = createSvgElement("text", {
           class: "pattern-chart-date",
           x: x(index),
           y: height - 12,
           "text-anchor": "middle",
         });
-        date.textContent = String(point.asOf || "").slice(2, 7).replace("-", ".");
+        date.textContent = formatDate(observation.as_of).slice(2, 7);
         svg.appendChild(date);
       });
     }
@@ -1125,19 +1138,20 @@
 
   function renderPatternBStateChart(history, container) {
     const SVG_NS = "http://www.w3.org/2000/svg";
+    const observations = Array.isArray(history) ? history : [];
     const width = 720;
     const height = 260;
     const padding = { top: 16, right: 18, bottom: 38, left: 96 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
     const stateIndex = new Map(PATTERN_B_STATES.map(([state], index) => [state, index]));
-    const points = (Array.isArray(history) ? history : [])
+    const points = observations
       .map((observation, index) => ({ observation, index }))
       .filter(({ observation }) => observation && observation.evaluation_status === "READY" && stateIndex.has(observation.pattern_b_state))
       .map(({ observation, index }) => ({ asOf: observation.as_of, state: observation.pattern_b_state, index, value: stateIndex.get(observation.pattern_b_state) }));
     if (!points.length) return false;
 
-    const x = (index) => padding.left + (history.length <= 1 ? chartWidth / 2 : (index / (history.length - 1)) * chartWidth);
+    const x = (index) => padding.left + (observations.length <= 1 ? chartWidth / 2 : (index / (observations.length - 1)) * chartWidth);
     const y = (value) => padding.top + ((PATTERN_B_STATES.length - 1 - value) / (PATTERN_B_STATES.length - 1)) * chartHeight;
     const createSvgElement = (tag, attributes) => {
       const element = document.createElementNS(SVG_NS, tag);
@@ -1190,13 +1204,17 @@
       title.textContent = `${formatDate(point.asOf)} · ${patternBStateLabel(point.state)} (${point.state})`;
       circle.appendChild(title);
       svg.appendChild(circle);
+    });
+    chartDateLabelIndices(observations.length).forEach((index) => {
+      const observation = observations[index];
+      if (!observation || typeof observation.as_of !== "string") return;
       const date = createSvgElement("text", {
         class: "pattern-chart-date",
-        x: x(point.index),
+        x: x(index),
         y: height - 12,
         "text-anchor": "middle",
       });
-      date.textContent = formatDate(point.asOf).slice(5);
+      date.textContent = formatDate(observation.as_of).slice(2, 7);
       svg.appendChild(date);
     });
     container.appendChild(svg);
@@ -1218,18 +1236,23 @@
 
     const chart = document.createElement("div");
     chart.className = "pattern-score-chart-wrap";
-    if (renderPatternBStateChart(section.monthly_history, chart)) {
+    const history = Array.isArray(section.monthly_history_24m)
+      ? section.monthly_history_24m
+      : (Array.isArray(section.monthly_history) ? section.monthly_history : []);
+    if (renderPatternBStateChart(history, chart)) {
       container.appendChild(chart);
     } else {
       appendDetailEmpty(container, "표시할 Pattern B 상태 이력이 없습니다.");
     }
 
+    const patternAHistory = Array.isArray(report.pattern.history_24m)
+      ? report.pattern.history_24m
+      : (Array.isArray(report.pattern.history_12m) ? report.pattern.history_12m : []);
     const patternACloses = new Map(
-      (Array.isArray(report.pattern.history_12m) ? report.pattern.history_12m : [])
+      patternAHistory
         .filter((observation) => observation && typeof observation.as_of === "string")
         .map((observation) => [observation.as_of.slice(0, 10), observation.close])
     );
-    const history = Array.isArray(section.monthly_history) ? section.monthly_history : [];
     const historyRows = history.map((observation) => {
       const monthlyLastBar = typeof observation.monthly_last_bar === "string"
         ? observation.monthly_last_bar.slice(0, 10)

@@ -109,9 +109,11 @@ class MonthlyHistorySection:
     history_end_as_of: str | None
     observation_count: int
     recent_12m_observation_count: int
+    recent_24m_observation_count: int
     score_trend: ScoreTrend
     stage_transitions: list[StageTransition]
     recent_12m_history: list[MonthlyObservation]
+    recent_24m_history: list[MonthlyObservation]
     full_monthly_history: list[MonthlyObservation]
     first_pattern_a_available_as_of: str | None = None
     pattern_a_available_observation_count: int = 0
@@ -163,6 +165,7 @@ class PatternBSection:
     reason_codes: list[str]
     reason_details: list[str]
     monthly_history: list[PatternBObservation]
+    monthly_history_24m: list[PatternBObservation]
     provenance: PatternBProvenance
 
 
@@ -579,4 +582,12 @@ class StockReport:
             payload.pop("fundamentals", None)
         if self.pattern_b is None:
             payload.pop("pattern_b", None)
+        if self.report_version != "0.7":
+            # v0.4 and v0.5 source contracts remain byte-compatible; the 24M
+            # projection is an additive v0.7 COMMON display field. ETF v0.6
+            # obtains the same display window from its existing full history.
+            monthly = payload.get("monthly_history")
+            if isinstance(monthly, dict):
+                monthly.pop("recent_24m_observation_count", None)
+                monthly.pop("recent_24m_history", None)
         return payload

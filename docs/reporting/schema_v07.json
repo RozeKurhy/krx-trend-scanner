@@ -16,6 +16,7 @@
     "market": {"type": "string", "enum": ["KOSPI", "KOSDAQ", "KONEX", "UNKNOWN"]},
     "asset_type": {"const": "COMMON"},
     "pattern_b": {"$ref": "#/definitions/patternBSection"},
+    "monthly_history": {"$ref": "#/definitions/patternAMonthlyHistoryDisplay"},
     "requested_as_of": {"type": "string"},
     "reference_market_date": {"type": "string"},
     "fundamentals": {
@@ -44,6 +45,29 @@
   },
   "definitions": {
     "nullableNumber": {"type": ["number", "null"]},
+    "patternAMonthlyObservation": {
+      "type": "object",
+      "required": ["as_of", "close", "score", "stage", "candidate_state", "data_available", "reason"],
+      "properties": {
+        "as_of": {"type": "string"},
+        "close": {"$ref": "#/definitions/nullableNumber"},
+        "score": {"$ref": "#/definitions/nullableNumber"},
+        "stage": {"type": "string"},
+        "candidate_state": {"type": "string"},
+        "data_available": {"type": "boolean"},
+        "reason": {"type": ["string", "null"]}
+      }
+    },
+    "patternAMonthlyHistoryDisplay": {
+      "type": "object",
+      "required": ["recent_12m_observation_count", "recent_12m_history", "recent_24m_observation_count", "recent_24m_history"],
+      "properties": {
+        "recent_12m_observation_count": {"type": "integer", "minimum": 0, "maximum": 13},
+        "recent_12m_history": {"type": "array", "maxItems": 13, "items": {"$ref": "#/definitions/patternAMonthlyObservation"}},
+        "recent_24m_observation_count": {"type": "integer", "minimum": 0, "maximum": 25},
+        "recent_24m_history": {"type": "array", "maxItems": 25, "items": {"$ref": "#/definitions/patternAMonthlyObservation"}}
+      }
+    },
     "fundamentalsQuarterRow": {
       "type": "object",
       "required": ["quarter", "status", "reason", "revenue_krw", "revenue_yoy_pct", "operating_income_krw", "operating_income_yoy_pct", "operating_income_yoy_status", "operating_margin_pct", "net_income_krw", "net_margin_pct", "operating_cash_flow_krw"],
@@ -117,7 +141,7 @@
     },
     "patternBSection": {
       "type": "object",
-      "required": ["applicability", "evaluation_status", "pattern_b_state", "as_of", "freshness_status", "expected_weekly_bar", "range_36m", "monthly_ma24_distance", "range_52w", "monthly_last_bar", "weekly_last_bar", "reason_codes", "reason_details", "monthly_history", "provenance"],
+      "required": ["applicability", "evaluation_status", "pattern_b_state", "as_of", "freshness_status", "expected_weekly_bar", "range_36m", "monthly_ma24_distance", "range_52w", "monthly_last_bar", "weekly_last_bar", "reason_codes", "reason_details", "monthly_history", "monthly_history_24m", "provenance"],
       "properties": {
         "applicability": {"type": "string", "enum": ["APPLICABLE"]},
         "evaluation_status": {"type": "string", "enum": ["READY", "UNAVAILABLE"]},
@@ -132,7 +156,8 @@
         "weekly_last_bar": {"type": ["string", "null"]},
         "reason_codes": {"type": "array", "items": {"type": "string"}},
         "reason_details": {"type": "array", "items": {"type": "string"}},
-        "monthly_history": {"type": "array", "items": {"$ref": "#/definitions/patternBObservation"}},
+        "monthly_history": {"type": "array", "maxItems": 12, "items": {"$ref": "#/definitions/patternBObservation"}},
+        "monthly_history_24m": {"type": "array", "maxItems": 25, "items": {"$ref": "#/definitions/patternBObservation"}},
         "provenance": {"$ref": "#/definitions/patternBProvenance"}
       }
     }

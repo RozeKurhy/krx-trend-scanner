@@ -187,6 +187,30 @@ def _compact_monthly_history(monthly: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+def _compact_monthly_history_24m(monthly: dict[str, Any]) -> list[dict[str, Any]]:
+    history = monthly.get("recent_24m_history")
+    if not isinstance(history, list):
+        full_history = monthly.get("full_monthly_history")
+        if isinstance(full_history, list):
+            history = full_history[-25:]
+        else:
+            history = monthly.get("recent_12m_history") or []
+    if not isinstance(history, list):
+        return []
+    return [
+        {
+            "as_of": observation.get("as_of"),
+            "close": observation.get("close"),
+            "score": observation.get("score"),
+            "stage": observation.get("stage"),
+            "candidate_state": observation.get("candidate_state"),
+            "data_available": observation.get("data_available"),
+        }
+        for observation in history
+        if isinstance(observation, dict)
+    ]
+
+
 def _compact_trade_history(strategy: dict[str, Any]) -> list[dict[str, Any]]:
     history = strategy.get("trade_history") or []
     if not isinstance(history, list):
@@ -382,6 +406,7 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
             "candidate_state": snapshot.get("candidate_state"),
             "score": snapshot.get("pattern_a_score"),
             "history_12m": _compact_monthly_history(monthly),
+            "history_24m": _compact_monthly_history_24m(monthly),
         },
         # Pattern B is a report-owned informational analysis. This compact
         # export intentionally copies it without recalculation or hydration.

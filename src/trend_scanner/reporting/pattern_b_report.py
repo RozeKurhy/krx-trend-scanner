@@ -71,6 +71,7 @@ def _unavailable(
         reason_codes=[reason_code],
         reason_details=[reason_detail] if reason_detail else [],
         monthly_history=[],
+        monthly_history_24m=[],
         provenance=provenance or _provenance(),
     )
 
@@ -99,6 +100,26 @@ def _monthly_query_dates(
     if not dates or dates[-1] != as_of:
         dates.append(as_of)
     return dates[-12:]
+
+
+def _monthly_query_dates_24m(
+    monthly_observations: Iterable[MonthlyObservation], as_of: str,
+) -> list[str]:
+    """Return the inclusive t-24M monthly window plus the current as-of sample."""
+    target = pd.Timestamp(as_of).normalize()
+    target_date = target.strftime("%Y-%m-%d")
+    month_ends = {
+        (pd.Timestamp(observation.as_of).normalize() + pd.offsets.MonthEnd(0)).strftime("%Y-%m-%d")
+        for observation in monthly_observations
+        if pd.Timestamp(observation.as_of).normalize() <= target
+    }
+    month_ends = sorted(value for value in month_ends if value <= target_date)
+    # At a month-end the current point is already in the monthly observations,
+    # so keep the full t-24M..t inclusive 25 rows. Otherwise include 24 month
+    # ends plus the exact current as-of point.
+    if target_date in month_ends:
+        return month_ends[-25:]
+    return [*month_ends[-24:], target_date][-25:]
 
 
 def build_pattern_b_section(
@@ -172,12 +193,15 @@ def build_pattern_b_section(
         raise ValueError("PATTERN_B_POST_AS_OF_PRICE_ROW")
 
     current = evaluate_pattern_b(ticker.upper(), daily, as_of, name=name)
-    monthly_results = []
-    for query_date in _monthly_query_dates(monthly_observations, as_of):
+    monthly_observations = list(monthly_observations)
+    legacy_query_dates = _monthly_query_dates(monthly_observations, as_of)
+    query_dates_24m = _monthly_query_dates_24m(monthly_observations, as_of)
+    monthly_results_by_date = {}
+    for query_date in query_dates_24m:
         result = current if query_date == as_of else evaluate_pattern_b(
             ticker.upper(), daily, query_date, name=name,
         )
-        monthly_results.append(PatternBObservation(
+        monthly_results_by_date[query_date] = PatternBObservation(
             as_of=result.as_of,
             evaluation_status=result.evaluation_status.value,
             pattern_b_state=result.pattern_b_state,
@@ -186,7 +210,12 @@ def build_pattern_b_section(
             range_52w=result.range_52w,
             monthly_last_bar=result.monthly_last_bar,
             weekly_last_bar=result.weekly_last_bar,
-        ))
+        )
+    missing_legacy_dates = sorted(set(legacy_query_dates) - set(monthly_results_by_date))
+    if missing_legacy_dates:
+        raise ValueError(f"PATTERN_B_24M_HISTORY_MISSING_LEGACY_12M_DATES:{missing_legacy_dates}")
+    monthly_results = [monthly_results_by_date[query_date] for query_date in legacy_query_dates]
+    monthly_results_24m = [monthly_results_by_date[query_date] for query_date in query_dates_24m]
 
     return PatternBSection(
         applicability="APPLICABLE",
@@ -203,6 +232,7 @@ def build_pattern_b_section(
         reason_codes=list(current.reason_codes),
         reason_details=list(current.reason_details),
         monthly_history=monthly_results,
+        monthly_history_24m=monthly_results_24m,
         provenance=PatternBProvenance(
             **{
                 **provenance.__dict__,

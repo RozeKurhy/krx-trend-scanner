@@ -126,6 +126,15 @@ def _get_reference_market_month_ends(
     return _get_ref_market_month_ends(calendar=calendar, requested_as_of=requested_as_of)
 
 
+def _inclusive_monthly_window(
+    observations: list[MonthlyObservation], months: int,
+) -> list[MonthlyObservation]:
+    """Return the t-NM through t inclusive monthly observations (up to N+1)."""
+    if months < 1:
+        raise ValueError("MONTHLY_HISTORY_WINDOW_MUST_BE_POSITIVE")
+    return list(observations[-(months + 1):])
+
+
 def _determine_flow_state_and_explanation(
     data_status: str,
     nb_1d: float | None,
@@ -1132,7 +1141,8 @@ def generate_stock_report(
                 )
 
     full_monthly_history.sort(key=lambda x: x.as_of)
-    recent_12m_history = full_monthly_history[-13:] if len(full_monthly_history) >= 13 else list(full_monthly_history)
+    recent_12m_history = _inclusive_monthly_window(full_monthly_history, 12)
+    recent_24m_history = _inclusive_monthly_window(full_monthly_history, 24)
 
     stage_transitions: list[StageTransition] = []
     last_valid_stage: str | None = None
@@ -1186,9 +1196,11 @@ def generate_stock_report(
         history_end_as_of=full_monthly_history[-1].as_of if full_monthly_history else None,
         observation_count=len(full_monthly_history),
         recent_12m_observation_count=len(recent_12m_history),
+        recent_24m_observation_count=len(recent_24m_history),
         score_trend=score_trend,
         stage_transitions=stage_transitions,
         recent_12m_history=recent_12m_history,
+        recent_24m_history=recent_24m_history,
         full_monthly_history=full_monthly_history,
         first_pattern_a_available_as_of=first_pattern_a_avail_as_of,
         pattern_a_available_observation_count=pattern_a_available_count,
