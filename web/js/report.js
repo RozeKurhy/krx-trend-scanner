@@ -213,6 +213,11 @@
     return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: maximumFractionDigits == null ? 0 : maximumFractionDigits }).format(Number(value));
   }
 
+  function formatOneDecimal(value) {
+    if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
+    return new Intl.NumberFormat("ko-KR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(Number(value));
+  }
+
   function formatPrice(value) {
     return value == null || value === "" || !Number.isFinite(Number(value)) ? "—" : `${formatNumber(value)}원`;
   }
@@ -293,10 +298,42 @@
     const found = PATTERN_B_STATES.find(([state]) => state === value);
     return found ? found[1] : "정보 없음";
   }
+  function isValidPatternAObservation(observation) {
+    return Boolean(
+      observation && observation.score != null && observation.score !== "" &&
+      Number.isFinite(Number(observation.score)) && observation.stage !== "UNAVAILABLE"
+    );
+  }
+  function isValidPatternBState(value) {
+    return PATTERN_B_STATES.some(([state]) => state === value);
+  }
+  function isValidPatternBObservation(observation) {
+    return Boolean(
+      observation && observation.evaluation_status === "READY" &&
+      isValidPatternBState(observation.pattern_b_state)
+    );
+  }
+  function isReadyPatternBSection(section) {
+    return Boolean(
+      section && section.applicability === "APPLICABLE" &&
+      section.evaluation_status === "READY" && isValidPatternBState(section.pattern_b_state)
+    );
+  }
+  function formatPatternAScore(value) {
+    const formatted = formatOneDecimal(value);
+    return formatted === "—" ? "—" : `${formatted}점`;
+  }
+  function formatPatternBPercent(value, signed = false) {
+    if (value == null || value === "" || !Number.isFinite(Number(value))) return "—";
+    const number = Number(value) * 100;
+    const sign = number > 0 ? (signed ? "+" : "") : number < 0 ? "−" : "";
+    return `${sign}${formatOneDecimal(Math.abs(number))}%`;
+  }
   function formatPatternBRange(value) {
-    return value == null || !Number.isFinite(Number(value))
-      ? "—"
-      : `${formatNumber(Number(value) * 100, 2)}%`;
+    return formatPatternBPercent(value);
+  }
+  function formatPatternBChange(value) {
+    return formatPatternBPercent(value, true);
   }
   function flowLabel(value) { return label(FLOW_LABELS, value, "정보 없음"); }
   function tradingValueLabel(value) { return label(TRADING_VALUE_LABELS, value, "정보 없음"); }
@@ -319,8 +356,7 @@
     if (!market || market.applicability === "NOT_APPLICABLE") return "마켓 RS 적용 대상이 아닙니다.";
     if (market.data_status !== "READY") return "마켓 RS 정보가 없습니다.";
     const benchmark = market.benchmark_name || "시장";
-    const asOf = formatDate(market.benchmark_last_observation_date);
-    return `${benchmark} 기준 · 최근 관측일 ${asOf}`;
+    return `${benchmark} 기준`;
   }
 
   function fundamentalLabel(report) {
@@ -587,10 +623,13 @@
     if (report.identity && report.identity.asset_type === "ETF" && report.strategy && report.strategy.strategy_name) {
       return report.strategy.interpretation || `${report.strategy.strategy_name}: ${report.strategy.action}`;
     }
-    const trend = `Pattern A ${stageLabel(report.summary.trend_stage)}`;
-    const market = `마켓 RS ${marketStrengthLabel(report.market_strength)}`;
-    const flow = `수급 ${flowLabel(report.summary.flow_state)}`;
-    return `${trend} · ${market} · ${flow}`;
+    const trend = stageLabel(report.summary.trend_stage);
+    const patternB = isReadyPatternBSection(report.pattern_b)
+      ? patternBStateLabel(report.pattern_b.pattern_b_state)
+      : "정보 없음";
+    const tradingValue = tradingValueLabel(report.price_trend && report.price_trend.trading_value_state);
+    const flow = flowLabel(report.summary.flow_state);
+    return `${trend} · ${patternB} · 거래대금 ${tradingValue} · 수급 ${flow}`;
   }
 
   function renderStatusStepper(elementId, steps, currentState, hidden = false) {
@@ -1042,8 +1081,8 @@
     const history = Array.isArray(report.pattern.history_24m)
       ? report.pattern.history_24m
       : (Array.isArray(report.pattern.history_12m) ? report.pattern.history_12m : []);
-    if (!history.length) {
-      appendDetailEmpty(container, "최근 24개월 패턴 이력이 없습니다.");
+    if (!history.some(isValidPatternAObservation)) {
+      appendDetailEmpty(container, "표시할 이력이 없습니다.");
       return;
     }
     const chart = document.createElement("div");
@@ -1053,7 +1092,7 @@
     const rows = history.map((observation) => [
       formatDate(observation.as_of),
       observation.data_available === false ? "정보 없음" : formatPrice(observation.close),
-      observation.score == null ? "—" : `${formatNumber(observation.score, 2)}점`,
+      formatPatternAScore(observation.score),
       stageLabel(observation.stage),
     ]);
     container.appendChild(createDetailTable(["기준일", "종가", "패턴 점수", "단계"], rows));
@@ -1069,7 +1108,7 @@
     const chartHeight = height - padding.top - padding.bottom;
     const points = observations
       .map((observation, index) => ({ observation, index }))
-      .filter(({ observation }) => observation && observation.score != null && Number.isFinite(Number(observation.score)))
+      .filter(({ observation }) => isValidPatternAObservation(observation))
       .map(({ observation, index }) => ({ asOf: observation.as_of, score: Number(observation.score), index }));
     const x = (index) => padding.left + (observations.length <= 1 ? chartWidth / 2 : (index / (observations.length - 1)) * chartWidth);
     const y = (score) => padding.top + ((100 - Math.max(0, Math.min(100, score))) / 100) * chartHeight;
@@ -1113,10 +1152,10 @@
           cy: y(point.score),
           r: 4,
           tabindex: 0,
-          "aria-label": `${formatDate(point.asOf)} 패턴 점수 ${formatNumber(point.score, 2)}점`,
+          "aria-label": `${formatDate(point.asOf)} 패턴 점수 ${formatPatternAScore(point.score)}`,
         });
         const title = createSvgElement("title");
-        title.textContent = `${formatDate(point.asOf)} · ${formatNumber(point.score, 2)}점`;
+        title.textContent = `${formatDate(point.asOf)} · ${formatPatternAScore(point.score)}`;
         circle.appendChild(title);
         svg.appendChild(circle);
       });
@@ -1223,46 +1262,33 @@
 
   function renderPatternBDetail(report, container) {
     const section = report.pattern_b;
-    if (!section) {
-      appendDetailEmpty(container, report.identity && report.identity.asset_type === "ETF"
-        ? "ETF v0.6에는 Pattern B를 적용하지 않습니다."
-        : "Pattern B 분석이 이 리포트에 연결되지 않았습니다.");
-      return;
-    }
-    if (section.applicability !== "APPLICABLE") {
-      appendDetailEmpty(container, "Pattern B는 보통주 대상 정보 분석입니다.");
+    const history = section && Array.isArray(section.monthly_history_24m)
+      ? section.monthly_history_24m
+      : (section && Array.isArray(section.monthly_history) ? section.monthly_history : []);
+    if (!section || section.applicability !== "APPLICABLE" || !history.some(isValidPatternBObservation)) {
+      appendDetailEmpty(container, "표시할 이력이 없습니다.");
       return;
     }
 
     const chart = document.createElement("div");
     chart.className = "pattern-score-chart-wrap";
-    const history = Array.isArray(section.monthly_history_24m)
-      ? section.monthly_history_24m
-      : (Array.isArray(section.monthly_history) ? section.monthly_history : []);
-    if (renderPatternBStateChart(history, chart)) {
-      container.appendChild(chart);
-    } else {
-      appendDetailEmpty(container, "표시할 Pattern B 상태 이력이 없습니다.");
-    }
+    renderPatternBStateChart(history, chart);
+    container.appendChild(chart);
 
     const patternAHistory = Array.isArray(report.pattern.history_24m)
       ? report.pattern.history_24m
       : (Array.isArray(report.pattern.history_12m) ? report.pattern.history_12m : []);
-    const patternACloses = new Map(
-      patternAHistory
-        .filter((observation) => observation && typeof observation.as_of === "string")
-        .map((observation) => [observation.as_of.slice(0, 10), observation.close])
-    );
+    const patternAClosesByMonth = patternAClosesByMonthIndex(patternAHistory);
     const historyRows = history.map((observation) => {
       const monthlyLastBar = typeof observation.monthly_last_bar === "string"
         ? observation.monthly_last_bar.slice(0, 10)
         : null;
       return [
         formatDate(observation.as_of),
-        formatPrice(monthlyLastBar ? patternACloses.get(monthlyLastBar) : null),
+        formatPrice(monthlyLastBar ? patternAClosesByMonth.get(monthlyLastBar.slice(0, 7)) : null),
         observation.pattern_b_state ? `${patternBStateLabel(observation.pattern_b_state)} (${observation.pattern_b_state})` : "정보 없음",
         formatPatternBRange(observation.range_36m),
-        formatSignedRate(observation.monthly_ma24_distance),
+        formatPatternBChange(observation.monthly_ma24_distance),
         formatPatternBRange(observation.range_52w),
       ];
     });
@@ -1272,6 +1298,26 @@
     if (section.reason_codes && section.reason_codes.length) {
       appendDetailNote(container, `정보 부족 사유: ${section.reason_codes.join(", ")}`);
     }
+  }
+
+  function patternAClosesByMonthIndex(history) {
+    const observationsByMonth = new Map();
+    history.forEach((observation) => {
+      if (!observation || typeof observation.as_of !== "string" || !/^\d{4}-\d{2}-\d{2}/.test(observation.as_of)) return;
+      const month = observation.as_of.slice(0, 7);
+      const observations = observationsByMonth.get(month) || [];
+      observations.push(observation);
+      observationsByMonth.set(month, observations);
+    });
+
+    const closesByMonth = new Map();
+    observationsByMonth.forEach((observations, month) => {
+      if (observations.length !== 1) return;
+      const close = observations[0].close;
+      if (close == null || close === "" || !Number.isFinite(Number(close))) return;
+      closesByMonth.set(month, close);
+    });
+    return closesByMonth;
   }
 
   function renderMarketDetail(report, container) {
@@ -1292,7 +1338,7 @@
       ["최근 12개월", { value: formatSignedRate(market.market_rs_12m), className: signedValueClass(market.market_rs_12m) }, topPercentLabel(market.percentile_12m)],
     ];
     container.appendChild(createDetailTable(["구간", "마켓 대비 수익률", "마켓 내 위치"], rows));
-    appendDetailNote(container, `${market.benchmark_name || "시장"} 기준 · 최근 관측일 ${formatDate(market.benchmark_last_observation_date)}`);
+    appendDetailNote(container, `${market.benchmark_name || "시장"} 기준`);
     if (market.explanation) appendDetailNote(container, market.explanation);
   }
 
@@ -1417,11 +1463,16 @@
   function positionDetailPanel(key) {
     const panel = byId("report-detail-panel");
     if (panel && isMobileLayout()) {
+      setHidden("top-detail-slot", true);
+      setHidden("bottom-detail-slot", true);
       const selectedCard = byId(DETAIL_BUTTON_IDS[key]);
       if (selectedCard) selectedCard.insertAdjacentElement("afterend", panel);
       return;
     }
-    const slot = byId(key === "price" || key === "market" || key === "flow" ? "top-detail-slot" : "bottom-detail-slot");
+    const useTopSlot = key === "price" || key === "market" || key === "flow";
+    setHidden("top-detail-slot", !useTopSlot);
+    setHidden("bottom-detail-slot", useTopSlot);
+    const slot = byId(useTopSlot ? "top-detail-slot" : "bottom-detail-slot");
     if (panel && slot) slot.appendChild(panel);
   }
 
@@ -1462,6 +1513,8 @@
   function closeDetail() {
     activeDetailKey = null;
     setHidden("report-detail-panel", true);
+    setHidden("top-detail-slot", true);
+    setHidden("bottom-detail-slot", true);
     setDetailButtonStates();
   }
 
@@ -1522,7 +1575,7 @@
     appendDetail(list, "리포트 상태", details.report_status);
     appendDetail(list, "자산 유형", details.asset_type);
     appendDetail(list, "Pattern A 단계", details.pattern_stage);
-    appendDetail(list, "Pattern A 점수", details.pattern_score == null ? "—" : formatNumber(details.pattern_score, 2));
+    appendDetail(list, "Pattern A 점수", formatOneDecimal(details.pattern_score));
     appendDetail(list, "전략 상태", report.strategy.state);
     appendDetail(list, "전략 행동", report.strategy.action);
     appendDetail(list, "수급 상태", details.flow_state);
@@ -1561,26 +1614,24 @@
     setText("price-value", formatPrice(report.price_trend.latest_close));
     setText("price-detail", report.price_trend.latest_close == null
       ? "가격 정보 없음"
-      : `기준일 ${formatDate(report.price_trend.latest_close_as_of)} · 거래대금 ${tradingValueLabel(report.price_trend.trading_value_state)}`);
+      : `거래대금 ${tradingValueLabel(report.price_trend.trading_value_state)}`);
     renderPatternStepper(report.pattern.official_stage);
-    setText("pattern-detail", report.pattern.score == null ? "패턴 점수 확인 필요" : `패턴 점수 ${formatNumber(report.pattern.score, 2)}점`);
+    setText("pattern-detail", report.pattern.score == null ? "패턴 점수 확인 필요" : `패턴 점수 ${formatOneDecimal(report.pattern.score)}점`);
     const patternB = report.pattern_b;
-    const patternBReady = Boolean(patternB && patternB.applicability === "APPLICABLE" && patternB.evaluation_status === "READY" && patternB.pattern_b_state);
+    const patternBReady = isReadyPatternBSection(patternB);
     renderStatusStepper(
       "pattern-b-stepper",
       PATTERN_B_STATES,
-      patternB && patternB.pattern_b_state,
-      !patternB || patternB.applicability !== "APPLICABLE",
+      patternBReady ? patternB.pattern_b_state : null,
+      !patternBReady,
     );
     setText("pattern-b-detail", patternBReady
-      ? `36M ${formatPatternBRange(patternB.range_36m)} · 24M ${formatSignedRate(patternB.monthly_ma24_distance)} · 52W ${formatPatternBRange(patternB.range_52w)}`
+      ? `36M ${formatPatternBRange(patternB.range_36m)} · 24M ${formatPatternBChange(patternB.monthly_ma24_distance)} · 52W ${formatPatternBRange(patternB.range_52w)}`
       : (identity.asset_type === "ETF"
         ? "해당 없음 · ETF v0.6에는 Pattern B를 적용하지 않습니다."
         : (patternB && patternB.applicability === "NOT_APPLICABLE"
           ? "해당 없음 · Pattern B는 보통주 대상 정보 분석입니다."
-          : (patternB && Array.isArray(patternB.reason_codes) && patternB.reason_codes.length
-            ? `정보 없음 · ${patternB.reason_codes.join(", ")}`
-            : "정보 없음 · Pattern B 상태 데이터 없음"))));
+          : "정보 없음")));
     setText("market-value", marketStrengthLabel(report.market_strength));
     setText("market-detail", marketStrengthDetail(report.market_strength));
     setText("flow-value", flowLabel(report.flow.state));
@@ -1649,7 +1700,7 @@
     const value = await response.json();
     if (!validateIndex(value)) throw new Error("stock index schema is incomplete");
     indexData = value;
-    setText("search-meta", `전체 ${formatNumber(value.count)}개 종목 · 리포트 ${formatNumber(value.available_report_count)}개`);
+    setText("search-meta", `전체 ${formatNumber(value.count)}개 종목 · 리포트 ${formatNumber(value.available_report_count)}개 · 기준일 ${formatDate(value.reference_market_date)}`);
     renderRecommendations();
     const ticker = currentTicker();
     if (!ticker) {

@@ -211,7 +211,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert (ROOT / "web" / strategy_scripts[0].path.removeprefix("./")).is_file()
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert 'EXIT: "다음 시가 청산 대기"' in strategy_js
-    assert 'src="./js/report.js?v=web-stock-dual-strategy-v2"' in report_html
+    assert 'src="./js/report.js?v=web-stock-report-ui-refine-v1"' in report_html
     assert 'href="./strategy.html"' in index_html
     assert 'href="./strategy.html"' in report_html
     assert 'class="nav-item is-active" href="./strategy.html"' in strategy_html

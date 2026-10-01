@@ -353,10 +353,10 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-stock-dual-strategy-v2"' in html
+    assert 'src="./js/report.js?v=web-stock-report-ui-refine-v1"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert html.count("web-dual-strategy-report-v1") == 1
-    assert html.count("web-stock-dual-strategy-v2") == 1
+    assert html.count("web-stock-report-ui-refine-v1") == 1
     assert index_html.count("web-dual-strategy-report-v1") == 1
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
@@ -456,13 +456,22 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'fundamentals-unit-note' not in css
     assert '단위: 억원' in html
     assert 'id="fundamentals-periods"' in html
-    assert 'id="top-detail-slot"' in html
-    assert 'id="bottom-detail-slot"' in html
+    assert 'id="top-detail-slot" class="report-detail-slot" hidden' in html
+    assert 'id="bottom-detail-slot" class="report-detail-slot" hidden' in html
+    assert 'setHidden("top-detail-slot", true);' in js
+    assert 'setHidden("bottom-detail-slot", true);' in js
     assert 'aria-expanded="false"' in html
     assert "history_12m" in js
     assert "history_24m" in js
     assert "monthly_history_24m" in js
-    assert '최근 24개월 패턴 이력이 없습니다.' in js
+    assert 'appendDetailEmpty(container, "표시할 이력이 없습니다.")' in js
+    assert "function isValidPatternAObservation(observation)" in js
+    assert 'observation.stage !== "UNAVAILABLE"' in js
+    assert "function isValidPatternBObservation(observation)" in js
+    assert 'observation.evaluation_status === "READY"' in js
+    assert "function patternAClosesByMonthIndex(history)" in js
+    assert 'observations.length !== 1' in js
+    assert 'patternACloses.get(monthlyLastBar)' not in js
     assert "function chartDateLabelIndices(length, maxLabels = 13)" in js
     assert "pattern-score-chart" in js
     assert "pattern-b-state-chart" in js
@@ -477,16 +486,22 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert '["EXTREME_OVERHEATED", "극단 과열"]' in js
     assert 'renderStatusStepper(' in js and '"pattern-b-stepper"' in js
     assert 'createDetailTable(["기준일", "종가", "상태", "36M 범위", "24M선 이격", "52W 범위"]' in js
-    assert 'patternACloses.get(monthlyLastBar)' in js
+    assert 'patternAClosesByMonth.get(monthlyLastBar.slice(0, 7))' in js
     pattern_b_detail = js[js.index("function renderPatternBDetail"):js.index("function renderMarketDetail")]
     assert 'createDetailTable(["현재 지표", "값"]' not in pattern_b_detail
     assert '"현재 상태"' not in pattern_b_detail
     card_render = js[js.index('renderPatternStepper(report.pattern.official_stage)'):js.index('setText("market-value"')]
     assert 'setText("pattern-value"' not in card_render
     assert 'patternBStateLabel(patternB.pattern_b_state)' not in card_render
-    assert '36M ${formatPatternBRange(patternB.range_36m)} · 24M ${formatSignedRate(patternB.monthly_ma24_distance)} · 52W ${formatPatternBRange(patternB.range_52w)}' in card_render
+    assert '36M ${formatPatternBRange(patternB.range_36m)} · 24M ${formatPatternBChange(patternB.monthly_ma24_distance)} · 52W ${formatPatternBRange(patternB.range_52w)}' in card_render
     assert "해당 없음 · ETF v0.6에는 Pattern B를 적용하지 않습니다." in card_render
-    assert "정보 없음 · Pattern B 상태 데이터 없음" in card_render
+    assert '"정보 없음"' in card_render
+    assert "정보 없음 · Pattern B 상태 데이터 없음" not in card_render
+    assert "reason_codes" not in card_render
+    assert "formatOneDecimal" in js
+    assert "formatPatternBPercent" in js
+    assert 'minimumFractionDigits: 1, maximumFractionDigits: 1' in js
+    assert 'formatSignedRate(value)' in js
     for removed in (
         "가격 권위 ",
         "Pattern B는 정보성 상태 분석이며 B Select Core V1의 매수·매도 전략 실행과 별개입니다.",
@@ -611,9 +626,24 @@ def test_common_report_dual_strategy_ui_reuses_monitor_and_fails_closed():
     summary = js[js.index("function buildSummary(report)"):js.index("function renderStatusStepper")]
     assert 'report.identity.asset_type === "ETF"' in summary
     assert 'report.strategy.interpretation' in summary
-    assert 'Pattern A ${stageLabel(report.summary.trend_stage)}' in summary
-    assert '마켓 RS ${marketStrengthLabel(report.market_strength)}' in summary
-    assert '수급 ${flowLabel(report.summary.flow_state)}' in summary
+    assert 'const trend = stageLabel(report.summary.trend_stage);' in summary
+    assert 'const patternB = isReadyPatternBSection(report.pattern_b)' in summary
+    assert '거래대금 ${tradingValue}' in summary
+    assert '수급 ${flow}' in summary
+    assert 'Pattern A ${stageLabel(report.summary.trend_stage)}' not in summary
+    assert '마켓 RS ${marketStrengthLabel(report.market_strength)}' not in summary
+    assert 'formatDate(value.reference_market_date)' in js
+    assert 'formatDate(value.requested_as_of)' not in js
+    price_card = js[js.index('setText("price-value"'):js.index('renderPatternStepper(report.pattern.official_stage)')]
+    assert '거래대금 ${tradingValueLabel(report.price_trend.trading_value_state)}' in price_card
+    assert "기준일" not in price_card
+    assert "latest_close_as_of" not in price_card
+    market_detail = js[js.index("function marketStrengthDetail"):js.index("function fundamentalLabel")]
+    assert "benchmark_last_observation_date" not in market_detail
+    assert "최근 관측일" not in market_detail
+    market_render = js[js.index("function renderMarketDetail"):js.index("function renderFlowDetail")]
+    assert 'appendDetailNote(container, `${market.benchmark_name || "시장"} 기준`)' in market_render
+    assert "최근 관측일" not in market_render
     detail = js[js.index("function renderStrategyDetail"):js.index("function isMobileLayout")]
     assert 'const isEtf = report.identity && report.identity.asset_type === "ETF";' in detail
     assert 'if (isEtf)' in detail
