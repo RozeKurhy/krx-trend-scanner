@@ -212,8 +212,8 @@
     const periodReturn = createField("기간 등락", formatReturn(item[stockReturnField]), `최근 ${HORIZON_LABELS[activeHorizon]}`, `sector-ranking-period-return ${returnClass(item[stockReturnField])}`);
     const price = createField("현재가", formatPrice(item.latest_close), formatDate(item.latest_close_as_of), "sector-ranking-price");
     const report = item.report_available
-      ? createElement("a", "sector-ranking-report", "리포트 보기 ›")
-      : createElement("span", "sector-ranking-report is-disabled", "리포트 준비 중");
+      ? createElement("a", "sector-ranking-report ranking-report-link", "리포트 보기 ›")
+      : createElement("span", "sector-ranking-report ranking-report-link is-disabled", "리포트 준비 중");
     if (item.report_available) {
       report.href = `./report.html?ticker=${encodeURIComponent(item.ticker)}`;
       report.setAttribute("aria-label", `${item.name} ${item.ticker} 리포트 보기`);

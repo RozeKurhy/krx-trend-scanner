@@ -647,7 +647,10 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .market-ranking-detail { color: var(--ink-faint); font-size: 10px; line-height: 1.25; }
 .market-ranking-price .market-ranking-value { color: var(--ink); }
 .market-ranking-action .market-ranking-value { color: var(--brand-red-dark); }
-.market-ranking-report { flex: 0 0 auto; color: var(--brand-red-dark); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.ranking-report-link { display: inline-flex; flex: 0 0 auto; align-items: center; justify-self: end; color: var(--brand-red-dark); font-size: 11px; font-weight: 800; white-space: nowrap; text-decoration: none; }
+.ranking-report-link:hover, .ranking-report-link:focus { color: var(--brand-red-dark); text-decoration: none; }
+.ranking-report-link:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.ranking-report-link.is-disabled { color: var(--ink-faint); font-weight: 650; }
 .market-ranking-empty { margin: 0; padding: 24px; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
 
 .etf-controls { margin-bottom: 16px; }
@@ -655,7 +658,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .etf-scope { min-height: 46px; display: flex; align-items: center; margin-left: auto; }
 .etf-horizon-group { flex: 0 1 auto; min-width: 0; overflow-x: auto; padding: 1px; }
 .etf-ranking-list { display: grid; gap: 8px; }
-.etf-ranking-row { display: grid; grid-template-columns: minmax(230px, 2fr) repeat(7, minmax(82px, 1fr)); align-items: center; gap: 12px; min-width: 0; min-height: 92px; border: 1px solid var(--line); padding: 15px 16px; color: var(--ink); background: var(--surface); border-radius: 9px; }
+.etf-ranking-row { display: grid; grid-template-columns: minmax(230px, 2fr) repeat(7, minmax(82px, 1fr)) auto; align-items: center; gap: 12px; min-width: 0; min-height: 92px; border: 1px solid var(--line); padding: 15px 16px; color: var(--ink); background: var(--surface); border-radius: 9px; }
 .etf-ranking-row:hover { border-color: var(--line-strong); background: var(--surface-muted); }
 .etf-ranking-row:focus-within { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .etf-ranking-identity, .etf-ranking-field { min-width: 0; }
@@ -696,8 +699,6 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .sector-ranking-period-return.return-positive .market-ranking-value { color: var(--market-up-red); }
 .sector-ranking-period-return.return-negative .market-ranking-value { color: var(--market-down-blue); }
 .sector-ranking-price .market-ranking-value { color: var(--ink); }
-.sector-ranking-report { flex: 0 0 auto; color: var(--brand-red-dark); font-size: 11px; font-weight: 800; white-space: nowrap; }
-.sector-ranking-report.is-disabled { color: var(--ink-faint); font-weight: 650; }
 .sector-ranking-empty { margin: 0; padding: 24px; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
 
 .foreign-controls { margin-bottom: 16px; }
@@ -721,8 +722,6 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .foreign-ranking-return.return-negative .foreign-ranking-value { color: var(--market-down-blue); }
 .foreign-ranking-price .foreign-ranking-value { color: var(--ink); }
 .foreign-ranking-detail { color: var(--ink-faint); font-size: 10px; line-height: 1.25; }
-.foreign-ranking-report { flex: 0 0 auto; color: var(--brand-red-dark); font-size: 11px; font-weight: 800; white-space: nowrap; }
-.foreign-ranking-report.is-disabled { color: var(--ink-faint); font-weight: 650; }
 .foreign-ranking-empty { margin: 0; padding: 24px; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
 
 @media (max-width: 960px) {
@@ -736,15 +735,13 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
   .strategy-item-link { justify-self: end; }
   .market-ranking-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .market-ranking-identity { grid-column: 1 / -1; }
-  .market-ranking-report { justify-self: end; }
+  .ranking-report-link { justify-self: end; }
   .etf-ranking-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .etf-ranking-identity { grid-column: 1 / -1; }
   .sector-ranking-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sector-ranking-row .market-ranking-identity { grid-column: 1 / -1; }
-  .sector-ranking-report { justify-self: end; }
   .foreign-ranking-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .foreign-ranking-identity { grid-column: 1 / -1; }
-  .foreign-ranking-report { justify-self: end; }
   .fear-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .fundamentals-trend-charts { grid-template-columns: 1fr; }
 }
@@ -770,9 +767,10 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
   .strategy-item-link { justify-self: start; }
   .market-ranking-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
   .market-ranking-identity, .market-ranking-report { grid-column: 1 / -1; }
-  .market-ranking-report { justify-self: start; }
+  .ranking-report-link { justify-self: end; }
   .etf-ranking-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
-  .etf-ranking-identity { grid-column: 1 / -1; }
+  .etf-ranking-identity, .etf-ranking-row .ranking-report-link { grid-column: 1 / -1; }
+  .etf-ranking-row .ranking-report-link { justify-self: end; }
   .market-primary-row { align-items: stretch; flex-direction: column; gap: 10px; }
   .market-select-wrap { width: 100%; max-width: none; flex-basis: auto; }
   .market-horizon-group { width: 100%; flex-basis: auto; overflow-x: auto; padding: 1px 1px 4px; }
@@ -785,10 +783,8 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
   .sector-horizon-group { width: 100%; flex-basis: auto; overflow-x: auto; padding: 1px 1px 4px; }
   .sector-ranking-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
   .sector-ranking-row .market-ranking-identity, .sector-ranking-row .sector-ranking-report { grid-column: 1 / -1; }
-  .sector-ranking-report { justify-self: start; }
   .foreign-ranking-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 16px; }
   .foreign-ranking-identity, .foreign-ranking-report { grid-column: 1 / -1; }
-  .foreign-ranking-report { justify-self: start; }
   .fear-index-card { padding: 22px; }
   .fear-card-heading { gap: 12px; }
   .fear-card-summary { gap: 14px; }

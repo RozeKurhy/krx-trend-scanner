@@ -211,7 +211,7 @@
     const flow = createField("수급", flowLabel(item.flow_state));
     const action = createField("전략 판단", actionLabel(item.strategy_action), null, "market-ranking-action");
     const price = createPriceField(item);
-    const report = createElement("span", "market-ranking-report", "리포트 보기 ›");
+    const report = createElement("span", "market-ranking-report ranking-report-link", "리포트 보기 ›");
 
     link.append(identity, strength, returnField, pattern, flow, action, price, report);
     return link;

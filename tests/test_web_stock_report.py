@@ -326,17 +326,17 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-pattern-card-cleanup-14"' in html
-    assert 'href="./css/app.css?v=web-pattern-card-cleanup-14"' in index_html
+    assert 'href="./css/app.css?v=web-ranking-report-link-v1"' in html
+    assert 'href="./css/app.css?v=web-ranking-report-link-v1"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-report-pattern-card-v2"' in html
+    assert 'src="./js/report.js?v=web-julia-report-polish-v1"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
-    assert html.count("web-pattern-card-cleanup-14") == 1
-    assert html.count("web-report-pattern-card-v2") == 1
-    assert index_html.count("web-pattern-card-cleanup-14") == 1
+    assert html.count("web-ranking-report-link-v1") == 1
+    assert html.count("web-julia-report-polish-v1") == 1
+    assert index_html.count("web-ranking-report-link-v1") == 1
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
     assert "web-02a-final-2" not in html
@@ -526,6 +526,17 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert "선택 상세" not in html
     assert "canonical" not in js
     assert "과거 전략 이력은 과거 데이터에 전략 규칙을 적용한 결과이며 미래 수익을 의미하지 않습니다." in js
+    assert "과거 Julia V1 거래 이력은" not in js
+    strategy_detail = js[js.index("function renderStrategyDetail"):js.index("function isMobileLayout")]
+    etf_detail = strategy_detail[strategy_detail.index("if (isEtf)"):strategy_detail.index("if (strategy.strategy_name)")]
+    assert 'report.identity.asset_type === "ETF"' in strategy_detail
+    assert 'appendStrategyHistory(history, container)' in etf_detail
+    history_renderer = js[js.index("function appendStrategyHistory"):js.index("function renderStrategyDetail")]
+    assert 'createDetailTable(["회차"' in history_renderer
+    assert '"strategy-history-table"' in history_renderer
+    assert '표시할 전략 이력이 없습니다.' in history_renderer
+    assert 'appendDetailNote' not in etf_detail
+    assert 'etf-eligibility-table' not in strategy_detail
     assert "signedValueClass" in js
     assert "--market-down-blue" in css
     assert "history[-12:]" not in (ROOT / "scripts/export_stock_report_web.py").read_text(encoding="utf-8")

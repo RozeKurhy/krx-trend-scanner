@@ -177,7 +177,10 @@
     const averageTradingValueField = createField("평균 거래대금", formatTradingValue(averageTradingValue), `최근 ${HORIZON_LABELS[activeHorizon]}`, "etf-ranking-trading-value");
     const averageVolumeField = createField("평균 거래량", formatQuantity(averageVolume), `최근 ${HORIZON_LABELS[activeHorizon]}`, "etf-ranking-volume");
     const price = createField("현재가", formatPrice(item.latest_close), formatDate(item.latest_close_as_of), "etf-ranking-price");
-    row.append(identity, position, returnField, mfeField, mddField, averageTradingValueField, averageVolumeField, price);
+    const report = createElement("a", "ranking-report-link", "리포트 보기 ›");
+    report.href = `./report.html?ticker=${encodeURIComponent(item.ticker)}`;
+    report.setAttribute("aria-label", `${item.name || item.ticker} ${item.ticker} 리포트 보기`);
+    row.append(identity, position, returnField, mfeField, mddField, averageTradingValueField, averageVolumeField, price, report);
     return row;
   }
 

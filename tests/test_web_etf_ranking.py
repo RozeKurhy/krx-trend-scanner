@@ -129,13 +129,13 @@ def test_horizon_metrics_use_anchor_plus_exact_measurement_window():
     assert metrics["mfe"] != 999 / 110 - 1
 
 
-def test_etf_page_has_required_tabs_controls_and_no_report_or_search_ui():
+def test_etf_page_has_required_tabs_controls_and_report_links_without_search_ui():
     html = (ROOT / "web/etf.html").read_text(encoding="utf-8")
     js = (ROOT / "web/js/etf.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     assert '<title>ETF 랭킹 · KRX Trend Scanner</title>' in html
-    assert 'href="./css/app.css?v=web-pattern-card-cleanup-14"' in html
-    assert 'src="./js/etf.js?v=web-etf-ranking-2w-v1"' in html
+    assert 'href="./css/app.css?v=web-ranking-report-link-v1"' in html
+    assert 'src="./js/etf.js?v=web-etf-report-link-v1"' in html
     assert '<a class="ranking-tab is-active" href="./etf.html" aria-current="page">ETF</a>' in html
     expected_tabs = ("마켓 RS", "섹터 RS", "섹터 랭킹", "외인 순매수", "매출액 성장률", "영업이익 성장률", "순이익 성장률")
     assert [text for text in expected_tabs if text in html] == list(expected_tabs)
@@ -151,7 +151,13 @@ def test_etf_page_has_required_tabs_controls_and_no_report_or_search_ui():
     assert "전자공시" not in html and "전자공시" not in js
     assert 'id="etf-search"' not in html and 'type="search"' not in html and '<select' not in html
     ranking_section = html.split('<section id="etf-ranking-list"', 1)[1].split('</section>', 1)[0]
-    assert "report.html" not in ranking_section and "report.html" not in js
+    assert "report.html" not in ranking_section
+    row_renderer = js[js.index("function createRankingRow"):js.index("function renderScope")]
+    assert 'createElement("article", "etf-ranking-row")' in row_renderer
+    assert 'createElement("a", "ranking-report-link", "리포트 보기 ›")' in row_renderer
+    assert 'report.href = `./report.html?ticker=${encodeURIComponent(item.ticker)}`;' in row_renderer
+    assert 'row.append(identity, position, returnField, mfeField, mddField, averageTradingValueField, averageVolumeField, price, report)' in row_renderer
+    assert ".ranking-report-link" in css
     assert 'const RANKING_URL = "./data/etf-ranking.json";' in js
     assert 'let activeHorizon = "2w";' in js
     assert 'Number(right[field]) - Number(left[field])' in js
@@ -165,13 +171,16 @@ def test_etf_page_has_required_tabs_controls_and_no_report_or_search_ui():
     assert 'target = "_blank"' in js and 'rel = "noopener"' in js
     assert "return-positive" in js and "return-negative" in js and "return-neutral" in js
     assert ".etf-ranking-row" in css
+    ranking_tickers = {item["ticker"] for item in _load_ranking()["items"]}
+    stock_report_tickers = {path.stem.upper() for path in (ROOT / "web/data/stocks").glob("*.json")}
+    assert ranking_tickers <= stock_report_tickers
 
 
 def test_all_ranking_pages_expose_etf_first_and_primary_ranking_link():
     for name in ("etf", "market", "sector", "foreign"):
         html = (ROOT / f"web/{name}.html").read_text(encoding="utf-8")
         assert 'href="./etf.html"' in html
-        assert 'href="./css/app.css?v=web-pattern-card-cleanup-14"' in html
+        assert 'href="./css/app.css?v=web-ranking-report-link-v1"' in html
         tabs = html.split('<nav class="ranking-tabs"', 1)
         if len(tabs) == 2:
             assert tabs[1].index('href="./etf.html"') < tabs[1].index('마켓 RS') if name != "etf" else 'aria-current="page">ETF</a>' in tabs[1]

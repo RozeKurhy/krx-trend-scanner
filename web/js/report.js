@@ -102,8 +102,9 @@
   };
   const EXIT_TYPE_LABELS = {
     LOSS_GUARD_CLOSE_LE_NEG_15: "손실 제한",
-    EXIT3_PROGRESSED_TO_TRANSITION: "상승 진행 → 전환",
-    EXIT4_SCORE_DRAWDOWN_GE_15: "패턴 점수 하락",
+    EXIT3_PROGRESSED_TO_TRANSITION: "추세 전환",
+    EXIT4_SCORE_DRAWDOWN_GE_15: "점수 하락",
+    PATTERN_B_NORMAL_NEXT_OPEN: "Pattern B 정상 전환",
     NO_EXIT_BEFORE_CUTOFF: "기준일 현재 보유 중",
   };
   const DETAIL_BUTTON_LABELS = {
@@ -290,7 +291,7 @@
   function strategyDetail(value) { return label(STRATEGY_STATE_DETAILS, value, "전략 상태 확인 필요"); }
   function flowDetail(value) { return label(FLOW_DETAILS, value, "수급 상태 확인 필요"); }
   function tradeStatusLabel(value) { return label(TRADE_STATUS_LABELS, value, "상태 확인 필요"); }
-  function exitTypeLabel(value) { return label(EXIT_TYPE_LABELS, value, "종료 기준 확인 필요"); }
+  function exitTypeLabel(value) { return label(EXIT_TYPE_LABELS, value, value || "종료 기준 확인 필요"); }
 
   function marketStrengthLabel(market) {
     if (!market || market.applicability === "NOT_APPLICABLE") return "해당 없음";
@@ -1195,32 +1196,11 @@
     if (flow.explanation) appendDetailNote(container, flow.explanation);
   }
 
-  function renderStrategyDetail(report, container) {
-    const strategy = report.strategy || {};
-    if (strategy.strategy_name) {
-      appendDetailNote(container, `${strategy.strategy_name} · ${strategy.strategy_id || strategy.id || ""}`.trim());
+  function appendStrategyHistory(history, container) {
+    if (!history.length) {
+      appendDetailEmpty(container, "표시할 전략 이력이 없습니다.");
+      return;
     }
-    if (strategy.action_reason) appendDetailNote(container, `판단 사유: ${strategy.action_reason}`);
-    if (strategy.interpretation) appendDetailNote(container, strategy.interpretation);
-    const eligibility = strategy.eligibility;
-    if (report.identity && report.identity.asset_type === "ETF" && eligibility) {
-      appendDetailNote(container, `ETF 적격성 기준일 ${formatDate(eligibility.as_of)}`);
-      const passLabel = (value) => value === true ? "PASS" : value === false ? "FAIL" : "확인 필요";
-      const eligibilityRows = [
-        ["Official ETF36 소속", passLabel(eligibility.official_etf36_membership)],
-        ["상장 2년 경과", `${passLabel(eligibility.listing_age_pass)} · ${formatDate(eligibility.listing_date)}`],
-        ["원시 종가 / 최소 기준", `${formatPrice(eligibility.raw_close_krw)} / ${formatPrice(eligibility.minimum_raw_close_krw)} · ${passLabel(eligibility.raw_close_pass)}`],
-        ["20일 평균 거래량 / 최소 기준", `${formatNumber(eligibility.avg_volume_20d_shares, 1)}주 / ${formatNumber(eligibility.minimum_avg_volume_20d_shares)}주 · ${passLabel(eligibility.volume_pass)}`],
-        ["최종 적격성", passLabel(eligibility.eligibility_pass)],
-        ["적격성 계약", eligibility.eligibility_contract],
-        ["전략 준비일", formatDate(eligibility.strategy_ready_date)],
-        ["Clean 준비일", formatDate(eligibility.clean_ready_date)],
-      ];
-      container.appendChild(createDetailTable(["ETF 적격성 항목", "값"], eligibilityRows, "etf-eligibility-table"));
-    }
-    const history = Array.isArray(strategy.history) ? strategy.history : [];
-    if (!history.length) appendDetailEmpty(container, "표시할 전략 이력이 없습니다.");
-    if (!history.length) return;
     const rows = history.map((trade) => [
       trade.trade_sequence == null ? "—" : `${formatNumber(trade.trade_sequence)}회`,
       formatDate(trade.entry_execution_date || trade.entry_signal_date),
@@ -1232,11 +1212,24 @@
       exitTypeLabel(trade.exit_type),
     ]);
     container.appendChild(createDetailTable(["회차", "진입일", "진입가", "청산일", "청산가", "수익률", "상태", "종료 사유"], rows, "strategy-history-table"));
-    if (strategy.strategy_name) {
-      appendDetailNote(container, "과거 Julia V1 거래 이력은 과거 데이터에 전략 규칙을 적용한 결과이며 미래 수익을 의미하지 않습니다.", "strategy-disclaimer");
-    } else {
-      appendDetailNote(container, "과거 전략 이력은 과거 데이터에 전략 규칙을 적용한 결과이며 미래 수익을 의미하지 않습니다.", "strategy-disclaimer");
+  }
+
+  function renderStrategyDetail(report, container) {
+    const strategy = report.strategy || {};
+    const history = Array.isArray(strategy.history) ? strategy.history : [];
+    const isEtf = report.identity && report.identity.asset_type === "ETF";
+    if (isEtf) {
+      appendStrategyHistory(history, container);
+      return;
     }
+    if (strategy.strategy_name) {
+      appendDetailNote(container, `${strategy.strategy_name} · ${strategy.strategy_id || strategy.id || ""}`.trim());
+    }
+    if (strategy.action_reason) appendDetailNote(container, `판단 사유: ${strategy.action_reason}`);
+    if (strategy.interpretation) appendDetailNote(container, strategy.interpretation);
+    appendStrategyHistory(history, container);
+    if (!history.length) return;
+    appendDetailNote(container, "과거 전략 이력은 과거 데이터에 전략 규칙을 적용한 결과이며 미래 수익을 의미하지 않습니다.", "strategy-disclaimer");
   }
 
   function isMobileLayout() {

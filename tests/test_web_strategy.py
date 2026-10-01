@@ -137,8 +137,8 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-pattern-card-cleanup-14"' in index_html
-    assert 'href="./css/app.css?v=web-pattern-card-cleanup-14"' in report_html
+    assert 'href="./css/app.css?v=web-ranking-report-link-v1"' in index_html
+    assert 'href="./css/app.css?v=web-ranking-report-link-v1"' in report_html
     for html in (index_html, report_html):
         assert "web-02a-final-2" not in html
         assert "web-03a-final-1" not in html
@@ -152,7 +152,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert (ROOT / "web" / strategy_scripts[0].path.removeprefix("./")).is_file()
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert 'EXIT: "다음 시가 청산 대기"' in strategy_js
-    assert 'src="./js/report.js?v=web-report-pattern-card-v2"' in report_html
+    assert 'src="./js/report.js?v=web-julia-report-polish-v1"' in report_html
     assert 'href="./strategy.html"' in index_html
     assert 'href="./strategy.html"' in report_html
     assert 'class="nav-item is-active" href="./strategy.html"' in strategy_html
@@ -331,14 +331,21 @@ def test_three_strategy_trade_history_counts_identity_and_source_parity():
     assert strategies["PATTERN_A_FAST_FINAL_STRATEGY_V02"]["counts"] == {
         "entry": 0, "hold": 241, "exit": 0, "watch": 0, "unavailable": 1210,
     }
+    assert strategies["PATTERN_A_FAST_FINAL_STRATEGY_V02"]["scope"]["report_count"] == 1451
     assert strategies["PATTERN_B_SELECT_CORE_V01"]["counts"] == {
         "entry": 0, "hold": 23, "exit": 1, "watch": 1275, "unavailable": 152,
     }
+    assert strategies["PATTERN_B_SELECT_CORE_V01"]["scope"]["report_count"] == 1451
     assert strategies["JULIA_ETF_STRATEGY_V01"]["counts"] == {
         "entry": 0, "hold": 18, "exit": 0, "watch": 18, "unavailable": 0,
     }
+    assert strategies["JULIA_ETF_STRATEGY_V01"]["scope"]["report_count"] == 36
     assert len(fast) == fast_source_count
     assert len(julia) == julia_source_count
+    assert len(fast) == 3797
+    assert len(b_select) == 312
+    assert len(julia) == 52
+    assert len(fast) + len(b_select) + len(julia) == 4161
 
     b_status_path = ROOT / "artifacts/strategies/b_select_core_v1/production/20260925/status.json"
     b_status = json.loads(b_status_path.read_text(encoding="utf-8"))
@@ -446,8 +453,12 @@ def test_trade_history_views_map_execution_dates_to_monthly_events():
     strategy_html = (ROOT / "web/strategy.html").read_text(encoding="utf-8")
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
 
-    for label in ("현재 상태", "거래 이력", "전체 거래", "월별", "전체", "매수", "매도"):
+    for label in ("현재 상태", "거래 이력", "전체 거래", "월별", "전체", "완료", "보유"):
         assert label in strategy_html
+    assert 'data-history-filter="completed"' in strategy_html
+    assert 'data-history-filter="open"' in strategy_html
+    assert '[["all", "전체"], ["completed", "완료"], ["open", "보유"]]' in strategy_js
+    assert '[["all", "전체"], ["buy", "매수"], ["sell", "매도"]]' in strategy_js
     assert 'date: trade.entry_execution_date' in strategy_js
     assert 'type: "buy"' in strategy_js
     assert 'date: trade.exit_execution_date' in strategy_js
@@ -455,3 +466,25 @@ def test_trade_history_views_map_execution_dates_to_monthly_events():
     assert 'String(event.date || "").slice(0, 7)' in strategy_js
     assert 'b.localeCompare(a)' in strategy_js
     assert '표시할 거래 이력이 없습니다.' in strategy_js
+
+
+def test_trade_history_filter_contract_and_korean_exit_reasons():
+    strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
+    report_js = (ROOT / "web/js/report.js").read_text(encoding="utf-8")
+
+    assert 'if (historyFilter === "completed") return trade.trade_status === "REALIZED";' in strategy_js
+    assert 'if (historyFilter === "open") return isOpenTrade(trade);' in strategy_js
+    assert 'String(trade.trade_status || "").startsWith("OPEN")' in strategy_js
+    assert 'if (historySubView !== "trades") return true;' in strategy_js
+    assert 'makeTradeEvents(trades).filter((event) => historyFilter === "all" || event.type === historyFilter)' in strategy_js
+    assert 'const allowedFilters = historySubView === "trades" ? ["all", "completed", "open"] : ["all", "buy", "sell"];' in strategy_js
+    for code, label in (
+        ("LOSS_GUARD_CLOSE_LE_NEG_15", "손실 제한"),
+        ("EXIT3_PROGRESSED_TO_TRANSITION", "추세 전환"),
+        ("EXIT4_SCORE_DRAWDOWN_GE_15", "점수 하락"),
+        ("PATTERN_B_NORMAL_NEXT_OPEN", "Pattern B 정상 전환"),
+    ):
+        assert f'{code}: "{label}"' in strategy_js
+        assert f'{code}: "{label}"' in report_js
+    assert 'EXIT_REASON_LABELS[value] || value || "—"' in strategy_js
+    assert 'label(EXIT_TYPE_LABELS, value, value || "종료 기준 확인 필요")' in report_js

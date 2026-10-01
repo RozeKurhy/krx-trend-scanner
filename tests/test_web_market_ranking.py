@@ -122,8 +122,8 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
     assert '<a class="nav-item is-active" href="./etf.html" aria-current="page">랭킹</a>' in html
-    assert 'href="./css/app.css?v=web-pattern-card-cleanup-14"' in html
-    assert 'src="./js/market.js?v=web-market-ranking-2w-v1"' in html
+    assert 'href="./css/app.css?v=web-ranking-report-link-v1"' in html
+    assert 'src="./js/market.js?v=web-market-ranking-cta-v2"' in html
     assert '<nav class="ranking-tabs" aria-label="랭킹 종류">' in html
     assert '<a class="ranking-tab" href="./etf.html">ETF</a>' in html
     assert '<a class="ranking-tab is-active" href="./market.html" aria-current="page">마켓 RS</a>' in html
@@ -174,6 +174,12 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert 'margin-top: 14px' in css
     assert '`${HORIZON_LABELS[activeHorizon]}${suffix}`' in js
     assert '.market-ranking-row' in css
+    assert '"market-ranking-report ranking-report-link"' in js
+    assert '.ranking-report-link { display: inline-flex; flex: 0 0 auto; align-items: center; justify-self: end;' in css
+    assert '.ranking-report-link:hover, .ranking-report-link:focus { color: var(--brand-red-dark); text-decoration: none; }' in css
+    assert '.ranking-report-link:focus-visible' in css
+    assert '.ranking-report-link { justify-self: end; }' in css
+    assert '.market-ranking-identity, .market-ranking-report { grid-column: 1 / -1; }' in css
     assert '.ranking-tabs' in css and '.ranking-tab[aria-disabled="true"]' in css
     assert '.market-control:focus-visible' in css
     assert '@media (max-width: 560px)' in css
@@ -181,10 +187,10 @@ def test_market_page_has_accessible_controls_and_release_contract():
 
 def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     page_versions = {
-        ROOT / "web/index.html": ("web-pattern-card-cleanup-14", "app", "web-fear-fix02-4"),
-        ROOT / "web/report.html": ("web-pattern-card-cleanup-14", "report", "web-report-pattern-card-v2"),
-        ROOT / "web/strategy.html": ("web-pattern-card-cleanup-14", "strategy", "web-strategy-exit-next-open-v2"),
-        ROOT / "web/market.html": ("web-pattern-card-cleanup-14", "market", "web-market-ranking-2w-v1"),
+        ROOT / "web/index.html": ("web-ranking-report-link-v1", "app", "web-fear-fix02-4"),
+        ROOT / "web/report.html": ("web-ranking-report-link-v1", "report", "web-julia-report-polish-v1"),
+        ROOT / "web/strategy.html": ("web-ranking-report-link-v1", "strategy", "strategy-history-filter-polish-v1"),
+        ROOT / "web/market.html": ("web-ranking-report-link-v1", "market", "web-market-ranking-cta-v2"),
     }
     pages = list(page_versions)
     for path, (css_version, script_name, js_version) in page_versions.items():

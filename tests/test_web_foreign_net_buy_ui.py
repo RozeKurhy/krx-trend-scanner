@@ -32,8 +32,8 @@ def test_foreign_page_exposes_default_5d_filters_search_and_report_contract():
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
     assert '외국인 누적 순매수대금으로 보는 종목 흐름' not in html
-    assert 'href="./css/app.css?v=web-pattern-card-cleanup-14"' in html
-    assert 'src="./js/foreign.js?v=web-foreign-ranking-5d-v1"' in html
+    assert 'href="./css/app.css?v=web-ranking-report-link-v1"' in html
+    assert 'src="./js/foreign.js?v=web-foreign-ranking-cta-v2"' in html
     assert 'data-horizon="1d"' in html and 'data-horizon="5d"' in html
     assert 'data-horizon="10d"' in html and 'data-horizon="20d"' in html and 'data-horizon="60d"' in html
     assert 'data-horizon="5d" aria-pressed="true"' in html
@@ -66,7 +66,7 @@ def test_foreign_page_exposes_default_5d_filters_search_and_report_contract():
     assert '`${HORIZON_LABELS[activeHorizon]}${suffix}`' in script
     assert 'foreign-ranking-row' in css
     assert '.market-select' in css
-    assert '.foreign-ranking-report.is-disabled' in css
+    assert '.ranking-report-link.is-disabled' in css
     assert '@media (max-width: 560px)' in css
 
 
@@ -77,3 +77,4 @@ def test_foreign_page_does_not_introduce_top_n_clipping_and_keeps_mobile_layout(
     assert "slice(0, 100)" not in script
     assert ".foreign-ranking-row { grid-template-columns: repeat(2, minmax(0, 1fr));" in css
     assert ".foreign-ranking-identity, .foreign-ranking-report { grid-column: 1 / -1; }" in css
+    assert '"foreign-ranking-report ranking-report-link"' in script

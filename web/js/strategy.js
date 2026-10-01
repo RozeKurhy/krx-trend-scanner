@@ -35,6 +35,12 @@
     OVERHEATED: "과열",
     EXTREME_OVERHEATED: "극단 과열",
   };
+  const EXIT_REASON_LABELS = {
+    LOSS_GUARD_CLOSE_LE_NEG_15: "손실 제한",
+    EXIT3_PROGRESSED_TO_TRANSITION: "추세 전환",
+    EXIT4_SCORE_DRAWDOWN_GE_15: "점수 하락",
+    PATTERN_B_NORMAL_NEXT_OPEN: "Pattern B 정상 전환",
+  };
   const STRATEGY_LABELS = {
     PATTERN_A_FAST_FINAL_STRATEGY_V02: "A FAST Core V2",
     PATTERN_B_SELECT_CORE_V01: "B Select Core V1",
@@ -66,6 +72,7 @@
   function stateLabel(value) { return STATE_LABELS[value] || "상태 확인 필요"; }
   function stageLabel(value) { return STAGE_LABELS[value] || "확인 필요"; }
   function patternBLabel(value) { return PATTERN_B_LABELS[value] || (value ? "확인 필요" : "확인 필요"); }
+  function exitReasonLabel(value) { return EXIT_REASON_LABELS[value] || value || "—"; }
   function activeStrategy() {
     if (!monitor) return null;
     return (monitor.strategies || []).find((strategy) => strategy.id === activeStrategyId) || monitor.strategies[0] || null;
@@ -319,8 +326,9 @@
     const trades = (selected && selected.trade_history) || [];
     return trades.filter((trade) => {
       if (!historyMatches(trade)) return false;
-      if (historyFilter === "buy") return Boolean(trade.entry_execution_date);
-      if (historyFilter === "sell") return Boolean(trade.exit_execution_date);
+      if (historySubView !== "trades") return true;
+      if (historyFilter === "completed") return trade.trade_status === "REALIZED";
+      if (historyFilter === "open") return isOpenTrade(trade);
       return true;
     });
   }
@@ -350,7 +358,7 @@
       createField("매도가", isOpenTrade(trade) ? "—" : formatPrice(trade.exit_price)),
       createField("수익률", formatReturn(trade.return_pct), returnClass),
       createField("상태", status),
-      createField("청산 사유", trade.exit_reason || "—"),
+      createField("청산 사유", exitReasonLabel(trade.exit_reason)),
     ];
     row.append(identity, ...fields, createElement("span", "strategy-trade-link", "리포트 보기 ›"));
     return row;
@@ -477,6 +485,7 @@
 
   function setHistorySubView(view) {
     historySubView = view === "monthly" ? "monthly" : "trades";
+    historyFilter = "all";
     const showTrades = historySubView === "trades";
     const tradesPanel = byId("history-trades-view");
     const monthlyPanel = byId("history-monthly-view");
@@ -487,11 +496,23 @@
       button.classList.toggle("is-active", selected);
       button.setAttribute("aria-selected", String(selected));
     });
+    const filterOptions = showTrades
+      ? [["all", "전체"], ["completed", "완료"], ["open", "보유"]]
+      : [["all", "전체"], ["buy", "매수"], ["sell", "매도"]];
+    document.querySelectorAll("[data-history-filter]").forEach((button, index) => {
+      const [filter, label] = filterOptions[index];
+      button.dataset.historyFilter = filter;
+      button.textContent = label;
+      const selected = filter === historyFilter;
+      button.classList.toggle("is-active", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
     renderTradeHistory();
   }
 
   function setHistoryFilter(filter) {
-    historyFilter = ["all", "buy", "sell"].includes(filter) ? filter : "all";
+    const allowedFilters = historySubView === "trades" ? ["all", "completed", "open"] : ["all", "buy", "sell"];
+    historyFilter = allowedFilters.includes(filter) ? filter : "all";
     document.querySelectorAll("[data-history-filter]").forEach((button) => {
       const selected = button.dataset.historyFilter === historyFilter;
       button.classList.toggle("is-active", selected);

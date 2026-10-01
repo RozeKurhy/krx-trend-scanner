@@ -26,9 +26,9 @@ def _load_payload() -> dict:
 def test_sector_page_activates_only_sector_rs_and_exposes_accessible_controls():
     html = _read(SECTOR_PAGE)
 
-    assert 'href="./css/app.css?v=web-pattern-card-cleanup-14"' in html
+    assert 'href="./css/app.css?v=web-ranking-report-link-v1"' in html
     assert '<a class="ranking-tab" href="./etf.html">ETF</a>' in html
-    assert 'src="./js/sector.js?v=web-sector-rs-2w-v1"' in html
+    assert 'src="./js/sector.js?v=web-sector-rs-cta-v2"' in html
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
     assert '<a class="ranking-tab" href="./market.html">마켓 RS</a>' in html
@@ -147,8 +147,8 @@ def test_sector_payload_report_availability_has_a_safe_non_link_branch():
     )
 
     script = _read(SECTOR_SCRIPT)
-    assert 'createElement("a", "sector-ranking-report", "리포트 보기 ›")' in script
-    assert 'createElement("span", "sector-ranking-report is-disabled", "리포트 준비 중")' in script
+    assert 'createElement("a", "sector-ranking-report ranking-report-link", "리포트 보기 ›")' in script
+    assert 'createElement("span", "sector-ranking-report ranking-report-link is-disabled", "리포트 준비 중")' in script
 
 
 def test_sector_js_rank_helpers_use_real_javascript_null_semantics():
@@ -193,7 +193,8 @@ def test_sector_css_has_desktop_mobile_dark_mode_and_focus_support():
     assert "-webkit-appearance: none" in css
     assert "pointer-events: none" in css
     assert ".sector-ranking-row" in css
-    assert ".sector-ranking-report.is-disabled" in css
+    assert ".ranking-report-link.is-disabled" in css
+    assert 'justify-self: end' in css
     assert ".sector-select:focus-visible" in css
     assert ".sector-search-input" in css
     assert ".sector-horizon-group .market-control" in css
