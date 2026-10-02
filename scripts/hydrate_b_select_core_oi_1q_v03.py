@@ -49,11 +49,11 @@ def _load_key() -> str:
     raise RuntimeError("OPENDART_API_KEY_MISSING")
 
 
-def needed_years(signal_dates: pd.Series) -> list[int]:
+def needed_years(signal_dates: pd.Series, first_year: int = XBRL_FIRST_YEAR) -> list[int]:
     years: set[int] = set()
     for value in signal_dates:
         year = int(str(value)[:4])
-        years.update(y for y in (year - 2, year - 1, year) if y >= XBRL_FIRST_YEAR)
+        years.update(y for y in (year - 2, year - 1, year) if y >= first_year)
     return sorted(years)
 
 
@@ -61,6 +61,8 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--signals", required=True, help="CSV with ticker, entry_signal_date")
     parser.add_argument("--ledger", required=True)
+    parser.add_argument("--first-year", type=int, default=XBRL_FIRST_YEAR,
+                        help="earliest fiscal year whose registry/XBRL cache is filled")
     args = parser.parse_args()
 
     signals = pd.read_csv(args.signals, dtype=str)
@@ -96,7 +98,7 @@ def main() -> int:
         if family != CompanyFamily.NON_FINANCIAL.value:
             rows.append({"ticker": ticker, "year": None, "status": f"SKIP_{family}", "detail": ""})
             continue
-        for year in needed_years(group["entry_signal_date"]):
+        for year in needed_years(group["entry_signal_date"], args.first_year):
             before = len(client.audit)
             try:
                 build = provider.build(ticker, str(year), HYDRATION_AS_OF, company_metadata=payload)
