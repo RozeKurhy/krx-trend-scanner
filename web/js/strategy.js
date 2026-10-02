@@ -257,6 +257,15 @@
     return field;
   }
 
+  function createMultilineField(label, lines, className) {
+    const field = createElement("span", `strategy-item-field${className ? ` ${className}` : ""}`);
+    field.appendChild(createElement("small", "strategy-item-label", label));
+    const value = createElement("strong", "strategy-item-value");
+    lines.forEach((line) => value.appendChild(createElement("span", "strategy-item-value-line", line)));
+    field.appendChild(value);
+    return field;
+  }
+
   function createPriceDateField(label, price, date, className) {
     const field = createElement("span", `strategy-item-field${className ? ` ${className}` : ""}`);
     field.appendChild(createElement("small", "strategy-item-label", label));
@@ -307,7 +316,7 @@
         ? item.entry_pattern_a_stage
         : item.pattern_a_stage;
       detailFields = [
-        createField("Pattern A", `${stageLabel(previousPatternAStage)} → ${stageLabel(currentPatternAStage)}`, "strategy-item-pattern-a"),
+        createMultilineField("Pattern A", [stageLabel(previousPatternAStage), `→ ${stageLabel(currentPatternAStage)}`], "strategy-item-pattern-a"),
         createField("Pattern B", patternBLabel(item.pattern_b_state)),
         createField("펀더멘탈", fundamentalStatus(item), "strategy-item-fundamental"),
       ];
@@ -383,6 +392,8 @@
     identity.appendChild(createElement("span", "strategy-trade-meta", `${trade.ticker} · ${marketLabel(trade.market)}`));
     const status = isOpenTrade(trade) ? "보유 중" : trade.trade_status === "REALIZED" ? "완료" : String(trade.trade_status || "—");
     const returnClass = Number(trade.return_pct) > 0 ? "detail-value-positive" : Number(trade.return_pct) < 0 ? "detail-value-negative" : "";
+    const exitReason = exitReasonLabel(trade.exit_reason);
+    const displayedExitReason = bSelect ? exitReason.replace(/^Pattern B\s+/u, "") : exitReason;
     const fields = [
       createField("매수 체결일", formatDate(trade.entry_execution_date)),
       createField("매수가", formatPrice(trade.entry_price)),
@@ -390,7 +401,7 @@
       createField("매도가", isOpenTrade(trade) ? "—" : formatPrice(trade.exit_price)),
       createField("수익률", formatReturn(trade.return_pct), returnClass),
       createField("상태", status),
-      createField("청산 사유", exitReasonLabel(trade.exit_reason), "strategy-item-exit-reason"),
+      createField("청산 사유", displayedExitReason, "strategy-item-exit-reason"),
     ];
     if (bSelect) fields.push(createField("펀더멘탈", fundamentalStatus(trade), "strategy-item-fundamental"));
     const arrow = createElement("span", "row-chevron strategy-trade-link", ">");

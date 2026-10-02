@@ -1,6 +1,7 @@
 .strategy-view-tabs { margin-bottom: 16px; padding: 8px 14px; }
 .strategy-view-tabs .strategy-filter-group { padding: 3px 1px; }
 .strategy-history-controls { display: grid; gap: 10px; }
+.strategy-history-controls > .strategy-filter-toolbar { margin-top: 2px; }
 .strategy-history-subtabs { display: flex; gap: 7px; overflow-x: auto; }
 .strategy-history-panel { margin-bottom: 16px; }
 .strategy-trade-list { display: grid; gap: 7px; }
@@ -12,9 +13,10 @@
 .strategy-trade-identity { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
 .strategy-trade-name { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .strategy-trade-meta { overflow: hidden; color: var(--ink-faint); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.strategy-trade-row .strategy-item-field { gap: 3px; }
-.strategy-trade-row .strategy-item-label { font-size: 9px; }
-.strategy-trade-row .strategy-item-value { font-size: 11px; }
+.strategy-trade-row .strategy-item-field { align-self: center; justify-content: center; gap: 3px; min-height: 44px; }
+.strategy-trade-row .strategy-item-label { font-size: 9px; line-height: 1.2; }
+.strategy-trade-row .strategy-item-value { min-height: 2.4em; font-size: 11px; line-height: 1.2; }
+.strategy-trade-row .strategy-item-exit-reason .strategy-item-value { display: -webkit-box; overflow: hidden; text-overflow: clip; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .strategy-trade-row-b-select .strategy-item-exit-reason { margin-inline-end: 20px; }
 .strategy-trade-link { color: var(--brand-red-dark); }
 .strategy-month-list { display: grid; gap: 12px; }

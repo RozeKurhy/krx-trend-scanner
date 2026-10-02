@@ -580,7 +580,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .strategy-option-detail { color: var(--ink-soft); font-size: 11px; }
 .strategy-scope { max-width: 100%; margin: 0; color: var(--ink-soft); font-size: 12px; text-align: right; }
 .strategy-controls { margin-bottom: 16px; }
-.strategy-filter-toolbar { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.strategy-filter-toolbar { display: flex; align-items: center; gap: 12px; min-width: 0; margin-top: 12px; }
 .strategy-filter-group { display: flex; flex: 1 1 auto; gap: 7px; min-width: 0; overflow-x: auto; padding: 10px 1px 1px; }
 .strategy-filter-toolbar > .strategy-filter-group { padding: 1px; }
 .strategy-sort-row { display: flex; flex: 0 0 auto; align-items: center; justify-content: flex-end; gap: 7px; min-width: 0; margin-left: auto; }
@@ -608,10 +608,12 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .strategy-item-identity { display: flex; flex-direction: column; gap: 4px; }
 .strategy-item-name { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .strategy-item-meta { overflow: hidden; color: var(--ink-faint); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.strategy-item-field { display: flex; align-self: stretch; flex-direction: column; justify-content: flex-start; gap: 4px; }
+.strategy-item-field { display: flex; align-self: center; flex-direction: column; justify-content: center; gap: 4px; min-height: 48px; }
 .strategy-item-pattern-a { margin-inline-end: 20px; }
-.strategy-item-label { color: var(--ink-faint); font-size: 10px; }
-.strategy-item-value { overflow: hidden; color: var(--ink-soft); font-size: 12px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+.strategy-item-label { color: var(--ink-faint); font-size: 10px; line-height: 1.2; }
+.strategy-item-value { display: block; min-height: 2.4em; overflow: hidden; color: var(--ink-soft); font-size: 12px; font-weight: 750; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.strategy-item-pattern-a .strategy-item-value { display: flex; flex-direction: column; overflow: visible; text-overflow: clip; white-space: normal; }
+.strategy-item-pattern-a .strategy-item-value-line { display: block; white-space: nowrap; }
 .strategy-item-price-date { display: flex; flex-direction: column; gap: 2px; overflow: visible; line-height: 1.25; white-space: normal; }
 .strategy-item-date { color: var(--ink-faint); font-size: 10px; font-weight: 650; line-height: 1.25; }
 .strategy-item-field.detail-value-positive .strategy-item-value { color: var(--market-up-red); }
@@ -787,16 +789,11 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
   .foreign-ranking-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .foreign-ranking-identity { grid-column: 1 / -1; }
   .strategy-item { row-gap: 8px; }
-  .strategy-item-a-fast { grid-template-columns: repeat(6, minmax(0, 1fr)); }
-  .strategy-item-b-select { grid-template-columns: minmax(80px, 1fr) minmax(140px, 1.8fr) repeat(5, minmax(70px, 1fr)) minmax(92px, 92px); }
-  .strategy-item-julia { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-  .strategy-item-identity { grid-column: 1 / -1; grid-row: 1; }
-  .strategy-item-list .strategy-item-field { display: contents; }
-  .strategy-item-list .strategy-item-label { grid-row: 2; align-self: start; line-height: 1.35; white-space: nowrap; }
-  .strategy-item-list .strategy-item-value { grid-row: 3; align-self: start; }
-  .strategy-item-list .strategy-item-pattern-a > .strategy-item-label,
-  .strategy-item-list .strategy-item-pattern-a > .strategy-item-value { margin-inline-end: 20px; }
-  .strategy-item-link { grid-column: -1; grid-row: 3; justify-self: end; }
+  .strategy-item-a-fast { grid-template-columns: minmax(108px, 1.35fr) repeat(5, minmax(72px, 1fr)) minmax(92px, 92px); }
+  .strategy-item-b-select { grid-template-columns: minmax(108px, 1.3fr) minmax(70px, .9fr) minmax(145px, 1.8fr) minmax(65px, .8fr) minmax(65px, .8fr) minmax(72px, .9fr) minmax(72px, .9fr) minmax(68px, .8fr) minmax(92px, 92px); }
+  .strategy-item-julia { grid-template-columns: minmax(130px, 1.45fr) repeat(4, minmax(80px, 1fr)) minmax(92px, 92px); }
+  .strategy-item-identity, .strategy-item-link { grid-column: auto; grid-row: auto; }
+  .strategy-item-link { justify-self: end; }
 }
 
 @media (max-width: 560px) {
