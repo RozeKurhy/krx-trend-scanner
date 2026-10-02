@@ -340,6 +340,7 @@ def test_strategy_trade_history_row_alignment_contract_v06():
     assert "align-items: center; gap: 10px; min-width: 0;" in history_css.split(".strategy-trade-row {", 1)[1].split("}", 1)[0]
     assert ".strategy-trade-identity { display: flex; min-width: 0; flex-direction: column;" in history_css
     assert ".strategy-trade-row .strategy-item-field { align-self: center; justify-content: center;" in history_css
+    assert ".strategy-trade-row .strategy-item-value { min-height: 0;" in history_css
     assert ".strategy-trade-link { color: var(--brand-red-dark); }" in history_css
     assert ".row-chevron { display: inline-flex; flex: 0 0 auto; min-width: 92px; min-height: 44px; align-items: center;" in css
     assert ".strategy-trade-row { min-height: 68px;" in history_css
