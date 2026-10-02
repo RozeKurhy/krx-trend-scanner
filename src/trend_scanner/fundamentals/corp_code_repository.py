@@ -155,3 +155,31 @@ class CorpCodeRepository:
             "cache_hit": self.cache_hit,
             "duplicate_conflict_count": len(self.duplicate_conflicts),
         }
+
+
+class ExactCorpCodeRepository(CorpCodeRepository):
+    """Use the existing exact cache while accepting KRX alpha tickers.
+
+    The frozen mapping cache contains a small set of six-character
+    alphanumeric COMMON tickers.  The base repository's legacy input guard
+    only accepts digits, so this adapter changes validation—not mapping
+    semantics—and still rejects missing or duplicate exact matches.
+    """
+
+    def get_corp_code(self, ticker: str) -> str:
+        self.ensure_loaded()
+        clean = str(ticker).strip().upper()
+        matches = [row.corp_code for row in self.records if str(row.stock_code).strip().upper() == clean]
+        if len(matches) == 0:
+            raise UnknownTickerError(f"Unknown or invalid ticker: {ticker}")
+        if len(set(matches)) != 1:
+            raise AmbiguousCorpCodeError(f"Ticker maps to multiple corp_codes: {ticker}")
+        return matches[0]
+
+    def get_record(self, ticker: str) -> CorpCodeRecord:
+        corp_code = self.get_corp_code(ticker)
+        clean = str(ticker).strip().upper()
+        return next(
+            item for item in self.records
+            if item.corp_code == corp_code and str(item.stock_code).strip().upper() == clean
+        )

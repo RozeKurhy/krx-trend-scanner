@@ -193,3 +193,54 @@ def test_provider_financial_family_marks_nonfinancial_metrics_not_applicable(tmp
 def test_no_unit_test_client_network_methods_are_called():
     client = FakeClient()
     assert client.calls == []
+
+
+def test_only_periodic_report_titles_are_periodic_authority():
+    periodic = {
+        "사업보고서 (2025.12)": "11011",
+        "[기재정정]사업보고서 (2025.12)": "11011",
+        "[첨부추가]사업보고서 (2025.06)": "11011",
+        "[기재정정]사업보고서": "11011",
+        "반기보고서 (2026.06)": "11012",
+        "분기보고서 (2026.03)": "11013",
+        "분기보고서 (2025.09)": "11014",
+    }
+    for name, code in periodic.items():
+        assert infer_report_code(name) == code, name
+    for name in (
+        "해외증권거래소등에신고한사업보고서등의국내신고",
+        "[첨부정정]해외증권거래소등에신고한사업보고서등의국내신고",
+        "해외증권거래소등에신고한사업보고서등의국내신고(자회사의 주요경영사항)",
+        "사업보고서제출기한연장신고서 (2025.12)",
+        "반기보고서제출기한연장신고서 (2025.06)",
+        "기타경영사항(자율공시)(사업보고서 등 지연제출에 대한 제재 면제 승인)",
+        "주권매매거래정지기간변경(사업보고서 미제출)",
+        "기타시장안내('20사업연도 반기보고서 미제출 관련 안내)",
+    ):
+        assert infer_report_code(name) is None, name
+    overseas = to_registered_filing({
+        "corp_code": "00155319", "corp_name": "POSCO홀딩스",
+        "report_nm": "해외증권거래소등에신고한사업보고서등의국내신고",
+        "rcept_no": "20260430800001", "rcept_dt": "20260430",
+    }, ticker="005490", retrieved_at="now")
+    assert overseas is None
+
+
+def test_registry_cache_drops_rows_written_under_the_old_classifier(tmp_path: Path):
+    registry = FilingRegistry(None, cache_dir=tmp_path)
+    good = to_registered_filing({
+        "corp_code": "00155319", "corp_name": "POSCO홀딩스", "report_nm": "사업보고서 (2025.12)",
+        "rcept_no": "20260311004517", "rcept_dt": "20260311",
+    }, ticker="005490", retrieved_at="now")
+    stale = RegisteredFiling(**{**good.to_dict(), "bsns_year": "2026", "report_nm": "해외증권거래소등에신고한사업보고서등의국내신고",
+                                "rcept_no": "20260430800001", "rcept_dt": "20260430"})
+    path = tmp_path / "00155319_2026_11011.json"
+    path.write_text(json.dumps({
+        "metadata": {"cache_complete": True, "api_status": "000", "http_status": 200,
+                     "coverage_start": "2026-01-01", "coverage_end": "2026-09-25"},
+        "filings": [stale.to_dict()],
+    }), encoding="utf-8")
+    rows = registry.list_regular_filings(ticker="005490", corp_code="00155319", bsns_year="2026",
+                                         reprt_code="11011", as_of="2026-09-25")
+    assert rows == []
+    assert registry.last_metadata["reclassified_out_count"] == 1

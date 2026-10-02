@@ -31,6 +31,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from trend_scanner.fundamentals.corp_code_repository import (  # noqa: E402
+    ExactCorpCodeRepository,
     AmbiguousCorpCodeError,
     CorpCodeRepository,
     CorpCodeRecord,
@@ -217,34 +218,6 @@ class QuotaBoundOpenDartClient(OpenDartClient):
     def get_binary(self, endpoint: str, params: Mapping[str, Any]):
         self._ensure_budget()
         return super().get_binary(endpoint, params)
-
-
-class ExactCorpCodeRepository(CorpCodeRepository):
-    """Use the existing exact cache while accepting KRX alpha tickers.
-
-    The frozen mapping cache contains a small set of six-character
-    alphanumeric COMMON tickers.  The base repository's legacy input guard
-    only accepts digits, so this adapter changes validation—not mapping
-    semantics—and still rejects missing or duplicate exact matches.
-    """
-
-    def get_corp_code(self, ticker: str) -> str:
-        self.ensure_loaded()
-        clean = str(ticker).strip().upper()
-        matches = [row.corp_code for row in self.records if str(row.stock_code).strip().upper() == clean]
-        if len(matches) == 0:
-            raise UnknownTickerError(f"Unknown or invalid ticker: {ticker}")
-        if len(set(matches)) != 1:
-            raise AmbiguousCorpCodeError(f"Ticker maps to multiple corp_codes: {ticker}")
-        return matches[0]
-
-    def get_record(self, ticker: str) -> CorpCodeRecord:
-        corp_code = self.get_corp_code(ticker)
-        clean = str(ticker).strip().upper()
-        return next(
-            item for item in self.records
-            if item.corp_code == corp_code and str(item.stock_code).strip().upper() == clean
-        )
 
 
 def _now() -> str:

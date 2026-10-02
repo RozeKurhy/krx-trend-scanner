@@ -18,7 +18,10 @@ from typing import Any
 
 from trend_scanner.strategies.b_select_core_fundamental_status import (
     FUNDAMENTAL_STATUSES,
-    fundamental_status_for_ticker,
+    item_status_asof,
+    resolve_statuses,
+    status_key,
+    status_keys,
 )
 
 
@@ -447,6 +450,18 @@ def build_strategy_monitor(
     if len(etf_items) != 36:
         raise ValueError(f"Official ETF 36 report count mismatch: {len(etf_items)}")
 
+    # Display-only historical PIT fundamental status (entry_signal_date for a
+    # trade/position, requested_as_of for an item without a signal). One value
+    # per key is shared by the list, its filter, the trade history and the stock
+    # report card; it never changes B Select Core V1 signals or buckets.
+    fundamental = resolve_statuses(status_keys(b_items, resolved_as_of), repo_root)
+
+    def fundamental_for(ticker: Any, isu_cd: Any, asof: Any) -> str:
+        status = fundamental[status_key(ticker, isu_cd, asof)]["fundamental_status"]
+        if status not in FUNDAMENTAL_STATUSES:
+            raise ValueError(f"invalid B Select fundamental status: {ticker} {asof}")
+        return status
+
     b_history: list[dict[str, Any]] = []
     for item in b_items:
         source_history = item.get("trade_history")
@@ -455,14 +470,16 @@ def build_strategy_monitor(
         for trade in source_history:
             if not isinstance(trade, dict):
                 raise ValueError(f"invalid B Select trade history row: {item.get('ticker')}")
-            b_history.append(_normalize_trade(
+            normalized = _normalize_trade(
                 B_SELECT_ID,
                 trade,
                 ticker=str(item.get("ticker") or "").zfill(6),
                 name=str(item.get("name") or item.get("ticker") or ""),
                 market=str(item.get("market") or ""),
                 asset_type="COMMON",
-            ))
+            )
+            normalized["fundamental_status"] = fundamental_for(item.get("ticker"), item.get("isu_cd"), trade.get("entry_signal_date"))
+            b_history.append(normalized)
     _validate_history_identities(STRATEGY_ID, fast_history)
     _validate_history_identities(B_SELECT_ID, b_history)
     _validate_history_identities(JULIA_ID, julia_history)
@@ -470,14 +487,9 @@ def build_strategy_monitor(
         {key: value for key, value in item.items() if key != "trade_history"}
         for item in b_items
     ]
-    # Display-only fundamental status: one value shared by the strategy list,
-    # its filter and the stock report current-judgment card. It never changes
-    # B Select Core V1 signals or buckets.
     for item in b_current_items:
-        status = fundamental_status_for_ticker(repo_root, str(item.get("ticker") or "").zfill(6), resolved_as_of)
-        if status not in FUNDAMENTAL_STATUSES:
-            raise ValueError(f"invalid B Select fundamental status: {item.get('ticker')}")
-        item["fundamental_status"] = status
+        asof, _ = item_status_asof(item, resolved_as_of)
+        item["fundamental_status"] = fundamental_for(item.get("ticker"), item.get("isu_cd"), asof)
 
     def counts_for(items: list[dict[str, Any]]) -> dict[str, int]:
         counts = {"entry": 0, "hold": 0, "exit": 0, "watch": 0, "unavailable": 0}

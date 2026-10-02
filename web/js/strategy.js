@@ -64,6 +64,7 @@
   let historySearchQuery = "";
   let holdSort = "entry-date";
   let fundamentalFilter = "all";
+  let historyFundamentalFilter = "all";
 
   function setText(id, value) {
     const element = byId(id);
@@ -350,11 +351,16 @@
     return String(trade.trade_status || "").startsWith("OPEN");
   }
 
+  function historyFundamentalFilterActive() {
+    return activeStrategyId === B_SELECT_STRATEGY_ID && historyFundamentalFilter !== "all";
+  }
+
   function historyTrades() {
     const selected = activeStrategy();
     const trades = (selected && selected.trade_history) || [];
     return trades.filter((trade) => {
       if (!historyMatches(trade)) return false;
+      if (historyFundamentalFilterActive() && fundamentalStatus(trade) !== historyFundamentalFilter) return false;
       if (historySubView !== "trades") return true;
       if (historyFilter === "completed") return trade.trade_status === "REALIZED";
       if (historyFilter === "open") return isOpenTrade(trade);
@@ -372,7 +378,8 @@
   }
 
   function createTradeHistoryRow(trade) {
-    const row = createElement("a", "strategy-trade-row");
+    const bSelect = activeStrategyId === B_SELECT_STRATEGY_ID;
+    const row = createElement("a", `strategy-trade-row${bSelect ? " strategy-trade-row-b-select" : ""}`);
     row.href = `./report.html?ticker=${encodeURIComponent(trade.ticker)}`;
     row.setAttribute("aria-label", `${trade.name || trade.ticker} ${trade.ticker} 거래 이력, 리포트 보기`);
     const identity = createElement("span", "strategy-trade-identity");
@@ -389,6 +396,7 @@
       createField("상태", status),
       createField("청산 사유", exitReasonLabel(trade.exit_reason)),
     ];
+    if (bSelect) fields.push(createField("펀더멘탈", fundamentalStatus(trade), "strategy-item-fundamental"));
     row.append(identity, ...fields, createElement("span", "strategy-trade-link", "리포트 보기 ›"));
     return row;
   }
@@ -439,11 +447,6 @@
       } else if (!trades.length) {
         tradeList.appendChild(createElement("p", "strategy-empty", "표시할 거래 이력이 없습니다."));
       } else {
-        const heading = createElement("div", "strategy-trade-heading");
-        ["종목", "매수 체결일", "매수가", "매도 체결일", "매도가", "수익률", "상태", "청산 사유", "리포트"].forEach((label) => {
-          heading.appendChild(createElement("span", "strategy-trade-heading-cell", label));
-        });
-        tradeList.appendChild(heading);
         trades.forEach((trade) => tradeList.appendChild(createTradeHistoryRow(trade)));
       }
     }
@@ -551,14 +554,19 @@
   }
 
   function syncFundamentalFilterVisibility() {
-    const row = byId("strategy-fundamental-filter-row");
-    const select = byId("strategy-fundamental-filter");
     const visible = activeStrategyId === B_SELECT_STRATEGY_ID;
-    if (row) row.hidden = !visible;
-    if (select) {
-      select.disabled = !visible;
-      if (select.value !== fundamentalFilter) select.value = fundamentalFilter;
-    }
+    [
+      ["strategy-fundamental-filter-row", "strategy-fundamental-filter", fundamentalFilter],
+      ["history-fundamental-filter-row", "history-fundamental-filter", historyFundamentalFilter],
+    ].forEach(([rowId, selectId, value]) => {
+      const row = byId(rowId);
+      const select = byId(selectId);
+      if (row) row.hidden = !visible;
+      if (select) {
+        select.disabled = !visible;
+        if (select.value !== value) select.value = value;
+      }
+    });
   }
 
   function syncHoldSortVisibility() {
@@ -791,6 +799,12 @@
       fundamentalFilter = FUNDAMENTAL_FILTERS.has(fundamentalSelect.value) ? fundamentalSelect.value : "all";
       syncFundamentalFilterVisibility();
       renderSections();
+    });
+    const historyFundamentalSelect = byId("history-fundamental-filter");
+    if (historyFundamentalSelect) historyFundamentalSelect.addEventListener("change", () => {
+      historyFundamentalFilter = FUNDAMENTAL_FILTERS.has(historyFundamentalSelect.value) ? historyFundamentalSelect.value : "all";
+      syncFundamentalFilterVisibility();
+      renderTradeHistory();
     });
     syncHoldSortVisibility();
     syncFundamentalFilterVisibility();

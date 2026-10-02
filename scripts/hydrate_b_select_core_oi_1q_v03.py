@@ -63,6 +63,8 @@ def main() -> int:
     parser.add_argument("--ledger", required=True)
     parser.add_argument("--first-year", type=int, default=XBRL_FIRST_YEAR,
                         help="earliest fiscal year whose registry/XBRL cache is filled")
+    parser.add_argument("--as-of", default=HYDRATION_AS_OF,
+                        help="registry/XBRL coverage date for the hydration builds")
     args = parser.parse_args()
 
     signals = pd.read_csv(args.signals, dtype=str)
@@ -101,7 +103,7 @@ def main() -> int:
         for year in needed_years(group["entry_signal_date"], args.first_year):
             before = len(client.audit)
             try:
-                build = provider.build(ticker, str(year), HYDRATION_AS_OF, company_metadata=payload)
+                build = provider.build(ticker, str(year), args.as_of, company_metadata=payload)
                 status = "BUILT"
                 detail = f"observations={len(build.result.observations)}"
             except FilingRegistryApiError as exc:
@@ -132,7 +134,7 @@ def main() -> int:
     Path(args.ledger).parent.mkdir(parents=True, exist_ok=True)
     ledger.to_csv(args.ledger, index=False)
     summary = {
-        "hydration_as_of": HYDRATION_AS_OF,
+        "hydration_as_of": args.as_of,
         "tickers": int(signals["ticker"].nunique()),
         "api_requests": len(client.audit),
         "status_counts": dict(counts),

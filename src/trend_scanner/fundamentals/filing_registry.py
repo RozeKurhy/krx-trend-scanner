@@ -16,6 +16,16 @@ from .opendart_contract import REPORT_TYPE_BY_CODE, FilingRecord
 
 REPORT_NAME_MARKERS = re.compile(r"(?:\[(?:기재정정|첨부정정|첨부추가|정정|자진공시)\]|\((?:기재정정|첨부정정|첨부추가|정정)\))")
 REGULAR_REPORT_CODES = frozenset(REPORT_TYPE_BY_CODE)
+# A periodic report title is exactly "사업/반기/분기보고서", optionally preceded by
+# correction markers and followed by the "(YYYY.MM)" period.  Titles that merely
+# mention a periodic report -- "해외증권거래소등에신고한사업보고서등의국내신고",
+# "사업보고서제출기한연장신고서", "기타경영사항(...사업보고서 등 지연제출...)",
+# "주권매매거래정지(사업보고서 미제출)" -- are other disclosures, not periodic reports.
+_CORRECTION = r"(?:기재정정|첨부정정|첨부추가|정정)"
+PERIODIC_REPORT_TITLE = re.compile(
+    r"^(?:\[[^\]]+\]\s*)*(?:사업|반기|분기)보고서\s*"
+    rf"(?:\(\d{{4}}\.\d{{2}}(?:\s*{_CORRECTION})?\))?\s*(?:\({_CORRECTION}\))?\s*$"
+)
 PAGE_COUNT = 100
 MAX_PAGES = 50
 
@@ -80,6 +90,8 @@ def _correction_flag(value: Any) -> bool:
 
 def infer_report_code(report_nm: str) -> str | None:
     name = str(report_nm or "")
+    if not PERIODIC_REPORT_TITLE.match(re.sub(r"\s+", " ", name).strip()):
+        return None
     if "사업보고서" in name:
         return "11011"
     if "반기보고서" in name:
@@ -173,8 +185,13 @@ class FilingRegistry:
             rows = [RegisteredFiling(**item) for item in payload.get("filings", [])]
         except (TypeError, KeyError):
             return None
+        # Caches written before the periodic-title rule may hold non-periodic
+        # disclosures under a periodic report code.  Re-apply the current
+        # classifier so such rows never act as a periodic-report authority.
+        valid = [row for row in rows if infer_report_code(row.report_nm) == row.reprt_code]
+        metadata["reclassified_out_count"] = len(rows) - len(valid)
         metadata["cache_hit"] = True
-        return rows, metadata
+        return valid, metadata
 
     @staticmethod
     def _cache_covers(metadata: dict[str, Any], *, required_start: str, requested_as_of: str) -> bool:

@@ -33,14 +33,8 @@ for _path in (ROOT, ROOT / "src"):
 
 from scripts import run_b_select_core_oi_1q_filter_5window_v03 as v3  # noqa: E402
 from trend_scanner.backtest import b_select_core_oi_1q_v03 as rule  # noqa: E402
-from trend_scanner.backtest.b_select_core_oi_1q_v03 import FAIL, PASS, UNAVAILABLE, evaluate_signal  # noqa: E402
-from trend_scanner.backtest.fastcore_fundamentals_abc_v01 import _as_date  # noqa: E402
-from trend_scanner.fundamentals.corp_code_repository import CorpCodeRepository  # noqa: E402
-from trend_scanner.fundamentals.filing_registry import FilingRegistry  # noqa: E402
-from trend_scanner.fundamentals.opendart_contract import CompanyFamily, classify_company_family  # noqa: E402
-from trend_scanner.fundamentals.period_models import READY  # noqa: E402
-from trend_scanner.fundamentals.periodization_provider import PeriodizationProvider  # noqa: E402
-from trend_scanner.fundamentals.xbrl_repository import XbrlRepository  # noqa: E402
+from trend_scanner.backtest.b_select_core_oi_1q_pit import evaluate_pit_signals  # noqa: E402
+from trend_scanner.backtest.b_select_core_oi_1q_v03 import FAIL, PASS, UNAVAILABLE  # noqa: E402
 
 runner = v3.runner
 base = v3.base
@@ -56,108 +50,15 @@ COMPARE_COLUMNS = ("oi_status", "oi_reason", "latest_quarter", "latest_quarter_f
 
 # ---------------------------------------------------------------- evaluate
 
-def _needed_years(dates: list[str]) -> list[int]:
-    years: set[int] = set()
-    for value in dates:
-        year = int(value[:4])
-        years.update(y for y in (year - 2, year - 1, year) if y >= FIRST_FISCAL_YEAR)
-    return sorted(years)
-
-
-def _blocking_detail(observations: list[Any], label: str | None, as_of: str, prior: bool) -> str:
-    """Reasons carried by the latest PIT vintage that blocked a current/prior value."""
-
-    if not label:
-        return ""
-    year = int(label[:4]) - (1 if prior else 0)
-    quarter = label[4:]
-    cutoff = _as_date(as_of)
-    items = [item for item in observations
-             if str(item.fiscal_year) == str(year) and str(item.fiscal_period) == quarter
-             and str(item.metric) == "operating_income"
-             and _as_date(item.pit_available_from or item.anchor_rcept_dt) is not None
-             and _as_date(item.pit_available_from or item.anchor_rcept_dt) <= cutoff]
-    if not items:
-        return "NO_OBSERVATION"
-    latest = max(_as_date(item.pit_available_from or item.anchor_rcept_dt) for item in items)
-    blocking = sorted({f"{item.resolution_status}:{item.reason}" for item in items
-                       if _as_date(item.pit_available_from or item.anchor_rcept_dt) == latest
-                       and str(item.resolution_status) != READY})
-    return "|".join(blocking) or "READY_SIBLINGS_ONLY"
-
-
 def evaluate_fundamentals(candidates: list[dict[str, Any]],
                           min_operating_income_krw: int = rule.OPERATING_INCOME_MIN_KRW) -> pd.DataFrame:
-    corp = CorpCodeRepository.from_cache(v3.CACHE / "corp_code_cache.json")
-    registry = FilingRegistry(None, cache_dir=v3.CACHE / "filings")
-    provider = PeriodizationProvider(corp, registry, XbrlRepository(None, cache_dir=v3.CACHE / "xbrl"))
-    by_ticker: dict[str, list[dict[str, Any]]] = {}
-    for row in candidates:
-        by_ticker.setdefault(row["ticker"], []).append(row)
-    rows: list[dict[str, Any]] = []
-    for number, (ticker, group) in enumerate(sorted(by_ticker.items()), start=1):
-        payload = v3._company_payload(ticker)
-        family = (str(classify_company_family(payload, ()).get("company_family") or CompanyFamily.UNKNOWN.value)
-                  if payload else CompanyFamily.UNKNOWN.value)
-        try:
-            corp_code = corp.get_record(ticker).corp_code
-        except Exception:  # noqa: BLE001
-            corp_code = None
-        observations: list[Any] = []
-        build_failed: dict[int, str] = {}
-        if payload is not None and corp_code and family == CompanyFamily.NON_FINANCIAL.value:
-            for year in _needed_years([row["entry_signal_date"] for row in group]):
-                try:
-                    build = provider.build(ticker, str(year), v3.FUNDAMENTALS_BUILD_AS_OF, company_metadata=payload)
-                    observations.extend(build.result.observations)
-                except v3.NetworkBlocked:
-                    raise
-                except Exception as exc:  # noqa: BLE001 - bounded cache gap for one fiscal year
-                    build_failed[year] = type(exc).__name__
-        for row in group:
-            as_of = row["entry_signal_date"]
-            reason = None
-            filings: list[dict[str, Any]] = []
-            if payload is None:
-                reason = "COMPANY_METADATA_UNAVAILABLE"
-            elif corp_code is None:
-                reason = "CORP_CODE_UNAVAILABLE"
-            elif family == CompanyFamily.NON_FINANCIAL.value:
-                year = int(as_of[:4])
-                for fiscal_year in (year - 1, year):
-                    for code in ("11013", "11012", "11014", "11011"):
-                        try:
-                            listed = registry.list_regular_filings(
-                                ticker=ticker, corp_code=corp_code, bsns_year=str(fiscal_year),
-                                reprt_code=code, as_of=as_of,
-                            )
-                        except v3.NetworkBlocked:
-                            raise
-                        except Exception as exc:  # noqa: BLE001
-                            reason = f"REGISTRY_CACHE_UNAVAILABLE_{type(exc).__name__}"
-                            break
-                        filings.extend(item.to_dict() for item in listed)
-                    if reason:
-                        break
-            evaluation = evaluate_signal(company_family=family, filings=filings, observations=observations,
-                                         as_of=as_of, unavailable_reason=reason,
-                                         min_operating_income_krw=min_operating_income_krw)
-            out = {
-                "ticker": row["ticker"], "isu_cd": row["isu_cd"], "entry_signal_date": as_of,
-                "market_at_signal": row.get("market_at_signal"), "corp_code": corp_code,
-                **evaluation.to_row(), "blocking_detail": "",
-            }
-            latest = evaluation.latest_quarter
-            if evaluation.status == UNAVAILABLE and latest and evaluation.reason.startswith(("CURRENT_", "PRIOR_")):
-                is_prior = evaluation.reason.startswith("PRIOR_")
-                failed_year = int(latest[:4]) - (1 if is_prior else 0)
-                out["blocking_detail"] = _blocking_detail(observations, latest, as_of, is_prior)
-                if failed_year in build_failed:
-                    out["oi_reason"] = f"FISCAL_YEAR_BUILD_FAILED_{build_failed[failed_year]}"
-            rows.append(out)
-        if number % 50 == 0:
-            print(f"fundamentals {number}/{len(by_ticker)} tickers", flush=True)
-    return pd.DataFrame(rows).sort_values(["entry_signal_date", "ticker", "isu_cd"]).reset_index(drop=True)
+    """FIX01 PIT evaluation; the implementation lives in ``b_select_core_oi_1q_pit``."""
+
+    return evaluate_pit_signals(
+        candidates, repo_root=ROOT, min_operating_income_krw=min_operating_income_krw,
+        first_fiscal_year=FIRST_FISCAL_YEAR, build_as_of=v3.FUNDAMENTALS_BUILD_AS_OF,
+        network_errors=(v3.NetworkBlocked,), progress=True,
+    )
 
 
 def reaudit_class(row: Mapping[str, Any]) -> str:
