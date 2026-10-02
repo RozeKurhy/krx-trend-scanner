@@ -16,6 +16,11 @@ import math
 from pathlib import Path
 from typing import Any
 
+from trend_scanner.strategies.b_select_core_fundamental_status import (
+    FUNDAMENTAL_STATUSES,
+    fundamental_status_for_ticker,
+)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 INDEX_PATH = ROOT / "web/data/stock-index.json"
@@ -465,6 +470,14 @@ def build_strategy_monitor(
         {key: value for key, value in item.items() if key != "trade_history"}
         for item in b_items
     ]
+    # Display-only fundamental status: one value shared by the strategy list,
+    # its filter and the stock report current-judgment card. It never changes
+    # B Select Core V1 signals or buckets.
+    for item in b_current_items:
+        status = fundamental_status_for_ticker(repo_root, str(item.get("ticker") or "").zfill(6), resolved_as_of)
+        if status not in FUNDAMENTAL_STATUSES:
+            raise ValueError(f"invalid B Select fundamental status: {item.get('ticker')}")
+        item["fundamental_status"] = status
 
     def counts_for(items: list[dict[str, Any]]) -> dict[str, int]:
         counts = {"entry": 0, "hold": 0, "exit": 0, "watch": 0, "unavailable": 0}

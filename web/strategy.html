@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-dual-strategy-report-v1">
+    <link rel="stylesheet" href="./css/app.css?v=web-b-select-fundamental-v1">
     <link rel="stylesheet" href="./css/strategy-history.css?v=strategy-trade-history-v1">
   </head>
   <body>
@@ -95,6 +95,17 @@
             <button class="strategy-filter" type="button" data-filter="watch" aria-pressed="false">관찰 중 <span id="strategy-filter-count-watch" class="strategy-filter-count">—</span></button>
             <button class="strategy-filter" type="button" data-filter="unavailable" aria-pressed="false">기타 <span id="strategy-filter-count-unavailable" class="strategy-filter-count">—</span></button>
           </div>
+          <div id="strategy-fundamental-filter-row" class="strategy-sort-row strategy-fundamental-row" hidden>
+            <label for="strategy-fundamental-filter">펀더멘탈</label>
+            <select id="strategy-fundamental-filter" class="strategy-sort-select">
+              <option value="all" selected>전체</option>
+              <option value="우수">우수</option>
+              <option value="양호">양호</option>
+              <option value="보통">보통</option>
+              <option value="주의">주의</option>
+              <option value="미상">미상</option>
+            </select>
+          </div>
           <div id="strategy-hold-sort-row" class="strategy-sort-row" hidden>
             <label for="strategy-hold-sort">정렬</label>
             <select id="strategy-hold-sort" class="strategy-sort-select">
@@ -156,6 +167,6 @@
       </section>
     </main>
 
-    <script src="./js/strategy.js?v=web-pattern-columns-v1" defer></script>
+    <script src="./js/strategy.js?v=web-b-select-fundamental-v1" defer></script>
   </body>
 </html>

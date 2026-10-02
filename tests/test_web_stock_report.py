@@ -353,10 +353,10 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-stock-report-ui-refine-v1"' in html
+    assert 'src="./js/report.js?v=web-b-select-fundamental-v1"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert html.count("web-dual-strategy-report-v1") == 1
-    assert html.count("web-stock-report-ui-refine-v1") == 1
+    assert html.count("web-b-select-fundamental-v1") == 1
     assert index_html.count("web-dual-strategy-report-v1") == 1
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html

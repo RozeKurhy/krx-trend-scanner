@@ -211,7 +211,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert (ROOT / "web" / strategy_scripts[0].path.removeprefix("./")).is_file()
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert 'EXIT: "다음 시가 청산 대기"' in strategy_js
-    assert 'src="./js/report.js?v=web-stock-report-ui-refine-v1"' in report_html
+    assert 'src="./js/report.js?v=web-b-select-fundamental-v1"' in report_html
     assert 'href="./strategy.html"' in index_html
     assert 'href="./strategy.html"' in report_html
     assert 'class="nav-item is-active" href="./strategy.html"' in strategy_html
@@ -291,7 +291,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert "window.matchMedia" in strategy_js
     assert ".strategy-item" in css
     assert ".strategy-item-a-fast { grid-template-columns: minmax(190px, 1.55fr) repeat(5, minmax(80px, 1fr)) auto; }" in css
-    assert ".strategy-item-b-select { grid-template-columns: minmax(190px, 1.55fr) repeat(6, minmax(80px, 1fr)) auto; }" in css
+    assert ".strategy-item-b-select { grid-template-columns: minmax(170px, 1.55fr) repeat(3, minmax(80px, 1fr)) minmax(44px, 0.55fr) repeat(3, minmax(80px, 1fr)) auto; column-gap: 10px; }" in css
     assert ".strategy-item-julia { grid-template-columns: minmax(190px, 1.55fr) repeat(4, minmax(80px, 1fr)) auto; }" in css
     assert ".strategy-summary-card" not in css
     assert ".strategy-summary-grid" not in css

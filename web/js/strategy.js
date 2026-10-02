@@ -49,6 +49,9 @@
   const EXPECTED_STRATEGY_IDS = Object.keys(STRATEGY_LABELS);
   const SECTION_IDS = { hold: "hold", entry: "entry", exit: "exit", watch: "watch", unavailable: "unavailable" };
   const FILTERS = new Set(["all", ...Object.keys(SECTION_IDS)]);
+  const B_SELECT_STRATEGY_ID = "PATTERN_B_SELECT_CORE_V01";
+  const FUNDAMENTAL_STATUSES = ["우수", "양호", "보통", "주의", "미상"];
+  const FUNDAMENTAL_FILTERS = new Set(["all", ...FUNDAMENTAL_STATUSES]);
 
   const byId = (id) => document.getElementById(id);
   let monitor = null;
@@ -60,6 +63,7 @@
   let historyFilter = "all";
   let historySearchQuery = "";
   let holdSort = "entry-date";
+  let fundamentalFilter = "all";
 
   function setText(id, value) {
     const element = byId(id);
@@ -161,7 +165,20 @@
     return element;
   }
 
+  function fundamentalStatus(item) {
+    return FUNDAMENTAL_STATUSES.includes(item && item.fundamental_status) ? item.fundamental_status : "미상";
+  }
+
+  function fundamentalFilterActive() {
+    return activeStrategyId === B_SELECT_STRATEGY_ID && fundamentalFilter !== "all";
+  }
+
+  function fundamentalMatches(item) {
+    return !fundamentalFilterActive() || fundamentalStatus(item) === fundamentalFilter;
+  }
+
   function itemMatches(item) {
+    if (!fundamentalMatches(item)) return false;
     const normalized = searchQuery.trim().toLocaleLowerCase("ko-KR");
     if (!normalized) return true;
     return [
@@ -291,6 +308,7 @@
       detailFields = [
         createField("Pattern A", `${stageLabel(previousPatternAStage)} → ${stageLabel(currentPatternAStage)}`),
         createField("Pattern B", patternBLabel(item.pattern_b_state)),
+        createField("펀더멘탈", fundamentalStatus(item), "strategy-item-fundamental"),
       ];
     } else if (strategyId === "JULIA_ETF_STRATEGY_V01") {
       detailFields = [];
@@ -532,6 +550,17 @@
     renderTradeHistory();
   }
 
+  function syncFundamentalFilterVisibility() {
+    const row = byId("strategy-fundamental-filter-row");
+    const select = byId("strategy-fundamental-filter");
+    const visible = activeStrategyId === B_SELECT_STRATEGY_ID;
+    if (row) row.hidden = !visible;
+    if (select) {
+      select.disabled = !visible;
+      if (select.value !== fundamentalFilter) select.value = fundamentalFilter;
+    }
+  }
+
   function syncHoldSortVisibility() {
     const row = byId("strategy-hold-sort-row");
     const select = byId("strategy-hold-sort");
@@ -547,7 +576,7 @@
     const selected = activeStrategy();
     if (!selected) return;
     const counts = { all: 0, hold: 0, entry: 0, exit: 0, watch: 0, unavailable: 0 };
-    if (searchQuery.trim()) {
+    if (searchQuery.trim() || fundamentalFilterActive()) {
       const matched = (selected.items || []).filter(itemMatches);
       counts.all = matched.length;
       matched.forEach((item) => {
@@ -575,7 +604,7 @@
       if (!enabled) return;
       const items = filteredItems(category);
       if (!items.length) {
-        const message = searchQuery.trim()
+        const message = searchQuery.trim() || fundamentalFilterActive()
           ? "검색 조건에 맞는 종목이 없습니다."
           : category === "entry"
             ? "현재 진입 조건을 충족한 종목이 없습니다."
@@ -711,6 +740,7 @@
     const value = normalizeMonitor(raw);
     monitor = value;
     activeStrategyId = value.default_strategy_id;
+    syncFundamentalFilterVisibility();
     renderScope();
     renderSections();
   }
@@ -718,6 +748,7 @@
   function setStrategy(strategyId) {
     if (!monitor || !(monitor.strategies || []).some((strategy) => strategy.id === strategyId)) return;
     activeStrategyId = strategyId;
+    syncFundamentalFilterVisibility();
     renderScope();
     renderSections();
     if (activeView === "history") renderTradeHistory();
@@ -755,7 +786,14 @@
       syncHoldSortVisibility();
       renderSections();
     });
+    const fundamentalSelect = byId("strategy-fundamental-filter");
+    if (fundamentalSelect) fundamentalSelect.addEventListener("change", () => {
+      fundamentalFilter = FUNDAMENTAL_FILTERS.has(fundamentalSelect.value) ? fundamentalSelect.value : "all";
+      syncFundamentalFilterVisibility();
+      renderSections();
+    });
     syncHoldSortVisibility();
+    syncFundamentalFilterVisibility();
   }
 
   initTheme();

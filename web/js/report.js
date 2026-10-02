@@ -443,6 +443,13 @@
     });
   }
 
+  const B_SELECT_FUNDAMENTAL_STATUSES = ["우수", "양호", "보통", "주의", "미상"];
+
+  function withFundamentalStatus(bSelectItem, action) {
+    const status = bSelectItem && bSelectItem.fundamental_status;
+    return B_SELECT_FUNDAMENTAL_STATUSES.includes(status) ? `${status}.${action}` : action;
+  }
+
   function commonStrategyActions(report, bSelectItem) {
     const aFast = report.strategy || {};
     return [
@@ -452,11 +459,11 @@
       },
       {
         name: "B Select Core V1",
-        action: strategyActionLabel(
+        action: withFundamentalStatus(bSelectItem, strategyActionLabel(
           bSelectItem && bSelectItem.action,
           bSelectItem && bSelectItem.strategy_state,
           bSelectItem && bSelectItem.canonical_position,
-        ),
+        )),
       },
     ];
   }
