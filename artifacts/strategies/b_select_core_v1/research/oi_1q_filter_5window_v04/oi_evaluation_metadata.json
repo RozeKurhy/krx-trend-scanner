@@ -1,0 +1,115 @@
+{
+  "study_id": "B_SELECT_CORE_OI_1Q_FILTER_5WINDOW_V04",
+  "stage": "evaluate",
+  "starting_git": {
+    "head": "61cc72f2d5c8fe556fc08754016bd0a4bd98526f",
+    "origin_main": "238f7d75281804a0b8e76dce3dbd9b3b5cd0bf18",
+    "branch": "main",
+    "commits_ahead_of_origin": 1,
+    "start_status": []
+  },
+  "window_superset": {
+    "window_id": "P1",
+    "calendar_range": [
+      "2014-01-01",
+      "2026-08-31"
+    ],
+    "effective_start": "2014-01-02",
+    "effective_end": "2026-08-31",
+    "execution_support": "2026-09-01",
+    "authority_source": "ROLLING_AUTHORITY_MERGED_CALENDAR_V01",
+    "authority_metadata": {
+      "authority_version": "ROLLING_MARKET_DATA_V01",
+      "certified_through": "2026-09-25",
+      "calendar_frontier": "2026-09-23",
+      "calendar_digest": "75b45cbcbcc70d6f90eba821b8614e43699751a520b2aa44ab897f1fbf173882",
+      "calendar_built_against_certified_through": "2026-09-21"
+    },
+    "support_policy": "only an exit signal dated on or before effective_end may fill on execution_support; entries after effective_end are not filled"
+  },
+  "candidate_count": 485,
+  "test10_status_counts": {
+    "FAIL": 256,
+    "PASS": 116,
+    "UNAVAILABLE": 113
+  },
+  "test20_status_counts": {
+    "FAIL": 271,
+    "UNAVAILABLE": 113,
+    "PASS": 101
+  },
+  "status_transitions_20_to_10": {
+    "PASS->PASS": 101,
+    "FAIL->FAIL": 256,
+    "UNAVAILABLE->UNAVAILABLE": 113,
+    "FAIL->PASS": 15
+  },
+  "new_10_to_20_signal_count": 15,
+  "pit_column_diffs": 0,
+  "illegal_transitions": 0,
+  "integrity_test10": {
+    "future_disclosure_reference_count": 0,
+    "non_same_quarter_yoy_count": 0,
+    "yoy_percent_contract_violation_count": 0,
+    "rule_recompute_mismatch_count": 0
+  },
+  "integrity_test20_recheck": {
+    "future_disclosure_reference_count": 0,
+    "non_same_quarter_yoy_count": 0,
+    "yoy_percent_contract_violation_count": 0,
+    "rule_recompute_mismatch_count": 0
+  },
+  "thresholds": {
+    "TEST20": 2000000000,
+    "TEST10": 1000000000,
+    "yoy_min": "101/100"
+  },
+  "authority_projection": {
+    "projection_cutoff": "2026-09-21",
+    "current_pit_frontier": "2026-09-23",
+    "current_calendar_frontier": "2026-09-23",
+    "current_pit_file_sha256": "429161977da993ae9b1f434093812f09740925cd777e93e8381a21aa3ab86eeb",
+    "current_calendar_file_sha256": "e064c2f11dedef5fa716fd68ba81fa338aa083e0665177da14f197425caf2f86",
+    "current_interval_count": 3209,
+    "projected_interval_count": 3208,
+    "open_intervals_clamped": 2558,
+    "intervals_started_after_cutoff_dropped": 1,
+    "projected_pit_content_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
+    "frozen_pit_content_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
+    "projected_calendar_content_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+    "frozen_calendar_content_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+    "projected_first_trading_date": "2010-01-04",
+    "projected_last_trading_date": "2026-09-21",
+    "frozen_first_trading_date": "2010-01-04",
+    "frozen_last_trading_date": "2026-09-21",
+    "frozen_interval_count": 3208,
+    "equivalent": true
+  },
+  "exclusions": {
+    "pattern_b_authorized_event_count": 18880,
+    "pattern_b_authority_discontinuity_count": 0,
+    "window_pattern_b_raw_event_count": 18217,
+    "permanent_exclusion_identity_count": 174,
+    "baseline_exclusion_identity_count": 43,
+    "newly_excluded_identity_count": 131,
+    "linkage_audit": {
+      "linkage_rows": 20076,
+      "linkage_rows_removed_by_new_exclusions": 1196,
+      "linkage_identities_removed": 130,
+      "linkage_rows_kept": 18880,
+      "linkage_sha256": "d4d898ab41246c023c84f82868ef47d95a42024c2acc3bc60eadbaede2ddc02b"
+    },
+    "previous_stage_audit": {
+      "history_rows": 835,
+      "history_rows_removed_by_new_exclusions": 114,
+      "history_sha256": "44c75dc3954419b8cba52f7c8ab1462d14ecbb6a692fec53e408ac755d8ce5b5",
+      "code_verification": {
+        "scripts/analyze_pattern_b_progressed_previous_pattern_a_stage_v01.py": "REFACTORED_AFTER_GENERATION; generating blob at 7b0b58219 verified",
+        "tests/test_analyze_pattern_b_progressed_previous_pattern_a_stage_v01.py": "UNCHANGED"
+      }
+    }
+  },
+  "network_guard": "socket connect blocked during evaluation",
+  "evaluation_sha256": "ae8e7b3864f79af67de121371dfdc4587697798dd8804730a0f22ff24483dce4",
+  "test20_evaluation_sha256": "d3848380dcb7510908b442393d20b492924c434f908dc3af44f7d31dd674d1a4"
+}

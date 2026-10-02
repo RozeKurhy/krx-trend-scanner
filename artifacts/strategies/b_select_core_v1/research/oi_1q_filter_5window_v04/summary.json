@@ -1,0 +1,177 @@
+{
+  "study_id": "B_SELECT_CORE_OI_1Q_FILTER_5WINDOW_V04",
+  "starting_git": {
+    "head": "61cc72f2d5c8fe556fc08754016bd0a4bd98526f",
+    "origin_main": "238f7d75281804a0b8e76dce3dbd9b3b5cd0bf18",
+    "branch": "main",
+    "commits_ahead_of_origin": 1,
+    "start_status": [
+      "?? artifacts/strategies/b_select_core_v1/research/oi_1q_filter_5window_v04/new_10_to_20_signals.csv",
+      "?? artifacts/strategies/b_select_core_v1/research/oi_1q_filter_5window_v04/oi_entry_evaluations.csv",
+      "?? artifacts/strategies/b_select_core_v1/research/oi_1q_filter_5window_v04/oi_evaluation_metadata.json"
+    ]
+  },
+  "workers": 10,
+  "thresholds": {
+    "TEST20": 2000000000,
+    "TEST10": 1000000000
+  },
+  "test20_baseline": "artifacts/strategies/b_select_core_v1/research/oi_1q_filter_5window_v03_fix01",
+  "metric_contract": {
+    "PRIMARY": "resolved terminal (V03 FIX01)",
+    "SECONDARY": "realized only"
+  },
+  "authority_projection": {
+    "projection_cutoff": "2026-09-21",
+    "current_pit_frontier": "2026-09-23",
+    "current_calendar_frontier": "2026-09-23",
+    "current_pit_file_sha256": "429161977da993ae9b1f434093812f09740925cd777e93e8381a21aa3ab86eeb",
+    "current_calendar_file_sha256": "e064c2f11dedef5fa716fd68ba81fa338aa083e0665177da14f197425caf2f86",
+    "current_interval_count": 3209,
+    "projected_interval_count": 3208,
+    "open_intervals_clamped": 2558,
+    "intervals_started_after_cutoff_dropped": 1,
+    "projected_pit_content_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
+    "frozen_pit_content_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
+    "projected_calendar_content_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+    "frozen_calendar_content_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+    "projected_first_trading_date": "2010-01-04",
+    "projected_last_trading_date": "2026-09-21",
+    "frozen_first_trading_date": "2010-01-04",
+    "frozen_last_trading_date": "2026-09-21",
+    "frozen_interval_count": 3208,
+    "equivalent": true
+  },
+  "evaluation_sha256": "ae8e7b3864f79af67de121371dfdc4587697798dd8804730a0f22ff24483dce4",
+  "windows": [
+    {
+      "window": "P1",
+      "effective_start": "2014-01-02",
+      "effective_end": "2026-08-31",
+      "execution_support": "2026-09-01",
+      "control_candidate_signals": 485,
+      "test10_pass": 116,
+      "test10_fail": 256,
+      "test10_unavailable": 113,
+      "test20_pass": 101,
+      "test20_fail": 271,
+      "test20_unavailable": 113,
+      "control_trades": 483,
+      "test20_trades": 100,
+      "test10_trades": 115,
+      "control_parity_exact": true,
+      "control_identical_to_fix01": true
+    },
+    {
+      "window": "P2-1",
+      "effective_start": "2021-01-04",
+      "effective_end": "2025-05-30",
+      "execution_support": "2025-06-02",
+      "control_candidate_signals": 216,
+      "test10_pass": 51,
+      "test10_fail": 152,
+      "test10_unavailable": 13,
+      "test20_pass": 44,
+      "test20_fail": 159,
+      "test20_unavailable": 13,
+      "control_trades": 215,
+      "test20_trades": 43,
+      "test10_trades": 50,
+      "control_parity_exact": true,
+      "control_identical_to_fix01": true
+    },
+    {
+      "window": "P2-2",
+      "effective_start": "2021-01-04",
+      "effective_end": "2026-08-31",
+      "execution_support": "2026-09-01",
+      "control_candidate_signals": 321,
+      "test10_pass": 96,
+      "test10_fail": 204,
+      "test10_unavailable": 21,
+      "test20_pass": 84,
+      "test20_fail": 216,
+      "test20_unavailable": 21,
+      "control_trades": 319,
+      "test20_trades": 83,
+      "test10_trades": 95,
+      "control_parity_exact": true,
+      "control_identical_to_fix01": true
+    },
+    {
+      "window": "P3-1",
+      "effective_start": "2022-01-03",
+      "effective_end": "2025-05-30",
+      "execution_support": "2025-06-02",
+      "control_candidate_signals": 179,
+      "test10_pass": 46,
+      "test10_fail": 124,
+      "test10_unavailable": 9,
+      "test20_pass": 41,
+      "test20_fail": 129,
+      "test20_unavailable": 9,
+      "control_trades": 178,
+      "test20_trades": 40,
+      "test10_trades": 45,
+      "control_parity_exact": true,
+      "control_identical_to_fix01": true
+    },
+    {
+      "window": "P3-2",
+      "effective_start": "2022-01-03",
+      "effective_end": "2026-08-31",
+      "execution_support": "2026-09-01",
+      "control_candidate_signals": 284,
+      "test10_pass": 91,
+      "test10_fail": 176,
+      "test10_unavailable": 17,
+      "test20_pass": 81,
+      "test20_fail": 186,
+      "test20_unavailable": 17,
+      "control_trades": 282,
+      "test20_trades": 80,
+      "test10_trades": 90,
+      "control_parity_exact": true,
+      "control_identical_to_fix01": true
+    }
+  ],
+  "cohorts": [
+    {
+      "window": "P1",
+      "new_10_to_20_trades": 15,
+      "test10_pass20_trades_not_in_test20": 0,
+      "test20_trades_not_in_test10": 0,
+      "test20_subset_of_test10": true
+    },
+    {
+      "window": "P2-1",
+      "new_10_to_20_trades": 7,
+      "test10_pass20_trades_not_in_test20": 0,
+      "test20_trades_not_in_test10": 0,
+      "test20_subset_of_test10": true
+    },
+    {
+      "window": "P2-2",
+      "new_10_to_20_trades": 12,
+      "test10_pass20_trades_not_in_test20": 0,
+      "test20_trades_not_in_test10": 0,
+      "test20_subset_of_test10": true
+    },
+    {
+      "window": "P3-1",
+      "new_10_to_20_trades": 5,
+      "test10_pass20_trades_not_in_test20": 0,
+      "test20_trades_not_in_test10": 0,
+      "test20_subset_of_test10": true
+    },
+    {
+      "window": "P3-2",
+      "new_10_to_20_trades": 10,
+      "test10_pass20_trades_not_in_test20": 0,
+      "test20_trades_not_in_test10": 0,
+      "test20_subset_of_test10": true
+    }
+  ],
+  "elapsed_seconds": 708.5,
+  "auto_rerun": false
+}
