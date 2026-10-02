@@ -78,7 +78,11 @@ def latest_disclosed_quarter(
     return DisclosedQuarter(year, quarter, first_receipt[(year, quarter)].isoformat())
 
 
-def operating_income_rule(current: int | float, prior: int | float) -> tuple[bool, str, list[str]]:
+def operating_income_rule(
+    current: int | float,
+    prior: int | float,
+    min_operating_income_krw: int = OPERATING_INCOME_MIN_KRW,
+) -> tuple[bool, str, list[str]]:
     """Apply the frozen V03 rule to exact KRW values.
 
     Returns ``(passed, branch, fail_reasons)``.  YoY percent is only meaningful
@@ -88,8 +92,8 @@ def operating_income_rule(current: int | float, prior: int | float) -> tuple[boo
     reasons: list[str] = []
     if current < 0:
         reasons.append("CURRENT_OPERATING_LOSS")
-    if current < OPERATING_INCOME_MIN_KRW:
-        reasons.append("CURRENT_BELOW_2B")
+    if current < min_operating_income_krw:
+        reasons.append(f"CURRENT_BELOW_{min_operating_income_krw // 1_000_000_000}B")
     if prior > 0:
         branch = "A_PRIOR_POSITIVE_YOY"
         if YOY_MIN_DENOMINATOR * current < YOY_MIN_NUMERATOR * prior:
@@ -153,6 +157,7 @@ def evaluate_signal(
     observations: Sequence[PeriodizedFinancialObservation],
     as_of: str | date,
     unavailable_reason: str | None = None,
+    min_operating_income_krw: int = OPERATING_INCOME_MIN_KRW,
 ) -> OI1QEvaluation:
     """Evaluate one entry signal at its exact ``entry_signal_date``.
 
@@ -203,7 +208,7 @@ def evaluate_signal(
         return OI1QEvaluation(UNAVAILABLE, f"PRIOR_YEAR_QUARTER_{prior_status or 'UNAVAILABLE'}", family, **common)
     if not _basis_currency_consistent((current, prior)):
         return OI1QEvaluation(BASIS_OR_CURRENCY_MISMATCH, BASIS_OR_CURRENCY_MISMATCH, family, **common)
-    passed, branch, reasons = operating_income_rule(current.value, prior.value)
+    passed, branch, reasons = operating_income_rule(current.value, prior.value, min_operating_income_krw)
     yoy = (float(current.value) - float(prior.value)) / float(prior.value) * 100.0 if prior.value > 0 else None
     return OI1QEvaluation(
         PASS if passed else FAIL,

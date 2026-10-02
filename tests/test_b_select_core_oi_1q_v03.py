@@ -115,3 +115,19 @@ def test_financial_and_known_gap_are_unavailable():
 def test_rule_function_exact_integer_boundary():
     assert operating_income_rule(2_020_000_000, 2_000_000_000)[0]
     assert not operating_income_rule(2_019_999_999, 2_000_000_000)[0]
+
+
+def test_one_billion_threshold_variant_keeps_other_conditions():
+    one_b = 1_000_000_000
+    assert operating_income_rule(one_b, one_b * 100 // 101, one_b)[0]
+    passed, _, reasons = operating_income_rule(one_b - 1, -B, one_b)
+    assert not passed and reasons == ["CURRENT_BELOW_1B"]
+    assert not operating_income_rule(15 * B // 10, 15 * B // 10, one_b)[0]  # YoY +1% still required
+    assert not operating_income_rule(15 * B // 10, -B)[0]  # default stays 2B
+
+
+def test_evaluate_signal_threshold_parameter():
+    observations = [obs(2022, "Q1", 15 * B // 10, available="2022-05-13"), obs(2021, "Q1", B, available="2021-05-14")]
+    kwargs = dict(company_family="NON_FINANCIAL", filings=FILINGS, observations=observations, as_of="2022-05-31")
+    assert evaluate_signal(**kwargs).status == FAIL
+    assert evaluate_signal(**kwargs, min_operating_income_krw=1_000_000_000).status == PASS

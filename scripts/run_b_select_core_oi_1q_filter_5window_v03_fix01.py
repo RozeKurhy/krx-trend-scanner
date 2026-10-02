@@ -86,7 +86,8 @@ def _blocking_detail(observations: list[Any], label: str | None, as_of: str, pri
     return "|".join(blocking) or "READY_SIBLINGS_ONLY"
 
 
-def evaluate_fundamentals(candidates: list[dict[str, Any]]) -> pd.DataFrame:
+def evaluate_fundamentals(candidates: list[dict[str, Any]],
+                          min_operating_income_krw: int = rule.OPERATING_INCOME_MIN_KRW) -> pd.DataFrame:
     corp = CorpCodeRepository.from_cache(v3.CACHE / "corp_code_cache.json")
     registry = FilingRegistry(None, cache_dir=v3.CACHE / "filings")
     provider = PeriodizationProvider(corp, registry, XbrlRepository(None, cache_dir=v3.CACHE / "xbrl"))
@@ -139,7 +140,8 @@ def evaluate_fundamentals(candidates: list[dict[str, Any]]) -> pd.DataFrame:
                     if reason:
                         break
             evaluation = evaluate_signal(company_family=family, filings=filings, observations=observations,
-                                         as_of=as_of, unavailable_reason=reason)
+                                         as_of=as_of, unavailable_reason=reason,
+                                         min_operating_income_krw=min_operating_income_krw)
             out = {
                 "ticker": row["ticker"], "isu_cd": row["isu_cd"], "entry_signal_date": as_of,
                 "market_at_signal": row.get("market_at_signal"), "corp_code": corp_code,
