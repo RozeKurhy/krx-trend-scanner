@@ -145,7 +145,7 @@ def _git_start(allowed_prefixes: tuple[str, ...]) -> dict[str, Any]:
     head = _git("rev-parse", "HEAD")
     origin = _git("rev-parse", "origin/main")
     branch = _git("branch", "--show-current")
-    status = _git("status", "--porcelain").splitlines()
+    status = _git("status", "--porcelain", "--untracked-files=all").splitlines()
     unexpected = [line for line in status if not any(line[3:].startswith(prefix) for prefix in allowed_prefixes)]
     if branch != "main" or unexpected:
         raise RuntimeError(f"unexpected start state: branch={branch} head={head} origin={origin} changes={unexpected}")
