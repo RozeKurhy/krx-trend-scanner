@@ -7,7 +7,6 @@
   const SYSTEM_THEME_QUERY = "(prefers-color-scheme: dark)";
   const MARKET_LABELS = { KOSPI: "코스피", KOSDAQ: "코스닥", KONEX: "코넥스" };
   const ASSET_LABELS = { COMMON: "보통주", ETF: "ETF" };
-  const POSITION_LABELS = { OPEN: "보유 중", FLAT: "미보유", NOT_APPLICABLE: "해당 없음" };
   const STATE_LABELS = {
     HOLD_PROGRESSED: "상승 진행 구간 보유",
     HOLD_PRE_PROGRESSED: "초기 추세 구간 보유",
@@ -52,6 +51,7 @@
   const B_SELECT_STRATEGY_ID = "PATTERN_B_SELECT_CORE_V01";
   const FUNDAMENTAL_STATUSES = ["우수", "양호", "보통", "주의", "미상"];
   const FUNDAMENTAL_FILTERS = new Set(["all", ...FUNDAMENTAL_STATUSES]);
+  const SORT_OPTIONS = new Set(["entry-date", "return", "name"]);
 
   const byId = (id) => document.getElementById(id);
   let monitor = null;
@@ -63,6 +63,7 @@
   let historyFilter = "all";
   let historySearchQuery = "";
   let holdSort = "entry-date";
+  let historySort = "entry-date";
   let fundamentalFilter = "all";
   let historyFundamentalFilter = "all";
 
@@ -73,7 +74,6 @@
 
   function marketLabel(value) { return MARKET_LABELS[value] || "마켓 확인 필요"; }
   function assetLabel(value) { return ASSET_LABELS[value] || "자산 확인 필요"; }
-  function positionLabel(value) { return POSITION_LABELS[value] || "상태 확인 필요"; }
   function stateLabel(value) { return STATE_LABELS[value] || "상태 확인 필요"; }
   function stageLabel(value) { return STAGE_LABELS[value] || "확인 필요"; }
   function patternBLabel(value) { return PATTERN_B_LABELS[value] || (value ? "확인 필요" : "확인 필요"); }
@@ -221,27 +221,33 @@
     return Number.isFinite(number) ? number : null;
   }
 
-  function compareHoldItems(a, b) {
+  function compareByTradeSort(a, b, sort) {
     const tradeA = a && a.current_trade;
     const tradeB = b && b.current_trade;
-    if (holdSort === "return") {
-      const returnA = parseSortableNumber(tradeA && tradeA.return_pct);
-      const returnB = parseSortableNumber(tradeB && tradeB.return_pct);
+    const comparableA = tradeA || a || {};
+    const comparableB = tradeB || b || {};
+    if (sort === "return") {
+      const returnA = parseSortableNumber(comparableA.return_pct);
+      const returnB = parseSortableNumber(comparableB.return_pct);
       if (returnA == null && returnB != null) return 1;
       if (returnA != null && returnB == null) return -1;
       if (returnA != null && returnB != null && returnA !== returnB) return returnB - returnA;
-    } else if (holdSort === "name") {
+    } else if (sort === "name") {
       const nameResult = compareText(a, b);
       if (nameResult) return nameResult;
     } else {
-      const dateA = parseSortableDate(tradeA && tradeA.entry_execution_date);
-      const dateB = parseSortableDate(tradeB && tradeB.entry_execution_date);
+      const dateA = parseSortableDate(comparableA.entry_execution_date || comparableA.date);
+      const dateB = parseSortableDate(comparableB.entry_execution_date || comparableB.date);
       if (dateA == null && dateB != null) return 1;
       if (dateA != null && dateB == null) return -1;
       if (dateA != null && dateB != null && dateA !== dateB) return dateB - dateA;
     }
     const tieName = compareText(a, b);
     return tieName || compareTicker(a, b);
+  }
+
+  function compareHoldItems(a, b) {
+    return compareByTradeSort(a, b, holdSort);
   }
 
   function createField(label, value, className) {
@@ -268,13 +274,7 @@
     if (item.data_status === "CHECK_REQUIRED") {
       return createField("현재 상태", "확인 필요", "strategy-item-position");
     }
-    const field = createElement("span", "strategy-item-field strategy-item-position");
-    field.appendChild(createElement("small", "strategy-item-label", "현재 상태"));
-    const value = createElement("span", "strategy-item-value strategy-item-position-value");
-    value.appendChild(createElement("strong", "strategy-item-position-main", positionLabel(item.canonical_position)));
-    value.appendChild(createElement("span", "strategy-item-position-sub", stateLabel(item.strategy_state)));
-    field.appendChild(value);
-    return field;
+    return createField("현재 상태", stateLabel(item.strategy_state), "strategy-item-position");
   }
 
   function createStrategyItem(item) {
@@ -326,7 +326,8 @@
       : createField("진입가", "—");
     const returnClass = trade && Number(trade.return_pct) > 0 ? "detail-value-positive" : trade && Number(trade.return_pct) < 0 ? "detail-value-negative" : "";
     const returnField = createField("수익률", trade ? formatReturn(trade.return_pct) : "—", returnClass);
-    const arrow = createElement("span", "strategy-item-link", "리포트 보기 ›");
+    const arrow = createElement("span", "row-chevron strategy-item-link", ">");
+    arrow.setAttribute("aria-hidden", "true");
 
     link.append(identity, position, ...detailFields, price, entry, returnField, arrow);
     return link;
@@ -369,12 +370,7 @@
   }
 
   function compareHistoryTrades(a, b) {
-    const dateA = parseSortableDate(a.entry_execution_date);
-    const dateB = parseSortableDate(b.entry_execution_date);
-    if (dateA != null && dateB != null && dateA !== dateB) return dateB - dateA;
-    if (dateA == null && dateB != null) return 1;
-    if (dateA != null && dateB == null) return -1;
-    return compareTicker(a, b);
+    return compareByTradeSort(a, b, historySort);
   }
 
   function createTradeHistoryRow(trade) {
@@ -397,7 +393,9 @@
       createField("청산 사유", exitReasonLabel(trade.exit_reason)),
     ];
     if (bSelect) fields.push(createField("펀더멘탈", fundamentalStatus(trade), "strategy-item-fundamental"));
-    row.append(identity, ...fields, createElement("span", "strategy-trade-link", "리포트 보기 ›"));
+    const arrow = createElement("span", "row-chevron strategy-trade-link", ">");
+    arrow.setAttribute("aria-hidden", "true");
+    row.append(identity, ...fields, arrow);
     return row;
   }
 
@@ -407,6 +405,8 @@
       if (trade.entry_execution_date) {
         events.push({
           date: trade.entry_execution_date,
+          entry_execution_date: trade.entry_execution_date,
+          trade_return_pct: trade.return_pct,
           type: "buy",
           ticker: trade.ticker,
           name: trade.name,
@@ -418,6 +418,8 @@
       if (trade.exit_execution_date) {
         events.push({
           date: trade.exit_execution_date,
+          entry_execution_date: trade.entry_execution_date,
+          trade_return_pct: trade.return_pct,
           type: "sell",
           ticker: trade.ticker,
           name: trade.name,
@@ -433,6 +435,12 @@
   function monthLabel(monthKey) {
     const [year, month] = monthKey.split("-");
     return `${year}년 ${Number(month)}월`;
+  }
+
+  function compareMonthlyEvents(a, b) {
+    const comparableA = { ...a, entry_execution_date: a.date, return_pct: a.trade_return_pct };
+    const comparableB = { ...b, entry_execution_date: b.date, return_pct: b.trade_return_pct };
+    return compareByTradeSort(comparableA, comparableB, historySort);
   }
 
   function renderTradeHistory() {
@@ -469,10 +477,7 @@
       return;
     }
     sortedMonths.forEach((month) => {
-      const monthEvents = months.get(month).sort((a, b) => {
-        const dateOrder = String(b.date).localeCompare(String(a.date));
-        return dateOrder || compareTicker(a, b);
-      });
+      const monthEvents = months.get(month).sort(compareMonthlyEvents);
       const buys = monthEvents.filter((event) => event.type === "buy").length;
       const sells = monthEvents.filter((event) => event.type === "sell").length;
       const section = createElement("section", "strategy-month-card");
@@ -577,6 +582,17 @@
     if (select) {
       select.disabled = !visible;
       if (select.value !== holdSort) select.value = holdSort;
+    }
+  }
+
+  function syncHistorySortVisibility() {
+    const row = byId("history-sort-row");
+    const select = byId("history-sort");
+    const visible = activeStrategyId === B_SELECT_STRATEGY_ID;
+    if (row) row.hidden = !visible;
+    if (select) {
+      select.disabled = !visible;
+      if (select.value !== historySort) select.value = historySort;
     }
   }
 
@@ -749,6 +765,7 @@
     monitor = value;
     activeStrategyId = value.default_strategy_id;
     syncFundamentalFilterVisibility();
+    syncHistorySortVisibility();
     renderScope();
     renderSections();
   }
@@ -757,6 +774,7 @@
     if (!monitor || !(monitor.strategies || []).some((strategy) => strategy.id === strategyId)) return;
     activeStrategyId = strategyId;
     syncFundamentalFilterVisibility();
+    syncHistorySortVisibility();
     renderScope();
     renderSections();
     if (activeView === "history") renderTradeHistory();
@@ -790,9 +808,15 @@
     });
     const holdSortSelect = byId("strategy-hold-sort");
     if (holdSortSelect) holdSortSelect.addEventListener("change", () => {
-      holdSort = ["entry-date", "return", "name"].includes(holdSortSelect.value) ? holdSortSelect.value : "entry-date";
+      holdSort = SORT_OPTIONS.has(holdSortSelect.value) ? holdSortSelect.value : "entry-date";
       syncHoldSortVisibility();
       renderSections();
+    });
+    const historySortSelect = byId("history-sort");
+    if (historySortSelect) historySortSelect.addEventListener("change", () => {
+      historySort = SORT_OPTIONS.has(historySortSelect.value) ? historySortSelect.value : "entry-date";
+      syncHistorySortVisibility();
+      renderTradeHistory();
     });
     const fundamentalSelect = byId("strategy-fundamental-filter");
     if (fundamentalSelect) fundamentalSelect.addEventListener("change", () => {
@@ -808,6 +832,7 @@
     });
     syncHoldSortVisibility();
     syncFundamentalFilterVisibility();
+    syncHistorySortVisibility();
   }
 
   initTheme();

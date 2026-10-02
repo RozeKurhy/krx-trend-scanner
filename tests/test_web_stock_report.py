@@ -347,16 +347,15 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
     favicon = (ROOT / "web/favicon.svg").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in html
+    assert 'href="./css/app.css?v=web-ui-chevron-v03"' in html
     assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in index_html
     assert 'href="./favicon.svg"' in html
     assert 'href="./favicon.svg"' in index_html
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
-    assert 'src="./js/report.js?v=web-b-select-fundamental-v1"' in html
+    assert 'src="./js/report.js?v=web-ui-chevron-v03"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
-    assert html.count("web-dual-strategy-report-v1") == 1
-    assert html.count("web-b-select-fundamental-v1") == 1
+    assert html.count("web-ui-chevron-v03") == 2
     assert index_html.count("web-dual-strategy-report-v1") == 1
     assert "web-03a-final-1" not in html
     assert "web-03a-final-1" not in index_html
@@ -400,6 +399,9 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'const STOCKS_PATH = "./data/stocks/";' in js
     assert "localStorage" in js and "krx-theme" in js
     assert "리포트 준비 중" in js
+    assert 'status.textContent = ">";' in js
+    assert 'status.setAttribute("aria-hidden", "true");' in js
+    assert 'button.setAttribute("aria-label", `${item.name} ${item.ticker}' in js
     assert "종목 정보를 찾을 수 없습니다." in js
     assert "일치하는 종목이 없습니다." in html
     assert "Math.random" in js

@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-b-select-fundamental-v2">
+    <link rel="stylesheet" href="./css/app.css?v=web-ui-chevron-v03">
     <link rel="stylesheet" href="./css/strategy-history.css?v=web-b-select-fundamental-v2">
   </head>
   <body>
@@ -161,6 +161,14 @@
                 <option value="미상">미상</option>
               </select>
             </div>
+            <div id="history-sort-row" class="strategy-sort-row" hidden>
+              <label for="history-sort">정렬</label>
+              <select id="history-sort" class="strategy-sort-select">
+                <option value="entry-date" selected>진입 일자 순</option>
+                <option value="return">수익률 순</option>
+                <option value="name">이름 순</option>
+              </select>
+            </div>
           </div>
         </section>
         <section id="history-trades-view" class="panel strategy-history-panel" role="tabpanel" aria-labelledby="history-trades-tab" aria-live="polite">
@@ -178,6 +186,6 @@
       </section>
     </main>
 
-    <script src="./js/strategy.js?v=web-b-select-fundamental-v2" defer></script>
+    <script src="./js/strategy.js?v=web-ui-chevron-v03" defer></script>
   </body>
 </html>

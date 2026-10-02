@@ -180,7 +180,7 @@
     );
     const advances = createField("상승 종목", `${formatNumber(breadth.positive)} / ${formatNumber(breadth.resolved)}`, "비교 가능 종목");
     const members = createField("구성 종목", formatNumber(sector.member_count));
-    const link = createElement("a", "cross-sector-ranking-link ranking-report-link", "섹터 보기 ›");
+    const link = createElement("a", "row-chevron cross-sector-ranking-link ranking-report-link", ">");
     link.href = `./sector.html?sector=${encodeURIComponent(sector.sector_key)}`;
     link.setAttribute("aria-label", `${marketLabel(sector.market)} ${sector.sector_name} 섹터 RS 보기`);
 

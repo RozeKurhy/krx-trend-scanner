@@ -122,8 +122,8 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
     assert '<a class="nav-item is-active" href="./etf.html" aria-current="page">랭킹</a>' in html
-    assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in html
-    assert 'src="./js/market.js?v=web-market-ranking-cta-v2"' in html
+    assert 'href="./css/app.css?v=web-ui-chevron-v03"' in html
+    assert 'src="./js/market.js?v=web-ui-chevron-v03"' in html
     assert '<nav class="ranking-tabs" aria-label="랭킹 종류">' in html
     assert '<a class="ranking-tab" href="./etf.html">ETF</a>' in html
     assert '<a class="ranking-tab is-active" href="./market.html" aria-current="page">마켓 RS</a>' in html
@@ -175,8 +175,8 @@ def test_market_page_has_accessible_controls_and_release_contract():
     assert 'margin-top: 14px' in css
     assert '`${HORIZON_LABELS[activeHorizon]}${suffix}`' in js
     assert '.market-ranking-row' in css
-    assert '"market-ranking-report ranking-report-link"' in js
-    assert '.ranking-report-link { display: inline-flex; flex: 0 0 auto; align-items: center; justify-self: end;' in css
+    assert '"row-chevron market-ranking-report ranking-report-link", ">"' in js
+    assert '.row-chevron { display: inline-flex; flex: 0 0 auto; min-width: 92px; min-height: 44px;' in css
     assert '.ranking-report-link:hover, .ranking-report-link:focus { color: var(--brand-red-dark); text-decoration: none; }' in css
     assert '.ranking-report-link:focus-visible' in css
     assert '.ranking-report-link { justify-self: end; }' in css
@@ -189,9 +189,13 @@ def test_market_page_has_accessible_controls_and_release_contract():
 def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     page_versions = {
         ROOT / "web/index.html": ("web-dual-strategy-report-v1", "app", "web-fear-fix02-4"),
-        ROOT / "web/report.html": ("web-dual-strategy-report-v1", "report", "web-b-select-fundamental-v1"),
-        ROOT / "web/strategy.html": ("web-b-select-fundamental-v2", "strategy", "web-b-select-fundamental-v2"),
-        ROOT / "web/market.html": ("web-dual-strategy-report-v1", "market", "web-market-ranking-cta-v2"),
+        ROOT / "web/report.html": ("web-ui-chevron-v03", "report", "web-ui-chevron-v03"),
+        ROOT / "web/strategy.html": ("web-ui-chevron-v03", "strategy", "web-ui-chevron-v03"),
+        ROOT / "web/market.html": ("web-ui-chevron-v03", "market", "web-ui-chevron-v03"),
+        ROOT / "web/etf.html": ("web-ui-chevron-v03", "etf", "web-ui-chevron-v03"),
+        ROOT / "web/foreign.html": ("web-ui-chevron-v03", "foreign", "web-ui-chevron-v03"),
+        ROOT / "web/sector.html": ("web-ui-chevron-v03", "sector", "web-ui-chevron-v03"),
+        ROOT / "web/sector-ranking.html": ("web-ui-chevron-v03", "sector-ranking", "web-ui-chevron-v03"),
     }
     pages = list(page_versions)
     for path, (css_version, script_name, js_version) in page_versions.items():
@@ -203,6 +207,26 @@ def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
         assert "랭킹" in html
         assert "시장 랭킹" not in html
     assert "시장 강도" not in "\n".join(path.read_text(encoding="utf-8") for path in pages)
+
+
+def test_ranking_actions_use_chevrons_and_preserve_report_or_sector_targets():
+    scripts = {
+        "market": ROOT / "web/js/market.js",
+        "etf": ROOT / "web/js/etf.js",
+        "foreign": ROOT / "web/js/foreign.js",
+        "sector": ROOT / "web/js/sector.js",
+        "sector-ranking": ROOT / "web/js/sector-ranking.js",
+    }
+    for name, path in scripts.items():
+        source = path.read_text(encoding="utf-8")
+        assert 'row-chevron' in source, name
+        assert 'createElement("a", "row-chevron' in source or 'createElement("span", "row-chevron' in source, name
+        assert '리포트 보기 ›' not in source, name
+        assert '섹터 보기 ›' not in source, name
+    assert 'report.href = `./report.html?ticker=${encodeURIComponent(item.ticker)}`' in (ROOT / "web/js/etf.js").read_text(encoding="utf-8")
+    assert 'report.href = `./report.html?ticker=${encodeURIComponent(item.ticker)}`' in (ROOT / "web/js/foreign.js").read_text(encoding="utf-8")
+    assert 'report.href = `./report.html?ticker=${encodeURIComponent(item.ticker)}`' in (ROOT / "web/js/sector.js").read_text(encoding="utf-8")
+    assert 'link.href = `./sector.html?sector=${encodeURIComponent(sector.sector_key)}`' in (ROOT / "web/js/sector-ranking.js").read_text(encoding="utf-8")
 
 
 def test_public_ranking_labels_use_market_rs_without_renaming_internal_fields():

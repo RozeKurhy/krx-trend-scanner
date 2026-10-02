@@ -524,6 +524,7 @@
     const button = document.createElement("button");
     button.type = "button";
     button.className = "search-result-button";
+    button.setAttribute("aria-label", `${item.name} ${item.ticker} ${item.report_available ? "리포트 보기" : "리포트 준비 중"}`);
     const copy = document.createElement("span");
     copy.className = "search-result-copy";
     const name = document.createElement("strong");
@@ -534,8 +535,9 @@
     meta.textContent = `${item.ticker} · ${marketLabel(item.market)}`;
     copy.append(name, meta);
     const status = document.createElement("small");
-    status.className = "search-result-status";
-    status.textContent = item.report_available ? "리포트 보기" : "리포트 준비 중";
+    status.className = "row-chevron search-result-status";
+    status.textContent = ">";
+    status.setAttribute("aria-hidden", "true");
     button.append(copy, status);
     button.addEventListener("click", () => selectTicker(item.ticker));
     li.appendChild(button);

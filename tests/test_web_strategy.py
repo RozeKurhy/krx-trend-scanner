@@ -197,7 +197,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
     assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in index_html
-    assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in report_html
+    assert 'href="./css/app.css?v=web-ui-chevron-v03"' in report_html
     for html in (index_html, report_html):
         assert "web-02a-final-2" not in html
         assert "web-03a-final-1" not in html
@@ -211,7 +211,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert (ROOT / "web" / strategy_scripts[0].path.removeprefix("./")).is_file()
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert 'EXIT: "다음 시가 청산 대기"' in strategy_js
-    assert 'src="./js/report.js?v=web-b-select-fundamental-v1"' in report_html
+    assert 'src="./js/report.js?v=web-ui-chevron-v03"' in report_html
     assert 'href="./strategy.html"' in index_html
     assert 'href="./strategy.html"' in report_html
     assert 'class="nav-item is-active" href="./strategy.html"' in strategy_html
@@ -261,11 +261,10 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert "function createPriceDateField" in strategy_js
     assert "function createPositionField" in strategy_js
     assert '"strategy-item-position"' in strategy_js
-    assert '"strategy-item-position-main"' in strategy_js
-    assert '"strategy-item-position-sub"' in strategy_js
     assert 'createField("현재 상태", "해당 없음", "strategy-item-position")' in strategy_js
     assert 'createField("현재 상태", "확인 필요", "strategy-item-position")' in strategy_js
-    assert "positionLabel(item.canonical_position)} · ${stateLabel" not in strategy_js
+    assert 'createField("현재 상태", stateLabel(item.strategy_state), "strategy-item-position")' in strategy_js
+    assert 'positionLabel(item.canonical_position)' not in strategy_js
     assert 'createField("전략 판단"' not in strategy_js
     assert 'createField("전략 상태"' not in strategy_js
     assert 'createField("이전 Stage"' not in strategy_js
@@ -291,7 +290,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert "window.matchMedia" in strategy_js
     assert ".strategy-item" in css
     assert ".strategy-item-a-fast { grid-template-columns: minmax(190px, 1.55fr) repeat(5, minmax(80px, 1fr)) auto; }" in css
-    assert ".strategy-item-b-select { grid-template-columns: minmax(170px, 1.55fr) repeat(3, minmax(80px, 1fr)) minmax(44px, 0.55fr) repeat(3, minmax(80px, 1fr)) auto; column-gap: 10px; }" in css
+    assert ".strategy-item-b-select { grid-template-columns: minmax(170px, 1.55fr) repeat(3, minmax(80px, 1fr)) minmax(100px, 0.7fr) repeat(3, minmax(80px, 1fr)) auto; column-gap: 10px; }" in css
     assert ".strategy-item-julia { grid-template-columns: minmax(190px, 1.55fr) repeat(4, minmax(80px, 1fr)) auto; }" in css
     assert ".strategy-summary-card" not in css
     assert ".strategy-summary-grid" not in css
@@ -299,8 +298,9 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in css
     assert ".strategy-item-field.detail-value-positive .strategy-item-value" in css
     assert ".strategy-item-field.detail-value-negative .strategy-item-value" in css
-    assert ".strategy-item-position .strategy-item-value" in css
-    assert ".strategy-item-position-value" in css
+    assert ".strategy-item-position .strategy-item-value" not in css
+    assert ".strategy-item-position-value" not in css
+    assert "min-height: calc(1.35em * 3 + 2px)" not in css
     assert ".strategy-item-price-date" in css
     assert "min-height: 108px" in css
     for raw in ("OPEN_AT_CUTOFF", "HOLD_PROGRESSED", "NOT_APPLICABLE", "ENTER_NEXT_OPEN", "TOP PICK", "AI 추천"):
@@ -333,6 +333,33 @@ def test_strategy_hold_sort_contract_is_hold_only_and_session_scoped():
     assert ".strategy-filter-toolbar { display: flex;" in css
     assert "flex: 1 1 auto" in css
     assert "margin-left: auto" in css
+
+
+def test_b_select_trade_history_sort_reuses_hold_sort_contract_and_filters():
+    strategy_html = (ROOT / "web/strategy.html").read_text(encoding="utf-8")
+    strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
+
+    assert '<div id="history-sort-row" class="strategy-sort-row" hidden>' in strategy_html
+    assert '<label for="history-sort">정렬</label>' in strategy_html
+    assert '<select id="history-sort" class="strategy-sort-select">' in strategy_html
+    history_controls = strategy_html[strategy_html.index('id="history-filters"'):strategy_html.index('id="history-trades-view"')]
+    assert history_controls.index('id="history-filters"') < history_controls.index('id="history-fundamental-filter-row"') < history_controls.index('id="history-sort-row"')
+    for option in (
+        '<option value="entry-date" selected>진입 일자 순</option>',
+        '<option value="return">수익률 순</option>',
+        '<option value="name">이름 순</option>',
+    ):
+        assert strategy_html.count(option) == 2
+    assert 'let historySort = "entry-date";' in strategy_js
+    assert 'const SORT_OPTIONS = new Set(["entry-date", "return", "name"]);' in strategy_js
+    assert 'return compareByTradeSort(a, b, holdSort);' in strategy_js
+    assert 'return compareByTradeSort(a, b, historySort);' in strategy_js
+    assert 'const visible = activeStrategyId === B_SELECT_STRATEGY_ID;' in strategy_js
+    assert 'const monthEvents = months.get(month).sort(compareMonthlyEvents);' in strategy_js
+    assert 'entry_execution_date: a.date, return_pct: a.trade_return_pct' in strategy_js
+    assert 'historySortSelect.addEventListener("change"' in strategy_js
+    assert 'historyMatches(trade)' in strategy_js
+    assert 'historyFundamentalFilterActive() && fundamentalStatus(trade) !== historyFundamentalFilter' in strategy_js
 
 
 def test_strategy_ui_polish_uses_representative_source_returns_and_split_dates():
