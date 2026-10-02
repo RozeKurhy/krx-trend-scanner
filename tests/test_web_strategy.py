@@ -196,6 +196,9 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
+    assert strategy_html.count("web-strategy-layout-v04") == 3
+    assert '<label for="strategy-fundamental-filter">진입 펀더멘탈</label>' in strategy_html
+    assert '<label for="history-fundamental-filter">진입 펀더멘탈</label>' in strategy_html
     assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in index_html
     assert 'href="./css/app.css?v=web-ui-chevron-v03"' in report_html
     for html in (index_html, report_html):
@@ -273,7 +276,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert "item.entry_pattern_a_stage != null || item.entry_previous_pattern_a_stage != null" in strategy_js
     assert "item.entry_previous_pattern_a_stage" in strategy_js
     assert "item.entry_pattern_a_stage" in strategy_js
-    assert 'createField("Pattern A", `${stageLabel(previousPatternAStage)} → ${stageLabel(currentPatternAStage)}`)' in strategy_js
+    assert 'createField("Pattern A", `${stageLabel(previousPatternAStage)} → ${stageLabel(currentPatternAStage)}`, "strategy-item-pattern-a")' in strategy_js
     assert 'createField("Pattern B", patternBLabel(item.pattern_b_state))' in strategy_js
     assert 'function stageLabel(value) { return STAGE_LABELS[value] || "확인 필요"; }' in strategy_js
     assert 'function patternBLabel(value) { return PATTERN_B_LABELS[value] || (value ? "확인 필요" : "확인 필요"); }' in strategy_js
@@ -305,6 +308,27 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert "min-height: 108px" in css
     for raw in ("OPEN_AT_CUTOFF", "HOLD_PROGRESSED", "NOT_APPLICABLE", "ENTER_NEXT_OPEN", "TOP PICK", "AI 추천"):
         assert raw not in strategy_html
+
+
+def test_strategy_layout_alignment_and_spacing_contract_v04():
+    strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
+    css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
+    history_css = (ROOT / "web/css/strategy-history.css").read_text(encoding="utf-8")
+
+    assert ".strategy-filter-toolbar { display: flex; align-items: center;" in css
+    assert ".strategy-filter-toolbar > .strategy-filter-group { padding: 1px; }" in css
+    assert ".strategy-item-field { display: flex; align-self: stretch; flex-direction: column; justify-content: flex-start;" in css
+    assert ".strategy-item-pattern-a { margin-inline-end: 20px; }" in css
+    assert ".strategy-item-a-fast { grid-template-columns: repeat(6, minmax(0, 1fr)); }" in css
+    assert ".strategy-item-b-select { grid-template-columns: minmax(80px, 1fr) minmax(140px, 1.8fr) repeat(5, minmax(70px, 1fr)) minmax(92px, 92px); }" in css
+    assert ".strategy-item-julia { grid-template-columns: repeat(5, minmax(0, 1fr)); }" in css
+    assert ".strategy-item-list .strategy-item-field { display: contents; }" in css
+    assert ".strategy-item-list .strategy-item-label { grid-row: 2; align-self: start;" in css
+    assert ".strategy-item-list .strategy-item-value { grid-row: 3; align-self: start; }" in css
+    assert ".strategy-item-list .strategy-item-pattern-a > .strategy-item-label," in css
+    assert ".strategy-item-list .strategy-item-pattern-a > .strategy-item-value { margin-inline-end: 20px; }" in css
+    assert 'createField("청산 사유", exitReasonLabel(trade.exit_reason), "strategy-item-exit-reason")' in strategy_js
+    assert ".strategy-trade-row-b-select .strategy-item-exit-reason { margin-inline-end: 20px; }" in history_css
 
 
 def test_strategy_hold_sort_contract_is_hold_only_and_session_scoped():

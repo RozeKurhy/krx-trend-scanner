@@ -307,7 +307,7 @@
         ? item.entry_pattern_a_stage
         : item.pattern_a_stage;
       detailFields = [
-        createField("Pattern A", `${stageLabel(previousPatternAStage)} → ${stageLabel(currentPatternAStage)}`),
+        createField("Pattern A", `${stageLabel(previousPatternAStage)} → ${stageLabel(currentPatternAStage)}`, "strategy-item-pattern-a"),
         createField("Pattern B", patternBLabel(item.pattern_b_state)),
         createField("펀더멘탈", fundamentalStatus(item), "strategy-item-fundamental"),
       ];
@@ -390,7 +390,7 @@
       createField("매도가", isOpenTrade(trade) ? "—" : formatPrice(trade.exit_price)),
       createField("수익률", formatReturn(trade.return_pct), returnClass),
       createField("상태", status),
-      createField("청산 사유", exitReasonLabel(trade.exit_reason)),
+      createField("청산 사유", exitReasonLabel(trade.exit_reason), "strategy-item-exit-reason"),
     ];
     if (bSelect) fields.push(createField("펀더멘탈", fundamentalStatus(trade), "strategy-item-fundamental"));
     const arrow = createElement("span", "row-chevron strategy-trade-link", ">");
