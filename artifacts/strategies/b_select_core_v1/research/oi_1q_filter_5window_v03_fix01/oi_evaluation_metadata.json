@@ -1,0 +1,96 @@
+{
+  "study_id": "B_SELECT_CORE_OI_1Q_FILTER_5WINDOW_V03_FIX01",
+  "stage": "evaluate",
+  "starting_git": {
+    "head": "dde04a3504b6040ec4419156504213947902700b",
+    "origin_main": "1fe8a27536b2a16037133eb928d6cda295680f21",
+    "branch": "main",
+    "commits_ahead_of_origin": 1,
+    "start_status": []
+  },
+  "window_superset": {
+    "window_id": "P1",
+    "calendar_range": [
+      "2014-01-01",
+      "2026-08-31"
+    ],
+    "effective_start": "2014-01-02",
+    "effective_end": "2026-08-31",
+    "execution_support": "2026-09-01",
+    "authority_source": "ROLLING_AUTHORITY_MERGED_CALENDAR_V01",
+    "authority_metadata": {
+      "authority_version": "ROLLING_MARKET_DATA_V01",
+      "certified_through": "2026-09-25",
+      "calendar_frontier": "2026-09-23",
+      "calendar_digest": "75b45cbcbcc70d6f90eba821b8614e43699751a520b2aa44ab897f1fbf173882",
+      "calendar_built_against_certified_through": "2026-09-21"
+    },
+    "support_policy": "only an exit signal dated on or before effective_end may fill on execution_support; entries after effective_end are not filled"
+  },
+  "candidate_count": 485,
+  "status_counts": {
+    "FAIL": 271,
+    "UNAVAILABLE": 113,
+    "PASS": 101
+  },
+  "reason_counts": {
+    "CURRENT_OPERATING_LOSS": 119,
+    "PASS": 101,
+    "CURRENT_BELOW_2B": 95,
+    "PRIOR_YEAR_QUARTER_PERIODIZATION_UNSUPPORTED": 80,
+    "YOY_BELOW_1PCT": 57,
+    "CURRENT_QUARTER_DERIVATION_UNAVAILABLE": 12,
+    "FINANCIAL_NOT_APPLICABLE": 10,
+    "FISCAL_YEAR_BUILD_FAILED_XbrlRepositoryError": 5,
+    "CURRENT_QUARTER_DATA_UNAVAILABLE": 4,
+    "REGISTRY_CACHE_UNAVAILABLE_RuntimeError": 1,
+    "CURRENT_QUARTER_PERIODIZATION_UNSUPPORTED": 1
+  },
+  "v03_status_counts": {
+    "FAIL": 271,
+    "UNAVAILABLE": 114,
+    "PASS": 100
+  },
+  "pre_xbrl_reaudit_counts": {
+    "UNAVAILABLE_NONSTANDARD_CONTEXT": 33,
+    "TRULY_UNAVAILABLE": 1,
+    "AVAILABLE_PASS": 1,
+    "AUTHORITY_CURRENT_QUARTER_DERIVATION_UNAVAILABLE": 1
+  },
+  "non_target_changed_rows": 0,
+  "integrity": {
+    "future_disclosure_reference_count": 0,
+    "non_same_quarter_yoy_count": 0,
+    "rule_recompute_mismatch_count": 0,
+    "yoy_percent_contract_violation_count": 0
+  },
+  "authority_projection": {
+    "projection_cutoff": "2026-09-21",
+    "current_pit_frontier": "2026-09-23",
+    "current_calendar_frontier": "2026-09-23",
+    "current_pit_file_sha256": "429161977da993ae9b1f434093812f09740925cd777e93e8381a21aa3ab86eeb",
+    "current_calendar_file_sha256": "e064c2f11dedef5fa716fd68ba81fa338aa083e0665177da14f197425caf2f86",
+    "current_interval_count": 3209,
+    "projected_interval_count": 3208,
+    "open_intervals_clamped": 2558,
+    "intervals_started_after_cutoff_dropped": 1,
+    "projected_pit_content_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
+    "frozen_pit_content_digest": "9add398331c81bf2c93e4f9b73cb46b8bb28e9cbfb9be57b217cf2634d74bf3e",
+    "projected_calendar_content_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+    "frozen_calendar_content_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+    "projected_first_trading_date": "2010-01-04",
+    "projected_last_trading_date": "2026-09-21",
+    "frozen_first_trading_date": "2010-01-04",
+    "frozen_last_trading_date": "2026-09-21",
+    "frozen_interval_count": 3208,
+    "equivalent": true
+  },
+  "first_fiscal_year": 2013,
+  "date_gate": "removed",
+  "thresholds": {
+    "operating_income_min_krw": 2000000000,
+    "yoy_min": "101/100"
+  },
+  "network_guard": "socket connect blocked during evaluation",
+  "evaluation_sha256": "d3848380dcb7510908b442393d20b492924c434f908dc3af44f7d31dd674d1a4"
+}
