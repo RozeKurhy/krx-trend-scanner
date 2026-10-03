@@ -1,0 +1,67 @@
+{
+  "full_study_comparable_to_official_ledger": false,
+  "comparability_reasons": [
+    "official parity runner uses the 2026-08-14 investability universe with market_cap >= KRW 100B and avg_trading_value_20d >= KRW 300M; this study is required to use no such filters",
+    "official parity runner reads data/raw/stocks through ParquetCache; this study uses MarketDataRepositoryV2 for both scenarios",
+    "official ledger covers 2017-04-28 through 2026-08-07; study P1 covers 2014-01-02 through 2026-08-31"
+  ],
+  "official_ledger": {
+    "path": "artifacts/strategies/a_fast_core_v2/research/oi_1q_20b_5window_v01/parity_v02_official_reproduction/production/production_fastcore_trades_20260814.csv",
+    "rows": 783,
+    "tickers": 551,
+    "first_entry_signal_date": "2017-04-28",
+    "last_entry_signal_date": "2026-08-07",
+    "market_data_source": "data/raw/stocks via ParquetCache",
+    "universe_source": "pattern_a_investability_universe_20260814.csv",
+    "market_cap_floor_krw": 100000000000,
+    "average_20d_trading_value_floor_krw": 300000000,
+    "as_of": "2026-08-14"
+  },
+  "study_p1_control": {
+    "path": "artifacts/strategies/a_fast_core_v2/research/oi_1q_20b_5window_v01/p1/control_trade_ledger.csv",
+    "rows": 4589,
+    "tickers": 1693,
+    "first_entry_signal_date": "2014-01-03",
+    "last_entry_signal_date": "2026-08-28",
+    "market_data_source": "MarketDataRepositoryV2",
+    "market_cap_filter": false,
+    "trading_value_filter": false,
+    "window_start": "2014-01-02",
+    "window_end": "2026-08-31"
+  },
+  "descriptive_entry_key_overlap": {
+    "key": [
+      "ticker",
+      "entry_signal_date"
+    ],
+    "shared_count": 554,
+    "official_keys_absent_from_study_p1": 229,
+    "study_p1_keys_absent_from_official": 4035,
+    "interpret_as_parity": false
+  },
+  "official_core_reproduction": {
+    "verdict": "ACCEPT",
+    "authority_trades": 783,
+    "production_trades": 783,
+    "authority_tickers": 551,
+    "production_tickers": 551,
+    "parity": {
+      "missing_trades": 0,
+      "extra_trades": 0,
+      "structural_mismatches": 0,
+      "numeric_mismatches": 0
+    },
+    "distribution_mismatches": 0,
+    "sequence_invariants": {
+      "overlapping_positions": 0,
+      "same_open_exit_reentry": 0,
+      "state_carryover_violations": 0
+    },
+    "metric_mismatches": {
+      "aggregate": 0,
+      "reentry_cohort": 0
+    },
+    "network_request_count": 0,
+    "provenance_note": "Original START_HEAD commit object is unavailable locally; trade, distribution, sequence, and metric parity were recomputed directly against the frozen official V2 ledger."
+  }
+}

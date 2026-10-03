@@ -1,0 +1,37 @@
+{
+  "pit_integrity": {
+    "future_disclosure_reference_count": 0,
+    "non_same_quarter_yoy_count": 0,
+    "rule_recompute_mismatch_count": 0,
+    "yoy_percent_contract_violation_count": 0
+  },
+  "fallback_count": 0,
+  "status_counts": {
+    "UNAVAILABLE": 14469,
+    "PASS": 4992,
+    "FAIL": 4546
+  },
+  "source_status_counts": {
+    "UNAVAILABLE": 14454,
+    "PASS": 4992,
+    "FAIL": 4546,
+    "BASIS_OR_CURRENCY_MISMATCH": 15
+  },
+  "basis_currency_mismatch_normalized_to_unavailable": 15,
+  "basis_currency_mismatch_policy": "not comparable for the requested OI rule; fail closed as UNAVAILABLE while preserving source_oi_status",
+  "candidate_count": 24007,
+  "candidate_identity_key": [
+    "ticker",
+    "isu_cd",
+    "entry_signal_date"
+  ],
+  "as_of": "entry_signal_date",
+  "latest_quarter_only": true,
+  "prior_quarter_fallback": false,
+  "rule": {
+    "minimum_current_operating_income_krw": 2000000000,
+    "if_prior_year_quarter_positive": "current / prior >= 1.01",
+    "if_prior_year_quarter_zero_or_negative": "current >= 2B and positive",
+    "unavailable": "fail closed; no entry"
+  }
+}

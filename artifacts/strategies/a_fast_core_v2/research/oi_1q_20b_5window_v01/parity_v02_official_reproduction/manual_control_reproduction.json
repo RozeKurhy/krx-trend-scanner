@@ -1,0 +1,25 @@
+{
+  "verdict": "ACCEPT",
+  "authority_trades": 783,
+  "production_trades": 783,
+  "authority_tickers": 551,
+  "production_tickers": 551,
+  "parity": {
+    "missing_trades": 0,
+    "extra_trades": 0,
+    "structural_mismatches": 0,
+    "numeric_mismatches": 0
+  },
+  "distribution_mismatches": 0,
+  "sequence_invariants": {
+    "overlapping_positions": 0,
+    "same_open_exit_reentry": 0,
+    "state_carryover_violations": 0
+  },
+  "metric_mismatches": {
+    "aggregate": 0,
+    "reentry_cohort": 0
+  },
+  "network_request_count": 0,
+  "provenance_note": "Original START_HEAD commit object is unavailable locally; trade, distribution, sequence, and metric parity were recomputed directly against the frozen official V2 ledger."
+}

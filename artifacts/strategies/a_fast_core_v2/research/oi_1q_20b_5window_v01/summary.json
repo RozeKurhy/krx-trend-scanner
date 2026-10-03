@@ -1,0 +1,507 @@
+{
+  "study_id": "A_FAST_CORE_V2_OI_1Q_20B_5WINDOW_V01",
+  "status": "COMPLETE_WITH_RECORDED_LIMITATIONS",
+  "official_v2_reproduction": {
+    "verdict": "ACCEPT",
+    "basis": "direct immutable-ledger comparison",
+    "commit_provenance": "original START_HEAD unavailable locally; full source-hash audit unavailable",
+    "trade_parity": {
+      "missing_trades": 0,
+      "extra_trades": 0,
+      "structural_mismatches": 0,
+      "numeric_mismatches": 0
+    },
+    "network_request_count": 0,
+    "authority_trades": 783,
+    "production_trades": 783,
+    "authority_tickers": 551,
+    "production_tickers": 551
+  },
+  "candidate_count": 24007,
+  "candidate_ticker_count": 1693,
+  "pit_status_counts": {
+    "UNAVAILABLE": 14469,
+    "PASS": 4992,
+    "FAIL": 4546
+  },
+  "source_pit_status_counts": {
+    "UNAVAILABLE": 14454,
+    "PASS": 4992,
+    "FAIL": 4546,
+    "BASIS_OR_CURRENCY_MISMATCH": 15
+  },
+  "basis_currency_mismatch_normalized_to_unavailable": 15,
+  "pit_audit": {
+    "future_disclosure_reference_count": 0,
+    "non_same_quarter_yoy_count": 0,
+    "rule_recompute_mismatch_count": 0,
+    "yoy_percent_contract_violation_count": 0
+  },
+  "prior_quarter_fallback_count": 0,
+  "market_data_gaps": 146,
+  "metrics": [
+    {
+      "window_id": "P1",
+      "scenario": "CONTROL",
+      "trade_count": 4589,
+      "resolved_trade_count": 4589,
+      "unresolved_trade_count": 0,
+      "realized_count": 4360,
+      "open_at_cutoff_count": 229,
+      "mean_pct": 9.418840706036173,
+      "median_pct": -15.29,
+      "win_rate_pct": 30.006537371976467,
+      "loss_rate_pct": 69.88450642841578,
+      "ge_50_count": 692,
+      "ge_50_rate_pct": 15.079538025713662,
+      "worst_pct": -95.94,
+      "p10_pct": -19.29,
+      "control_trade_retention_pct": 100.0,
+      "test_to_control_trade_count_pct": 100.0,
+      "exact_shared_trade_count": 4589,
+      "test_only_trade_count": 0
+    },
+    {
+      "window_id": "P1",
+      "scenario": "TEST20",
+      "trade_count": 1130,
+      "resolved_trade_count": 1130,
+      "unresolved_trade_count": 0,
+      "realized_count": 1012,
+      "open_at_cutoff_count": 118,
+      "mean_pct": 10.579061946902657,
+      "median_pct": -14.95,
+      "win_rate_pct": 34.690265486725664,
+      "loss_rate_pct": 65.04424778761062,
+      "ge_50_count": 175,
+      "ge_50_rate_pct": 15.486725663716813,
+      "worst_pct": -74.64,
+      "p10_pct": -18.21,
+      "control_trade_retention_pct": 18.195685334495533,
+      "test_to_control_trade_count_pct": 24.624101111353237,
+      "exact_shared_trade_count": 835,
+      "test_only_trade_count": 295
+    },
+    {
+      "window_id": "P2-1",
+      "scenario": "CONTROL",
+      "trade_count": 1667,
+      "resolved_trade_count": 1667,
+      "unresolved_trade_count": 0,
+      "realized_count": 1448,
+      "open_at_cutoff_count": 219,
+      "mean_pct": 3.8756868626274747,
+      "median_pct": -15.19,
+      "win_rate_pct": 31.973605278944213,
+      "loss_rate_pct": 67.96640671865627,
+      "ge_50_count": 175,
+      "ge_50_rate_pct": 10.497900419916016,
+      "worst_pct": -72.53,
+      "p10_pct": -18.902,
+      "control_trade_retention_pct": 100.0,
+      "test_to_control_trade_count_pct": 100.0,
+      "exact_shared_trade_count": 1667,
+      "test_only_trade_count": 0
+    },
+    {
+      "window_id": "P2-1",
+      "scenario": "TEST20",
+      "trade_count": 769,
+      "resolved_trade_count": 769,
+      "unresolved_trade_count": 0,
+      "realized_count": 642,
+      "open_at_cutoff_count": 127,
+      "mean_pct": 2.9353446033810147,
+      "median_pct": -15.13,
+      "win_rate_pct": 32.8998699609883,
+      "loss_rate_pct": 66.97009102730819,
+      "ge_50_count": 73,
+      "ge_50_rate_pct": 9.492847854356306,
+      "worst_pct": -72.53,
+      "p10_pct": -18.222,
+      "control_trade_retention_pct": 38.2123575284943,
+      "test_to_control_trade_count_pct": 46.130773845230955,
+      "exact_shared_trade_count": 637,
+      "test_only_trade_count": 132
+    },
+    {
+      "window_id": "P2-2",
+      "scenario": "CONTROL",
+      "trade_count": 2206,
+      "resolved_trade_count": 2206,
+      "unresolved_trade_count": 0,
+      "realized_count": 2019,
+      "open_at_cutoff_count": 187,
+      "mean_pct": 8.079519492293745,
+      "median_pct": -15.18,
+      "win_rate_pct": 30.507706255666367,
+      "loss_rate_pct": 69.35630099728014,
+      "ge_50_count": 310,
+      "ge_50_rate_pct": 14.052583862194016,
+      "worst_pct": -82.04,
+      "p10_pct": -18.665,
+      "control_trade_retention_pct": 100.0,
+      "test_to_control_trade_count_pct": 100.0,
+      "exact_shared_trade_count": 2206,
+      "test_only_trade_count": 0
+    },
+    {
+      "window_id": "P2-2",
+      "scenario": "TEST20",
+      "trade_count": 1052,
+      "resolved_trade_count": 1052,
+      "unresolved_trade_count": 0,
+      "realized_count": 940,
+      "open_at_cutoff_count": 112,
+      "mean_pct": 9.355532319391635,
+      "median_pct": -15.035,
+      "win_rate_pct": 33.174904942965775,
+      "loss_rate_pct": 66.53992395437263,
+      "ge_50_count": 151,
+      "ge_50_rate_pct": 14.353612167300382,
+      "worst_pct": -74.64,
+      "p10_pct": -18.169,
+      "control_trade_retention_pct": 39.25657298277425,
+      "test_to_control_trade_count_pct": 47.68812330009066,
+      "exact_shared_trade_count": 866,
+      "test_only_trade_count": 186
+    },
+    {
+      "window_id": "P3-1",
+      "scenario": "CONTROL",
+      "trade_count": 1069,
+      "resolved_trade_count": 1069,
+      "unresolved_trade_count": 0,
+      "realized_count": 871,
+      "open_at_cutoff_count": 198,
+      "mean_pct": 0.41424695977549125,
+      "median_pct": -15.3,
+      "win_rate_pct": 28.811973807296535,
+      "loss_rate_pct": 71.09448082319925,
+      "ge_50_count": 96,
+      "ge_50_rate_pct": 8.980355472404115,
+      "worst_pct": -65.06,
+      "p10_pct": -18.924000000000003,
+      "control_trade_retention_pct": 100.0,
+      "test_to_control_trade_count_pct": 100.0,
+      "exact_shared_trade_count": 1069,
+      "test_only_trade_count": 0
+    },
+    {
+      "window_id": "P3-1",
+      "scenario": "TEST20",
+      "trade_count": 547,
+      "resolved_trade_count": 547,
+      "unresolved_trade_count": 0,
+      "realized_count": 428,
+      "open_at_cutoff_count": 119,
+      "mean_pct": 0.40674588665447897,
+      "median_pct": -15.21,
+      "win_rate_pct": 31.444241316270567,
+      "loss_rate_pct": 68.37294332723948,
+      "ge_50_count": 50,
+      "ge_50_rate_pct": 9.140767824497258,
+      "worst_pct": -57.24,
+      "p10_pct": -18.186,
+      "control_trade_retention_pct": 44.24695977549111,
+      "test_to_control_trade_count_pct": 51.16931711880262,
+      "exact_shared_trade_count": 473,
+      "test_only_trade_count": 74
+    },
+    {
+      "window_id": "P3-2",
+      "scenario": "CONTROL",
+      "trade_count": 1644,
+      "resolved_trade_count": 1644,
+      "unresolved_trade_count": 0,
+      "realized_count": 1476,
+      "open_at_cutoff_count": 168,
+      "mean_pct": 6.561064476885645,
+      "median_pct": -15.254999999999999,
+      "win_rate_pct": 27.919708029197082,
+      "loss_rate_pct": 71.8978102189781,
+      "ge_50_count": 231,
+      "ge_50_rate_pct": 14.051094890510948,
+      "worst_pct": -82.04,
+      "p10_pct": -18.57,
+      "control_trade_retention_pct": 100.0,
+      "test_to_control_trade_count_pct": 100.0,
+      "exact_shared_trade_count": 1644,
+      "test_only_trade_count": 0
+    },
+    {
+      "window_id": "P3-2",
+      "scenario": "TEST20",
+      "trade_count": 841,
+      "resolved_trade_count": 841,
+      "unresolved_trade_count": 0,
+      "realized_count": 741,
+      "open_at_cutoff_count": 100,
+      "mean_pct": 8.409488703923902,
+      "median_pct": -15.14,
+      "win_rate_pct": 31.98573127229489,
+      "loss_rate_pct": 67.65755053507729,
+      "ge_50_count": 126,
+      "ge_50_rate_pct": 14.982164090368608,
+      "worst_pct": -67.33,
+      "p10_pct": -18.14,
+      "control_trade_retention_pct": 43.3698296836983,
+      "test_to_control_trade_count_pct": 51.15571776155717,
+      "exact_shared_trade_count": 713,
+      "test_only_trade_count": 128
+    }
+  ],
+  "diagnostics": [
+    {
+      "window_id": "P1",
+      "raw_eligible_signal_pass": 4992,
+      "raw_eligible_signal_fail": 4546,
+      "raw_eligible_signal_unavailable": 14469,
+      "control_trade_count": 4589,
+      "test20_trade_count": 1130,
+      "exact_shared_trade_count": 835,
+      "test_only_trade_count": 295,
+      "control_ge_50_winner_count": 692,
+      "control_ge_50_winners_kept": 131,
+      "control_ge_50_winner_retention_pct": 18.930635838150287,
+      "control_loss_trade_count": 3207,
+      "control_losses_removed": 2659,
+      "control_loss_removal_pct": 82.91237917056439,
+      "control_attempt_count": 4589,
+      "test20_attempt_count": 19370
+    },
+    {
+      "window_id": "P2-1",
+      "raw_eligible_signal_pass": 3270,
+      "raw_eligible_signal_fail": 2932,
+      "raw_eligible_signal_unavailable": 1000,
+      "control_trade_count": 1667,
+      "test20_trade_count": 769,
+      "exact_shared_trade_count": 637,
+      "test_only_trade_count": 132,
+      "control_ge_50_winner_count": 175,
+      "control_ge_50_winners_kept": 61,
+      "control_ge_50_winner_retention_pct": 34.85714285714286,
+      "control_loss_trade_count": 1133,
+      "control_losses_removed": 705,
+      "control_loss_removal_pct": 62.22418358340689,
+      "control_attempt_count": 1667,
+      "test20_attempt_count": 4326
+    },
+    {
+      "window_id": "P2-2",
+      "raw_eligible_signal_pass": 4644,
+      "raw_eligible_signal_fail": 4256,
+      "raw_eligible_signal_unavailable": 1187,
+      "control_trade_count": 2206,
+      "test20_trade_count": 1052,
+      "exact_shared_trade_count": 866,
+      "test_only_trade_count": 186,
+      "control_ge_50_winner_count": 310,
+      "control_ge_50_winners_kept": 127,
+      "control_ge_50_winner_retention_pct": 40.96774193548387,
+      "control_loss_trade_count": 1530,
+      "control_losses_removed": 951,
+      "control_loss_removal_pct": 62.15686274509804,
+      "control_attempt_count": 2206,
+      "test20_attempt_count": 5833
+    },
+    {
+      "window_id": "P3-1",
+      "raw_eligible_signal_pass": 2375,
+      "raw_eligible_signal_fail": 1745,
+      "raw_eligible_signal_unavailable": 682,
+      "control_trade_count": 1069,
+      "test20_trade_count": 547,
+      "exact_shared_trade_count": 473,
+      "test_only_trade_count": 74,
+      "control_ge_50_winner_count": 96,
+      "control_ge_50_winners_kept": 43,
+      "control_ge_50_winner_retention_pct": 44.79166666666667,
+      "control_loss_trade_count": 760,
+      "control_losses_removed": 430,
+      "control_loss_removal_pct": 56.57894736842105,
+      "control_attempt_count": 1069,
+      "test20_attempt_count": 2648
+    },
+    {
+      "window_id": "P3-2",
+      "raw_eligible_signal_pass": 3749,
+      "raw_eligible_signal_fail": 3069,
+      "raw_eligible_signal_unavailable": 869,
+      "control_trade_count": 1644,
+      "test20_trade_count": 841,
+      "exact_shared_trade_count": 713,
+      "test_only_trade_count": 128,
+      "control_ge_50_winner_count": 231,
+      "control_ge_50_winners_kept": 107,
+      "control_ge_50_winner_retention_pct": 46.32034632034632,
+      "control_loss_trade_count": 1182,
+      "control_losses_removed": 692,
+      "control_loss_removal_pct": 58.54483925549915,
+      "control_attempt_count": 1644,
+      "test20_attempt_count": 4202
+    }
+  ],
+  "integrity": {
+    "P1": {
+      "control_trade_count": 4589,
+      "test20_trade_count": 1130,
+      "control_test_key_intersection_count": 835,
+      "test20_non_pass_entries": 0,
+      "control_overlaps": {
+        "overlapping_positions": 0,
+        "same_open_exit_reentry": 0
+      },
+      "test20_overlaps": {
+        "overlapping_positions": 0,
+        "same_open_exit_reentry": 0
+      },
+      "signal_date_violations": 0,
+      "entry_execution_after_cutoff": 0,
+      "exit_execution_after_support": 0
+    },
+    "P2-1": {
+      "control_trade_count": 1667,
+      "test20_trade_count": 769,
+      "control_test_key_intersection_count": 637,
+      "test20_non_pass_entries": 0,
+      "control_overlaps": {
+        "overlapping_positions": 0,
+        "same_open_exit_reentry": 0
+      },
+      "test20_overlaps": {
+        "overlapping_positions": 0,
+        "same_open_exit_reentry": 0
+      },
+      "signal_date_violations": 0,
+      "entry_execution_after_cutoff": 0,
+      "exit_execution_after_support": 0
+    },
+    "P2-2": {
+      "control_trade_count": 2206,
+      "test20_trade_count": 1052,
+      "control_test_key_intersection_count": 866,
+      "test20_non_pass_entries": 0,
+      "control_overlaps": {
+        "overlapping_positions": 0,
+        "same_open_exit_reentry": 0
+      },
+      "test20_overlaps": {
+        "overlapping_positions": 0,
+        "same_open_exit_reentry": 0
+      },
+      "signal_date_violations": 0,
+      "entry_execution_after_cutoff": 0,
+      "exit_execution_after_support": 0
+    },
+    "P3-1": {
+      "control_trade_count": 1069,
+      "test20_trade_count": 547,
+      "control_test_key_intersection_count": 473,
+      "test20_non_pass_entries": 0,
+      "control_overlaps": {
+        "overlapping_positions": 0,
+        "same_open_exit_reentry": 0
+      },
+      "test20_overlaps": {
+        "overlapping_positions": 0,
+        "same_open_exit_reentry": 0
+      },
+      "signal_date_violations": 0,
+      "entry_execution_after_cutoff": 0,
+      "exit_execution_after_support": 0
+    },
+    "P3-2": {
+      "control_trade_count": 1644,
+      "test20_trade_count": 841,
+      "control_test_key_intersection_count": 713,
+      "test20_non_pass_entries": 0,
+      "control_overlaps": {
+        "overlapping_positions": 0,
+        "same_open_exit_reentry": 0
+      },
+      "test20_overlaps": {
+        "overlapping_positions": 0,
+        "same_open_exit_reentry": 0
+      },
+      "signal_date_violations": 0,
+      "entry_execution_after_cutoff": 0,
+      "exit_execution_after_support": 0
+    }
+  },
+  "elapsed_seconds": 1247.35,
+  "push": false,
+  "official_control_scope_audit": {
+    "full_study_comparable_to_official_ledger": false,
+    "comparability_reasons": [
+      "official parity runner uses the 2026-08-14 investability universe with market_cap >= KRW 100B and avg_trading_value_20d >= KRW 300M; this study is required to use no such filters",
+      "official parity runner reads data/raw/stocks through ParquetCache; this study uses MarketDataRepositoryV2 for both scenarios",
+      "official ledger covers 2017-04-28 through 2026-08-07; study P1 covers 2014-01-02 through 2026-08-31"
+    ],
+    "official_ledger": {
+      "path": "artifacts/strategies/a_fast_core_v2/research/oi_1q_20b_5window_v01/parity_v02_official_reproduction/production/production_fastcore_trades_20260814.csv",
+      "rows": 783,
+      "tickers": 551,
+      "first_entry_signal_date": "2017-04-28",
+      "last_entry_signal_date": "2026-08-07",
+      "market_data_source": "data/raw/stocks via ParquetCache",
+      "universe_source": "pattern_a_investability_universe_20260814.csv",
+      "market_cap_floor_krw": 100000000000,
+      "average_20d_trading_value_floor_krw": 300000000,
+      "as_of": "2026-08-14"
+    },
+    "study_p1_control": {
+      "path": "artifacts/strategies/a_fast_core_v2/research/oi_1q_20b_5window_v01/p1/control_trade_ledger.csv",
+      "rows": 4589,
+      "tickers": 1693,
+      "first_entry_signal_date": "2014-01-03",
+      "last_entry_signal_date": "2026-08-28",
+      "market_data_source": "MarketDataRepositoryV2",
+      "market_cap_filter": false,
+      "trading_value_filter": false,
+      "window_start": "2014-01-02",
+      "window_end": "2026-08-31"
+    },
+    "descriptive_entry_key_overlap": {
+      "key": [
+        "ticker",
+        "entry_signal_date"
+      ],
+      "shared_count": 554,
+      "official_keys_absent_from_study_p1": 229,
+      "study_p1_keys_absent_from_official": 4035,
+      "interpret_as_parity": false
+    },
+    "official_core_reproduction": {
+      "verdict": "ACCEPT",
+      "authority_trades": 783,
+      "production_trades": 783,
+      "authority_tickers": 551,
+      "production_tickers": 551,
+      "parity": {
+        "missing_trades": 0,
+        "extra_trades": 0,
+        "structural_mismatches": 0,
+        "numeric_mismatches": 0
+      },
+      "distribution_mismatches": 0,
+      "sequence_invariants": {
+        "overlapping_positions": 0,
+        "same_open_exit_reentry": 0,
+        "state_carryover_violations": 0
+      },
+      "metric_mismatches": {
+        "aggregate": 0,
+        "reentry_cohort": 0
+      },
+      "network_request_count": 0,
+      "provenance_note": "Original START_HEAD commit object is unavailable locally; trade, distribution, sequence, and metric parity were recomputed directly against the frozen official V2 ledger."
+    }
+  },
+  "severity_counts": {
+    "CRITICAL": 0,
+    "MAJOR": 2,
+    "MINOR": 14469
+  }
+}
