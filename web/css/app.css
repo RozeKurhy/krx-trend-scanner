@@ -465,6 +465,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .report-card-button:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 3px; }
 .report-card-button.is-selected { border-color: var(--brand-red); background: var(--primary-soft); box-shadow: 0 0 0 2px var(--primary-soft); }
 .report-card-affordance { display: block; margin-top: 16px; color: var(--brand-red-dark); font-size: 11px; font-weight: 750; }
+#strategy-detail[hidden] + .report-card-affordance { margin-top: 46px; }
 .report-card-button.is-selected .report-card-affordance { color: var(--brand-red); }
 .report-card-heading { display: block; margin-bottom: 22px; color: var(--ink-soft); font-size: 12px; font-weight: 750; }
 .report-card-value { display: block; margin: 0 0 8px; overflow-wrap: anywhere; font-size: 22px; font-weight: 800; letter-spacing: -0.04em; line-height: 1.2; }
