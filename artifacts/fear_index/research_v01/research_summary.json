@@ -5,13 +5,13 @@
     "KOSPI",
     "KOSPI trading_value"
   ],
-  "target_as_of": "2026-09-25",
-  "reference_market_date": "2026-09-23",
+  "target_as_of": "2026-10-03",
+  "reference_market_date": "2026-10-02",
   "date_range": {
     "min": "2010-01-04",
-    "max": "2026-09-23"
+    "max": "2026-10-02"
   },
-  "joined_rows": 4118,
+  "joined_rows": 4123,
   "candidate_count": 3,
   "final_candidate": "downside_heavy_v01",
   "candidate_selection": {
@@ -47,59 +47,59 @@
       "2022_anxious_days": 105,
       "2026_june_panic_days": 0,
       "2012_2016_apathy_longest_run": 10,
-      "flicker_switches": 538,
+      "flicker_switches": 541,
       "complexity": 4
     }
   },
   "forward_diagnostics_only": {
     "candidate": "downside_heavy_v01",
     "split": "validation",
-    "rows": 1136,
-    "brier": 0.22166939745130695,
-    "spearman_adverse_return": 0.03577520941440256,
-    "top_quintile_cut": 58.68954691526109,
-    "top_quintile_event_rate": 0.11842105263157894,
-    "top_quintile_mean_future_min_return": -0.0441203884967842,
-    "overall_event_rate": 0.10915492957746478
+    "rows": 1141,
+    "brier": 0.22107962620769878,
+    "spearman_adverse_return": 0.034806699147705955,
+    "top_quintile_cut": 58.68103253410474,
+    "top_quintile_event_rate": 0.11790393013100436,
+    "top_quintile_mean_future_min_return": -0.0438659441610473,
+    "overall_event_rate": 0.10867659947414549
   },
   "regime_counts": {
     "OVERHEATED": 388,
     "NORMAL": 2435,
-    "ANXIOUS": 751,
+    "ANXIOUS": 755,
     "PANIC": 123,
-    "APATHY": 296
+    "APATHY": 297
   },
   "flicker": {
     "raw": {
-      "valid_days": 3993,
-      "switch_count": 538,
-      "switch_rate": 0.13473578762834962,
-      "one_day_runs": 186,
-      "two_day_runs": 86,
+      "valid_days": 3998,
+      "switch_count": 541,
+      "switch_rate": 0.1353176588294147,
+      "one_day_runs": 188,
+      "two_day_runs": 87,
       "median_run_length": 2.0,
-      "mean_run_length": 7.408163265306122,
+      "mean_run_length": 7.376383763837638,
       "max_run_length": 160
     },
     "stabilized": {
-      "valid_days": 3993,
-      "switch_count": 272,
-      "switch_rate": 0.06811920861507638,
-      "one_day_runs": 5,
+      "valid_days": 3998,
+      "switch_count": 273,
+      "switch_rate": 0.06828414207103552,
+      "one_day_runs": 6,
       "two_day_runs": 51,
       "median_run_length": 6.0,
-      "mean_run_length": 14.626373626373626,
+      "mean_run_length": 14.591240875912408,
       "max_run_length": 182
     },
     "selected": {
-      "valid_days": 3993,
-      "switch_count": 272,
-      "switch_rate": 0.06811920861507638,
-      "one_day_runs": 5,
+      "valid_days": 3998,
+      "switch_count": 273,
+      "switch_rate": 0.06828414207103552,
+      "one_day_runs": 6,
       "two_day_runs": 51,
       "median_run_length": 6.0,
-      "mean_run_length": 14.626373626373626,
+      "mean_run_length": 14.591240875912408,
       "max_run_length": 182,
-      "regime_switches": 272,
+      "regime_switches": 273,
       "two_day_return_flickers": 2
     }
   },
@@ -264,12 +264,12 @@
     }
   },
   "current": {
-    "date": "2026-09-23",
-    "v_kospi200_close": 42.98,
-    "kospi_close": 7080.92,
-    "trading_value": 22622330475026.0,
-    "fear_score": 28.70073049894353,
-    "regime": "ANXIOUS"
+    "date": "2026-10-02",
+    "v_kospi200_close": 40.96,
+    "kospi_close": 7003.74,
+    "trading_value": 15980687241897.0,
+    "fear_score": 21.07341107704595,
+    "regime": "APATHY"
   },
   "historical_event_rows": 9,
   "false_regime_review_rows": 0,

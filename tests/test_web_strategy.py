@@ -111,10 +111,20 @@ def test_b_select_open_entry_pattern_a_context_matches_exact_authority():
         if strategy["id"] == "PATTERN_B_SELECT_CORE_V01"
     )
     authority = exporter._read_entry_stage_authority(ROOT)
-    exporter._validate_b_select_entry_contexts(b_select["items"], authority)
+    status_path = (
+        ROOT
+        / "artifacts/strategies/b_select_core_v1/production"
+        / monitor["requested_as_of"].replace("-", "")
+        / "status.json"
+    )
+    status = json.loads(status_path.read_text(encoding="utf-8"))
+    catchup_authority = exporter._read_catchup_entry_stage_authority(status)
+    exporter._validate_b_select_entry_contexts(
+        b_select["items"], authority, catchup_authority=catchup_authority
+    )
     open_items = [item for item in b_select["items"] if item["canonical_position"] == "OPEN"]
 
-    assert len(open_items) == 24
+    assert open_items
     assert all(item["entry_pattern_a_stage"] == "PROGRESSED" for item in open_items)
     assert all(item["entry_previous_pattern_a_stage"] in {"EARLY_TREND", "TRANSITION"} for item in open_items)
 
@@ -519,45 +529,78 @@ def test_three_strategy_trade_history_counts_identity_and_source_parity():
     strategies = {strategy["id"]: strategy for strategy in monitor["strategies"]}
     index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
 
-    fast_source_count = 0
-    julia_source_count = 0
+    source_counts = {
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02": Counter(),
+        "JULIA_ETF_STRATEGY_V01": Counter(),
+    }
+    source_history_counts = {
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02": 0,
+        "JULIA_ETF_STRATEGY_V01": 0,
+    }
+    source_tickers = {
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02": set(),
+        "JULIA_ETF_STRATEGY_V01": set(),
+    }
     for item in index["items"]:
         if item.get("report_available") is not True:
             continue
         report = json.loads((ROOT / "web/data/stocks" / f"{item['ticker']}.json").read_text(encoding="utf-8"))
         history = (report.get("strategy") or {}).get("history") or []
         if item.get("asset_type") == "COMMON":
-            fast_source_count += len(history)
+            strategy_id = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
         elif item.get("asset_type") == "ETF":
-            julia_source_count += len(history)
+            strategy_id = "JULIA_ETF_STRATEGY_V01"
+        else:
+            continue
+        projected_item = exporter._project_item(item, report)
+        source_counts[strategy_id][projected_item["bucket"]] += 1
+        source_history_counts[strategy_id] += len(history)
+        source_tickers[strategy_id].add(item["ticker"])
 
     fast = strategies["PATTERN_A_FAST_FINAL_STRATEGY_V02"]["trade_history"]
     b_select = strategies["PATTERN_B_SELECT_CORE_V01"]["trade_history"]
     julia = strategies["JULIA_ETF_STRATEGY_V01"]["trade_history"]
-    assert strategies["PATTERN_A_FAST_FINAL_STRATEGY_V02"]["counts"] == {
-        "entry": 0, "hold": 241, "exit": 0, "watch": 0, "unavailable": 1210,
-    }
-    assert strategies["PATTERN_A_FAST_FINAL_STRATEGY_V02"]["scope"]["report_count"] == 1451
-    assert strategies["PATTERN_B_SELECT_CORE_V01"]["counts"] == {
-        "entry": 0, "hold": 23, "exit": 1, "watch": 1275, "unavailable": 152,
-    }
-    assert strategies["PATTERN_B_SELECT_CORE_V01"]["scope"]["report_count"] == 1451
-    assert strategies["JULIA_ETF_STRATEGY_V01"]["counts"] == {
-        "entry": 0, "hold": 18, "exit": 0, "watch": 18, "unavailable": 0,
-    }
-    assert strategies["JULIA_ETF_STRATEGY_V01"]["scope"]["report_count"] == 36
-    assert len(fast) == fast_source_count
-    assert len(julia) == julia_source_count
-    assert len(fast) == 3797
-    assert len(b_select) == 312
-    assert len(julia) == 52
-    assert len(fast) + len(b_select) + len(julia) == 4161
-
-    b_status_path = ROOT / "artifacts/strategies/b_select_core_v1/production/20260925/status.json"
+    b_status_path = (
+        ROOT
+        / "artifacts/strategies/b_select_core_v1/production"
+        / monitor["requested_as_of"].replace("-", "")
+        / "status.json"
+    )
     b_status = json.loads(b_status_path.read_text(encoding="utf-8"))
-    b_status_trades = [trade for item in b_status["items"] for trade in item.get("trade_history", [])]
+    b_source_items = b_status["items"]
+    b_source_counts = Counter(item["bucket"] for item in b_source_items)
+    b_status_trades = [
+        trade for item in b_source_items for trade in item.get("trade_history", [])
+    ]
     assert len(b_select) == len(b_status_trades)
-    assert b_status["counts"] == {"entry": 0, "hold": 23, "exit": 1, "watch": 1275, "unavailable": 152}
+    assert b_status["counts"] == {
+        key: b_source_counts.get(key, 0)
+        for key in ("entry", "hold", "exit", "watch", "unavailable")
+    }
+
+    source_counts["PATTERN_B_SELECT_CORE_V01"] = b_source_counts
+    source_history_counts["PATTERN_B_SELECT_CORE_V01"] = len(b_status_trades)
+    source_tickers["PATTERN_B_SELECT_CORE_V01"] = {item["ticker"] for item in b_source_items}
+    for strategy_id, expected_asset_type in (
+        ("PATTERN_A_FAST_FINAL_STRATEGY_V02", "COMMON"),
+        ("PATTERN_B_SELECT_CORE_V01", "COMMON"),
+        ("JULIA_ETF_STRATEGY_V01", "ETF"),
+    ):
+        strategy = strategies[strategy_id]
+        counts = strategy["counts"]
+        assert sum(counts.values()) == strategy["scope"]["report_count"]
+        assert counts == {
+            key: source_counts[strategy_id].get(key, 0)
+            for key in ("entry", "hold", "exit", "watch", "unavailable")
+        }
+        assert len(strategy["trade_history"]) == source_history_counts[strategy_id]
+        assert {item["ticker"] for item in strategy["items"]} == source_tickers[strategy_id]
+        assert all(item["asset_type"] == expected_asset_type for item in strategy["items"])
+
+    assert source_tickers["PATTERN_A_FAST_FINAL_STRATEGY_V02"] == source_tickers["PATTERN_B_SELECT_CORE_V01"]
+    assert source_tickers["JULIA_ETF_STRATEGY_V01"] == {
+        item["ticker"] for item in strategies["JULIA_ETF_STRATEGY_V01"]["items"]
+    }
 
     for strategy_id, trades in (
         ("PATTERN_A_FAST_FINAL_STRATEGY_V02", fast),

@@ -15,5 +15,12 @@ used by the exact-date research join.
 
 For the 2026-09-25 target, the official KRX screen was queried for
 2026-09-22 through 2026-09-23. Its two returned rows were saved separately in
-`v_kospi200_2026-09-22_2026-09-23_official.csv`; the pre-existing annual file
-and all rows through 2026-09-21 were left unchanged.
+`official_exports/v_kospi200_2026-09-22_2026-09-23_official.csv`; the
+pre-existing annual file and all rows through 2026-09-21 were left unchanged.
+
+For the 2026-10-03 target, the same official KRX screen and index were queried
+for 2026-09-28 through 2026-10-02. The five returned screen rows were recorded
+in `official_exports/v_kospi200_2026-09-28_2026-10-02_official.csv`; the
+existing historical official export was not edited. This supplemental file
+preserves the displayed official values and is not represented as a
+browser-downloaded CSV export.
