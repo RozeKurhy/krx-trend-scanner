@@ -220,14 +220,17 @@ Strategy Monitor v2의 세 전략 projection과 웹 상태가 포함된다.
   COMMON 4C 시작 전.
 - 입력: 호출자가 전달한 `target_as_of`와 4A가 확정한 정확한
   `reference_market_date`. 날짜를 독립 계산하거나 KRX/API를 조회하지 않는다.
-- 처리: frozen Official ETF 36과 기존 Julia V1 v0.6 생성기를 사용한다. 전략
-  lifecycle, threshold, ETF 적격성 또는 COMMON 리포트 계산은 바꾸지 않는다.
+- 처리: frozen Official ETF 36과 기존 Julia V1 v0.6 생성기를 사용한다. Julia
+  lifecycle과 과거 adoption eligibility 산식/threshold는 보존한다. 현재 production
+  ENTRY와 universe에는 20일 평균 거래량 10,000주를 적용하지 않는다.
 - 출력: `artifacts/reporting/etf_stock_reports/{YYYYMMDD}/`의 Markdown 36개,
   `json/`의 JSON 36개 및 생성 요약.
-- 멱등성: 동일 날짜의 완전하고 유효한 corpus(정확한 ticker 집합, v0.6 ETF
-  스키마, Julia V1 ID, eligibility PASS 36개, post-reference data 0, 실패 0)는
-  쓰기 없이 `NOOP_ALREADY_COMPLETE`로 기록한다. partial/stale corpus는 NOOP가
-  아니며, staging 전체 검증 후에만 canonical 경로로 promote한다.
+- 멱등성: 동일 날짜의 완전하고 유효한 corpus(정확한 frozen ticker 집합 36개,
+  v0.6 ETF 스키마, Julia V1 ID, 날짜 일치, post-reference data 0, evaluator 오류
+  0, network 0, 생성 실패 0)는 쓰기 없이 `NOOP_ALREADY_COMPLETE`로 기록한다.
+  과거 eligibility PASS/FAIL 수는 report snapshot과 summary 간 일관성만 검증하며,
+  거래량 미달만으로 corpus를 실패 처리하지 않는다. partial/stale corpus는 NOOP가
+  아니며 staging 전체 검증 후에만 canonical 경로로 promote한다.
 - 상태: `etf_stock_reports.status`에 `PASS`, `NOOP_ALREADY_COMPLETE`,
   `BLOCKED`, `FAILED`를 별도 기록한다. ETF 실패는 COMMON 4C/4D를 중단하지 않고,
   최상위 `overall_status`에는 반영한다.
@@ -249,7 +252,9 @@ Strategy Monitor v2의 세 전략 projection과 웹 상태가 포함된다.
 - 처리: 기존 `export_*_web.py`만 사용해 `web/data/`에 투영한다. 웹 계층에서
   Julia·Pattern A·eligibility·COMMON 전략·RS·펀더멘털을 재계산하지 않는다.
   ETF corpus는 frozen ETF36 전체 집합, v0.6 schema, Julia ID와 두 날짜가 모두
-  검증되어야 한다. ETF 전략 상세는 Julia V1 authority를 보존한다.
+  검증되어야 한다. ETF 전략 상세는 Julia V1 authority를 보존한다. Historical
+  eligibility 결과와 거래량 값은 투영할 수 있지만 ETF36 집합이나 corpus 유효성의
+  filter로 사용하지 않는다.
 - 범위 분리: 종목 index/JSON은 COMMON과 ETF36을 함께 포함한다. Market RS,
   Sector RS 및 외인 랭킹은 기존 COMMON 집합만 포함한다. Strategy Monitor v2는
   A FAST Core V2와 B Select Core V1을 공개 COMMON 집합에, Julia V1을 Official ETF 36에

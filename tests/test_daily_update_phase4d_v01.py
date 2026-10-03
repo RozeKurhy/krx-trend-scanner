@@ -20,6 +20,23 @@ def test_staging_requires_all_mandatory_outputs(tmp_path: Path):
         phase4d.validate_staging(tmp_path, "2026-09-17", "2026-09-17")
 
 
+def test_b_select_monitor_projection_matches_status_without_display_only_fields():
+    status_items = [{
+        "ticker": "064260",
+        "action": "HOLD",
+        "trade_history": [{"trade_sequence": 1}],
+    }]
+    monitor_items = [{
+        "ticker": "064260",
+        "action": "HOLD",
+        "fundamental_status": "UNKNOWN",
+    }]
+
+    assert phase4d._b_select_monitor_items_match_status(monitor_items, status_items)
+    monitor_items[0]["action"] = "EXIT"
+    assert not phase4d._b_select_monitor_items_match_status(monitor_items, status_items)
+
+
 def _health_validation_fixture(
     tmp_path: Path,
     *,

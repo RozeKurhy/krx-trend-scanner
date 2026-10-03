@@ -189,10 +189,12 @@ def compute_etf_eligibility(
     effective_start_date: str,
     calendar_dates: pd.DatetimeIndex,
 ) -> tuple[dict[str, dict[str, Any]], set[str], set[str]]:
-    """Compute exact per-KRX-session ETF PIT values, without filling missing rows.
+    """Compute the historical ETF adoption-eligibility diagnostics.
 
-    Returns metrics by session, sessions meeting all signal conditions, and the
-    subset whose exact next market session raw open is locally available.
+    This preserves the original point-in-time research contract, including the
+    20-session average-volume threshold. It is not the production universe or
+    production Julia entry gate. Returns metrics by session, historical
+    eligibility dates, and dates whose exact next-session raw open exists.
     """
     sessions = pd.DatetimeIndex(calendar_dates)
     aligned = daily_raw.reindex(sessions)
@@ -242,6 +244,47 @@ def compute_etf_eligibility(
         if next_open is not None and next_open > 0:
             executable_dates.add(key)
     return metrics, signal_pass_dates, executable_dates
+
+
+def compute_etf_production_executable_dates(
+    daily_raw: pd.DataFrame,
+    *,
+    listing_date: str,
+    effective_start_date: str,
+    calendar_dates: pd.DatetimeIndex,
+) -> set[str]:
+    """Return frozen-universe production entry dates without a volume gate.
+
+    Production keeps the existing listing-age, raw-close, readiness, exact
+    KRX-calendar, and next-session raw-open checks. The historical 20-session
+    average-volume criterion is deliberately excluded from this gate.
+    """
+    sessions = pd.DatetimeIndex(calendar_dates).normalize()
+    raw = daily_raw.copy()
+    raw.index = pd.DatetimeIndex(raw.index).normalize()
+    if raw.index.has_duplicates or not {"open", "close"} <= set(raw.columns):
+        return set()
+
+    listing_ready = pd.Timestamp(listing_date) + pd.DateOffset(years=2)
+    effective_start = pd.Timestamp(effective_start_date)
+    raw_dates = set(raw.index)
+    executable_dates: set[str] = set()
+    for session in sessions:
+        if session < listing_ready or session < effective_start or session not in raw_dates:
+            continue
+        close = _finite(raw.loc[session, "close"])
+        if close is None or close < 1000:
+            continue
+        next_date = _next_market_date(_iso(session), sessions)
+        if next_date is None:
+            continue
+        next_ts = pd.Timestamp(next_date)
+        if next_ts not in raw_dates:
+            continue
+        next_open = _finite(raw.loc[next_ts, "open"])
+        if next_open is not None and next_open > 0:
+            executable_dates.add(_iso(session))
+    return executable_dates
 
 
 def _load_contracts(repo_root: Path) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -294,7 +337,7 @@ def _strategy_section(
     readiness: dict[str, str],
     metrics: dict[str, dict[str, Any]],
     signal_pass_dates: set[str],
-    executable_dates: set[str],
+    production_executable_dates: set[str],
     score_contract: dict[str, Any],
     stage_contract: dict[str, Any],
     support_errors: list[str],
@@ -339,12 +382,12 @@ def _strategy_section(
         exact_close = None
         if pd.Timestamp(date) in ticker_dates:
             exact_close = _finite(daily.loc[pd.Timestamp(date), "close"])
-        allowed = date in executable_dates and date >= effective_start
+        allowed = date in production_executable_dates and date >= effective_start
         return InvestabilityEvaluationResult(
             ticker=ticker,
             as_of=date,
             status=InvestabilityStatus.INVESTABLE if allowed else InvestabilityStatus.DATA_UNAVAILABLE,
-            reason="ETF_PIT_ELIGIBILITY_AND_EXACT_NEXT_OPEN_PASS" if allowed else "ETF_PIT_ELIGIBILITY_OR_EXACT_NEXT_OPEN_FAIL",
+            reason="ETF_PRODUCTION_ENTRY_GATES_AND_EXACT_NEXT_OPEN_PASS" if allowed else "ETF_PRODUCTION_ENTRY_GATE_OR_EXACT_NEXT_OPEN_FAIL",
             market_cap=None,
             market_cap_eok=None,
             avg_trading_value_20d=None,
@@ -443,7 +486,7 @@ def _strategy_section(
         next_open = _finite(raw.loc[pd.Timestamp(next_signal_date), "open"])
     next_open_pass = bool(
         latest_signal_date
-        and latest_signal_date in executable_dates
+        and latest_signal_date in production_executable_dates
         and next_signal_date is not None
         and next_open is not None
     )
@@ -465,7 +508,6 @@ def _strategy_section(
         (True, "OFFICIAL_ETF36"),
         (listing_pass, "LISTED_AT_LEAST_TWO_YEARS"),
         (close_pass, "RAW_CLOSE_GE_1000"),
-        (volume_pass, "RAW_VOLUME_20D_AVG_GE_10000"),
         (signal_start_pass, "STRATEGY_AND_CLEAN_READY"),
         (pa_pass, "PATTERN_A_TRANSITION_OR_EARLY_TREND"),
         (fast_pass, "FAST_TRIGGER_READY"),
@@ -526,7 +568,7 @@ def _strategy_section(
     elif state == "HOLD_PRE_PROGRESSED":
         interpretation = "Julia V1 포지션을 PROGRESSED 이전 구간에서 보유 중이야. Pre-PROGRESSED Loss Guard는 비활성이야."
     else:
-        interpretation = "Julia V1의 현재 보유 포지션은 없어. 다음 진입은 완료된 주봉 신호와 exact KRX PIT·익일 시가 조건이 모두 확인돼야 해."
+        interpretation = "Julia V1의 현재 보유 포지션은 없어. 다음 진입은 고정 ETF36 범위, 기존 가격·준비일 gate, 완료된 주봉 신호와 exact KRX 익일 시가 조건이 모두 확인돼야 해."
 
     ready_date = readiness["strategy_ready_date"]
     clean_date = readiness["clean_ready_date"]
@@ -686,13 +728,13 @@ def _render_strategy_markdown(report_dict: dict[str, Any]) -> str:
         f"- **실행 시점**: `{strategy['execution_timing'] or '해당 없음'}`",
         f"- **해석**: {strategy['interpretation']}",
         "",
-        "### ETF 진입 조건 체크리스트",
+        "### Julia V1 신규 진입 조건 및 참고 지표",
         "| 진입 검증 항목 | 기준일 관측값 | 충족 여부 |",
         "|---|---|:---:|",
         f"| Official ETF36 | `{conditions['official_etf36_membership']}` | `PASS` |",
         f"| 상장 2년 이상 | `{conditions['listing_date']}` | `{'PASS' if conditions['listing_age_pass'] else 'FAIL'}` |",
         f"| raw 종가 ≥ 1,000원 | `{conditions['raw_close_krw']}` | `{'PASS' if conditions['raw_close_pass'] else 'FAIL'}` |",
-        f"| 20 KRX 거래일 평균 raw 거래량 ≥ 10,000주 | `{conditions['avg_volume_20d_shares']}` | `{'PASS' if conditions['volume_pass'] else 'FAIL'}` |",
+        f"| 과거 채택 검증용 20일 평균 거래량 기준 (참고값, 현재 진입 gate 아님) | `{conditions['avg_volume_20d_shares']}` | `{'기준 통과' if conditions['volume_pass'] else '기준 미달'}` |",
         f"| Strategy-ready / clean-ready | `{conditions['strategy_ready_date']} / {conditions['clean_ready_date']}` | `{'PASS' if conditions['strategy_ready_pass'] else 'FAIL'}` |",
         f"| Pattern A 국면 | `{conditions['pattern_a_stage']}` | `{'PASS' if conditions['pattern_a_stage_pass'] else 'FAIL'}` |",
         f"| FAST 주별 트리거 | `{conditions['fast_stage']} ({conditions['fast_stage_status']})` | `{'PASS' if conditions['fast_trigger_pass'] else 'FAIL'}` |",
@@ -704,6 +746,7 @@ def _render_strategy_markdown(report_dict: dict[str, Any]) -> str:
         "",
         f"- **신규 진입 조건 전체 판정**: `{'PASS' if conditions['all_conditions_met'] else 'FAIL'}`",
         f"- **미충족 조건**: `{', '.join(conditions['failed_conditions']) if conditions['failed_conditions'] else '없음'}`",
+        "- **거래량 기준 적용 범위**: 과거 adoption/backtest eligibility만을 위한 참고값이야. 고정 Official ETF36 소속, 현재 신규 진입 gate, 기존 포지션 lifecycle에는 적용하지 않아.",
         "",
         "### 현재 포지션",
     ]
@@ -760,14 +803,14 @@ def _render_strategy_markdown(report_dict: dict[str, Any]) -> str:
 def _render_etf_snapshot(report_dict: dict[str, Any]) -> str:
     snap = report_dict["official_strategy"]["current_snapshot"]
     lines = [
-        "## 1. 현재 기술적 국면 및 ETF 적격성 스냅샷",
+        "## 1. 현재 기술적 국면 및 ETF 스냅샷",
         f"- **Pattern A Score / 국면**: `{report_dict['current_snapshot'].get('pattern_a_score')}` / `{report_dict['current_snapshot'].get('official_stage')}`",
         f"- **Official ETF36 membership**: `{'PASS' if snap['official_etf36_membership'] else 'FAIL'}`",
         f"- **상장일 / 상장 2년 요건**: `{snap['listing_date']}` / `{'PASS' if snap['listing_age_pass'] else 'FAIL'}`",
         f"- **기준일 raw 종가**: `{snap['raw_close_krw'] if snap['raw_close_krw'] is not None else 'N/A'}원` (최소 1,000원: `{'PASS' if snap['raw_close_pass'] else 'FAIL'}`)",
-        f"- **20 KRX 거래일 평균 raw 거래량**: `{snap['avg_volume_20d_shares'] if snap['avg_volume_20d_shares'] is not None else 'N/A'}주` (최소 10,000주: `{'PASS' if snap['volume_pass'] else 'FAIL'}`)",
+        f"- **20 KRX 거래일 평균 raw 거래량 (과거 검증 참고값)**: `{snap['avg_volume_20d_shares'] if snap['avg_volume_20d_shares'] is not None else 'N/A'}주` (과거 기준 10,000주: `{'충족' if snap['volume_pass'] else '미달'}`; 현재 운용 gate 아님)",
         f"- **20일 창**: `{snap['volume_window_start'] or 'N/A'}` ~ `{snap['volume_window_end'] or 'N/A'}`; 신호일 포함: `{snap['volume_window_includes_signal_date']}`",
-        f"- **ETF 적격성**: `{'PASS' if snap['eligibility_pass'] else 'FAIL'}` (`{ELIGIBILITY_CONTRACT}`)",
+        f"- **과거 adoption eligibility 참고 결과**: `{'PASS' if snap['eligibility_pass'] else 'FAIL'}` (`{ELIGIBILITY_CONTRACT}`; current frozen-universe membership와 별도)",
         f"- **Strategy-ready / clean-ready / 유효 시작일**: `{snap['strategy_ready_date']} / {snap['clean_ready_date']} / {snap['effective_start_date']}`",
         "- **시가총액 / Phase10 Investability**: `NOT_APPLICABLE` (Julia V1 ETF 적격성 조건이 아님)",
         "",
@@ -780,9 +823,9 @@ def _render_etf_snapshot(report_dict: dict[str, Any]) -> str:
 def render_etf_markdown(base_report: Any, payload: dict[str, Any]) -> str:
     """Render the shared report then replace ETF-specific sections only."""
     markdown = render_markdown_report(base_report).replace("종목 리포트 v0.5", "종목 리포트 v0.6", 1)
-    markdown = markdown.replace("## 1. 현재 기술적 국면 & 투자 적격성 스냅샷 (Current Snapshot)", "## 1. 현재 기술적 국면 및 ETF 적격성 스냅샷", 1)
+    markdown = markdown.replace("## 1. 현재 기술적 국면 & 투자 적격성 스냅샷 (Current Snapshot)", "## 1. 현재 기술적 국면 및 ETF 스냅샷", 1)
     section_1 = re.compile(
-        r"## 1\. 현재 기술적 국면 및 ETF 적격성 스냅샷.*?\n---\n\n", re.DOTALL
+        r"## 1\. 현재 기술적 국면 및 ETF 스냅샷.*?\n---\n\n", re.DOTALL
     )
     markdown, count = section_1.subn(_render_etf_snapshot(payload), markdown, count=1)
     if count != 1:
@@ -873,7 +916,13 @@ def generate_etf_stock_report_v06(
         raise ValueError(f"COMMON_REPORT_LOOKAHEAD:{identity.ticker}:{base.header.effective_as_of}")
 
     calendar_dates = _calendar_dates(calendar, ref_date)
-    metrics, signal_pass_dates, executable_dates = compute_etf_eligibility(
+    metrics, signal_pass_dates, _historical_executable_dates = compute_etf_eligibility(
+        raw,
+        listing_date=identity.listing_date,
+        effective_start_date=readiness["effective_start_date"],
+        calendar_dates=calendar_dates,
+    )
+    production_executable_dates = compute_etf_production_executable_dates(
         raw,
         listing_date=identity.listing_date,
         effective_start_date=readiness["effective_start_date"],
@@ -915,7 +964,7 @@ def generate_etf_stock_report_v06(
             readiness=readiness,
             metrics=metrics,
             signal_pass_dates=signal_pass_dates,
-            executable_dates=executable_dates,
+            production_executable_dates=production_executable_dates,
             score_contract=score_contract,
             stage_contract=stage_contract,
             support_errors=errors,
@@ -933,7 +982,7 @@ def generate_etf_stock_report_v06(
     base.current_snapshot.market_cap_eok = None
     base.current_snapshot.avg_trading_value_20d_eok = None
     base.current_snapshot.investability_status = "NOT_APPLICABLE"
-    base.current_snapshot.investability_reason = "ETF_JULIA_USES_RAW_PIT_ELIGIBILITY_CONTRACT"
+    base.current_snapshot.investability_reason = "ETF_OFFICIAL_ETF36_FIXED_PRODUCTION_UNIVERSE"
     base.current_snapshot.is_investable = False
     base.current_snapshot.market_cap_effective_date = None
     base.current_snapshot.market_cap_source = None
@@ -948,15 +997,17 @@ def generate_etf_stock_report_v06(
     ]
     current = strategy["current_snapshot"]
     eligibility_bullet = (
-        f"ETF 적격성: {'PASS' if current['eligibility_pass'] else 'FAIL'} · "
+        f"과거 adoption eligibility 참고: {'PASS' if current['eligibility_pass'] else 'FAIL'} · "
         f"raw 종가 {current['raw_close_krw'] if current['raw_close_krw'] is not None else 'N/A'}원 · "
         f"20D 평균 거래량 {current['avg_volume_20d_shares'] if current['avg_volume_20d_shares'] is not None else 'N/A'}주"
     )
     base.summary.bullet_points = [_strategy_bullet(strategy), eligibility_bullet, *inherited_bullets]
     base.summary.combined_narrative = (
         f"{identity.name}은(는) 기준일 {ref_date}에 Julia V1 상태 {strategy['strategy_state']}야. "
-        f"ETF PIT 적격성은 {'PASS' if current['eligibility_pass'] else 'FAIL'}이며 "
-        f"시가총액과 Phase10 Investability는 이 ETF 전략의 적격성 기준이 아니야. "
+        f"현재 production universe는 고정 Official ETF36이야. 과거 adoption eligibility "
+        f"({ELIGIBILITY_CONTRACT})는 {'PASS' if current['eligibility_pass'] else 'FAIL'}로 참고 표시하며, "
+        f"20일 거래량 10,000주 기준은 현재 membership·진입·기존 포지션 lifecycle gate가 아니야. "
+        f"시가총액과 Phase10 Investability도 이 ETF 전략의 적격성 기준이 아니야. "
         f"공통 기술·수급 섹션은 기존 Stock Report 계산을 재사용했어."
     )
 
@@ -1092,6 +1143,7 @@ def _validate_etf_report_corpus(
     except (OSError, UnicodeError, json.JSONDecodeError):
         summary = None
         errors.append("GENERATION_SUMMARY_MISSING_OR_INVALID")
+    report_eligibility_counts = {"PASS": 0, "FAIL": 0}
     if isinstance(summary, dict):
         expected_tickers = {item.ticker for item in identities}
         if summary.get("target_as_of") != target_as_of:
@@ -1106,8 +1158,6 @@ def _validate_etf_report_corpus(
             errors.append("SUMMARY_UNIVERSE_HASH_MISMATCH")
         if summary.get("strategy_id_counts") != {STRATEGY_ID: len(identities)}:
             errors.append("SUMMARY_STRATEGY_COUNT_MISMATCH")
-        if len(identities) == 36 and summary.get("eligibility_pass_fail_counts") != {"PASS": 36, "FAIL": 0}:
-            errors.append("SUMMARY_ELIGIBILITY_COUNT_MISMATCH")
         if summary.get("network_requests") != 0:
             errors.append("SUMMARY_NETWORK_REQUESTS_NONZERO")
         if summary.get("post_asof_data_references") != 0:
@@ -1150,8 +1200,16 @@ def _validate_etf_report_corpus(
         if strategy.get("strategy_id") != STRATEGY_ID:
             errors.append(f"REPORT_STRATEGY_ID_MISMATCH:{identity.ticker}")
         snapshot = strategy.get("current_snapshot") or {}
-        if len(identities) == 36 and snapshot.get("eligibility_pass") is not True:
-            errors.append(f"REPORT_ELIGIBILITY_FAIL:{identity.ticker}")
+        historical_eligibility = snapshot.get("eligibility_pass")
+        if historical_eligibility is True:
+            report_eligibility_counts["PASS"] += 1
+        elif historical_eligibility is False:
+            report_eligibility_counts["FAIL"] += 1
+        else:
+            errors.append(f"REPORT_HISTORICAL_ELIGIBILITY_FIELD_INVALID:{identity.ticker}")
+
+    if isinstance(summary, dict) and summary.get("eligibility_pass_fail_counts") != report_eligibility_counts:
+        errors.append("SUMMARY_HISTORICAL_ELIGIBILITY_COUNTS_INCONSISTENT")
 
     return errors
 

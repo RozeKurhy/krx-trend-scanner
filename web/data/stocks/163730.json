@@ -1,1 +1,1123 @@
-{"schema_version":1,"identity":{"ticker":"163730","name":"핑거","market":"KOSDAQ","asset_type":"COMMON"},"availability":{"report_available":true,"report_status":"PARTIAL"},"decision":{"action":"NONE","strategy_state":"DATA_UNAVAILABLE","canonical_position":"DATA_UNAVAILABLE","action_reason":"INVESTABILITY_DATA_UNAVAILABLE","is_investable":false},"summary":{"trend_stage":"TRANSITION","flow_state":"FLOW_DISTRIBUTION"},"price_trend":{"latest_close":12520.0,"latest_close_as_of":"2026-09-23","price_status":"AVAILABLE","price_source":"data/market/adjusted/stocks/163730.parquet","score_trend":{"current_score":60.95,"score_1m_ago":57.5,"score_3m_ago":47.04,"score_6m_ago":55.91,"score_12m_ago":83.11,"change_1m":3.45,"change_3m":13.91,"change_6m":5.04,"change_12m":-22.16},"trading_value_state":"TRADING_VALUE_EXPANDING","trading_value_explanation":"최근 거래대금이 지속 확대되는 흐름입니다. 5일 평균 거래대금(30.06억원)은 20일 평균의 약 2.12배이며 60일 평균(11.41억원)을 상회하고 있습니다.","avg_trading_value_1d_eok":44.74,"avg_trading_value_5d_eok":30.06,"avg_trading_value_10d_eok":18.04,"avg_trading_value_20d_eok":14.17,"avg_trading_value_60d_eok":11.41},"pattern":{"official_stage":"TRANSITION","candidate_state":"candidate","score":60.95,"history_12m":[{"as_of":"2025-08-29","close":12410.0,"score":83.11,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-09-30","close":11860.0,"score":76.75,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-10-31","close":11240.0,"score":78.63,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-11-28","close":11720.0,"score":69.43,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-12-30","close":10010.0,"score":54.72,"stage":"BASE","candidate_state":"watch","data_available":true},{"as_of":"2026-01-30","close":12180.0,"score":50.85,"stage":"BASE","candidate_state":"watch","data_available":true},{"as_of":"2026-02-27","close":10810.0,"score":55.91,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2026-03-31","close":9260.0,"score":50.6,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-04-30","close":18950.0,"score":63.24,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-05-29","close":16700.0,"score":47.04,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-06-30","close":11260.0,"score":57.86,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2026-07-31","close":7600.0,"score":57.5,"stage":"WEAK","candidate_state":"blocked","data_available":true},{"as_of":"2026-08-31","close":9970.0,"score":60.95,"stage":"TRANSITION","candidate_state":"candidate","data_available":true}],"history_24m":[{"as_of":"2024-08-30","close":6480.0,"score":0.0,"stage":"WEAK","candidate_state":"blocked","data_available":true},{"as_of":"2024-09-30","close":10770.0,"score":12.74,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2024-10-31","close":11690.0,"score":44.49,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2024-11-29","close":11200.0,"score":57.53,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2024-12-30","close":8500.0,"score":44.67,"stage":"WEAK","candidate_state":"blocked","data_available":true},{"as_of":"2025-01-31","close":8460.0,"score":33.62,"stage":"WEAK","candidate_state":"blocked","data_available":true},{"as_of":"2025-02-28","close":9010.0,"score":0.0,"stage":"WEAK","candidate_state":"blocked","data_available":true},{"as_of":"2025-03-31","close":8190.0,"score":0.0,"stage":"WEAK","candidate_state":"blocked","data_available":true},{"as_of":"2025-04-30","close":12200.0,"score":0.0,"stage":"WEAK","candidate_state":"blocked","data_available":true},{"as_of":"2025-05-30","close":11100.0,"score":38.1,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-06-30","close":12320.0,"score":65.29,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-07-31","close":12830.0,"score":79.68,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-08-29","close":12410.0,"score":83.11,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-09-30","close":11860.0,"score":76.75,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-10-31","close":11240.0,"score":78.63,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-11-28","close":11720.0,"score":69.43,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-12-30","close":10010.0,"score":54.72,"stage":"BASE","candidate_state":"watch","data_available":true},{"as_of":"2026-01-30","close":12180.0,"score":50.85,"stage":"BASE","candidate_state":"watch","data_available":true},{"as_of":"2026-02-27","close":10810.0,"score":55.91,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2026-03-31","close":9260.0,"score":50.6,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-04-30","close":18950.0,"score":63.24,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-05-29","close":16700.0,"score":47.04,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-06-30","close":11260.0,"score":57.86,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2026-07-31","close":7600.0,"score":57.5,"stage":"WEAK","candidate_state":"blocked","data_available":true},{"as_of":"2026-08-31","close":9970.0,"score":60.95,"stage":"TRANSITION","candidate_state":"candidate","data_available":true}]},"pattern_b":{"applicability":"APPLICABLE","evaluation_status":"READY","pattern_b_state":"DEPRESSED","as_of":"2026-09-23","freshness_status":"CURRENT","expected_weekly_bar":"2026-09-18","range_36m":0.20848056537102475,"monthly_ma24_distance":-0.11456483126110129,"range_52w":0.1953727506426735,"monthly_last_bar":"2026-08-31","weekly_last_bar":"2026-09-18","reason_codes":[],"reason_details":[],"monthly_history":[{"as_of":"2025-10-31","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.42857142857142855,"monthly_ma24_distance":0.10322264027482397,"range_52w":0.40476190476190477,"monthly_last_bar":"2025-10-31","weekly_last_bar":"2025-10-31"},{"as_of":"2025-11-30","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.4666666666666667,"monthly_ma24_distance":0.15714990949481655,"range_52w":0.4649122807017544,"monthly_last_bar":"2025-11-30","weekly_last_bar":"2025-11-28"},{"as_of":"2025-12-31","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.33095238095238094,"monthly_ma24_distance":-0.0004576659038901809,"range_52w":0.2781954887218045,"monthly_last_bar":"2025-12-31","weekly_last_bar":"2025-12-26"},{"as_of":"2026-01-31","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.5031746031746032,"monthly_ma24_distance":0.20564216778025246,"range_52w":0.5225563909774437,"monthly_last_bar":"2026-01-31","weekly_last_bar":"2026-01-30"},{"as_of":"2026-02-28","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.39444444444444443,"monthly_ma24_distance":0.06682018175089444,"range_52w":0.3467843631778058,"monthly_last_bar":"2026-02-28","weekly_last_bar":"2026-02-27"},{"as_of":"2026-03-31","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.2714285714285714,"monthly_ma24_distance":-0.08640960289402289,"range_52w":0.2408575031525851,"monthly_last_bar":"2026-03-31","weekly_last_bar":"2026-03-27"},{"as_of":"2026-04-30","evaluation_status":"READY","pattern_b_state":"EXTREME_OVERHEATED","range_36m":0.8214285714285714,"monthly_ma24_distance":0.7928805140536916,"range_52w":0.816030534351145,"monthly_last_bar":"2026-04-30","weekly_last_bar":"2026-04-24"},{"as_of":"2026-05-31","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.5482079757698132,"monthly_ma24_distance":0.5278466054206534,"range_52w":0.471976401179941,"monthly_last_bar":"2026-05-31","weekly_last_bar":"2026-05-29"},{"as_of":"2026-06-30","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.2735991923271075,"monthly_ma24_distance":0.014795343597446386,"range_52w":0.11268436578171091,"monthly_last_bar":"2026-06-30","weekly_last_bar":"2026-06-26"},{"as_of":"2026-07-31","evaluation_status":"READY","pattern_b_state":"DEPRESSED","range_36m":0.08884401817264008,"monthly_ma24_distance":-0.31621368322399257,"range_52w":0.07197943444730077,"monthly_last_bar":"2026-07-31","weekly_last_bar":"2026-07-31"},{"as_of":"2026-08-31","evaluation_status":"READY","pattern_b_state":"DEPRESSED","range_36m":0.20848056537102475,"monthly_ma24_distance":-0.11456483126110129,"range_52w":0.1928020565552699,"monthly_last_bar":"2026-08-31","weekly_last_bar":"2026-08-28"},{"as_of":"2026-09-23","evaluation_status":"READY","pattern_b_state":"DEPRESSED","range_36m":0.20848056537102475,"monthly_ma24_distance":-0.11456483126110129,"range_52w":0.1953727506426735,"monthly_last_bar":"2026-08-31","weekly_last_bar":"2026-09-18"}],"monthly_history_24m":[{"as_of":"2024-09-30","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.2133275638251839,"monthly_ma24_distance":0.031485693762719924,"range_52w":0.4103174603174603,"monthly_last_bar":"2024-09-30","weekly_last_bar":"2024-09-27"},{"as_of":"2024-10-31","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.2531371700562527,"monthly_ma24_distance":0.11042507717881733,"range_52w":0.37777777777777777,"monthly_last_bar":"2024-10-31","weekly_last_bar":"2024-10-25"},{"as_of":"2024-11-30","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.2319342276070965,"monthly_ma24_distance":0.0662012613541707,"range_52w":0.4253968253968254,"monthly_last_bar":"2024-11-30","weekly_last_bar":"2024-11-29"},{"as_of":"2024-12-31","evaluation_status":"READY","pattern_b_state":"DEPRESSED","range_36m":0.1151016875811337,"monthly_ma24_distance":-0.18386941910705712,"range_52w":0.2975308641975309,"monthly_last_bar":"2024-12-31","weekly_last_bar":"2024-12-27"},{"as_of":"2025-01-31","evaluation_status":"READY","pattern_b_state":"DEPRESSED","range_36m":0.16677275620623808,"monthly_ma24_distance":-0.1735927388172087,"range_52w":0.3234567901234568,"monthly_last_bar":"2025-01-31","weekly_last_bar":"2025-01-31"},{"as_of":"2025-02-28","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.21771978021978022,"monthly_ma24_distance":-0.09409300377042318,"range_52w":0.391358024691358,"monthly_last_bar":"2025-02-28","weekly_last_bar":"2025-02-28"},{"as_of":"2025-03-31","evaluation_status":"READY","pattern_b_state":"DEPRESSED","range_36m":0.17078488372093023,"monthly_ma24_distance":-0.15682910089224444,"range_52w":0.337037037037037,"monthly_last_bar":"2025-03-31","weekly_last_bar":"2025-03-28"},{"as_of":"2025-04-30","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.5047619047619047,"monthly_ma24_distance":0.25509023104290796,"range_52w":0.6539256198347108,"monthly_last_bar":"2025-04-30","weekly_last_bar":"2025-04-25"},{"as_of":"2025-05-31","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.4174603174603175,"monthly_ma24_distance":0.14437905408307916,"range_52w":0.5433884297520661,"monthly_last_bar":"2025-05-31","weekly_last_bar":"2025-05-30"},{"as_of":"2025-06-30","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.5142857142857142,"monthly_ma24_distance":0.2665124646620407,"range_52w":0.7004926108374384,"monthly_last_bar":"2025-06-30","weekly_last_bar":"2025-06-27"},{"as_of":"2025-07-31","evaluation_status":"READY","pattern_b_state":"OVERHEATED","range_36m":0.5547619047619048,"monthly_ma24_distance":0.3018221790047775,"range_52w":0.7142857142857143,"monthly_last_bar":"2025-07-31","weekly_last_bar":"2025-07-25"},{"as_of":"2025-08-31","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.5214285714285715,"monthly_ma24_distance":0.24796782033017695,"range_52w":0.6247379454926625,"monthly_last_bar":"2025-08-31","weekly_last_bar":"2025-08-29"},{"as_of":"2025-09-30","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.4777777777777778,"monthly_ma24_distance":0.1797082228116711,"range_52w":0.48621553884711777,"monthly_last_bar":"2025-09-30","weekly_last_bar":"2025-09-26"},{"as_of":"2025-10-31","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.42857142857142855,"monthly_ma24_distance":0.10322264027482397,"range_52w":0.40476190476190477,"monthly_last_bar":"2025-10-31","weekly_last_bar":"2025-10-31"},{"as_of":"2025-11-30","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.4666666666666667,"monthly_ma24_distance":0.15714990949481655,"range_52w":0.4649122807017544,"monthly_last_bar":"2025-11-30","weekly_last_bar":"2025-11-28"},{"as_of":"2025-12-31","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.33095238095238094,"monthly_ma24_distance":-0.0004576659038901809,"range_52w":0.2781954887218045,"monthly_last_bar":"2025-12-31","weekly_last_bar":"2025-12-26"},{"as_of":"2026-01-31","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.5031746031746032,"monthly_ma24_distance":0.20564216778025246,"range_52w":0.5225563909774437,"monthly_last_bar":"2026-01-31","weekly_last_bar":"2026-01-30"},{"as_of":"2026-02-28","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.39444444444444443,"monthly_ma24_distance":0.06682018175089444,"range_52w":0.3467843631778058,"monthly_last_bar":"2026-02-28","weekly_last_bar":"2026-02-27"},{"as_of":"2026-03-31","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.2714285714285714,"monthly_ma24_distance":-0.08640960289402289,"range_52w":0.2408575031525851,"monthly_last_bar":"2026-03-31","weekly_last_bar":"2026-03-27"},{"as_of":"2026-04-30","evaluation_status":"READY","pattern_b_state":"EXTREME_OVERHEATED","range_36m":0.8214285714285714,"monthly_ma24_distance":0.7928805140536916,"range_52w":0.816030534351145,"monthly_last_bar":"2026-04-30","weekly_last_bar":"2026-04-24"},{"as_of":"2026-05-31","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.5482079757698132,"monthly_ma24_distance":0.5278466054206534,"range_52w":0.471976401179941,"monthly_last_bar":"2026-05-31","weekly_last_bar":"2026-05-29"},{"as_of":"2026-06-30","evaluation_status":"READY","pattern_b_state":"NORMAL","range_36m":0.2735991923271075,"monthly_ma24_distance":0.014795343597446386,"range_52w":0.11268436578171091,"monthly_last_bar":"2026-06-30","weekly_last_bar":"2026-06-26"},{"as_of":"2026-07-31","evaluation_status":"READY","pattern_b_state":"DEPRESSED","range_36m":0.08884401817264008,"monthly_ma24_distance":-0.31621368322399257,"range_52w":0.07197943444730077,"monthly_last_bar":"2026-07-31","weekly_last_bar":"2026-07-31"},{"as_of":"2026-08-31","evaluation_status":"READY","pattern_b_state":"DEPRESSED","range_36m":0.20848056537102475,"monthly_ma24_distance":-0.11456483126110129,"range_52w":0.1928020565552699,"monthly_last_bar":"2026-08-31","weekly_last_bar":"2026-08-28"},{"as_of":"2026-09-23","evaluation_status":"READY","pattern_b_state":"DEPRESSED","range_36m":0.20848056537102475,"monthly_ma24_distance":-0.11456483126110129,"range_52w":0.1953727506426735,"monthly_last_bar":"2026-08-31","weekly_last_bar":"2026-09-18"}],"provenance":{"market_data_authority":"MarketDataRepositoryV2","identity_authority":"merged_pit_intervals.json","source_artifact":"data/market/rolling_authority/merged_pit_intervals.json","feature_contract_version":"V01","state_rule_version":"PATTERN_B_STATE_RULE_V02","operational_contract":"PATTERN_B_OPERATIONAL_V02","history_effective_from":"2021-01-29","history_segment_count":1,"market_transfer_stitched":false,"history_stop_reason":""}},"market_strength":{"applicability":"APPLICABLE","data_status":"READY","benchmark_name":"코스닥","benchmark_last_observation_date":"2026-09-23","stock_return_2w":0.3476856835306781,"stock_return_1m":0.22265625,"stock_return_3m":0.04159733777038266,"stock_return_6m":0.2697768762677484,"stock_return_12m":-0.05580693815987936,"market_rs_2w":0.32516786783981777,"market_rs_1m":0.1975655044376421,"market_rs_3m":0.12155986548880571,"market_rs_6m":0.6493055582243874,"market_rs_12m":-0.06864245392096857,"percentile_2w":98.31067161104244,"percentile_1m":92.17644610903038,"percentile_3m":47.083333333333336,"percentile_6m":94.34981304528459,"percentile_12m":76.00337980566117,"explanation":"기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다."},"flow":{"data_status":"READY","state":"FLOW_DISTRIBUTION","net_buy_value_1d_krw":-331938970.0,"net_buy_value_5d_krw":-207274320.0,"net_buy_value_10d_krw":-538415995.0,"net_buy_value_20d_krw":-898001515.0,"net_buy_value_60d_krw":-5181468835.0,"intensity_1d":-0.0742,"intensity_5d":-0.0138,"intensity_10d":-0.0298,"intensity_20d":-0.0317,"intensity_60d":-0.0757,"positive_days_1d":0,"positive_days_5d":2,"positive_days_10d":2,"positive_days_20d":5,"positive_days_60d":15,"explanation":"5일, 20일, 60일 모두 외국인 누적 순매도 상태로, 중단기 외국인 수급은 전반적인 매도 우위(이탈) 흐름입니다 (5일 순매수 강도: -1.38%)."},"fundamentals":{"status":"PARTIAL","applicability":"APPLICABLE","reason":"DISPLAY_WINDOW_PARTIAL","requested_as_of":"2026-09-25","company_family":"NON_FINANCIAL","currency":"KRW","filter_status":"PASS","filter_passed":true,"filter_reasons":[],"summary":{"latest_fy":"2025","latest_quarter":"2026Q2","latest_fy_revenue_krw":91606730992,"latest_4q_avg_revenue_krw":23040309300.5,"ttm_revenue_krw":92161237202,"ttm_operating_income_krw":783181536,"ttm_net_income_krw":5894417218,"ttm_operating_cash_flow_krw":2019001335,"ttm_operating_margin_pct":0.8497949460936751,"ttm_net_margin_pct":6.395766156090714,"ttm_operating_cash_flow_margin_pct":2.1907272474812065,"ttm_roe_pct":null,"latest_debt_ratio_pct":null,"filter_status":"PASS","filter_passed":true,"filter_reasons":[]},"quarterly":[{"quarter":"2023Q3","status":"PERIOD_AMBIGUOUS","reason":"MULTIPLE_CURRENT_INSTANT_CONTEXTS","revenue_krw":19921333885,"revenue_yoy_pct":1.8992077358130768,"operating_income_krw":1643848921,"operating_income_yoy_pct":49.0998897646019,"operating_margin_pct":8.251701068259063,"net_income_krw":1433500490,"net_margin_pct":7.195805754148676,"operating_cash_flow_krw":2428147258,"operating_income_yoy_status":"PERCENT"},{"quarter":"2023Q4","status":"DERIVATION_UNAVAILABLE","reason":"MISSING_PRIOR_CUMULATIVE","revenue_krw":null,"revenue_yoy_pct":null,"operating_income_krw":null,"operating_income_yoy_pct":null,"operating_margin_pct":null,"net_income_krw":null,"net_margin_pct":null,"operating_cash_flow_krw":null,"operating_income_yoy_status":"UNAVAILABLE"},{"quarter":"2024Q1","status":"PERIOD_AMBIGUOUS","reason":"MULTIPLE_CURRENT_INSTANT_CONTEXTS","revenue_krw":16268437665,"revenue_yoy_pct":-26.48651367632607,"operating_income_krw":-22894705,"operating_income_yoy_pct":null,"operating_margin_pct":-0.14073081553034306,"net_income_krw":164850023,"net_margin_pct":1.0133119503826675,"operating_cash_flow_krw":-3007980613,"operating_income_yoy_status":"TURNED_TO_LOSS"},{"quarter":"2024Q2","status":"READY","reason":null,"revenue_krw":15152734367,"revenue_yoy_pct":-26.123869277836448,"operating_income_krw":-52984510,"operating_income_yoy_pct":null,"operating_margin_pct":-0.3496696287066906,"net_income_krw":191798075,"net_margin_pct":1.2657654411054853,"operating_cash_flow_krw":2049248427,"operating_income_yoy_status":"TURNED_TO_LOSS"},{"quarter":"2024Q3","status":"PERIOD_AMBIGUOUS","reason":"MULTIPLE_CURRENT_INSTANT_CONTEXTS","revenue_krw":19967031398,"revenue_yoy_pct":0.22938982531891838,"operating_income_krw":-118381120,"operating_income_yoy_pct":null,"operating_margin_pct":-0.5928829260610952,"net_income_krw":218075873,"net_margin_pct":1.092179746969515,"operating_cash_flow_krw":939120612,"operating_income_yoy_status":"TURNED_TO_LOSS"},{"quarter":"2024Q4","status":"READY","reason":null,"revenue_krw":20218276149,"revenue_yoy_pct":null,"operating_income_krw":-276145964,"operating_income_yoy_pct":null,"operating_margin_pct":-1.3658234854689044,"net_income_krw":366325506,"net_margin_pct":1.8118533118270745,"operating_cash_flow_krw":1110749351,"operating_income_yoy_status":"UNAVAILABLE"},{"quarter":"2025Q1","status":"PERIOD_AMBIGUOUS","reason":"MULTIPLE_CURRENT_INSTANT_CONTEXTS","revenue_krw":20613973461,"revenue_yoy_pct":26.711451249857927,"operating_income_krw":200855863,"operating_income_yoy_pct":null,"operating_margin_pct":0.9743675249218853,"net_income_krw":528351627,"net_margin_pct":2.563075129594007,"operating_cash_flow_krw":-746333552,"operating_income_yoy_status":"TURNED_TO_PROFIT"},{"quarter":"2025Q2","status":"READY","reason":null,"revenue_krw":21845117019,"revenue_yoy_pct":44.16617152990444,"operating_income_krw":527701213,"operating_income_yoy_pct":null,"operating_margin_pct":2.415648369111627,"net_income_krw":598502697,"net_margin_pct":2.7397550513437237,"operating_cash_flow_krw":903165329,"operating_income_yoy_status":"TURNED_TO_PROFIT"},{"quarter":"2025Q3","status":"READY","reason":null,"revenue_krw":25267911815,"revenue_yoy_pct":26.54816487908645,"operating_income_krw":1089650257,"operating_income_yoy_pct":null,"operating_margin_pct":4.312387446093357,"net_income_krw":1547928440,"net_margin_pct":6.126063963390479,"operating_cash_flow_krw":3385360665,"operating_income_yoy_status":"TURNED_TO_PROFIT"},{"quarter":"2025Q4","status":"READY","reason":null,"revenue_krw":23879728697,"revenue_yoy_pct":18.109617857707892,"operating_income_krw":-350367474,"operating_income_yoy_pct":null,"operating_margin_pct":-1.4672171465834807,"net_income_krw":-2342130860,"net_margin_pct":-9.808029604181561,"operating_cash_flow_krw":3461624847,"operating_income_yoy_status":"LOSS_CONTINUED"},{"quarter":"2026Q1","status":"READY","reason":null,"revenue_krw":20461838031,"revenue_yoy_pct":-0.7380208880535727,"operating_income_krw":-325791051,"operating_income_yoy_pct":null,"operating_margin_pct":-1.592188592766796,"net_income_krw":-43915024,"net_margin_pct":-0.21461915558840836,"operating_cash_flow_krw":-4940726738,"operating_income_yoy_status":"TURNED_TO_LOSS"},{"quarter":"2026Q2","status":"READY","reason":null,"revenue_krw":22551758659,"revenue_yoy_pct":3.2347807493335545,"operating_income_krw":369689804,"operating_income_yoy_pct":-29.94334769512838,"operating_margin_pct":1.6392947866727168,"net_income_krw":6732534662,"net_margin_pct":29.853701273595206,"operating_cash_flow_krw":112742561,"operating_income_yoy_status":"PERCENT"}],"annual":[{"fiscal_year":"2021","status":"READY","reason":null,"revenue_krw":94787590937,"revenue_yoy_pct":58.635866809023426,"operating_income_krw":7425039236,"operating_income_yoy_pct":125.34431645834023,"operating_margin_pct":7.8333452328533255,"net_income_krw":872654313,"net_margin_pct":0.9206419367488773,"roe_pct":2.7427455876265787,"debt_ratio_pct":55.13045378882717,"operating_income_yoy_status":"PERCENT"},{"fiscal_year":"2022","status":"READY","reason":null,"revenue_krw":90102336029,"revenue_yoy_pct":-4.942899024740513,"operating_income_krw":5399405891,"operating_income_yoy_pct":-27.281113009865308,"operating_margin_pct":5.992525975422177,"net_income_krw":1916854467,"net_margin_pct":2.127419278433634,"roe_pct":4.190099685896281,"debt_ratio_pct":35.07527845196875,"operating_income_yoy_status":"PERCENT"},{"fiscal_year":"2023","status":"READY","reason":null,"revenue_krw":83127054173,"revenue_yoy_pct":-7.741510557234567,"operating_income_krw":3669784550,"operating_income_yoy_pct":-32.033549170345196,"operating_margin_pct":4.414669311344321,"net_income_krw":4463862198,"net_margin_pct":5.369927086204722,"roe_pct":9.375331171016041,"debt_ratio_pct":25.833203434109492,"operating_income_yoy_status":"PERCENT"},{"fiscal_year":"2024","status":"READY","reason":null,"revenue_krw":71606479579,"revenue_yoy_pct":-13.858995375950576,"operating_income_krw":-470406299,"operating_income_yoy_pct":null,"operating_margin_pct":-0.6569325873380262,"net_income_krw":941049477,"net_margin_pct":1.3141959813312498,"roe_pct":1.924316936759903,"debt_ratio_pct":32.234891404338825,"operating_income_yoy_status":"TURNED_TO_LOSS"},{"fiscal_year":"2025","status":"READY","reason":null,"revenue_krw":91606730992,"revenue_yoy_pct":27.9307843795542,"operating_income_krw":1467839859,"operating_income_yoy_pct":null,"operating_margin_pct":1.6023275179726544,"net_income_krw":332651904,"net_margin_pct":0.3631304167256557,"roe_pct":0.6954678834534275,"debt_ratio_pct":41.72697564994906,"operating_income_yoy_status":"TURNED_TO_PROFIT"}]},"strategy":{"action":"NONE","state":"DATA_UNAVAILABLE","position":"DATA_UNAVAILABLE","reason":"INVESTABILITY_DATA_UNAVAILABLE","interpretation":"투자 유동성 및 시가총액 데이터 결측으로 패스트 코어 V2 신규 진입 적격성을 판정할 수 없습니다.","history":[]},"technical_details":{"requested_as_of":"2026-09-25","reference_market_date":"2026-09-23","report_version":"0.7","report_status":"PARTIAL","asset_type":"COMMON","investability_status":"DATA_UNAVAILABLE","investability_reason":"REQUIRED_METRIC_UNAVAILABLE","pattern_stage":"TRANSITION","pattern_score":60.95,"candidate_state":"candidate","flow_state":"FLOW_DISTRIBUTION","market_strength_applicability":"APPLICABLE","market_strength_status":"READY","relative_strength_status":"READY","trading_value_state":"TRADING_VALUE_EXPANDING","price_as_of":"2026-09-23","price_status":"AVAILABLE","price_source":"data/market/adjusted/stocks/163730.parquet","sector_name":null,"data_quality":{"cache_present":true,"cache_first_date":"2021-01-29","cache_last_date":"2026-09-23","daily_rows_count":1385,"completed_month_count":68,"quality_status":"OK","quality_flags":[]},"source_report":"artifacts/reporting/stock_reports/20260925/json/163730_핑거.json"},"external_links":{"naver_finance":"https://finance.naver.com/item/main.naver?code=163730","naver_chart":"https://stock.naver.com/fchart/domestic/stock/163730"}}
+{
+  "schema_version": 1,
+  "identity": {
+    "ticker": "163730",
+    "name": "핑거",
+    "market": "KOSDAQ",
+    "asset_type": "COMMON"
+  },
+  "availability": {
+    "report_available": true,
+    "report_status": "PARTIAL"
+  },
+  "decision": {
+    "action": "NONE",
+    "strategy_state": "DATA_UNAVAILABLE",
+    "canonical_position": "DATA_UNAVAILABLE",
+    "action_reason": "INVESTABILITY_DATA_UNAVAILABLE",
+    "is_investable": false
+  },
+  "summary": {
+    "trend_stage": "TRANSITION",
+    "flow_state": "FLOW_DISTRIBUTION"
+  },
+  "price_trend": {
+    "latest_close": 14900.0,
+    "latest_close_as_of": "2026-10-02",
+    "price_status": "AVAILABLE",
+    "price_source": "data/market/adjusted/stocks/163730.parquet",
+    "score_trend": {
+      "current_score": 59.96,
+      "score_1m_ago": 60.95,
+      "score_3m_ago": 57.86,
+      "score_6m_ago": 50.6,
+      "score_12m_ago": 76.75,
+      "change_1m": -0.99,
+      "change_3m": 2.1,
+      "change_6m": 9.36,
+      "change_12m": -16.79
+    },
+    "trading_value_state": "TRADING_VALUE_EXPANDING",
+    "trading_value_explanation": "최근 거래대금이 지속 확대되는 흐름입니다. 5일 평균 거래대금(25.90억원)은 20일 평균의 약 1.42배이며 60일 평균(12.98억원)을 상회하고 있습니다.",
+    "avg_trading_value_1d_eok": 25.59,
+    "avg_trading_value_5d_eok": 25.9,
+    "avg_trading_value_10d_eok": 27.98,
+    "avg_trading_value_20d_eok": 18.29,
+    "avg_trading_value_60d_eok": 12.98
+  },
+  "pattern": {
+    "official_stage": "TRANSITION",
+    "candidate_state": "candidate",
+    "score": 59.96,
+    "history_12m": [
+      {
+        "as_of": "2025-09-30",
+        "close": 11860.0,
+        "score": 76.75,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-10-31",
+        "close": 11240.0,
+        "score": 78.63,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-11-28",
+        "close": 11720.0,
+        "score": 69.43,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-12-30",
+        "close": 10010.0,
+        "score": 54.72,
+        "stage": "BASE",
+        "candidate_state": "watch",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-01-30",
+        "close": 12180.0,
+        "score": 50.85,
+        "stage": "BASE",
+        "candidate_state": "watch",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-02-27",
+        "close": 10810.0,
+        "score": 55.91,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-03-31",
+        "close": 9260.0,
+        "score": 50.6,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-04-30",
+        "close": 18950.0,
+        "score": 63.24,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-05-29",
+        "close": 16700.0,
+        "score": 47.04,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-06-30",
+        "close": 11260.0,
+        "score": 57.86,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-07-31",
+        "close": 7600.0,
+        "score": 57.5,
+        "stage": "WEAK",
+        "candidate_state": "blocked",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-08-31",
+        "close": 9970.0,
+        "score": 60.95,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-09-30",
+        "close": 14090.0,
+        "score": 59.76,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      }
+    ],
+    "history_24m": [
+      {
+        "as_of": "2024-09-30",
+        "close": 10770.0,
+        "score": 12.74,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2024-10-31",
+        "close": 11690.0,
+        "score": 44.49,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2024-11-29",
+        "close": 11200.0,
+        "score": 57.53,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2024-12-30",
+        "close": 8500.0,
+        "score": 44.67,
+        "stage": "WEAK",
+        "candidate_state": "blocked",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-01-31",
+        "close": 8460.0,
+        "score": 33.62,
+        "stage": "WEAK",
+        "candidate_state": "blocked",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-02-28",
+        "close": 9010.0,
+        "score": 0.0,
+        "stage": "WEAK",
+        "candidate_state": "blocked",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-03-31",
+        "close": 8190.0,
+        "score": 0.0,
+        "stage": "WEAK",
+        "candidate_state": "blocked",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-04-30",
+        "close": 12200.0,
+        "score": 0.0,
+        "stage": "WEAK",
+        "candidate_state": "blocked",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-05-30",
+        "close": 11100.0,
+        "score": 38.1,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-06-30",
+        "close": 12320.0,
+        "score": 65.29,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-07-31",
+        "close": 12830.0,
+        "score": 79.68,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-08-29",
+        "close": 12410.0,
+        "score": 83.11,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-09-30",
+        "close": 11860.0,
+        "score": 76.75,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-10-31",
+        "close": 11240.0,
+        "score": 78.63,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-11-28",
+        "close": 11720.0,
+        "score": 69.43,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-12-30",
+        "close": 10010.0,
+        "score": 54.72,
+        "stage": "BASE",
+        "candidate_state": "watch",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-01-30",
+        "close": 12180.0,
+        "score": 50.85,
+        "stage": "BASE",
+        "candidate_state": "watch",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-02-27",
+        "close": 10810.0,
+        "score": 55.91,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-03-31",
+        "close": 9260.0,
+        "score": 50.6,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-04-30",
+        "close": 18950.0,
+        "score": 63.24,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-05-29",
+        "close": 16700.0,
+        "score": 47.04,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-06-30",
+        "close": 11260.0,
+        "score": 57.86,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-07-31",
+        "close": 7600.0,
+        "score": 57.5,
+        "stage": "WEAK",
+        "candidate_state": "blocked",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-08-31",
+        "close": 9970.0,
+        "score": 60.95,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-09-30",
+        "close": 14090.0,
+        "score": 59.76,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      }
+    ]
+  },
+  "pattern_b": {
+    "applicability": "APPLICABLE",
+    "evaluation_status": "READY",
+    "pattern_b_state": "NORMAL",
+    "as_of": "2026-10-02",
+    "freshness_status": "CURRENT",
+    "expected_weekly_bar": "2026-10-02",
+    "range_36m": 0.4164563351842504,
+    "monthly_ma24_distance": 0.2361456353268021,
+    "range_52w": 0.4473007712082262,
+    "monthly_last_bar": "2026-09-30",
+    "weekly_last_bar": "2026-10-02",
+    "reason_codes": [],
+    "reason_details": [],
+    "monthly_history": [
+      {
+        "as_of": "2025-11-30",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.4666666666666667,
+        "monthly_ma24_distance": 0.15714990949481655,
+        "range_52w": 0.4649122807017544,
+        "monthly_last_bar": "2025-11-30",
+        "weekly_last_bar": "2025-11-28"
+      },
+      {
+        "as_of": "2025-12-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.33095238095238094,
+        "monthly_ma24_distance": -0.0004576659038901809,
+        "range_52w": 0.2781954887218045,
+        "monthly_last_bar": "2025-12-31",
+        "weekly_last_bar": "2025-12-26"
+      },
+      {
+        "as_of": "2026-01-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.5031746031746032,
+        "monthly_ma24_distance": 0.20564216778025246,
+        "range_52w": 0.5225563909774437,
+        "monthly_last_bar": "2026-01-31",
+        "weekly_last_bar": "2026-01-30"
+      },
+      {
+        "as_of": "2026-02-28",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.39444444444444443,
+        "monthly_ma24_distance": 0.06682018175089444,
+        "range_52w": 0.3467843631778058,
+        "monthly_last_bar": "2026-02-28",
+        "weekly_last_bar": "2026-02-27"
+      },
+      {
+        "as_of": "2026-03-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.2714285714285714,
+        "monthly_ma24_distance": -0.08640960289402289,
+        "range_52w": 0.2408575031525851,
+        "monthly_last_bar": "2026-03-31",
+        "weekly_last_bar": "2026-03-27"
+      },
+      {
+        "as_of": "2026-04-30",
+        "evaluation_status": "READY",
+        "pattern_b_state": "EXTREME_OVERHEATED",
+        "range_36m": 0.8214285714285714,
+        "monthly_ma24_distance": 0.7928805140536916,
+        "range_52w": 0.816030534351145,
+        "monthly_last_bar": "2026-04-30",
+        "weekly_last_bar": "2026-04-24"
+      },
+      {
+        "as_of": "2026-05-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.5482079757698132,
+        "monthly_ma24_distance": 0.5278466054206534,
+        "range_52w": 0.471976401179941,
+        "monthly_last_bar": "2026-05-31",
+        "weekly_last_bar": "2026-05-29"
+      },
+      {
+        "as_of": "2026-06-30",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.2735991923271075,
+        "monthly_ma24_distance": 0.014795343597446386,
+        "range_52w": 0.11268436578171091,
+        "monthly_last_bar": "2026-06-30",
+        "weekly_last_bar": "2026-06-26"
+      },
+      {
+        "as_of": "2026-07-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "DEPRESSED",
+        "range_36m": 0.08884401817264008,
+        "monthly_ma24_distance": -0.31621368322399257,
+        "range_52w": 0.07197943444730077,
+        "monthly_last_bar": "2026-07-31",
+        "weekly_last_bar": "2026-07-31"
+      },
+      {
+        "as_of": "2026-08-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "DEPRESSED",
+        "range_36m": 0.20848056537102475,
+        "monthly_ma24_distance": -0.11456483126110129,
+        "range_52w": 0.1928020565552699,
+        "monthly_last_bar": "2026-08-31",
+        "weekly_last_bar": "2026-08-28"
+      },
+      {
+        "as_of": "2026-09-30",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.4164563351842504,
+        "monthly_ma24_distance": 0.2361456353268021,
+        "range_52w": 0.3249357326478149,
+        "monthly_last_bar": "2026-09-30",
+        "weekly_last_bar": "2026-09-25"
+      },
+      {
+        "as_of": "2026-10-02",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.4164563351842504,
+        "monthly_ma24_distance": 0.2361456353268021,
+        "range_52w": 0.4473007712082262,
+        "monthly_last_bar": "2026-09-30",
+        "weekly_last_bar": "2026-10-02"
+      }
+    ],
+    "monthly_history_24m": [
+      {
+        "as_of": "2024-10-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.2531371700562527,
+        "monthly_ma24_distance": 0.11042507717881733,
+        "range_52w": 0.37777777777777777,
+        "monthly_last_bar": "2024-10-31",
+        "weekly_last_bar": "2024-10-25"
+      },
+      {
+        "as_of": "2024-11-30",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.2319342276070965,
+        "monthly_ma24_distance": 0.0662012613541707,
+        "range_52w": 0.4253968253968254,
+        "monthly_last_bar": "2024-11-30",
+        "weekly_last_bar": "2024-11-29"
+      },
+      {
+        "as_of": "2024-12-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "DEPRESSED",
+        "range_36m": 0.1151016875811337,
+        "monthly_ma24_distance": -0.18386941910705712,
+        "range_52w": 0.2975308641975309,
+        "monthly_last_bar": "2024-12-31",
+        "weekly_last_bar": "2024-12-27"
+      },
+      {
+        "as_of": "2025-01-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "DEPRESSED",
+        "range_36m": 0.16677275620623808,
+        "monthly_ma24_distance": -0.1735927388172087,
+        "range_52w": 0.3234567901234568,
+        "monthly_last_bar": "2025-01-31",
+        "weekly_last_bar": "2025-01-31"
+      },
+      {
+        "as_of": "2025-02-28",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.21771978021978022,
+        "monthly_ma24_distance": -0.09409300377042318,
+        "range_52w": 0.391358024691358,
+        "monthly_last_bar": "2025-02-28",
+        "weekly_last_bar": "2025-02-28"
+      },
+      {
+        "as_of": "2025-03-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "DEPRESSED",
+        "range_36m": 0.17078488372093023,
+        "monthly_ma24_distance": -0.15682910089224444,
+        "range_52w": 0.337037037037037,
+        "monthly_last_bar": "2025-03-31",
+        "weekly_last_bar": "2025-03-28"
+      },
+      {
+        "as_of": "2025-04-30",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.5047619047619047,
+        "monthly_ma24_distance": 0.25509023104290796,
+        "range_52w": 0.6539256198347108,
+        "monthly_last_bar": "2025-04-30",
+        "weekly_last_bar": "2025-04-25"
+      },
+      {
+        "as_of": "2025-05-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.4174603174603175,
+        "monthly_ma24_distance": 0.14437905408307916,
+        "range_52w": 0.5433884297520661,
+        "monthly_last_bar": "2025-05-31",
+        "weekly_last_bar": "2025-05-30"
+      },
+      {
+        "as_of": "2025-06-30",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.5142857142857142,
+        "monthly_ma24_distance": 0.2665124646620407,
+        "range_52w": 0.7004926108374384,
+        "monthly_last_bar": "2025-06-30",
+        "weekly_last_bar": "2025-06-27"
+      },
+      {
+        "as_of": "2025-07-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "OVERHEATED",
+        "range_36m": 0.5547619047619048,
+        "monthly_ma24_distance": 0.3018221790047775,
+        "range_52w": 0.7142857142857143,
+        "monthly_last_bar": "2025-07-31",
+        "weekly_last_bar": "2025-07-25"
+      },
+      {
+        "as_of": "2025-08-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.5214285714285715,
+        "monthly_ma24_distance": 0.24796782033017695,
+        "range_52w": 0.6247379454926625,
+        "monthly_last_bar": "2025-08-31",
+        "weekly_last_bar": "2025-08-29"
+      },
+      {
+        "as_of": "2025-09-30",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.4777777777777778,
+        "monthly_ma24_distance": 0.1797082228116711,
+        "range_52w": 0.48621553884711777,
+        "monthly_last_bar": "2025-09-30",
+        "weekly_last_bar": "2025-09-26"
+      },
+      {
+        "as_of": "2025-10-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.42857142857142855,
+        "monthly_ma24_distance": 0.10322264027482397,
+        "range_52w": 0.40476190476190477,
+        "monthly_last_bar": "2025-10-31",
+        "weekly_last_bar": "2025-10-31"
+      },
+      {
+        "as_of": "2025-11-30",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.4666666666666667,
+        "monthly_ma24_distance": 0.15714990949481655,
+        "range_52w": 0.4649122807017544,
+        "monthly_last_bar": "2025-11-30",
+        "weekly_last_bar": "2025-11-28"
+      },
+      {
+        "as_of": "2025-12-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.33095238095238094,
+        "monthly_ma24_distance": -0.0004576659038901809,
+        "range_52w": 0.2781954887218045,
+        "monthly_last_bar": "2025-12-31",
+        "weekly_last_bar": "2025-12-26"
+      },
+      {
+        "as_of": "2026-01-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.5031746031746032,
+        "monthly_ma24_distance": 0.20564216778025246,
+        "range_52w": 0.5225563909774437,
+        "monthly_last_bar": "2026-01-31",
+        "weekly_last_bar": "2026-01-30"
+      },
+      {
+        "as_of": "2026-02-28",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.39444444444444443,
+        "monthly_ma24_distance": 0.06682018175089444,
+        "range_52w": 0.3467843631778058,
+        "monthly_last_bar": "2026-02-28",
+        "weekly_last_bar": "2026-02-27"
+      },
+      {
+        "as_of": "2026-03-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.2714285714285714,
+        "monthly_ma24_distance": -0.08640960289402289,
+        "range_52w": 0.2408575031525851,
+        "monthly_last_bar": "2026-03-31",
+        "weekly_last_bar": "2026-03-27"
+      },
+      {
+        "as_of": "2026-04-30",
+        "evaluation_status": "READY",
+        "pattern_b_state": "EXTREME_OVERHEATED",
+        "range_36m": 0.8214285714285714,
+        "monthly_ma24_distance": 0.7928805140536916,
+        "range_52w": 0.816030534351145,
+        "monthly_last_bar": "2026-04-30",
+        "weekly_last_bar": "2026-04-24"
+      },
+      {
+        "as_of": "2026-05-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.5482079757698132,
+        "monthly_ma24_distance": 0.5278466054206534,
+        "range_52w": 0.471976401179941,
+        "monthly_last_bar": "2026-05-31",
+        "weekly_last_bar": "2026-05-29"
+      },
+      {
+        "as_of": "2026-06-30",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.2735991923271075,
+        "monthly_ma24_distance": 0.014795343597446386,
+        "range_52w": 0.11268436578171091,
+        "monthly_last_bar": "2026-06-30",
+        "weekly_last_bar": "2026-06-26"
+      },
+      {
+        "as_of": "2026-07-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "DEPRESSED",
+        "range_36m": 0.08884401817264008,
+        "monthly_ma24_distance": -0.31621368322399257,
+        "range_52w": 0.07197943444730077,
+        "monthly_last_bar": "2026-07-31",
+        "weekly_last_bar": "2026-07-31"
+      },
+      {
+        "as_of": "2026-08-31",
+        "evaluation_status": "READY",
+        "pattern_b_state": "DEPRESSED",
+        "range_36m": 0.20848056537102475,
+        "monthly_ma24_distance": -0.11456483126110129,
+        "range_52w": 0.1928020565552699,
+        "monthly_last_bar": "2026-08-31",
+        "weekly_last_bar": "2026-08-28"
+      },
+      {
+        "as_of": "2026-09-30",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.4164563351842504,
+        "monthly_ma24_distance": 0.2361456353268021,
+        "range_52w": 0.3249357326478149,
+        "monthly_last_bar": "2026-09-30",
+        "weekly_last_bar": "2026-09-25"
+      },
+      {
+        "as_of": "2026-10-02",
+        "evaluation_status": "READY",
+        "pattern_b_state": "NORMAL",
+        "range_36m": 0.4164563351842504,
+        "monthly_ma24_distance": 0.2361456353268021,
+        "range_52w": 0.4473007712082262,
+        "monthly_last_bar": "2026-09-30",
+        "weekly_last_bar": "2026-10-02"
+      }
+    ],
+    "provenance": {
+      "market_data_authority": "MarketDataRepositoryV2",
+      "identity_authority": "merged_pit_intervals.json",
+      "source_artifact": "data/market/rolling_authority/merged_pit_intervals.json",
+      "feature_contract_version": "V01",
+      "state_rule_version": "PATTERN_B_STATE_RULE_V02",
+      "operational_contract": "PATTERN_B_OPERATIONAL_V02",
+      "history_effective_from": "2021-01-29",
+      "history_segment_count": 1,
+      "market_transfer_stitched": false,
+      "history_stop_reason": ""
+    }
+  },
+  "market_strength": {
+    "applicability": "APPLICABLE",
+    "data_status": "READY",
+    "benchmark_name": "코스닥",
+    "benchmark_last_observation_date": "2026-10-02",
+    "stock_return_2w": 0.5987124463519313,
+    "stock_return_1m": 0.4622178606476939,
+    "stock_return_3m": 0.31277533039647576,
+    "stock_return_6m": 0.544041450777202,
+    "stock_return_12m": 0.11526946107784442,
+    "market_rs_2w": 0.46035148940909343,
+    "market_rs_1m": 0.34429627339040914,
+    "market_rs_3m": 0.3657689589091613,
+    "market_rs_6m": 0.913523142633301,
+    "market_rs_12m": 0.05564126702991157,
+    "percentile_2w": 99.42386831275721,
+    "percentile_1m": 96.43892339544513,
+    "percentile_3m": 87.64510779436152,
+    "percentile_6m": 96.6390041493776,
+    "percentile_12m": 82.43243243243244,
+    "explanation": "기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다."
+  },
+  "flow": {
+    "data_status": "READY",
+    "state": "FLOW_DISTRIBUTION",
+    "net_buy_value_1d_krw": -74551895.0,
+    "net_buy_value_5d_krw": -52564490.0,
+    "net_buy_value_10d_krw": -259838810.0,
+    "net_buy_value_20d_krw": -695746685.0,
+    "net_buy_value_60d_krw": -5262677280.0,
+    "intensity_1d": -0.0291,
+    "intensity_5d": -0.0041,
+    "intensity_10d": -0.0093,
+    "intensity_20d": -0.019,
+    "intensity_60d": -0.0676,
+    "positive_days_1d": 0,
+    "positive_days_5d": 2,
+    "positive_days_10d": 4,
+    "positive_days_20d": 6,
+    "positive_days_60d": 15,
+    "explanation": "5일, 20일, 60일 모두 외국인 누적 순매도 상태로, 중단기 외국인 수급은 전반적인 매도 우위(이탈) 흐름입니다 (5일 순매수 강도: -0.41%)."
+  },
+  "fundamentals": {
+    "status": "PARTIAL",
+    "applicability": "APPLICABLE",
+    "reason": "DISPLAY_WINDOW_PARTIAL",
+    "requested_as_of": "2026-10-03",
+    "company_family": "NON_FINANCIAL",
+    "currency": "KRW",
+    "filter_status": "PASS",
+    "filter_passed": true,
+    "filter_reasons": [],
+    "summary": {
+      "latest_fy": "2025",
+      "latest_quarter": "2026Q2",
+      "latest_fy_revenue_krw": 91606730992,
+      "latest_4q_avg_revenue_krw": 23040309300.5,
+      "ttm_revenue_krw": 92161237202,
+      "ttm_operating_income_krw": 783181536,
+      "ttm_net_income_krw": 5894417218,
+      "ttm_operating_cash_flow_krw": 2019001335,
+      "ttm_operating_margin_pct": 0.8497949460936751,
+      "ttm_net_margin_pct": 6.395766156090714,
+      "ttm_operating_cash_flow_margin_pct": 2.1907272474812065,
+      "ttm_roe_pct": null,
+      "latest_debt_ratio_pct": null,
+      "filter_status": "PASS",
+      "filter_passed": true,
+      "filter_reasons": []
+    },
+    "quarterly": [
+      {
+        "quarter": "2023Q3",
+        "status": "PERIOD_AMBIGUOUS",
+        "reason": "MULTIPLE_CURRENT_INSTANT_CONTEXTS",
+        "revenue_krw": 19921333885,
+        "revenue_yoy_pct": 1.8992077358130768,
+        "operating_income_krw": 1643848921,
+        "operating_income_yoy_pct": 49.0998897646019,
+        "operating_margin_pct": 8.251701068259063,
+        "net_income_krw": 1433500490,
+        "net_margin_pct": 7.195805754148676,
+        "operating_cash_flow_krw": 2428147258,
+        "operating_income_yoy_status": "PERCENT"
+      },
+      {
+        "quarter": "2023Q4",
+        "status": "DERIVATION_UNAVAILABLE",
+        "reason": "MISSING_PRIOR_CUMULATIVE",
+        "revenue_krw": null,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": null,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": null,
+        "net_income_krw": null,
+        "net_margin_pct": null,
+        "operating_cash_flow_krw": null,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "quarter": "2024Q1",
+        "status": "PERIOD_AMBIGUOUS",
+        "reason": "MULTIPLE_CURRENT_INSTANT_CONTEXTS",
+        "revenue_krw": 16268437665,
+        "revenue_yoy_pct": -26.48651367632607,
+        "operating_income_krw": -22894705,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": -0.14073081553034306,
+        "net_income_krw": 164850023,
+        "net_margin_pct": 1.0133119503826675,
+        "operating_cash_flow_krw": -3007980613,
+        "operating_income_yoy_status": "TURNED_TO_LOSS"
+      },
+      {
+        "quarter": "2024Q2",
+        "status": "READY",
+        "reason": null,
+        "revenue_krw": 15152734367,
+        "revenue_yoy_pct": -26.123869277836448,
+        "operating_income_krw": -52984510,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": -0.3496696287066906,
+        "net_income_krw": 191798075,
+        "net_margin_pct": 1.2657654411054853,
+        "operating_cash_flow_krw": 2049248427,
+        "operating_income_yoy_status": "TURNED_TO_LOSS"
+      },
+      {
+        "quarter": "2024Q3",
+        "status": "PERIOD_AMBIGUOUS",
+        "reason": "MULTIPLE_CURRENT_INSTANT_CONTEXTS",
+        "revenue_krw": 19967031398,
+        "revenue_yoy_pct": 0.22938982531891838,
+        "operating_income_krw": -118381120,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": -0.5928829260610952,
+        "net_income_krw": 218075873,
+        "net_margin_pct": 1.092179746969515,
+        "operating_cash_flow_krw": 939120612,
+        "operating_income_yoy_status": "TURNED_TO_LOSS"
+      },
+      {
+        "quarter": "2024Q4",
+        "status": "READY",
+        "reason": null,
+        "revenue_krw": 20218276149,
+        "revenue_yoy_pct": null,
+        "operating_income_krw": -276145964,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": -1.3658234854689044,
+        "net_income_krw": 366325506,
+        "net_margin_pct": 1.8118533118270745,
+        "operating_cash_flow_krw": 1110749351,
+        "operating_income_yoy_status": "UNAVAILABLE"
+      },
+      {
+        "quarter": "2025Q1",
+        "status": "PERIOD_AMBIGUOUS",
+        "reason": "MULTIPLE_CURRENT_INSTANT_CONTEXTS",
+        "revenue_krw": 20613973461,
+        "revenue_yoy_pct": 26.711451249857927,
+        "operating_income_krw": 200855863,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": 0.9743675249218853,
+        "net_income_krw": 528351627,
+        "net_margin_pct": 2.563075129594007,
+        "operating_cash_flow_krw": -746333552,
+        "operating_income_yoy_status": "TURNED_TO_PROFIT"
+      },
+      {
+        "quarter": "2025Q2",
+        "status": "READY",
+        "reason": null,
+        "revenue_krw": 21845117019,
+        "revenue_yoy_pct": 44.16617152990444,
+        "operating_income_krw": 527701213,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": 2.415648369111627,
+        "net_income_krw": 598502697,
+        "net_margin_pct": 2.7397550513437237,
+        "operating_cash_flow_krw": 903165329,
+        "operating_income_yoy_status": "TURNED_TO_PROFIT"
+      },
+      {
+        "quarter": "2025Q3",
+        "status": "READY",
+        "reason": null,
+        "revenue_krw": 25267911815,
+        "revenue_yoy_pct": 26.54816487908645,
+        "operating_income_krw": 1089650257,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": 4.312387446093357,
+        "net_income_krw": 1547928440,
+        "net_margin_pct": 6.126063963390479,
+        "operating_cash_flow_krw": 3385360665,
+        "operating_income_yoy_status": "TURNED_TO_PROFIT"
+      },
+      {
+        "quarter": "2025Q4",
+        "status": "READY",
+        "reason": null,
+        "revenue_krw": 23879728697,
+        "revenue_yoy_pct": 18.109617857707892,
+        "operating_income_krw": -350367474,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": -1.4672171465834807,
+        "net_income_krw": -2342130860,
+        "net_margin_pct": -9.808029604181561,
+        "operating_cash_flow_krw": 3461624847,
+        "operating_income_yoy_status": "LOSS_CONTINUED"
+      },
+      {
+        "quarter": "2026Q1",
+        "status": "READY",
+        "reason": null,
+        "revenue_krw": 20461838031,
+        "revenue_yoy_pct": -0.7380208880535727,
+        "operating_income_krw": -325791051,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": -1.592188592766796,
+        "net_income_krw": -43915024,
+        "net_margin_pct": -0.21461915558840836,
+        "operating_cash_flow_krw": -4940726738,
+        "operating_income_yoy_status": "TURNED_TO_LOSS"
+      },
+      {
+        "quarter": "2026Q2",
+        "status": "READY",
+        "reason": null,
+        "revenue_krw": 22551758659,
+        "revenue_yoy_pct": 3.2347807493335545,
+        "operating_income_krw": 369689804,
+        "operating_income_yoy_pct": -29.94334769512838,
+        "operating_margin_pct": 1.6392947866727168,
+        "net_income_krw": 6732534662,
+        "net_margin_pct": 29.853701273595206,
+        "operating_cash_flow_krw": 112742561,
+        "operating_income_yoy_status": "PERCENT"
+      }
+    ],
+    "annual": [
+      {
+        "fiscal_year": "2021",
+        "status": "READY",
+        "reason": null,
+        "revenue_krw": 94787590937,
+        "revenue_yoy_pct": 58.635866809023426,
+        "operating_income_krw": 7425039236,
+        "operating_income_yoy_pct": 125.34431645834023,
+        "operating_margin_pct": 7.8333452328533255,
+        "net_income_krw": 872654313,
+        "net_margin_pct": 0.9206419367488773,
+        "roe_pct": 2.7427455876265787,
+        "debt_ratio_pct": 55.13045378882717,
+        "operating_income_yoy_status": "PERCENT"
+      },
+      {
+        "fiscal_year": "2022",
+        "status": "READY",
+        "reason": null,
+        "revenue_krw": 90102336029,
+        "revenue_yoy_pct": -4.942899024740513,
+        "operating_income_krw": 5399405891,
+        "operating_income_yoy_pct": -27.281113009865308,
+        "operating_margin_pct": 5.992525975422177,
+        "net_income_krw": 1916854467,
+        "net_margin_pct": 2.127419278433634,
+        "roe_pct": 4.190099685896281,
+        "debt_ratio_pct": 35.07527845196875,
+        "operating_income_yoy_status": "PERCENT"
+      },
+      {
+        "fiscal_year": "2023",
+        "status": "READY",
+        "reason": null,
+        "revenue_krw": 83127054173,
+        "revenue_yoy_pct": -7.741510557234567,
+        "operating_income_krw": 3669784550,
+        "operating_income_yoy_pct": -32.033549170345196,
+        "operating_margin_pct": 4.414669311344321,
+        "net_income_krw": 4463862198,
+        "net_margin_pct": 5.369927086204722,
+        "roe_pct": 9.375331171016041,
+        "debt_ratio_pct": 25.833203434109492,
+        "operating_income_yoy_status": "PERCENT"
+      },
+      {
+        "fiscal_year": "2024",
+        "status": "READY",
+        "reason": null,
+        "revenue_krw": 71606479579,
+        "revenue_yoy_pct": -13.858995375950576,
+        "operating_income_krw": -470406299,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": -0.6569325873380262,
+        "net_income_krw": 941049477,
+        "net_margin_pct": 1.3141959813312498,
+        "roe_pct": 1.924316936759903,
+        "debt_ratio_pct": 32.234891404338825,
+        "operating_income_yoy_status": "TURNED_TO_LOSS"
+      },
+      {
+        "fiscal_year": "2025",
+        "status": "READY",
+        "reason": null,
+        "revenue_krw": 91606730992,
+        "revenue_yoy_pct": 27.9307843795542,
+        "operating_income_krw": 1467839859,
+        "operating_income_yoy_pct": null,
+        "operating_margin_pct": 1.6023275179726544,
+        "net_income_krw": 332651904,
+        "net_margin_pct": 0.3631304167256557,
+        "roe_pct": 0.6954678834534275,
+        "debt_ratio_pct": 41.72697564994906,
+        "operating_income_yoy_status": "TURNED_TO_PROFIT"
+      }
+    ]
+  },
+  "strategy": {
+    "action": "NONE",
+    "state": "DATA_UNAVAILABLE",
+    "position": "DATA_UNAVAILABLE",
+    "reason": "INVESTABILITY_DATA_UNAVAILABLE",
+    "interpretation": "투자 유동성 및 시가총액 데이터 결측으로 패스트 코어 V2 신규 진입 적격성을 판정할 수 없습니다.",
+    "history": []
+  },
+  "technical_details": {
+    "requested_as_of": "2026-10-03",
+    "reference_market_date": "2026-10-02",
+    "report_version": "0.7",
+    "report_status": "PARTIAL",
+    "asset_type": "COMMON",
+    "investability_status": "DATA_UNAVAILABLE",
+    "investability_reason": "REQUIRED_METRIC_UNAVAILABLE",
+    "pattern_stage": "TRANSITION",
+    "pattern_score": 59.96,
+    "candidate_state": "candidate",
+    "flow_state": "FLOW_DISTRIBUTION",
+    "market_strength_applicability": "APPLICABLE",
+    "market_strength_status": "READY",
+    "relative_strength_status": "READY",
+    "trading_value_state": "TRADING_VALUE_EXPANDING",
+    "price_as_of": "2026-10-02",
+    "price_status": "AVAILABLE",
+    "price_source": "data/market/adjusted/stocks/163730.parquet",
+    "sector_name": null,
+    "data_quality": {
+      "cache_present": true,
+      "cache_first_date": "2021-01-29",
+      "cache_last_date": "2026-10-02",
+      "daily_rows_count": 1390,
+      "completed_month_count": 69,
+      "quality_status": "OK",
+      "quality_flags": []
+    },
+    "source_report": "artifacts/reporting/stock_reports/20261003/json/163730_핑거.json"
+  },
+  "external_links": {
+    "naver_finance": "https://finance.naver.com/item/main.naver?code=163730",
+    "naver_chart": "https://stock.naver.com/fchart/domestic/stock/163730"
+  }
+}

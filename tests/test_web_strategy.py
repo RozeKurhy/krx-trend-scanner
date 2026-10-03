@@ -145,6 +145,75 @@ def test_b_select_entry_pattern_a_validator_fails_closed_on_ambiguous_source():
         exporter._validate_b_select_entry_contexts([item], {key: [source, source]})
 
 
+def test_b_select_catchup_entry_context_uses_exact_session_authority_without_monthly_row():
+    exporter = _load_exporter()
+    key = ("064260", "KR7064260003", "064260:KR7064260003:000", "2026-09-30")
+    row = {
+        "ticker": key[0],
+        "isu_cd": key[1],
+        "component_id": key[2],
+        "entry_signal_date": key[3],
+        "entry_pattern_a_stage_recomputed": "PROGRESSED",
+        "previous_pattern_a_stage": "EARLY_TREND",
+        "previous_pattern_a_stage_date": "2025-09-30",
+        "source": "REPOSITORY_V2_EXACT_SESSION_EVALUATORS",
+    }
+    status = {
+        "catchup_audit": {
+            "catchup_session_count": 2,
+            "catchup_session_dates": ["2026-09-29", "2026-09-30"],
+            "skipped_krx_session_count": 0,
+        },
+        "catchup_entry_pattern_a_authorities": [row],
+    }
+    item = {
+        "ticker": key[0],
+        "isu_cd": key[1],
+        "component_id": key[2],
+        "canonical_position": "OPEN",
+        "action": "HOLD",
+        "current_trade": {"entry_signal_date": key[3]},
+        "pending_event": None,
+        "entry_pattern_a_stage": "PROGRESSED",
+        "entry_previous_pattern_a_stage": "EARLY_TREND",
+        "entry_previous_pattern_a_stage_date": "2025-09-30",
+    }
+
+    catchup_authority = exporter._read_catchup_entry_stage_authority(status)
+    exporter._validate_b_select_entry_contexts([item], {}, catchup_authority=catchup_authority)
+
+
+def test_b_select_catchup_entry_pattern_a_authority_is_session_scoped_and_unique():
+    exporter = _load_exporter()
+    row = {
+        "ticker": "064260",
+        "isu_cd": "KR7064260003",
+        "component_id": "064260:KR7064260003:000",
+        "entry_signal_date": "2026-09-30",
+        "entry_pattern_a_stage_recomputed": "PROGRESSED",
+        "previous_pattern_a_stage": "EARLY_TREND",
+        "previous_pattern_a_stage_date": "2025-09-30",
+        "source": "REPOSITORY_V2_EXACT_SESSION_EVALUATORS",
+    }
+    status = {
+        "catchup_audit": {
+            "catchup_session_count": 1,
+            "catchup_session_dates": ["2026-09-29"],
+            "skipped_krx_session_count": 0,
+        },
+        "catchup_entry_pattern_a_authorities": [row],
+    }
+
+    import pytest
+
+    with pytest.raises(ValueError, match="authority is inconsistent"):
+        exporter._read_catchup_entry_stage_authority(status)
+    status["catchup_audit"]["catchup_session_dates"] = ["2026-09-30"]
+    status["catchup_entry_pattern_a_authorities"] = [row, row]
+    with pytest.raises(ValueError, match="authority is inconsistent"):
+        exporter._read_catchup_entry_stage_authority(status)
+
+
 def test_b_select_watch_item_does_not_receive_fake_entry_pattern_a_context():
     exporter = _load_exporter()
     item = {

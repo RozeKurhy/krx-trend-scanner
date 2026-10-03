@@ -26,6 +26,12 @@ from trend_scanner.data.daily_update_phase3 import (
     _sector_rs_ranking_runner,
     compose_phase3_status,
 )
+from trend_scanner.data.rolling_market_data_refresh import (
+    PitExtensionResult,
+    RollingAuthorityManifest,
+    write_merged_pit_extension,
+    write_rolling_authority,
+)
 
 
 def _runner(status: str, calls: list[str], name: str) -> Callable[[str], dict[str, str]]:
@@ -115,6 +121,87 @@ def test_coordinator_resolves_once_and_threads_requested_and_reference_dates() -
         ("sector_rs", requested, reference),
     ]
     assert result.overall_status == PASS
+
+
+def test_official_phase3_resolver_uses_last_market_session_for_certified_weekend_target(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo_root = tmp_path / "repo"
+    authority_dir = repo_root / phase3.DEFAULT_ROLLING_AUTHORITY_DIR
+    authority_dir.mkdir(parents=True)
+    requested = "2026-10-03"
+    reference = "2026-10-02"
+    extension = PitExtensionResult(
+        merged_intervals=(
+            {
+                "ticker": "000001",
+                "isu_cd": "KR7000000001",
+                "market": "KOSPI",
+                "state": "COMMON",
+                "effective_from": reference,
+                "effective_to": reference,
+            },
+        ),
+        merged_calendar_dates=(reference,),
+        extension_start=reference,
+        extension_end=reference,
+        frozen_interval_count=1,
+        merged_interval_count=1,
+        new_ticker_count=0,
+    )
+    refs = write_merged_pit_extension(
+        extension,
+        authority_dir,
+        built_against_certified_through=reference,
+        target_as_of=reference,
+    )
+    manifest = RollingAuthorityManifest(
+        authority_version="ROLLING_MARKET_DATA_V01",
+        certified_through=requested,
+        leg_boundaries={
+            leg: requested
+            for leg in ("common_raw", "common_adjusted", "etf_raw", "etf_adjusted")
+        },
+        previous_boundary=reference,
+        raw_store_version="KRX_RAW_STOCK_V01",
+        adjusted_store_version="ADJUSTED_PRICE_STORE_V02",
+        instrument_contract_version="REPOSITORY_V2_INSTRUMENT_CONTRACT_V01",
+        bootstrap_source=None,
+        generated_at="2026-10-03T00:00:00+00:00",
+        merged_pit_digest=refs.merged_pit_digest,
+        merged_pit_frontier=refs.merged_pit_frontier,
+        merged_pit_schema_version=refs.merged_pit_schema_version,
+        merged_calendar_digest=refs.merged_calendar_digest,
+        merged_calendar_frontier=refs.merged_calendar_frontier,
+        merged_calendar_schema_version=refs.merged_calendar_schema_version,
+    )
+    write_rolling_authority(manifest, authority_dir)
+    calls: list[str] = []
+
+    def noop_factory(*_args, **_kwargs):
+        def run(target_as_of: str, *, reference_market_date: str | None = None):
+            calls.append(f"{target_as_of}:{reference_market_date or '-'}")
+            return {"status": NOOP_ALREADY_COMPLETE, "target_as_of": target_as_of}
+
+        return run
+
+    monkeypatch.setattr(phase3, "_foreign_flow_runner", noop_factory)
+    monkeypatch.setattr(phase3, "_fundamentals_runner", noop_factory)
+    monkeypatch.setattr(phase3, "_market_rs_runner", noop_factory)
+    monkeypatch.setattr(phase3, "_sector_membership_runner", noop_factory)
+    monkeypatch.setattr(phase3, "_sector_index_runner", noop_factory)
+    monkeypatch.setattr(phase3, "_sector_rs_ranking_runner", noop_factory)
+
+    coordinator = phase3.build_official_phase3_coordinator(repo_root=repo_root)
+    result = coordinator.execute(requested)
+
+    assert result.reference_market_date == reference
+    assert result.to_dict()["requested_as_of"] == requested
+    assert result.overall_status == NOOP_ALREADY_COMPLETE
+    assert calls
+    assert all(call.startswith(f"{requested}:") for call in calls)
+    assert f"{requested}:{reference}" in calls
 
 
 @pytest.mark.parametrize("dependency_status", [BLOCKED, FAILED])

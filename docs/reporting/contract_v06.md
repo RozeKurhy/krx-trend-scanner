@@ -21,10 +21,17 @@ ETF v0.6은 `a_fast_core`를 포함하지 않는다. 해당 필드는 v0.5에서
   nearest/proxy/inner-join 보정은 하지 않는다. JSON provenance에 이 source를 남긴다.
 - Julia lifecycle은 `JULIA_STRATEGY_V00` evaluator를 변경 없이 사용한다.
   `Pre-PROGRESSED Loss Guard`는 비활성화한다.
-- ETF PIT eligibility ID는
-  `ETF_PIT_LISTED_2Y_CLOSE_1000_VOL20_10000_V01`이다. Official ETF 36,
-  상장 2년, signal-date raw close 1,000원 이상, signal date를 포함한 직전 20개
-  실제 KRX 세션의 평균 raw volume 10,000주 이상이 필요하다.
+- `ETF_PIT_LISTED_2Y_CLOSE_1000_VOL20_10000_V01`은 과거 Julia V1 adoption/backtest
+  eligibility를 식별한다. 과거 계약은 Official ETF 36, 상장 2년, signal-date raw
+  close 1,000원 이상, 직전 20개 실제 KRX 세션 평균 raw volume 10,000주 이상을
+  요구했으며 기존 연구·ledger 산출물은 그대로 보존한다.
+- 현재 production universe는 frozen Official ETF 36이다. 현재 production ENTRY와
+  기존 포지션 lifecycle에서는 20일 평균 거래량 10,000주를 gate로 사용하지 않는다.
+  평균 거래량, `volume_pass`, `pit_eligibility_pass`, `eligibility_pass`는 과거
+  채택 eligibility의 참고 정보다. 보고서나 ETF36 corpus 유효성은 거래량 PASS/FAIL로
+  결정하지 않는다.
+- 상장 2년, raw close 1,000원, strategy-ready/clean-ready, 전략 신호 및 exact next
+  KRX-session raw open 확인은 기존 production 동작을 유지한다.
 - strategy-ready 및 clean-ready 이전 신호는 제외한다. 진입 체결은 다음 실제 KRX
   거래일의 정확한 원시 시가만 허용한다. 결측을 채우거나 가장 가까운 날, proxy,
   synthetic 값을 쓰지 않는다.
@@ -38,8 +45,8 @@ JSON 구조는 [schema_v06.json](schema_v06.json)을 따른다. v0.5의 공통 �
 보존하고 아래를 추가한다.
 
 - 최상위 `readiness_status`, `readiness_reason`
-- `current_snapshot.etf_eligibility`: membership, 상장 연령, 정확한 raw close,
-  20-session 평균 volume, eligibility, strategy/clean readiness
+- `current_snapshot.etf_eligibility`: 고정 membership, 상장 연령, 정확한 raw close,
+  과거 채택 기준의 20-session 평균 volume/eligibility 참고값, strategy/clean readiness
 - 최상위 `official_strategy`: 전략 식별자, 상태/행동, 진입 checklist, 현재 포지션,
   protection/re-entry 상태, 거래 이력, eligibility 계약과 실행 provenance
 

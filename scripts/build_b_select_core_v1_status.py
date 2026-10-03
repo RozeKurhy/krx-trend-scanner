@@ -30,10 +30,20 @@ from trend_scanner.data.repository_v2_loader import (
     RepositoryV2DailyLoader,
     build_production_repository_v2,
 )
+from trend_scanner.backtest.snapshot_context import (
+    build_historical_snapshot_from_context,
+    build_precomputed_ticker_context,
+)
 from trend_scanner.patterns.pattern_a_stage import classify_pattern_a_stage
 from trend_scanner.universe.permanent_identity_exclusions import PERMANENT_IDENTITY_EXCLUSIONS
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
-from trend_scanner.data.market_calendar import MarketCalendarAuthority
+from trend_scanner.data.market_calendar import (
+    MarketCalendarAuthority,
+    load_rolling_production_market_calendar,
+)
+from trend_scanner.patterns import pattern_b_operational
+from trend_scanner.patterns.pattern_a_evaluator import evaluate_pattern_a
+from trend_scanner.patterns.pattern_b_evaluator import evaluate_pattern_b
 from trend_scanner.strategies.b_select_core_v1 import (
     BSelectLifecycleError,
     STRATEGY_ID,
@@ -302,6 +312,39 @@ def _entry_pattern_a_context(
     }
 
 
+def _history_before_exact_stage(
+    history: list[dict[str, Any]],
+    *,
+    day: str,
+    current_stage: str,
+    ticker: str,
+) -> list[dict[str, Any]]:
+    """Keep prior monthly observations and let exact-day data own its stage.
+
+    A monthly history row marked unavailable because the instrument had no
+    exact month-end bar is not a stage observation for an exact daily session
+    on that same date. An available same-date monthly stage must still match
+    the exact daily evaluator or the replay fails closed.
+    """
+    exact_day = str(day)[:10]
+    result: list[dict[str, Any]] = []
+    for row in history:
+        row_day = str(row.get("as_of", ""))[:10]
+        if row_day > exact_day:
+            continue
+        if row_day == exact_day and str(row.get("stage", "")) != current_stage:
+            if (
+                str(row.get("stage", "")) == "UNAVAILABLE"
+                and row.get("data_available") is False
+            ):
+                continue
+            raise BSelectStatusError(
+                f"B_SELECT_CATCHUP_PATTERN_A_SAME_DAY_STAGE_MISMATCH:{ticker}:{exact_day}"
+            )
+        result.append(row)
+    return result
+
+
 def _report_previous_stage(
     report: Mapping[str, Any],
     *,
@@ -404,7 +447,11 @@ def _report_previous_stage(
     return current_stage, result["previous_pattern_a_stage"], result
 
 
-def _latest_prior_status(root: Path, reference_market_date: str, trading_dates: list[str]) -> dict[str, Any] | None:
+def _latest_prior_status(
+    root: Path,
+    reference_market_date: str,
+    trading_dates: list[str],
+) -> tuple[dict[str, Any], str] | None:
     candidates = []
     for path in (root / STATUS_RELATIVE).glob("*/status.json"):
         try:
@@ -413,18 +460,140 @@ def _latest_prior_status(root: Path, reference_market_date: str, trading_dates: 
             continue
         prior_reference = str(value.get("reference_market_date", ""))[:10]
         if value.get("strategy_id") == STRATEGY_ID and value.get("status") == "PASS" and prior_reference < reference_market_date:
-            candidates.append((prior_reference, str(value.get("requested_as_of", ""))[:10], value))
+            candidates.append((prior_reference, str(value.get("requested_as_of", ""))[:10], value, path))
     if not candidates:
         return None
-    prior_reference, _, value = max(candidates, key=lambda item: (item[0], item[1]))
+    prior_reference, _, value, path = max(candidates, key=lambda item: (item[0], item[1]))
     try:
-        previous_index = trading_dates.index(prior_reference)
-        current_index = trading_dates.index(reference_market_date)
+        _catchup_session_dates(prior_reference, reference_market_date, trading_dates)
     except ValueError as exc:
         raise BSelectStatusError("B_SELECT_PRIOR_STATUS_DATE_NOT_IN_KRX_CALENDAR") from exc
-    if current_index != previous_index + 1:
-        raise BSelectStatusError("B_SELECT_PRIOR_STATUS_SESSION_GAP")
-    return value
+    return value, str(path.relative_to(root))
+
+
+def _catchup_session_dates(
+    prior_reference_market_date: str,
+    reference_market_date: str,
+    trading_dates: list[str],
+) -> list[str]:
+    """Return every exact KRX session after the prior PASS through current reference."""
+    prior = str(prior_reference_market_date)[:10]
+    current = str(reference_market_date)[:10]
+    try:
+        prior_index = trading_dates.index(prior)
+        current_index = trading_dates.index(current)
+    except ValueError as exc:
+        raise ValueError("catch-up boundary is not an exact KRX session") from exc
+    if current_index <= prior_index:
+        raise ValueError("catch-up reference must follow the prior PASS reference")
+    return trading_dates[prior_index + 1:current_index + 1]
+
+
+def _build_exact_session_contexts(
+    *,
+    root: Path,
+    ticker: str,
+    name: str,
+    identity: Mapping[str, str],
+    intervals: list[dict[str, Any]],
+    trading_dates: list[str],
+    session_dates: list[str],
+    report_pattern_history: list[dict[str, Any]],
+    repository: Any,
+) -> list[dict[str, Any]]:
+    """Evaluate exact per-session Pattern A/B state from production authorities.
+
+    This is an in-memory replay input builder. It writes no intermediate status
+    artifacts and uses the same Repository V2, Pattern B history chain, Pattern
+    A snapshot policy, and frozen evaluators as Stock Report production.
+    """
+    if not session_dates:
+        return []
+    calendar = load_rolling_production_market_calendar(root)
+    if calendar is None:
+        raise BSelectStatusError("B_SELECT_CATCHUP_MARKET_CALENDAR_MISSING")
+    calendar_dates = [value.strftime("%Y-%m-%d") for value in calendar.trading_dates]
+    if calendar_dates != trading_dates or session_dates[-1] not in calendar_dates:
+        raise BSelectStatusError("B_SELECT_CATCHUP_MARKET_CALENDAR_MISMATCH")
+
+    ticker = str(ticker).zfill(6)
+    active = [
+        row for row in intervals
+        if str(row.get("ticker", "")).zfill(6) == ticker
+        and str(row.get("isu_cd", "")).upper() == str(identity["isu_cd"]).upper()
+        and str(row.get("state", "")).upper() == "COMMON"
+        and str(row.get("effective_from", ""))[:10] <= session_dates[-1]
+        <= str(row.get("effective_to", ""))[:10]
+    ]
+    if len(active) != 1:
+        raise BSelectStatusError(f"B_SELECT_CATCHUP_ACTIVE_IDENTITY_AMBIGUOUS:{ticker}")
+
+    chain = pattern_b_operational.history_chain(ticker, active[0], intervals, trading_dates)
+    pattern_b_daily = pattern_b_operational.load_history(repository, ticker, chain, session_dates[-1])
+    if pattern_b_daily is None or pattern_b_daily.empty:
+        raise BSelectStatusError(f"B_SELECT_CATCHUP_PATTERN_B_HISTORY_MISSING:{ticker}")
+    pattern_a_daily = RepositoryV2DailyLoader(repository, end=session_dates[-1]).load(ticker)
+    if pattern_a_daily is None or pattern_a_daily.empty:
+        raise BSelectStatusError(f"B_SELECT_CATCHUP_PATTERN_A_HISTORY_MISSING:{ticker}")
+    pattern_a_context = build_precomputed_ticker_context(ticker, name, pattern_a_daily)
+
+    contexts: list[dict[str, Any]] = []
+    for day in session_dates:
+        pattern_b_result = evaluate_pattern_b(ticker, pattern_b_daily, day, name=name)
+        snapshot = build_historical_snapshot_from_context(
+            pattern_a_context,
+            day,
+            include_incomplete_periods=False,
+            market_calendar=calendar,
+            market_calendar_as_of=day,
+        )
+        pattern_a_result = evaluate_pattern_a(snapshot)
+        current_stage = (
+            pattern_a_result.lifecycle_stage.name.upper()
+            if pattern_a_result.lifecycle_stage is not None
+            else "UNAVAILABLE"
+        )
+        previous_stage = None
+        previous_context = None
+        if current_stage == "PROGRESSED":
+            history = _history_before_exact_stage(
+                report_pattern_history,
+                day=day,
+                current_stage=current_stage,
+                ticker=ticker,
+            )
+            stage_report = {
+                "identity": {"ticker": ticker, "name": name},
+                "pattern": {"official_stage": current_stage, "history_12m": history},
+            }
+            _stage, previous_stage, previous_context = _report_previous_stage(
+                stage_report,
+                reference_market_date=day,
+                trading_dates=trading_dates,
+                root=root,
+                identity=identity,
+                repository=repository,
+                resolve_full_history=(
+                    pattern_b_result.pattern_b_state == "DEPRESSED"
+                    and current_stage == "PROGRESSED"
+                ),
+            )
+        contexts.append({
+            "date": day,
+            "pattern_b_state": (
+                pattern_b_result.pattern_b_state
+                if pattern_b_result.evaluation_status.value == "READY"
+                else None
+            ),
+            "pattern_b_evaluation_status": pattern_b_result.evaluation_status.value,
+            "pattern_a_stage": current_stage,
+            "previous_pattern_a_stage": previous_stage,
+            "previous_pattern_a_stage_date": (
+                previous_context.get("previous_pattern_a_stage_date")
+                if previous_context else None
+            ),
+        })
+    return contexts
 
 
 def _bucket(action: str, data_status: str) -> str:
@@ -497,7 +666,10 @@ def build_b_select_status(
         interval_components,
         set(identity_by_ticker),
     )
-    prior_status = _latest_prior_status(root, reference_market_date, trading_dates)
+    prior_status_result = _latest_prior_status(root, reference_market_date, trading_dates)
+    prior_status = prior_status_result[0] if prior_status_result else None
+    prior_artifact_path = prior_status_result[1] if prior_status_result else None
+    catchup_session_dates: list[str] = []
     # The first history-aware build must replay the complete sealed authority
     # instead of starting from a legacy current-state snapshot with no ledger.
     if prior_status and any(
@@ -506,6 +678,16 @@ def build_b_select_status(
         if isinstance(item, dict)
     ):
         prior_status = None
+        prior_artifact_path = None
+    if prior_status:
+        try:
+            catchup_session_dates = _catchup_session_dates(
+                str(prior_status["reference_market_date"]),
+                reference_market_date,
+                trading_dates,
+            )
+        except ValueError as exc:
+            raise BSelectStatusError("B_SELECT_PRIOR_STATUS_SESSION_RANGE_INVALID") from exc
     prior_by_identity: dict[tuple[str, str], dict[str, Any]] = {}
     if prior_status:
         for item in prior_status.get("items", []):
@@ -520,6 +702,11 @@ def build_b_select_status(
     duplicate_item_count = 0
     cross_contamination_count = 0
     excluded_items = 0
+    catchup_identity_count = 0
+    catchup_observation_count = 0
+    exact_open_missing_count = 0
+    lifecycle_error_details: list[str] = []
+    catchup_entry_stage_authorities: dict[tuple[str, str, str, str], dict[str, str]] = {}
 
     for index_item in common_rows:
         ticker = str(index_item.get("ticker", "")).zfill(6)
@@ -593,6 +780,50 @@ def build_b_select_status(
         prior_item = prior_by_identity.get(pair)
         observations: list[dict[str, Any]] = []
         entry_signals: list[dict[str, Any]] = []
+        entry_context_by_signal_date: dict[str, dict[str, str]] = {}
+
+        def register_catchup_entry_authority(context: dict[str, Any]) -> None:
+            signal_date = str(context.get("date") or "")[:10]
+            previous_stage_date = str(context.get("previous_pattern_a_stage_date") or "")[:10]
+            entry_stage = str(context.get("pattern_a_stage") or "").strip().upper()
+            previous_stage = str(context.get("previous_pattern_a_stage") or "").strip().upper()
+            if (
+                not signal_date
+                or entry_stage != "PROGRESSED"
+                or previous_stage not in ALLOWED_PREVIOUS_STAGES
+                or not previous_stage_date
+            ):
+                raise BSelectStatusError(
+                    f"B_SELECT_CATCHUP_ENTRY_PATTERN_A_AUTHORITY_INVALID:{ticker}:{signal_date}"
+                )
+            authority_key = (
+                ticker,
+                identity["isu_cd"],
+                identity["component_id"],
+                signal_date,
+            )
+            authority_row = {
+                "ticker": ticker,
+                "isu_cd": identity["isu_cd"],
+                "component_id": identity["component_id"],
+                "entry_signal_date": signal_date,
+                "entry_pattern_a_stage_recomputed": entry_stage,
+                "previous_pattern_a_stage": previous_stage,
+                "previous_pattern_a_stage_date": previous_stage_date,
+                "source": "REPOSITORY_V2_EXACT_SESSION_EVALUATORS",
+            }
+            existing = catchup_entry_stage_authorities.get(authority_key)
+            if existing is not None and existing != authority_row:
+                raise BSelectStatusError(
+                    f"B_SELECT_CATCHUP_ENTRY_PATTERN_A_AUTHORITY_CONFLICT:{ticker}:{signal_date}"
+                )
+            catchup_entry_stage_authorities[authority_key] = authority_row
+            entry_context_by_signal_date[signal_date] = {
+                "entry_pattern_a_stage": entry_stage,
+                "entry_previous_pattern_a_stage": previous_stage,
+                "entry_previous_pattern_a_stage_date": previous_stage_date,
+            }
+
         exact_opens: dict[str, float] = {}
         initial_position: dict[str, Any] | None = None
         initial_pending: dict[str, Any] | None = None
@@ -636,6 +867,52 @@ def build_b_select_status(
                         "pattern_a_stage": prior_item.get("pattern_a_stage"),
                         "previous_pattern_a_stage": prior_item.get("previous_pattern_a_stage"),
                     })
+            session_contexts = _build_exact_session_contexts(
+                root=root,
+                ticker=ticker,
+                name=name,
+                identity=identity,
+                intervals=intervals,
+                trading_dates=trading_dates,
+                session_dates=catchup_session_dates,
+                report_pattern_history=report_pattern.get("history_12m") or [],
+                repository=repo,
+            )
+            if not session_contexts or session_contexts[-1]["date"] != reference_market_date:
+                raise BSelectStatusError(f"B_SELECT_CATCHUP_FINAL_SESSION_MISSING:{ticker}")
+            final_context = session_contexts[-1]
+            if final_context["pattern_b_state"] != b_state:
+                date_mismatch_count += 1
+                raise BSelectStatusError(f"B_SELECT_CATCHUP_FINAL_PATTERN_B_PARITY_MISMATCH:{ticker}")
+            if final_context["pattern_b_evaluation_status"] != pattern_b.get("evaluation_status"):
+                date_mismatch_count += 1
+                raise BSelectStatusError(f"B_SELECT_CATCHUP_FINAL_PATTERN_B_STATUS_PARITY_MISMATCH:{ticker}")
+            if final_context["pattern_a_stage"] != current_stage:
+                date_mismatch_count += 1
+                raise BSelectStatusError(f"B_SELECT_CATCHUP_FINAL_PATTERN_A_PARITY_MISMATCH:{ticker}")
+            if final_context["previous_pattern_a_stage"] != previous_stage:
+                date_mismatch_count += 1
+                raise BSelectStatusError(f"B_SELECT_CATCHUP_FINAL_PREVIOUS_STAGE_PARITY_MISMATCH:{ticker}")
+            catchup_identity_count += 1
+            for context in session_contexts[:-1]:
+                observations.append({"date": context["date"], "state": context["pattern_b_state"]})
+                catchup_observation_count += 1
+                if is_entry_signal(
+                    context["pattern_b_state"],
+                    context["pattern_a_stage"],
+                    context["previous_pattern_a_stage"],
+                ):
+                    previous_stage_date = context.get("previous_pattern_a_stage_date")
+                    if not previous_stage_date:
+                        raise BSelectStatusError(
+                            f"B_SELECT_CATCHUP_ENTRY_PREVIOUS_STAGE_DATE_MISSING:{ticker}:{context['date']}"
+                        )
+                    register_catchup_entry_authority(context)
+                    entry_signals.append({
+                        "date": context["date"],
+                        "pattern_a_stage": context["pattern_a_stage"],
+                        "previous_pattern_a_stage": context["previous_pattern_a_stage"],
+                    })
         else:
             sample_rows = sample_frame.loc[
                 sample_frame["ticker"].astype(str).str.zfill(6).eq(ticker)
@@ -671,16 +948,32 @@ def build_b_select_status(
         observations = [row for row in observations if row["date"] != reference_market_date]
         observations.append({"date": reference_market_date, "state": b_state})
         if is_entry_signal(b_state, current_stage, previous_stage):
-            if prior_item and prior_item.get("action") == "ENTER_NEXT_OPEN":
-                pass
-            else:
-                entry_signals.append({
+            previous_stage_date = (
+                previous_context.get("previous_pattern_a_stage_date")
+                if previous_context else None
+            )
+            if not previous_stage_date:
+                raise BSelectStatusError(f"B_SELECT_CURRENT_ENTRY_PREVIOUS_STAGE_DATE_MISSING:{ticker}")
+            if prior_status:
+                register_catchup_entry_authority({
                     "date": reference_market_date,
                     "pattern_a_stage": current_stage,
                     "previous_pattern_a_stage": previous_stage,
-                    "source_entry_execution_date": None,
-                    "source_entry_open": None,
+                    "previous_pattern_a_stage_date": previous_stage_date,
                 })
+            else:
+                entry_context_by_signal_date[reference_market_date] = {
+                    "entry_pattern_a_stage": str(current_stage),
+                    "entry_previous_pattern_a_stage": str(previous_stage),
+                    "entry_previous_pattern_a_stage_date": str(previous_stage_date)[:10],
+                }
+            entry_signals.append({
+                "date": reference_market_date,
+                "pattern_a_stage": current_stage,
+                "previous_pattern_a_stage": previous_stage,
+                "source_entry_execution_date": None,
+                "source_entry_open": None,
+            })
 
         # Candidate rows already carry exact historic next-open dates/prices.
         # Cross-check the dates against the authoritative KRX calendar, then
@@ -709,6 +1002,17 @@ def build_b_select_status(
             normal_dates = [
                 day for day, state in sorted(state_by_date.items())
                 if day > signal_day and state == "NORMAL"
+            ]
+            if normal_dates:
+                exit_day = next_exact_session(normal_dates[0], trading_dates)
+                if exit_day and exit_day <= reference_market_date:
+                    required_open_dates.add(exit_day)
+
+        if initial_position and not (initial_pending and initial_pending.get("kind") == "EXIT"):
+            prior_ref = str(prior_status["reference_market_date"])[:10]
+            normal_dates = [
+                day for day, state in sorted(state_by_date.items())
+                if day > prior_ref and state == "NORMAL"
             ]
             if normal_dates:
                 exit_day = next_exact_session(normal_dates[0], trading_dates)
@@ -766,6 +1070,7 @@ def build_b_select_status(
                 )
             except BSelectLifecycleError as exc:
                 lifecycle_errors += 1
+                lifecycle_error_details.append(f"{ticker}:{exc}")
                 data_status = "CHECK_REQUIRED"
                 action = "NONE"
                 strategy_state = "CHECK_REQUIRED"
@@ -796,6 +1101,9 @@ def build_b_select_status(
                     return_pct = (close / float(position["entry_open"]) - 1.0) * 100.0 if close is not None else None
                     if close is None:
                         lifecycle_errors += 1
+                        lifecycle_error_details.append(
+                            f"{ticker}:LATEST_EXACT_CLOSE_UNAVAILABLE_FOR_OPEN_POSITION"
+                        )
                         data_status = "CHECK_REQUIRED"
                         action = "NONE"
                         strategy_state = "CHECK_REQUIRED"
@@ -836,8 +1144,9 @@ def build_b_select_status(
                     initial_pending=initial_pending,
                     initial_trade_sequence=initial_trade_sequence,
                 )
-            except BSelectLifecycleError:
+            except BSelectLifecycleError as exc:
                 lifecycle_errors += 1
+                lifecycle_error_details.append(f"{ticker}:HISTORY:{exc}")
                 history_lifecycle = None
 
         prior_history = (prior_item or {}).get("trade_history") or []
@@ -869,25 +1178,30 @@ def build_b_select_status(
             if not isinstance(current_trade, dict):
                 raise BSelectStatusError(f"B_SELECT_OPEN_TRADE_MISSING_FOR_ENTRY_CONTEXT:{ticker}")
             entry_signal_date = str(current_trade.get("entry_signal_date") or "")[:10]
-            entry_context = _entry_pattern_a_context(
-                candidate_rows,
-                ticker=ticker,
-                isu_cd=identity["isu_cd"],
-                component_id=identity["component_id"],
-                entry_signal_date=entry_signal_date,
-            )
+            entry_context = entry_context_by_signal_date.get(entry_signal_date)
+            if entry_context is None:
+                entry_context = _entry_pattern_a_context(
+                    candidate_rows,
+                    ticker=ticker,
+                    isu_cd=identity["isu_cd"],
+                    component_id=identity["component_id"],
+                    entry_signal_date=entry_signal_date,
+                )
         elif action in {"ENTRY", "ENTER_NEXT_OPEN"} or (
             isinstance(pending_event, dict) and pending_event.get("kind") == "ENTRY"
         ):
             if not isinstance(pending_event, dict) or pending_event.get("kind") != "ENTRY":
                 raise BSelectStatusError(f"B_SELECT_PENDING_ENTRY_EVENT_MISSING:{ticker}")
-            entry_context = _entry_pattern_a_context(
-                candidate_rows,
-                ticker=ticker,
-                isu_cd=identity["isu_cd"],
-                component_id=identity["component_id"],
-                entry_signal_date=str(pending_event.get("signal_date") or "")[:10],
-            )
+            entry_signal_date = str(pending_event.get("signal_date") or "")[:10]
+            entry_context = entry_context_by_signal_date.get(entry_signal_date)
+            if entry_context is None:
+                entry_context = _entry_pattern_a_context(
+                    candidate_rows,
+                    ticker=ticker,
+                    isu_cd=identity["isu_cd"],
+                    component_id=identity["component_id"],
+                    entry_signal_date=entry_signal_date,
+                )
 
         item = {
             "ticker": ticker,
@@ -922,13 +1236,52 @@ def build_b_select_status(
     if any(item.get("asset_type") != ASSET_TYPE for item in out_items):
         cross_contamination_count += sum(item.get("asset_type") != ASSET_TYPE for item in out_items)
         raise BSelectStatusError("B_SELECT_ASSET_SCOPE_CONTAMINATION")
+    duplicate_execution_count = 0
+    duplicate_trade_history_row_count = 0
+    for item in out_items:
+        ticker = str(item.get("ticker", "")).zfill(6)
+        history_keys: set[tuple[Any, ...]] = set()
+        execution_keys: set[tuple[Any, ...]] = set()
+        for trade in item.get("trade_history", []):
+            if not isinstance(trade, dict):
+                continue
+            history_key = (
+                trade.get("trade_sequence"),
+                trade.get("entry_signal_date"),
+                trade.get("entry_execution_date"),
+                trade.get("exit_signal_date"),
+                trade.get("exit_execution_date"),
+                trade.get("trade_status"),
+            )
+            if history_key in history_keys:
+                duplicate_trade_history_row_count += 1
+            history_keys.add(history_key)
+            sequence = trade.get("trade_sequence")
+            for kind, date in (
+                ("ENTRY", trade.get("entry_execution_date")),
+                ("EXIT", trade.get("exit_execution_date")),
+            ):
+                if date is None:
+                    continue
+                execution_key = (sequence, kind, str(date)[:10])
+                if execution_key in execution_keys:
+                    duplicate_execution_count += 1
+                execution_keys.add(execution_key)
+    if duplicate_execution_count or duplicate_trade_history_row_count:
+        raise BSelectStatusError(
+            "B_SELECT_CATCHUP_DUPLICATE_LEDGER_ROWS:"
+            f"executions={duplicate_execution_count},history={duplicate_trade_history_row_count}"
+        )
+    if future_reference_count:
+        raise BSelectStatusError(f"B_SELECT_CATCHUP_FUTURE_REFERENCE_EVENTS:{future_reference_count}")
     counts = {key: 0 for key in ("entry", "hold", "exit", "watch", "unavailable")}
     for item in out_items:
         counts[item["bucket"]] += 1
     status = "PASS" if lifecycle_errors == 0 and date_mismatch_count == 0 and cross_contamination_count == 0 else "CHECK_REQUIRED"
     if status != "PASS":
         raise BSelectStatusError(
-            f"B_SELECT_CURRENT_STATUS_CHECK_REQUIRED:lifecycle={lifecycle_errors},dates={date_mismatch_count}"
+            f"B_SELECT_CURRENT_STATUS_CHECK_REQUIRED:lifecycle={lifecycle_errors},dates={date_mismatch_count},"
+            f"details={'|'.join(lifecycle_error_details[:5])}"
         )
     return {
         "schema_version": 1,
@@ -957,12 +1310,39 @@ def build_b_select_status(
         "future_reference_count": future_reference_count,
         "duplicate_item_count": duplicate_item_count,
         "cross_strategy_contamination_count": cross_contamination_count,
+        "catchup_audit": {
+            "prior_artifact_path": prior_artifact_path,
+            "prior_reference_market_date": (
+                str(prior_status.get("reference_market_date"))[:10] if prior_status else None
+            ),
+            "catchup_from": (
+                str(prior_status.get("reference_market_date"))[:10] if prior_status else None
+            ),
+            "catchup_to": reference_market_date if prior_status else None,
+            "catchup_session_count": len(catchup_session_dates),
+            "catchup_session_dates": catchup_session_dates,
+            "catchup_identity_count": catchup_identity_count,
+            "catchup_session_replay_count": catchup_identity_count * len(catchup_session_dates),
+            "catchup_intermediate_observation_count": catchup_observation_count,
+            "skipped_krx_session_count": 0,
+            "future_reference_count": future_reference_count,
+            "duplicate_execution_count": duplicate_execution_count,
+            "duplicate_trade_history_row_count": duplicate_trade_history_row_count,
+            "exact_open_missing_count": exact_open_missing_count,
+            "lifecycle_error_count": lifecycle_errors,
+            "date_mismatch_count": date_mismatch_count,
+        },
+        "catchup_entry_pattern_a_authorities": [
+            catchup_entry_stage_authorities[key]
+            for key in sorted(catchup_entry_stage_authorities)
+        ],
         "calendar_authority": _calendar_authority_payload(calendar_provenance),
         "source_authorities": {
             "pattern_b_monthly_states": str(MONTHLY_SAMPLE_REL),
             "pattern_a_stage_history": str(STAGE_HISTORY_REL),
             "current_status_source": "PUBLISHED_COMMON_STOCK_REPORTS",
-            "lifecycle_mode": "PER_IDENTITY_CURRENT_STATE_REPLAY",
+            "catchup_status_source": "REPOSITORY_V2_EXACT_SESSION_EVALUATORS",
+            "lifecycle_mode": "PER_SESSION_EXACT_CATCHUP_REPLAY",
         },
     }
 

@@ -1024,10 +1024,46 @@ class DailyUpdateFoundation:
                     "pit_authority": {"status": "UNCHANGED"},
                 },
             )
+            if target > manifest.certified_through:
+                # The requested target can be a non-trading day beyond the last
+                # observed calendar date.  The plan and terminal-coverage checks
+                # above establish that every required market session through the
+                # target is already covered, so advance certification metadata
+                # without rewriting price data or merged PIT/calendar artifacts.
+                old_boundary = manifest.certified_through
+                certified_boundaries = {
+                    leg: max(str(boundary), target)
+                    for leg, boundary in manifest.leg_boundaries.items()
+                }
+                new_certified = min(certified_boundaries.values())
+                promoted_manifest = replace(
+                    manifest,
+                    certified_through=new_certified,
+                    leg_boundaries=certified_boundaries,
+                    previous_boundary=old_boundary,
+                ).with_digest()
+                validate_merged_authority_coherence(promoted_manifest, self.authority_dir)
+                write_rolling_authority(promoted_manifest, self.authority_dir)
+                validate_merged_authority_coherence(
+                    load_rolling_authority(self.authority_dir), self.authority_dir
+                )
+                return {
+                    **plan,
+                    "final_status": "PASS",
+                    "status": "CERTIFICATION_ONLY_PROMOTED",
+                    "certified_through": new_certified,
+                    "previous_boundary": old_boundary,
+                    "leg_boundaries": certified_boundaries,
+                    "network_request_count": 0,
+                    "production_write_count": 0,
+                    "production_write_performed": False,
+                    "authority_promotion": 1,
+                }
             return {
                 **plan,
                 "final_status": "NOOP",
                 "status": "NOOP_ALREADY_COMPLETE",
+                "certified_through": manifest.certified_through,
                 "network_request_count": 0,
                 "production_write_count": 0,
                 "production_write_performed": False,
@@ -1048,6 +1084,13 @@ class DailyUpdateFoundation:
                 leg_results["common_raw"],
                 required_dates,
             )
+            # Raw rows end on observed trading dates, while this boundary records
+            # verified coverage through the requested target (including weekends
+            # and finalized no-data dates).
+            leg_results["common_raw"] = {
+                **dict(leg_results["common_raw"]),
+                "new_boundary": target,
+            }
             operating_dates = sorted(
                 set(_calendar_dates(self.authority_dir, target))
                 | set(day for day in _paired_complete_dates(self.raw_store, target) if day > plan["operating_calendar_frontier"])

@@ -22,6 +22,59 @@ def test_calendar_authority_payload_fails_closed_when_provenance_is_missing():
         status_builder._calendar_authority_payload({"calendar_frontier": "2026-09-23"})
 
 
+def test_catchup_session_dates_preserve_existing_one_session_path():
+    calendar = ["2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02"]
+    assert status_builder._catchup_session_dates("2026-09-30", "2026-10-01", calendar) == ["2026-10-01"]
+
+
+def test_catchup_session_dates_enumerate_every_missing_krx_session():
+    calendar = ["2026-09-23", "2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02"]
+    assert status_builder._catchup_session_dates("2026-09-23", "2026-10-02", calendar) == [
+        "2026-09-28",
+        "2026-09-29",
+        "2026-09-30",
+        "2026-10-01",
+        "2026-10-02",
+    ]
+
+
+def test_catchup_session_dates_fail_closed_for_missing_or_reversed_authority():
+    calendar = ["2026-09-28", "2026-09-29", "2026-09-30"]
+    with pytest.raises(ValueError, match="not an exact KRX session"):
+        status_builder._catchup_session_dates("2026-09-27", "2026-09-30", calendar)
+    with pytest.raises(ValueError, match="must follow"):
+        status_builder._catchup_session_dates("2026-09-30", "2026-09-29", calendar)
+
+
+def test_exact_daily_stage_replaces_only_unavailable_same_day_monthly_observation():
+    history = [
+        {"as_of": "2026-08-31", "stage": "TRANSITION", "data_available": True},
+        {
+            "as_of": "2026-09-30",
+            "stage": "UNAVAILABLE",
+            "data_available": False,
+            "reason": "NO_EXACT_MARKET_MONTH_END_OBSERVATION",
+        },
+    ]
+    assert status_builder._history_before_exact_stage(
+        history,
+        day="2026-09-30",
+        current_stage="PROGRESSED",
+        ticker="017650",
+    ) == history[:1]
+
+
+def test_exact_daily_stage_fails_closed_on_available_same_day_monthly_mismatch():
+    history = [{"as_of": "2026-09-30", "stage": "TRANSITION", "data_available": True}]
+    with pytest.raises(status_builder.BSelectStatusError, match="SAME_DAY_STAGE_MISMATCH"):
+        status_builder._history_before_exact_stage(
+            history,
+            day="2026-09-30",
+            current_stage="PROGRESSED",
+            ticker="017650",
+        )
+
+
 def test_status_builder_rejects_report_date_mismatch(tmp_path: Path):
     index_path = tmp_path / "stock-index.json"
     index_path.write_text(

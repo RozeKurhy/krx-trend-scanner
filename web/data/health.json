@@ -1,26 +1,26 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-01T01:25:57.523353Z",
-  "requested_as_of": "2026-09-25",
-  "reference_market_date": "2026-09-23",
+  "generated_at": "2026-10-03T11:03:05.388641Z",
+  "requested_as_of": "2026-10-03",
+  "reference_market_date": "2026-10-02",
   "overall_status": "NORMAL",
   "market_data": {
     "status": "NORMAL",
-    "latest_trading_date": "2026-09-23",
-    "certified_through": "2026-09-25",
+    "latest_trading_date": "2026-10-02",
+    "certified_through": "2026-10-03",
     "authority_version": "ROLLING_MARKET_DATA_V01",
     "source": {
       "path": "data/market/rolling_authority/manifest.json",
-      "as_of": "2026-09-23",
+      "as_of": "2026-10-02",
       "generated_at": "2026-09-14T01:20:32.586563+00:00"
     }
   },
   "universe": {
     "status": "NORMAL",
-    "count": 4305,
-    "snapshot_date": "2026-09-23",
+    "count": 4308,
+    "snapshot_date": "2026-10-02",
     "asset_type_counts": {
-      "COMMON": 2545,
+      "COMMON": 2548,
       "ETF": 1167,
       "ETN": 375,
       "PREFERRED": 101,
@@ -30,46 +30,46 @@
     },
     "source": {
       "path": "data/reference/krx_instrument_metadata.parquet",
-      "as_of": "2026-09-23"
+      "as_of": "2026-10-02"
     }
   },
   "fundamentals": {
     "status": "NORMAL",
     "run_status": "COMPLETE",
-    "requested_as_of": "2026-09-25",
-    "completed": 4305,
-    "total": 4305,
+    "requested_as_of": "2026-10-03",
+    "completed": 4308,
+    "total": 4308,
     "remaining": 0,
     "percentage": 100.0,
     "terminal_status_counts": {
-      "DATA_UNAVAILABLE": 307,
-      "FILTERED_ANNUAL_REVENUE": 555,
-      "FILTERED_NET_LOSS": 162,
-      "FILTERED_OPERATING_LOSS": 350,
+      "DATA_UNAVAILABLE": 269,
+      "FILTERED_ANNUAL_REVENUE": 573,
+      "FILTERED_NET_LOSS": 165,
+      "FILTERED_OPERATING_LOSS": 361,
       "FILTERED_QUARTERLY_REVENUE": 7,
       "NOT_APPLICABLE": 1827,
-      "PASS": 1097
+      "PASS": 1106
     },
     "data_status_counts": {
-      "DATA_UNAVAILABLE": 307,
+      "DATA_UNAVAILABLE": 269,
       "NOT_APPLICABLE": 1827,
-      "PARTIAL": 2171
+      "PARTIAL": 2212
     },
     "output_integrity": {
-      "valid_output_count": 4305,
+      "valid_output_count": 4308,
       "invalid_output_count": 0,
       "outside_universe_count": 0,
       "duplicate_payload_count": 0
     },
     "source": {
-      "production_directory": "artifacts/fundamentals/production/20260925",
+      "production_directory": "artifacts/fundamentals/production/20261003",
       "manifest": {
-        "path": "artifacts/fundamentals/production/20260925/manifest.json",
-        "as_of": "2026-09-25"
+        "path": "artifacts/fundamentals/production/20261003/manifest.json",
+        "as_of": "2026-10-03"
       },
       "outputs": {
-        "path": "artifacts/fundamentals/production/20260925/tickers",
-        "as_of": "2026-09-25"
+        "path": "artifacts/fundamentals/production/20261003/tickers",
+        "as_of": "2026-10-03"
       }
     }
   },
@@ -77,24 +77,24 @@
     "status": "NORMAL",
     "reason": "Stock Report v0.7 and Web Fundamentals artifacts are complete.",
     "source": {
-      "path": "artifacts/fundamentals/production/20260925/manifest.json",
-      "as_of": "2026-09-25"
+      "path": "artifacts/fundamentals/production/20261003/manifest.json",
+      "as_of": "2026-10-03"
     },
-    "existing_artifact_count": 1451,
+    "existing_artifact_count": 1459,
     "artifact_source": {
-      "path": "artifacts/reporting/stock_reports/20260925",
-      "as_of": "2026-09-25"
+      "path": "artifacts/reporting/stock_reports/20261003",
+      "as_of": "2026-10-03"
     },
     "report_version": "0.7",
     "ready": true,
-    "source_json_count": 1451,
-    "source_markdown_count": 1451,
+    "source_json_count": 1459,
+    "source_markdown_count": 1459,
     "v05_count": 0,
-    "v07_count": 1451,
+    "v07_count": 1459,
     "schema_errors": 0,
-    "fundamentals_integrated_count": 1451,
-    "web_compact_count": 1451,
-    "web_fundamentals_integrated_count": 1451,
-    "web_index_available_report_count": 1451
+    "fundamentals_integrated_count": 1459,
+    "web_compact_count": 1459,
+    "web_fundamentals_integrated_count": 1459,
+    "web_index_available_report_count": 1459
   }
 }

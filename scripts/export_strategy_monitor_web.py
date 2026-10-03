@@ -80,9 +80,75 @@ def _read_entry_stage_authority(repo_root: Path) -> dict[tuple[str, str, str, st
     return authority
 
 
+def _read_catchup_entry_stage_authority(
+    b_select_status: dict[str, Any],
+) -> dict[tuple[str, str, str, str], dict[str, str]]:
+    """Read exact-session Pattern A lineage emitted by the B Select replay."""
+    audit = b_select_status.get("catchup_audit") or {}
+    if not isinstance(audit, dict):
+        raise ValueError("B Select catch-up audit is invalid")
+    session_dates = audit.get("catchup_session_dates") or []
+    if not isinstance(session_dates, list):
+        raise ValueError("B Select catch-up session dates are invalid")
+    if (
+        int(audit.get("catchup_session_count", len(session_dates))) != len(session_dates)
+        or int(audit.get("skipped_krx_session_count", 0)) != 0
+        or session_dates != sorted(set(session_dates))
+    ):
+        raise ValueError("B Select catch-up session audit is inconsistent")
+
+    rows = b_select_status.get("catchup_entry_pattern_a_authorities") or []
+    if not isinstance(rows, list):
+        raise ValueError("B Select catch-up entry Pattern A authority is invalid")
+    authority: dict[tuple[str, str, str, str], dict[str, str]] = {}
+    for raw in rows:
+        if not isinstance(raw, dict):
+            raise ValueError("B Select catch-up entry Pattern A authority row is invalid")
+        row = {key: str(raw.get(key) or "").strip() for key in (
+            "ticker",
+            "isu_cd",
+            "component_id",
+            "entry_signal_date",
+            "entry_pattern_a_stage_recomputed",
+            "previous_pattern_a_stage",
+            "previous_pattern_a_stage_date",
+            "source",
+        )}
+        row["ticker"] = row["ticker"].zfill(6)
+        row["isu_cd"] = row["isu_cd"].upper()
+        row["entry_signal_date"] = row["entry_signal_date"][:10]
+        row["entry_pattern_a_stage_recomputed"] = row["entry_pattern_a_stage_recomputed"].upper()
+        row["previous_pattern_a_stage"] = row["previous_pattern_a_stage"].upper()
+        row["previous_pattern_a_stage_date"] = row["previous_pattern_a_stage_date"][:10]
+        key = (
+            row["ticker"],
+            row["isu_cd"],
+            row["component_id"],
+            row["entry_signal_date"],
+        )
+        if (
+            not row["isu_cd"]
+            or not row["component_id"]
+            or row["entry_signal_date"] not in session_dates
+            or row["entry_pattern_a_stage_recomputed"] != "PROGRESSED"
+            or row["previous_pattern_a_stage"] not in ALLOWED_ENTRY_PREVIOUS_STAGES
+            or not row["previous_pattern_a_stage_date"]
+            or row["previous_pattern_a_stage_date"] > row["entry_signal_date"]
+            or row["source"] != "REPOSITORY_V2_EXACT_SESSION_EVALUATORS"
+            or key in authority
+        ):
+            raise ValueError(
+                f"B Select catch-up entry Pattern A authority is inconsistent: {key[0]} {key[3]}"
+            )
+        authority[key] = row
+    return authority
+
+
 def _validate_b_select_entry_contexts(
     items: list[dict[str, Any]],
     authority: dict[tuple[str, str, str, str], list[dict[str, str]]],
+    *,
+    catchup_authority: dict[tuple[str, str, str, str], dict[str, str]] | None = None,
 ) -> None:
     fields = (
         "entry_pattern_a_stage",
@@ -119,16 +185,31 @@ def _validate_b_select_entry_contexts(
             entry_signal_date,
         )
         matches = authority.get(key, [])
-        if len(matches) != 1:
+        catchup_source = (catchup_authority or {}).get(key)
+        if len(matches) > 1 or (len(matches) == 0 and catchup_source is None):
             raise ValueError(
                 f"B Select entry Pattern A authority match count is not one: {key[0]} {entry_signal_date}"
             )
-        source = matches[0]
+        source = matches[0] if matches else catchup_source
+        if source is None:
+            raise ValueError(
+                f"B Select entry Pattern A authority match count is not one: {key[0]} {entry_signal_date}"
+            )
         expected = {
             "entry_pattern_a_stage": str(source.get("entry_pattern_a_stage_recomputed", "")).strip().upper(),
             "entry_previous_pattern_a_stage": str(source.get("previous_pattern_a_stage", "")).strip().upper(),
             "entry_previous_pattern_a_stage_date": str(source.get("previous_pattern_a_stage_date", ""))[:10],
         }
+        if catchup_source is not None:
+            catchup_expected = {
+                "entry_pattern_a_stage": catchup_source["entry_pattern_a_stage_recomputed"],
+                "entry_previous_pattern_a_stage": catchup_source["previous_pattern_a_stage"],
+                "entry_previous_pattern_a_stage_date": catchup_source["previous_pattern_a_stage_date"],
+            }
+            if expected != catchup_expected:
+                raise ValueError(
+                    f"B Select entry Pattern A exact catch-up authority mismatch: {key[0]} {entry_signal_date}"
+                )
         if (
             expected["entry_pattern_a_stage"] != "PROGRESSED"
             or expected["entry_previous_pattern_a_stage"] not in ALLOWED_ENTRY_PREVIOUS_STAGES
@@ -423,7 +504,11 @@ def build_strategy_monitor(
     common_tickers = {item["ticker"] for item in common_items}
     if {str(item.get("ticker", "")).zfill(6) for item in b_items} != common_tickers:
         raise ValueError("B Select current status COMMON scope does not match published reports")
-    _validate_b_select_entry_contexts(b_items, _read_entry_stage_authority(repo_root))
+    _validate_b_select_entry_contexts(
+        b_items,
+        _read_entry_stage_authority(repo_root),
+        catchup_authority=_read_catchup_entry_stage_authority(b_select_status),
+    )
     b_counts = b_select_status.get("counts") or {}
     expected_bucket_counts = {"entry": 0, "hold": 0, "exit": 0, "watch": 0, "unavailable": 0}
     for item in b_items:

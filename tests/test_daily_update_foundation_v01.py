@@ -345,13 +345,16 @@ def test_tail_incremental_and_middle_gap_are_required_minus_complete(tmp_path):
     assert common_raw.calls[0][2] == ["2026-08-01", "2026-08-02", "2026-08-03"]
 
 
-def test_sunday_target_is_noop_with_zero_network_write_and_promotion(tmp_path):
+def test_sunday_target_is_certification_only_promoted_without_data_write(tmp_path):
     foundation, _raw, _authority, common_raw, etf_raw, common_adjusted, etf_adjusted = _foundation(
         tmp_path, calendar=["2026-08-21"], complete=["2026-08-21"], certified="2026-08-21"
     )
     result = foundation.execute("2026-08-23", dry_run=False)
-    assert result["final_status"] == "NOOP"
-    assert result["network_request_count"] == result["production_write_count"] == result["authority_promotion"] == 0
+    assert result["final_status"] == "PASS"
+    assert result["status"] == "CERTIFICATION_ONLY_PROMOTED"
+    assert result["certified_through"] == "2026-08-23"
+    assert result["network_request_count"] == result["production_write_count"] == 0
+    assert result["authority_promotion"] == 1
     assert not common_raw.calls and not etf_raw.calls and not common_adjusted.calls and not etf_adjusted.calls
 
 
@@ -387,9 +390,9 @@ def test_pit_extension_is_staged_and_promoted_only_after_validation(tmp_path):
 
 
 def test_nontrading_target_promotes_actual_market_frontier_and_second_run_is_noop(tmp_path):
-    target = "2026-09-25"
-    actual_dates = ["2026-09-21", "2026-09-22", "2026-09-23"]
-    no_data_dates = {"2026-09-24", target}
+    target = "2026-09-26"
+    actual_dates = ["2026-09-21", "2026-09-22", "2026-09-23", "2026-09-24", "2026-09-25"]
+    no_data_dates: set[str] = set()
     authority = _authority(tmp_path, [actual_dates[0]], certified=actual_dates[0])
 
     class FinalizedRawStore(FakeRawStore):
@@ -416,7 +419,7 @@ def test_nontrading_target_promotes_actual_market_frontier_and_second_run_is_noo
                 "runner_result": {"status": "IDEMPOTENT_NOOP", "krx_open_api_attempt_count": 0},
                 "required_dates": list(required_dates),
                 "missing_dates": [],
-                "new_boundary": requested,
+                "new_boundary": max(required_dates, default=boundary),
             }
 
     class ExtensionAwareAdjusted:
@@ -490,6 +493,7 @@ def test_nontrading_target_promotes_actual_market_frontier_and_second_run_is_noo
     assert result["market_authority_as_of"] == actual_dates[-1]
     assert result["certified_through"] == target
     assert result["authority_promotion"] == 1
+    assert result["leg_results"]["common_raw"]["new_boundary"] == target
     assert result["leg_results"]["common_raw"]["missing_dates"] == []
     assert result["leg_results"]["common_adjusted"]["market_authority_as_of"] == actual_dates[-1]
     assert result["leg_results"]["common_adjusted"]["new_boundary"] == target
@@ -508,6 +512,75 @@ def test_nontrading_target_promotes_actual_market_frontier_and_second_run_is_noo
     assert second["status"] == "NOOP_ALREADY_COMPLETE"
     assert second["authority_promotion"] == 0
     assert len(common_adjusted.calls) == 1
+
+
+def test_nontrading_target_certification_only_promotes_without_data_rewrite(tmp_path):
+    target = "2026-09-26"
+    foundation, raw, authority, common_raw, etf_raw, common_adjusted, etf_adjusted = _foundation(
+        tmp_path,
+        calendar=["2026-09-25"],
+        complete=["2026-09-25"],
+        certified="2026-09-25",
+    )
+    manifest_path = authority / "manifest.json"
+    manifest_before = json.loads(manifest_path.read_text())
+    pit_before = (authority / "merged_pit_intervals.json").read_bytes()
+    calendar_before = (authority / "merged_trading_calendar.json").read_bytes()
+
+    result = foundation.execute(target, dry_run=False)
+
+    manifest_after = json.loads(manifest_path.read_text())
+    assert result["final_status"] == "PASS"
+    assert result["status"] == "CERTIFICATION_ONLY_PROMOTED"
+    assert result["previous_boundary"] == "2026-09-25"
+    assert result["certified_through"] == target
+    assert result["leg_boundaries"] == {
+        "common_raw": target,
+        "common_adjusted": target,
+        "etf_raw": target,
+        "etf_adjusted": target,
+    }
+    assert result["network_request_count"] == 0
+    assert result["production_write_count"] == 0
+    assert result["authority_promotion"] == 1
+    assert manifest_after["certified_through"] == target
+    assert manifest_after["previous_boundary"] == "2026-09-25"
+    assert manifest_after["merged_calendar_digest"] == manifest_before["merged_calendar_digest"]
+    assert manifest_after["merged_pit_digest"] == manifest_before["merged_pit_digest"]
+    assert manifest_after["merged_calendar_frontier"] == "2026-09-25"
+    assert manifest_after["merged_pit_frontier"] == "2026-09-25"
+    assert (authority / "merged_pit_intervals.json").read_bytes() == pit_before
+    assert (authority / "merged_trading_calendar.json").read_bytes() == calendar_before
+    assert not common_raw.calls and not etf_raw.calls
+    assert not common_adjusted.calls and not etf_adjusted.calls
+    assert raw.get_manifest("KOSPI", target) is None
+    assert raw.get_manifest("KOSDAQ", target) is None
+    assert raw.get_manifest("ETF", target) is None
+
+    second = foundation.execute(target, dry_run=False)
+    assert second["status"] == "NOOP_ALREADY_COMPLETE"
+    assert second["certified_through"] == target
+    assert second["authority_promotion"] == 0
+
+
+def test_unverified_required_session_does_not_certify_nontrading_boundary(tmp_path):
+    foundation, _raw, authority, *_ = _foundation(
+        tmp_path,
+        calendar=["2026-08-21"],
+        complete=["2026-08-21"],
+        certified="2026-08-21",
+    )
+    foundation.common_raw_updater = FakeCommonRaw(foundation.raw_store, fail=True)
+    before = (authority / "manifest.json").read_bytes()
+
+    plan = foundation.plan("2026-08-24")
+    result = foundation.execute("2026-08-24", dry_run=False)
+
+    assert plan["common_raw"]["missing_dates"] == ["2026-08-24"]
+    assert result["final_status"] == "FAILED"
+    assert result["certified_through"] == "2026-08-21"
+    assert result["authority_promotion"] == 0
+    assert (authority / "manifest.json").read_bytes() == before
 
 
 def test_insufficient_pit_authority_blocks_without_current_universe_fallback(tmp_path):

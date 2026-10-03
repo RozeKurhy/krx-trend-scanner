@@ -92,6 +92,32 @@ def _report_tickers(index: dict[str, Any]) -> set[str]:
     }
 
 
+def _b_select_monitor_items_match_status(
+    monitor_items: Any,
+    status_items: Any,
+) -> bool:
+    """Compare the B Select display projection with its status source.
+
+    The monitor deliberately omits per-item trade history and adds the
+    display-only fundamental status. All remaining fields must match exactly.
+    """
+    if not isinstance(monitor_items, list) or not isinstance(status_items, list):
+        return False
+    monitor_projection = [
+        {key: value for key, value in item.items() if key != "fundamental_status"}
+        for item in monitor_items
+        if isinstance(item, dict)
+    ]
+    status_projection = [
+        {key: value for key, value in item.items() if key != "trade_history"}
+        for item in status_items
+        if isinstance(item, dict)
+    ]
+    if len(monitor_projection) != len(monitor_items) or len(status_projection) != len(status_items):
+        return False
+    return monitor_projection == status_projection
+
+
 _STALE_PUBLISHED_CODES = frozenset(
     {
         "PHASE4D_STOCK_DATE_MISMATCH",
@@ -400,7 +426,7 @@ def validate_staging(
         or b_status.get("count") != len(common_tickers)
         or len(b_status.get("items", [])) != len(common_tickers)
         or {str(item.get("ticker", "")).zfill(6) for item in b_status.get("items", [])} != common_tickers
-        or b_items != b_status.get("items")
+        or not _b_select_monitor_items_match_status(b_items, b_status.get("items"))
         or strategy_by_id[B_SELECT_ID].get("counts") != b_status.get("counts")
     ):
         raise Phase4DError("PHASE4D_B_SELECT_STATUS_INVALID")

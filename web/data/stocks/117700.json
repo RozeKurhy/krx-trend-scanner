@@ -1,1 +1,537 @@
-{"schema_version":1,"identity":{"ticker":"117700","name":"KODEX 건설","market":"KOSPI","asset_type":"ETF"},"availability":{"report_available":true,"report_status":"PARTIAL"},"decision":{"action":"WAIT","strategy_state":"WAIT","canonical_position":"FLAT","action_reason":"NO_OPEN_POSITION","is_investable":false},"summary":{"trend_stage":"PROGRESSED","flow_state":"FLOW_UNAVAILABLE"},"price_trend":{"latest_close":6960.0,"latest_close_as_of":"2026-09-23","price_status":"AVAILABLE","price_source":"data/market/adjusted/stocks/117700.parquet","score_trend":{"current_score":0.0,"score_1m_ago":0.0,"score_3m_ago":0.0,"score_6m_ago":58.44,"score_12m_ago":89.54,"change_1m":0.0,"change_3m":0.0,"change_6m":-58.44,"change_12m":-89.54},"trading_value_state":"TRADING_VALUE_EXPANDING","trading_value_explanation":"최근 거래대금이 지속 확대되는 흐름입니다. 5일 평균 거래대금(237.59억원)은 20일 평균의 약 1.20배이며 60일 평균(149.81억원)을 상회하고 있습니다.","avg_trading_value_1d_eok":220.34,"avg_trading_value_5d_eok":237.59,"avg_trading_value_10d_eok":205.66,"avg_trading_value_20d_eok":197.6,"avg_trading_value_60d_eok":149.81},"pattern":{"official_stage":"PROGRESSED","candidate_state":"late","score":0.0,"history_12m":[{"as_of":"2025-08-29","close":4050.0,"score":89.54,"stage":"EARLY_TREND","candidate_state":"candidate","data_available":true},{"as_of":"2025-09-30","close":3810.0,"score":75.08,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-10-31","close":4080.0,"score":81.58,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-11-28","close":3900.0,"score":82.37,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-12-30","close":4115.0,"score":92.81,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2026-01-30","close":5200.0,"score":94.3,"stage":"EARLY_TREND","candidate_state":"candidate","data_available":true},{"as_of":"2026-02-27","close":6955.0,"score":58.44,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-03-31","close":6705.0,"score":47.03,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-04-30","close":9330.0,"score":0.0,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-05-29","close":8010.0,"score":0.0,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-06-30","close":6550.0,"score":0.0,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-07-31","close":5575.0,"score":0.0,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-08-31","close":6895.0,"score":0.0,"stage":"PROGRESSED","candidate_state":"late","data_available":true}],"history_24m":[{"as_of":"2024-08-30","close":3335.0,"score":89.42,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2024-09-30","close":3085.0,"score":90.12,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2024-10-31","close":2895.0,"score":76.43,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2024-11-29","close":2940.0,"score":73.01,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2024-12-30","close":2755.0,"score":68.95,"stage":"WEAK","candidate_state":"blocked","data_available":true},{"as_of":"2025-01-31","close":2985.0,"score":66.77,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-02-28","close":3045.0,"score":68.37,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-03-31","close":3090.0,"score":65.49,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-04-30","close":3290.0,"score":63.6,"stage":"BASE","candidate_state":"watch","data_available":true},{"as_of":"2025-05-30","close":3865.0,"score":66.83,"stage":"EARLY_TREND","candidate_state":"candidate","data_available":true},{"as_of":"2025-06-30","close":4380.0,"score":86.67,"stage":"EARLY_TREND","candidate_state":"candidate","data_available":true},{"as_of":"2025-07-31","close":4220.0,"score":91.19,"stage":"EARLY_TREND","candidate_state":"candidate","data_available":true},{"as_of":"2025-08-29","close":4050.0,"score":89.54,"stage":"EARLY_TREND","candidate_state":"candidate","data_available":true},{"as_of":"2025-09-30","close":3810.0,"score":75.08,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-10-31","close":4080.0,"score":81.58,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-11-28","close":3900.0,"score":82.37,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2025-12-30","close":4115.0,"score":92.81,"stage":"TRANSITION","candidate_state":"candidate","data_available":true},{"as_of":"2026-01-30","close":5200.0,"score":94.3,"stage":"EARLY_TREND","candidate_state":"candidate","data_available":true},{"as_of":"2026-02-27","close":6955.0,"score":58.44,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-03-31","close":6705.0,"score":47.03,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-04-30","close":9330.0,"score":0.0,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-05-29","close":8010.0,"score":0.0,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-06-30","close":6550.0,"score":0.0,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-07-31","close":5575.0,"score":0.0,"stage":"PROGRESSED","candidate_state":"late","data_available":true},{"as_of":"2026-08-31","close":6895.0,"score":0.0,"stage":"PROGRESSED","candidate_state":"late","data_available":true}]},"pattern_b":null,"market_strength":{"applicability":"NOT_APPLICABLE","data_status":"NOT_EVALUATED","benchmark_name":null,"benchmark_last_observation_date":null,"stock_return_2w":null,"stock_return_1m":null,"stock_return_3m":null,"stock_return_6m":null,"stock_return_12m":null,"market_rs_2w":null,"market_rs_1m":null,"market_rs_3m":null,"market_rs_6m":null,"market_rs_12m":null,"percentile_2w":null,"percentile_1m":null,"percentile_3m":null,"percentile_6m":null,"percentile_12m":null,"explanation":"Phase12 Market RS는 KOSPI/KOSDAQ 보통주(COMMON)를 대상으로 정의되어 이 종목에는 적용되지 않습니다."},"flow":{"data_status":"DATA_UNAVAILABLE","state":"FLOW_UNAVAILABLE","net_buy_value_1d_krw":null,"net_buy_value_5d_krw":null,"net_buy_value_10d_krw":null,"net_buy_value_20d_krw":null,"net_buy_value_60d_krw":null,"intensity_1d":null,"intensity_5d":null,"intensity_10d":null,"intensity_20d":null,"intensity_60d":null,"positive_days_1d":null,"positive_days_5d":null,"positive_days_10d":null,"positive_days_20d":null,"positive_days_60d":null,"explanation":"외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다."},"fundamentals":{"status":"NOT_APPLICABLE","applicability":"NOT_APPLICABLE","reason":"ASSET_TYPE_NOT_APPLICABLE","requested_as_of":"2026-09-25","company_family":null,"currency":"KRW","filter_status":"NOT_APPLICABLE","filter_passed":false,"filter_reasons":[],"summary":{"latest_fy":null,"latest_quarter":null,"latest_fy_revenue_krw":null,"latest_4q_avg_revenue_krw":null,"ttm_revenue_krw":null,"ttm_operating_income_krw":null,"ttm_net_income_krw":null,"ttm_operating_cash_flow_krw":null,"ttm_operating_margin_pct":null,"ttm_net_margin_pct":null,"ttm_operating_cash_flow_margin_pct":null,"ttm_roe_pct":null,"latest_debt_ratio_pct":null,"filter_status":"DATA_UNAVAILABLE","filter_passed":false,"filter_reasons":[]},"quarterly":[],"annual":[]},"strategy":{"source":"official_strategy","id":"JULIA_ETF_STRATEGY_V01","strategy_id":"JULIA_ETF_STRATEGY_V01","strategy_name":"Julia V1","action":"WAIT","state":"WAIT","position":"FLAT","reason":"NO_OPEN_POSITION","action_reason":"NO_OPEN_POSITION","interpretation":"Julia V1의 현재 보유 포지션은 없어. 다음 진입은 완료된 주봉 신호와 exact KRX PIT·익일 시가 조건이 모두 확인돼야 해.","history":[{"trade_id":"117700_01","trade_sequence":1,"entry_signal_date":"2018-01-26","entry_execution_date":"2018-01-29","entry_open":3185.0,"entry_pattern_a_stage":"TRANSITION","exit_type":"EXIT4_SCORE_DRAWDOWN_GE_15","exit_signal_date":"2021-08-31","exit_execution_date":"2021-09-01","exit_price":3790.0,"trade_status":"REALIZED","return_pct":19.0,"lifecycle_class":"NORMAL_EARLY_TREND_HANDOFF"},{"trade_id":"117700_02","trade_sequence":2,"entry_signal_date":"2023-06-02","entry_execution_date":"2023-06-05","entry_open":3575.0,"entry_pattern_a_stage":"TRANSITION","exit_type":"EXIT4_SCORE_DRAWDOWN_GE_15","exit_signal_date":"2026-04-30","exit_execution_date":"2026-05-04","exit_price":9430.0,"trade_status":"REALIZED","return_pct":163.78,"lifecycle_class":"NORMAL_EARLY_TREND_HANDOFF"}],"eligibility":{"as_of":"2026-09-23","official_etf36_membership":true,"listing_date":"2009-10-30","listing_age_pass":true,"raw_close_krw":6960.0,"minimum_raw_close_krw":1000,"raw_close_pass":true,"avg_volume_20d_shares":2767166.4,"volume_window_sessions":20,"volume_window_start":"2026-08-27","volume_window_end":"2026-09-23","volume_window_includes_signal_date":true,"minimum_avg_volume_20d_shares":10000,"volume_pass":true,"eligibility_pass":true,"eligibility_contract":"ETF_PIT_LISTED_2Y_CLOSE_1000_VOL20_10000_V01","strategy_ready_date":"2017-01-06","clean_ready_date":"2017-01-06","effective_start_date":"2017-01-06","market_cap_applicability":"NOT_APPLICABLE_TO_JULIA_ETF_ELIGIBILITY","phase10_investability_applicability":"NOT_APPLICABLE"}},"technical_details":{"requested_as_of":"2026-09-25","reference_market_date":"2026-09-23","report_version":"0.6","report_status":"PARTIAL","asset_type":"ETF","investability_status":"NOT_APPLICABLE","investability_reason":"ETF_JULIA_USES_RAW_PIT_ELIGIBILITY_CONTRACT","pattern_stage":"PROGRESSED","pattern_score":0.0,"candidate_state":"late","flow_state":"FLOW_UNAVAILABLE","market_strength_applicability":"NOT_APPLICABLE","market_strength_status":"NOT_EVALUATED","relative_strength_status":"NOT_EVALUATED","trading_value_state":"TRADING_VALUE_EXPANDING","price_as_of":"2026-09-23","price_status":"AVAILABLE","price_source":"data/market/adjusted/stocks/117700.parquet","sector_name":null,"data_quality":{"cache_present":true,"cache_first_date":"2014-01-02","cache_last_date":"2026-09-23","daily_rows_count":3124,"completed_month_count":152,"quality_status":"OK","quality_flags":[]},"source_report":"artifacts/reporting/etf_stock_reports/20260925/json/117700_KODEX 건설.json"},"external_links":{"naver_finance":"https://finance.naver.com/item/main.naver?code=117700","naver_chart":"https://stock.naver.com/fchart/domestic/stock/117700"}}
+{
+  "schema_version": 1,
+  "identity": {
+    "ticker": "117700",
+    "name": "KODEX 건설",
+    "market": "KOSPI",
+    "asset_type": "ETF"
+  },
+  "availability": {
+    "report_available": true,
+    "report_status": "PARTIAL"
+  },
+  "decision": {
+    "action": "WAIT",
+    "strategy_state": "WAIT",
+    "canonical_position": "FLAT",
+    "action_reason": "NO_OPEN_POSITION",
+    "is_investable": false
+  },
+  "summary": {
+    "trend_stage": "PROGRESSED",
+    "flow_state": "FLOW_UNAVAILABLE"
+  },
+  "price_trend": {
+    "latest_close": 6705.0,
+    "latest_close_as_of": "2026-10-02",
+    "price_status": "AVAILABLE",
+    "price_source": "data/market/adjusted/stocks/117700.parquet",
+    "score_trend": {
+      "current_score": 3.41,
+      "score_1m_ago": 0.0,
+      "score_3m_ago": 0.0,
+      "score_6m_ago": 47.03,
+      "score_12m_ago": 75.08,
+      "change_1m": 3.41,
+      "change_3m": 3.41,
+      "change_6m": -43.62,
+      "change_12m": -71.67
+    },
+    "trading_value_state": "TRADING_VALUE_MIXED",
+    "trading_value_explanation": "최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 123.57억원, 20일: 188.07억원, 60일: 144.49억원)",
+    "avg_trading_value_1d_eok": 96.62,
+    "avg_trading_value_5d_eok": 123.57,
+    "avg_trading_value_10d_eok": 180.58,
+    "avg_trading_value_20d_eok": 188.07,
+    "avg_trading_value_60d_eok": 144.49
+  },
+  "pattern": {
+    "official_stage": "PROGRESSED",
+    "candidate_state": "late",
+    "score": 3.41,
+    "history_12m": [
+      {
+        "as_of": "2025-09-30",
+        "close": 3810.0,
+        "score": 75.08,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-10-31",
+        "close": 4080.0,
+        "score": 81.58,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-11-28",
+        "close": 3900.0,
+        "score": 82.37,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-12-30",
+        "close": 4115.0,
+        "score": 92.81,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-01-30",
+        "close": 5200.0,
+        "score": 94.3,
+        "stage": "EARLY_TREND",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-02-27",
+        "close": 6955.0,
+        "score": 58.44,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-03-31",
+        "close": 6705.0,
+        "score": 47.03,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-04-30",
+        "close": 9330.0,
+        "score": 0.0,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-05-29",
+        "close": 8010.0,
+        "score": 0.0,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-06-30",
+        "close": 6550.0,
+        "score": 0.0,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-07-31",
+        "close": 5575.0,
+        "score": 0.0,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-08-31",
+        "close": 6895.0,
+        "score": 0.0,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-09-30",
+        "close": 6790.0,
+        "score": 3.41,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      }
+    ],
+    "history_24m": [
+      {
+        "as_of": "2024-09-30",
+        "close": 3085.0,
+        "score": 90.12,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2024-10-31",
+        "close": 2895.0,
+        "score": 76.43,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2024-11-29",
+        "close": 2940.0,
+        "score": 73.01,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2024-12-30",
+        "close": 2755.0,
+        "score": 68.95,
+        "stage": "WEAK",
+        "candidate_state": "blocked",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-01-31",
+        "close": 2985.0,
+        "score": 66.77,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-02-28",
+        "close": 3045.0,
+        "score": 68.37,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-03-31",
+        "close": 3090.0,
+        "score": 65.49,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-04-30",
+        "close": 3290.0,
+        "score": 63.6,
+        "stage": "BASE",
+        "candidate_state": "watch",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-05-30",
+        "close": 3865.0,
+        "score": 66.83,
+        "stage": "EARLY_TREND",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-06-30",
+        "close": 4380.0,
+        "score": 86.67,
+        "stage": "EARLY_TREND",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-07-31",
+        "close": 4220.0,
+        "score": 91.19,
+        "stage": "EARLY_TREND",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-08-29",
+        "close": 4050.0,
+        "score": 89.54,
+        "stage": "EARLY_TREND",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-09-30",
+        "close": 3810.0,
+        "score": 75.08,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-10-31",
+        "close": 4080.0,
+        "score": 81.58,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-11-28",
+        "close": 3900.0,
+        "score": 82.37,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2025-12-30",
+        "close": 4115.0,
+        "score": 92.81,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-01-30",
+        "close": 5200.0,
+        "score": 94.3,
+        "stage": "EARLY_TREND",
+        "candidate_state": "candidate",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-02-27",
+        "close": 6955.0,
+        "score": 58.44,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-03-31",
+        "close": 6705.0,
+        "score": 47.03,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-04-30",
+        "close": 9330.0,
+        "score": 0.0,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-05-29",
+        "close": 8010.0,
+        "score": 0.0,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-06-30",
+        "close": 6550.0,
+        "score": 0.0,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-07-31",
+        "close": 5575.0,
+        "score": 0.0,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-08-31",
+        "close": 6895.0,
+        "score": 0.0,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      },
+      {
+        "as_of": "2026-09-30",
+        "close": 6790.0,
+        "score": 3.41,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
+      }
+    ]
+  },
+  "pattern_b": null,
+  "market_strength": {
+    "applicability": "NOT_APPLICABLE",
+    "data_status": "NOT_EVALUATED",
+    "benchmark_name": null,
+    "benchmark_last_observation_date": null,
+    "stock_return_2w": null,
+    "stock_return_1m": null,
+    "stock_return_3m": null,
+    "stock_return_6m": null,
+    "stock_return_12m": null,
+    "market_rs_2w": null,
+    "market_rs_1m": null,
+    "market_rs_3m": null,
+    "market_rs_6m": null,
+    "market_rs_12m": null,
+    "percentile_2w": null,
+    "percentile_1m": null,
+    "percentile_3m": null,
+    "percentile_6m": null,
+    "percentile_12m": null,
+    "explanation": "Phase12 Market RS는 KOSPI/KOSDAQ 보통주(COMMON)를 대상으로 정의되어 이 종목에는 적용되지 않습니다."
+  },
+  "flow": {
+    "data_status": "DATA_UNAVAILABLE",
+    "state": "FLOW_UNAVAILABLE",
+    "net_buy_value_1d_krw": null,
+    "net_buy_value_5d_krw": null,
+    "net_buy_value_10d_krw": null,
+    "net_buy_value_20d_krw": null,
+    "net_buy_value_60d_krw": null,
+    "intensity_1d": null,
+    "intensity_5d": null,
+    "intensity_10d": null,
+    "intensity_20d": null,
+    "intensity_60d": null,
+    "positive_days_1d": null,
+    "positive_days_5d": null,
+    "positive_days_10d": null,
+    "positive_days_20d": null,
+    "positive_days_60d": null,
+    "explanation": "외국인 수급 데이터가 준비되지 않아 수급 분석을 제공할 수 없습니다."
+  },
+  "fundamentals": {
+    "status": "NOT_APPLICABLE",
+    "applicability": "NOT_APPLICABLE",
+    "reason": "ASSET_TYPE_NOT_APPLICABLE",
+    "requested_as_of": "2026-10-03",
+    "company_family": null,
+    "currency": "KRW",
+    "filter_status": "NOT_APPLICABLE",
+    "filter_passed": false,
+    "filter_reasons": [],
+    "summary": {
+      "latest_fy": null,
+      "latest_quarter": null,
+      "latest_fy_revenue_krw": null,
+      "latest_4q_avg_revenue_krw": null,
+      "ttm_revenue_krw": null,
+      "ttm_operating_income_krw": null,
+      "ttm_net_income_krw": null,
+      "ttm_operating_cash_flow_krw": null,
+      "ttm_operating_margin_pct": null,
+      "ttm_net_margin_pct": null,
+      "ttm_operating_cash_flow_margin_pct": null,
+      "ttm_roe_pct": null,
+      "latest_debt_ratio_pct": null,
+      "filter_status": "DATA_UNAVAILABLE",
+      "filter_passed": false,
+      "filter_reasons": []
+    },
+    "quarterly": [],
+    "annual": []
+  },
+  "strategy": {
+    "source": "official_strategy",
+    "id": "JULIA_ETF_STRATEGY_V01",
+    "strategy_id": "JULIA_ETF_STRATEGY_V01",
+    "strategy_name": "Julia V1",
+    "action": "WAIT",
+    "state": "WAIT",
+    "position": "FLAT",
+    "reason": "NO_OPEN_POSITION",
+    "action_reason": "NO_OPEN_POSITION",
+    "interpretation": "Julia V1의 현재 보유 포지션은 없어. 다음 진입은 고정 ETF36 범위, 기존 가격·준비일 gate, 완료된 주봉 신호와 exact KRX 익일 시가 조건이 모두 확인돼야 해.",
+    "history": [
+      {
+        "trade_id": "117700_01",
+        "trade_sequence": 1,
+        "entry_signal_date": "2018-01-26",
+        "entry_execution_date": "2018-01-29",
+        "entry_open": 3185.0,
+        "entry_pattern_a_stage": "TRANSITION",
+        "exit_type": "EXIT4_SCORE_DRAWDOWN_GE_15",
+        "exit_signal_date": "2021-08-31",
+        "exit_execution_date": "2021-09-01",
+        "exit_price": 3790.0,
+        "trade_status": "REALIZED",
+        "return_pct": 19.0,
+        "lifecycle_class": "NORMAL_EARLY_TREND_HANDOFF"
+      },
+      {
+        "trade_id": "117700_02",
+        "trade_sequence": 2,
+        "entry_signal_date": "2023-06-02",
+        "entry_execution_date": "2023-06-05",
+        "entry_open": 3575.0,
+        "entry_pattern_a_stage": "TRANSITION",
+        "exit_type": "EXIT4_SCORE_DRAWDOWN_GE_15",
+        "exit_signal_date": "2026-04-30",
+        "exit_execution_date": "2026-05-04",
+        "exit_price": 9430.0,
+        "trade_status": "REALIZED",
+        "return_pct": 163.78,
+        "lifecycle_class": "NORMAL_EARLY_TREND_HANDOFF"
+      }
+    ],
+    "eligibility": {
+      "as_of": "2026-10-02",
+      "official_etf36_membership": true,
+      "listing_date": "2009-10-30",
+      "listing_age_pass": true,
+      "raw_close_krw": 6705.0,
+      "minimum_raw_close_krw": 1000,
+      "raw_close_pass": true,
+      "avg_volume_20d_shares": 2639476.0,
+      "volume_window_sessions": 20,
+      "volume_window_start": "2026-09-03",
+      "volume_window_end": "2026-10-02",
+      "volume_window_includes_signal_date": true,
+      "minimum_avg_volume_20d_shares": 10000,
+      "volume_pass": true,
+      "eligibility_pass": true,
+      "eligibility_contract": "ETF_PIT_LISTED_2Y_CLOSE_1000_VOL20_10000_V01",
+      "strategy_ready_date": "2017-01-06",
+      "clean_ready_date": "2017-01-06",
+      "effective_start_date": "2017-01-06",
+      "market_cap_applicability": "NOT_APPLICABLE_TO_JULIA_ETF_ELIGIBILITY",
+      "phase10_investability_applicability": "NOT_APPLICABLE"
+    }
+  },
+  "technical_details": {
+    "requested_as_of": "2026-10-03",
+    "reference_market_date": "2026-10-02",
+    "report_version": "0.6",
+    "report_status": "PARTIAL",
+    "asset_type": "ETF",
+    "investability_status": "NOT_APPLICABLE",
+    "investability_reason": "ETF_OFFICIAL_ETF36_FIXED_PRODUCTION_UNIVERSE",
+    "pattern_stage": "PROGRESSED",
+    "pattern_score": 3.41,
+    "candidate_state": "late",
+    "flow_state": "FLOW_UNAVAILABLE",
+    "market_strength_applicability": "NOT_APPLICABLE",
+    "market_strength_status": "NOT_EVALUATED",
+    "relative_strength_status": "NOT_EVALUATED",
+    "trading_value_state": "TRADING_VALUE_MIXED",
+    "price_as_of": "2026-10-02",
+    "price_status": "AVAILABLE",
+    "price_source": "data/market/adjusted/stocks/117700.parquet",
+    "sector_name": null,
+    "data_quality": {
+      "cache_present": true,
+      "cache_first_date": "2014-01-02",
+      "cache_last_date": "2026-10-02",
+      "daily_rows_count": 3129,
+      "completed_month_count": 153,
+      "quality_status": "OK",
+      "quality_flags": []
+    },
+    "source_report": "artifacts/reporting/etf_stock_reports/20261003/json/117700_KODEX 건설.json"
+  },
+  "external_links": {
+    "naver_finance": "https://finance.naver.com/item/main.naver?code=117700",
+    "naver_chart": "https://stock.naver.com/fchart/domestic/stock/117700"
+  }
+}

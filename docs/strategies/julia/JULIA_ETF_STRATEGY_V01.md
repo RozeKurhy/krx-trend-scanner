@@ -19,15 +19,26 @@ JULIA_STRATEGY_V00은 ETF 공식 채택 심사의 실제 검증 후보 ID다. �
 
 Julia V1은 검증 후보 `JULIA_STRATEGY_V00`의 진입·보유·청산 lifecycle 규칙을 변경 없이 계승한다. A FAST Core V2와 비교한 기존 단일 전략 차이인 `Pre-PROGRESSED -15% Loss Guard = disabled`도 그대로 유지한다. 새 threshold나 진입·보유·청산 조건을 추가하지 않았다.
 
-### ETF eligibility 계약
+### 과거 ETF eligibility와 현재 production 범위
 
-ETF 자산 적격성은 일반 종목용 investability 계약을 사용하지 않는다. 공식 ETF 검증에서 사용한 ETF 전용 계약 `ETF_PIT_LISTED_2Y_CLOSE_1000_VOL20_10000_V01`을 적용한다. JULIA_STRATEGY_V00의 lifecycle 계승과 ETF eligibility는 별도 규칙이다.
+JULIA_STRATEGY_V00의 lifecycle 계승, 과거 채택 eligibility, 현재 production universe는 서로 다른 계약이다. 과거 adoption/backtest 산출물은 당시의 ETF 전용 계약 `ETF_PIT_LISTED_2Y_CLOSE_1000_VOL20_10000_V01`을 그대로 보존한다.
 
-- Universe는 frozen **OFFICIAL ETF 36**이다.
+- 과거 채택 eligibility는 frozen **OFFICIAL ETF 36**, 상장 2년, signal-date raw close 1,000원 이상, signal date를 포함한 직전 20개 실제 KRX 거래일의 평균 거래량 10,000주 이상을 사용했다.
+- 기존 채택 연구, 백테스트, ledger 및 validation artifact는 이 조건과 결과를 유지하며 재작성하지 않는다.
+
+현재 production에서는 frozen **OFFICIAL ETF 36** 자체가 universe 권위다. 36개 구성은 Daily Update 때 다시 선정하지 않는다.
+
+- 현재 Julia V1 production 진입과 ETF36 membership은 20일 평균 거래량 10,000주 기준으로 걸러내지 않는다.
+- 평균 거래량과 `volume_pass`, `eligibility_pass` 보고 필드는 과거 adoption eligibility 참고값이다. 현재 membership, 신규 진입, 기존 포지션 lifecycle, ETF36 corpus 성공 조건으로 사용하지 않는다.
+- 상장 2년, 실제 raw close 1,000원, strategy-ready/clean-ready, Pattern/FAST 신호, exact next KRX session raw open 조건은 기존대로 적용한다. 이번 변경은 이 조건의 범위를 넓히지 않는다.
+- Official ETF36 구성원은 거래량이 10,000주 미만이어도 Julia V1 Stock Report와 Strategy Monitor에 계속 포함된다. 거래량 감소는 열린 포지션이나 과거 거래 이력을 제거하지 않는다.
+
+아래 eligibility 상세는 과거 채택 검증의 point-in-time 조건이며, 현재 production universe gate를 뜻하지 않는다.
+
 - 각 signal date는 해당 ETF의 상장일로부터 2년 이상 지난 날짜여야 한다.
 - 해당 signal date의 실제 KRX 원시 종가가 1,000원 이상이어야 한다.
 - 해당 signal date를 포함한 직전 20개 실제 KRX 거래일의 평균 거래량이 10,000주 이상이어야 한다.
-- 위 조건은 signal date별 point-in-time ETF eligibility로 판정하며, 그 날짜의 eligibility가 PASS여야 한다.
+- 과거 adoption/backtest에서는 위 조건을 signal date별 point-in-time ETF eligibility로 판정하며, 해당 날짜 eligibility가 PASS여야 했다.
 - 신호는 장 마감 후 판정하고, 진입은 다음 실제 KRX 거래일의 해당 ETF 원시 시가가 존재할 때만 가능하다. 평가 window의 종료 뒤에 체결되는 신규 진입은 포함하지 않는다.
 - 각 ticker/window의 평가 span은 `max(window_start, strategy_ready_date, clean_ready_date)`부터 시작한다. strategy-ready가 window 시작보다 늦으면 그 실제 날짜를 effective start로 사용해 partial window로 평가하고, effective start가 window 종료 뒤면 해당 span은 평가 불가로 둔다.
 - clean-ready는 신호 입력에 필요한 일간·주간·월간 lookback에서 zero-OHLC sentinel 영향이 제거된 첫 유효 주간 기준일이다.
