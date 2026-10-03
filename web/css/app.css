@@ -748,9 +748,25 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .foreign-ranking-empty { margin: 0; padding: 24px; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
 
 @media (max-width: 960px) {
-  .header-inner { align-items: flex-start; flex-direction: column; gap: 14px; padding-block: 17px; }
-  .header-actions { width: 100%; justify-content: space-between; }
-  .header-actions .primary-nav { flex: 1 1 auto; justify-content: flex-start; width: auto; overflow-x: auto; padding-bottom: 2px; }
+  .header-inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "brand theme" "nav nav";
+    align-items: center;
+    gap: 14px 0;
+    padding-block: 17px;
+  }
+  .brand { grid-area: brand; min-width: 0; }
+  .header-actions { display: contents; }
+  .header-actions .primary-nav {
+    grid-area: nav;
+    flex: initial;
+    justify-content: flex-start;
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .theme-toggle { grid-area: theme; justify-self: end; align-self: end; transform: translateY(5px); }
   .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .report-card-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .strategy-item { grid-template-columns: repeat(3, minmax(0, 1fr)); }
