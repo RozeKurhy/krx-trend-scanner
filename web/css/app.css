@@ -703,6 +703,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .sector-ranking-row:hover { border-color: var(--line-strong); background: var(--surface-muted); }
 .sector-ranking-row:focus-within { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .sector-ranking-position .market-ranking-value { color: var(--brand-red-dark); font-size: 14px; }
+.sector-ranking-row .sector-ranking-report.is-disabled { color: var(--brand-red-dark); font-weight: 800; }
 .sector-ranking-rs.return-positive .market-ranking-value { color: var(--market-up-red); }
 .sector-ranking-rs.return-negative .market-ranking-value { color: var(--market-down-blue); }
 .sector-ranking-period-return.return-positive .market-ranking-value { color: var(--market-up-red); }
@@ -720,8 +721,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .cross-sector-ranking-return .market-ranking-value { font-size: 15px; }
 .cross-sector-ranking-return.return-positive .market-ranking-value { color: var(--market-up-red); }
 .cross-sector-ranking-return.return-negative .market-ranking-value { color: var(--market-down-blue); }
-.cross-sector-ranking-link { min-height: 44px; padding: 12px 10px; border: 1px solid var(--line); border-radius: 8px; }
-.cross-sector-ranking-link:hover { border-color: var(--line-strong); background: var(--surface-muted); }
+.cross-sector-ranking-link { min-height: 44px; padding: 12px 10px; }
 .cross-sector-ranking-empty { margin: 0; padding: 24px; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); border-radius: 9px; }
 
 .foreign-controls { margin-bottom: 16px; }
@@ -766,7 +766,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
     overflow-x: auto;
     padding-bottom: 2px;
   }
-  .theme-toggle { grid-area: theme; justify-self: end; align-self: end; transform: translateY(2px); }
+  .theme-toggle { grid-area: theme; justify-self: end; align-self: center; transform: none; }
   .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .report-card-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .strategy-item { grid-template-columns: repeat(3, minmax(0, 1fr)); }
