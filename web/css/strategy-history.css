@@ -35,7 +35,18 @@
 
 @media (max-width: 960px) {
   .strategy-trade-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; padding: 14px; }
-  .strategy-trade-identity, .strategy-trade-link { grid-column: 1 / -1; }
+  .strategy-trade-identity { grid-column: 1 / -1; grid-row: 1; align-self: start; }
+  .strategy-trade-name { padding-inline-end: 44px; }
+  .strategy-trade-link {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    justify-self: end;
+    align-self: start;
+    width: 44px;
+    min-width: 44px;
+    height: 20px;
+    min-height: 20px;
+  }
   .strategy-month-event { grid-template-columns: 44px 40px minmax(70px, 1fr) minmax(86px, auto) minmax(52px, auto); }
 }
 
