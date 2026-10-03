@@ -316,9 +316,9 @@
         ? item.entry_pattern_a_stage
         : item.pattern_a_stage;
       detailFields = [
+        createField("펀더멘탈", fundamentalStatus(item), "strategy-item-fundamental"),
         createMultilineField("Pattern A", [stageLabel(previousPatternAStage), `→ ${stageLabel(currentPatternAStage)}`], "strategy-item-pattern-a"),
         createField("Pattern B", patternBLabel(item.pattern_b_state)),
-        createField("펀더멘탈", fundamentalStatus(item), "strategy-item-fundamental"),
       ];
     } else if (strategyId === "JULIA_ETF_STRATEGY_V01") {
       detailFields = [];

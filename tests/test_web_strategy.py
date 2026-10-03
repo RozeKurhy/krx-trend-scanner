@@ -293,7 +293,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert "window.matchMedia" in strategy_js
     assert ".strategy-item" in css
     assert ".strategy-item-a-fast { grid-template-columns: minmax(190px, 1.55fr) repeat(5, minmax(80px, 1fr)) auto; }" in css
-    assert ".strategy-item-b-select { grid-template-columns: minmax(170px, 1.55fr) repeat(3, minmax(80px, 1fr)) minmax(100px, 0.7fr) repeat(3, minmax(80px, 1fr)) auto; column-gap: 10px; }" in css
+    assert ".strategy-item-b-select { grid-template-columns: minmax(170px, 1.55fr) minmax(80px, 1fr) minmax(100px, 0.7fr) repeat(2, minmax(80px, 1fr)) repeat(3, minmax(80px, 1fr)) auto; column-gap: 10px; }" in css
     assert ".strategy-item-julia { grid-template-columns: minmax(190px, 1.55fr) repeat(4, minmax(80px, 1fr)) auto; }" in css
     assert ".strategy-summary-card" not in css
     assert ".strategy-summary-grid" not in css
@@ -322,7 +322,7 @@ def test_strategy_layout_alignment_and_spacing_contract_v05():
     assert ".strategy-item-value { display: block; min-height: 2.4em;" in css
     assert ".strategy-item-pattern-a .strategy-item-value { display: flex; flex-direction: column; overflow: visible; text-overflow: clip; white-space: normal; }" in css
     assert ".strategy-item-pattern-a { margin-inline-end: 20px; }" in css
-    assert ".strategy-item-b-select { grid-template-columns: minmax(108px, 1.3fr) minmax(70px, .9fr) minmax(145px, 1.8fr)" in css
+    assert ".strategy-item-b-select { grid-template-columns: minmax(108px, 1.3fr) minmax(70px, .9fr) minmax(65px, .8fr) minmax(145px, 1.8fr)" in css
     assert ".strategy-item-list .strategy-item-field { display: contents; }" not in css
     assert 'const displayedExitReason = bSelect ? exitReason.replace(/^Pattern B\\s+/u, "") : exitReason;' in strategy_js
     assert 'createField("청산 사유", displayedExitReason, "strategy-item-exit-reason")' in strategy_js
