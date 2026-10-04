@@ -1,0 +1,43 @@
+{
+  "generated_files_sha256": {
+    "control_month_end_cost_audit.csv": "ac4d6d37c73ae94778641d360c9381257802021ead60a49ac1ad7dba40956ad6",
+    "control_month_end_daily_equity.csv": "07d91b13a4bcd57b031bbb3e9682d2971cfdcfb6c2814c286e5757dd01160c6a",
+    "control_month_end_portfolio_events.csv": "1aeda53f2270caadc5c8b22d983f4b895b981c663614d014a522869e9108022f",
+    "control_month_end_portfolio_skips.csv": "e74657837fce401c38297cf732c54161505eadeee7936f382b24b0c5b622bfe8",
+    "control_month_end_trade_ledger.csv": "118be0777f28d5ef3bd0126be5262449c5e1b5af55c9554fc789e0478ed03324",
+    "test_daily_cost_audit.csv": "42a018928a8bb5a31cf0193576c6e69e8f9a67c09d3f72902dac8f9e835efc27",
+    "test_daily_daily_equity.csv": "e26de102dd09f6becf2254d607734e009941facf0cd58e149a3b4999fad05eaf",
+    "test_daily_portfolio_events.csv": "cefa6eef0e695f851af1345da0cb5b70cac9b79d641c07c14043006aa2d0f87e",
+    "test_daily_portfolio_skips.csv": "3de84f436528bc055a47bbc106d58e6e1d56b3c0e66133b4ca6f1af4b51b6ddf",
+    "test_daily_trade_ledger.csv": "ad48763738fc7f8b4dcd67e25db3a77d682ba47dc221728dff93a6d60fa44056",
+    "trade_comparison.csv": "4a8f0c25828ac46768c52bff69e604792a6c83955560db4cbbed7fdf14b871a8",
+    "validation.csv": "132147b6043e5651f6b78e61d82eacd800eb74cd2a5bbb90bd8d61ab7dfa587a"
+  },
+  "source_hashes": {
+    "metadata.json": "8e0908436ccf4488468500b2d36ffdedf3c1c7202056692dee23aa2869596614",
+    "previous_stage_audit.csv": "ffe1d8a916d5c916950b0df9a0be497b18055dca791e00347ad6fcd5e4c2382f",
+    "summary.json": "58aca7e7f35fd9051785ab02fd66bdceaa10f87d384919dc62ece53e1ad4c6af",
+    "test_trade_ledger.csv": "032daae185ec0aa3adbb4ed8c0ec3f8eba61d0d30ee050929095eefc5e46c7c4"
+  },
+  "study_id": "B_SELECT_DAILY_NORMAL_EXIT_CADENCE_V01_P1",
+  "window": {
+    "authority_metadata": {
+      "authority_version": "ROLLING_MARKET_DATA_V01",
+      "calendar_built_against_certified_through": "2026-09-18",
+      "calendar_digest": "77225bde2a3244e2f845c78e7c7f221ac189f783961d431d28cafb7044b5c920",
+      "calendar_frontier": "2026-09-21",
+      "certified_through": "2026-09-21"
+    },
+    "authority_source": "ROLLING_AUTHORITY_MERGED_CALENDAR_V01",
+    "calendar_range": [
+      "2014-01-01",
+      "2026-08-31"
+    ],
+    "effective_end": "2026-08-31",
+    "effective_start": "2014-01-02",
+    "execution_support": "2026-09-01",
+    "support_policy": "only an exit signal dated on or before effective_end may fill on execution_support; entries after effective_end are not filled",
+    "window_id": "P1"
+  },
+  "workers": 10
+}
