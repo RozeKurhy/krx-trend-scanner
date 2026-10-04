@@ -193,6 +193,36 @@ def test_b_select_catchup_entry_context_uses_exact_session_authority_without_mon
     exporter._validate_b_select_entry_contexts([item], {}, catchup_authority=catchup_authority)
 
 
+def test_b_select_recovered_month_end_entry_context_is_authorized_during_full_rebuild():
+    exporter = _load_exporter()
+    row = {
+        "ticker": "011210",
+        "isu_cd": "KR7011210002",
+        "component_id": "011210:KR7011210002:000",
+        "entry_signal_date": "2026-09-30",
+        "entry_pattern_a_stage_recomputed": "PROGRESSED",
+        "previous_pattern_a_stage": "EARLY_TREND",
+        "previous_pattern_a_stage_date": "2026-02-27",
+        "source": "REPOSITORY_V2_EXACT_SESSION_EVALUATORS",
+    }
+    status = {
+        "catchup_audit": {
+            "replay_mode": "FULL_SEALED_AUTHORITY_REBUILD",
+            "catchup_session_count": 0,
+            "catchup_session_dates": [],
+            "recovered_month_end_dates": ["2026-09-30"],
+            "skipped_krx_session_count": 0,
+        },
+        "catchup_entry_pattern_a_authorities": [row],
+    }
+
+    catchup_authority = exporter._read_catchup_entry_stage_authority(status)
+
+    assert list(catchup_authority) == [
+        ("011210", "KR7011210002", "011210:KR7011210002:000", "2026-09-30")
+    ]
+
+
 def test_b_select_catchup_entry_pattern_a_authority_is_session_scoped_and_unique():
     exporter = _load_exporter()
     row = {

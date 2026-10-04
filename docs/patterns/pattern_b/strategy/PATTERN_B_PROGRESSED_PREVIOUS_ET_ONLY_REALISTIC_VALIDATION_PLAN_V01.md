@@ -9,7 +9,7 @@
 
 심사 대상은 `PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDATE_V01` 하나다. 기본 전략 선정, A FAST Core V2와의 우열 비교, 기본 전략 교체는 범위에 넣지 않는다.
 
-진입은 Pattern B가 `DEPRESSED`이고, 현재 Pattern A Stage가 `PROGRESSED`이며, 직전 Pattern A Stage가 `{EARLY_TREND, TRANSITION}`일 때만 허용한다. 보유 중 Pattern B `NORMAL`을 관측하면 다음 exact KRX session open에 전량 청산한다. 손절, DEEP exit, Pattern A exit, stage 변경, threshold sweep, 결과 기반 튜닝, 시가총액·거래량 자격 필터를 추가하지 않는다.
+매매 조건 자체는 유지한다. ENTRY와 EXIT 판단 observation은 매월 마지막 exact KRX 거래일 한 번으로 제한한다. 그 월말에 Pattern B가 `DEPRESSED`, 현재 Pattern A Stage가 `PROGRESSED`, 직전 Pattern A Stage가 `{EARLY_TREND, TRANSITION}`이면 ENTRY 신호를 만들고 다음 exact KRX session open에 진입한다. 보유 중 월말 observation에서 Pattern B `NORMAL`이면 EXIT 신호를 만들고 다음 exact KRX session open에 전량 청산한다. 월중 상태와 Daily Update는 현재 상태·데이터 health 표시에는 사용할 수 있지만 매매 신호를 만들지 않는다. 기준은 요일이 아니라 exact KRX session 달력이다. 손절, DEEP exit, Pattern A exit, stage 변경, threshold sweep, 결과 기반 튜닝, 시가총액·거래량 자격 필터를 추가하지 않는다.
 
 ## 2. 표준 기간과 데이터
 

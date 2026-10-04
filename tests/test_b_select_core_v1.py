@@ -4,6 +4,7 @@ import pytest
 
 from trend_scanner.strategies.b_select_core_v1 import (
     BSelectLifecycleError,
+    exact_month_end_sessions,
     is_entry_signal,
     is_exit_signal,
     next_exact_session,
@@ -30,58 +31,125 @@ def test_only_normal_exits_an_open_position_and_deep_depressed_is_not_a_stop():
     assert not is_exit_signal(is_open=False, pattern_b_state="NORMAL")
 
 
-def test_next_open_fill_uses_immediate_exact_session_and_normal_exit_stays_pending():
-    calendar = ["2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07"]
+def test_exact_month_end_sessions_use_exchange_sequence_for_calendar_edges():
+    calendar = [
+        "2026-01-29", "2026-01-30", "2026-02-02", "2026-02-27",
+        "2026-03-02", "2026-03-31", "2026-12-30", "2027-01-04", "2027-01-05",
+    ]
+    assert exact_month_end_sessions(calendar) == frozenset({
+        "2026-01-30", "2026-02-27", "2026-03-31", "2026-12-30",
+    })
+    assert "2027-01-05" not in exact_month_end_sessions(calendar)
+
+
+def test_midmonth_entry_signal_is_rejected_even_when_conditions_match():
+    with pytest.raises(BSelectLifecycleError, match="ENTRY_SIGNAL_NOT_MONTH_END"):
+        replay_lifecycle(
+            [{"date": "2026-09-29", "state": "DEPRESSED"}],
+            [{"date": "2026-09-29", "pattern_a_stage": "PROGRESSED", "previous_pattern_a_stage": "TRANSITION"}],
+            trading_dates=["2026-09-29", "2026-09-30", "2026-10-01"],
+            exact_opens={},
+            reference_market_date="2026-09-29",
+        )
+
+
+def test_midmonth_normal_does_not_exit_open_position():
+    result = replay_lifecycle(
+        [{"date": "2026-09-29", "state": "NORMAL"}],
+        [],
+        trading_dates=["2026-09-29", "2026-09-30", "2026-10-01"],
+        exact_opens={},
+        reference_market_date="2026-09-29",
+        initial_position={
+            "trade_sequence": 1,
+            "entry_signal_date": "2026-08-31",
+            "entry_execution_date": "2026-09-01",
+            "entry_open": 100.0,
+            "exit_signal_date": None,
+            "exit_execution_date": None,
+        },
+        initial_trade_sequence=1,
+    )
+    assert result["position"]["exit_signal_date"] is None
+    assert result["pending"] is None
+
+
+def test_midmonth_normal_reverting_before_month_end_does_not_exit():
     result = replay_lifecycle(
         [
-            {"date": "2026-09-01", "state": "DEPRESSED"},
-            {"date": "2026-09-03", "state": "NORMAL"},
+            {"date": "2026-09-29", "state": "NORMAL"},
+            {"date": "2026-09-30", "state": "DEPRESSED"},
+        ],
+        [],
+        trading_dates=["2026-09-29", "2026-09-30", "2026-10-01"],
+        exact_opens={},
+        reference_market_date="2026-09-30",
+        initial_position={
+            "trade_sequence": 1,
+            "entry_signal_date": "2026-08-31",
+            "entry_execution_date": "2026-09-01",
+            "entry_open": 100.0,
+            "exit_signal_date": None,
+            "exit_execution_date": None,
+        },
+        initial_trade_sequence=1,
+    )
+    assert result["position"]["exit_signal_date"] is None
+    assert result["pending"] is None
+
+
+def test_next_open_fill_uses_immediate_exact_session_and_normal_exit_stays_pending():
+    calendar = ["2026-08-31", "2026-09-01", "2026-09-30", "2026-10-01", "2026-10-02"]
+    result = replay_lifecycle(
+        [
+            {"date": "2026-08-31", "state": "DEPRESSED"},
+            {"date": "2026-09-30", "state": "NORMAL"},
         ],
         [{
-            "date": "2026-09-01",
+            "date": "2026-08-31",
             "pattern_a_stage": "PROGRESSED",
             "previous_pattern_a_stage": "TRANSITION",
         }],
         trading_dates=calendar,
-        exact_opens={"2026-09-02": 100.0},
-        reference_market_date="2026-09-03",
+        exact_opens={"2026-09-01": 100.0},
+        reference_market_date="2026-09-30",
     )
 
-    assert result["position"]["entry_execution_date"] == "2026-09-02"
+    assert result["position"]["entry_execution_date"] == "2026-09-01"
     assert result["position"]["entry_open"] == 100.0
     assert result["pending"] == {
         "kind": "EXIT",
-        "signal_date": "2026-09-03",
-        "execution_date": "2026-09-04",
+        "signal_date": "2026-09-30",
+        "execution_date": "2026-10-01",
     }
-    assert result["position"]["exit_signal_date"] == "2026-09-03"
+    assert result["position"]["exit_signal_date"] == "2026-09-30"
 
 
 def test_completed_trade_is_recorded_at_exact_next_open_without_changing_lifecycle():
     result = replay_lifecycle(
         [
-            {"date": "2026-09-01", "state": "DEPRESSED"},
-            {"date": "2026-09-03", "state": "NORMAL"},
+            {"date": "2026-08-31", "state": "DEPRESSED"},
+            {"date": "2026-09-30", "state": "NORMAL"},
         ],
         [{
-            "date": "2026-09-01",
+            "date": "2026-08-31",
             "pattern_a_stage": "PROGRESSED",
             "previous_pattern_a_stage": "TRANSITION",
         }],
-        trading_dates=["2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04"],
-        exact_opens={"2026-09-02": 100.0, "2026-09-04": 125.0},
-        reference_market_date="2026-09-04",
+        trading_dates=["2026-08-31", "2026-09-01", "2026-09-30", "2026-10-01"],
+        exact_opens={"2026-09-01": 100.0, "2026-10-01": 125.0},
+        reference_market_date="2026-10-01",
     )
 
     assert result["position"] is None
     assert result["pending"] is None
     assert result["completed_trades"] == [{
         "trade_sequence": 1,
-        "entry_signal_date": "2026-09-01",
-        "entry_execution_date": "2026-09-02",
+        "entry_signal_date": "2026-08-31",
+        "entry_execution_date": "2026-09-01",
         "entry_open": 100.0,
-        "exit_signal_date": "2026-09-03",
-        "exit_execution_date": "2026-09-04",
+        "exit_signal_date": "2026-09-30",
+        "exit_execution_date": "2026-10-01",
         "exit_price": 125.0,
         "exit_reason": "PATTERN_B_NORMAL_NEXT_OPEN",
         "trade_status": "REALIZED",
@@ -91,15 +159,15 @@ def test_completed_trade_is_recorded_at_exact_next_open_without_changing_lifecyc
 
 def test_replay_continues_trade_sequence_after_completed_history():
     result = replay_lifecycle(
-        [{"date": "2026-09-08", "state": "DEPRESSED"}],
+        [{"date": "2026-08-31", "state": "DEPRESSED"}],
         [{
-            "date": "2026-09-08",
+            "date": "2026-08-31",
             "pattern_a_stage": "PROGRESSED",
             "previous_pattern_a_stage": "TRANSITION",
         }],
-        trading_dates=["2026-09-08", "2026-09-09"],
+        trading_dates=["2026-08-31", "2026-09-01"],
         exact_opens={},
-        reference_market_date="2026-09-08",
+        reference_market_date="2026-08-31",
         initial_trade_sequence=4,
     )
 
@@ -107,59 +175,59 @@ def test_replay_continues_trade_sequence_after_completed_history():
 
 
 def test_future_next_open_is_not_read_or_filled():
-    calendar = ["2026-09-01", "2026-09-02", "2026-09-03"]
+    calendar = ["2026-09-30", "2026-10-01"]
     result = replay_lifecycle(
-        [{"date": "2026-09-02", "state": "DEPRESSED"}],
+        [{"date": "2026-09-30", "state": "DEPRESSED"}],
         [{
-            "date": "2026-09-02",
+            "date": "2026-09-30",
             "pattern_a_stage": "PROGRESSED",
             "previous_pattern_a_stage": "EARLY_TREND",
         }],
         trading_dates=calendar,
         exact_opens={},
-        reference_market_date="2026-09-02",
+        reference_market_date="2026-09-30",
     )
 
     assert result["position"] is None
     assert result["pending"] == {
         "kind": "ENTRY",
-        "signal_date": "2026-09-02",
-        "execution_date": "2026-09-03",
+        "signal_date": "2026-09-30",
+        "execution_date": "2026-10-01",
         "sequence": 1,
     }
 
 
 def test_missing_past_exact_open_fails_closed():
-    with pytest.raises(BSelectLifecycleError, match="MISSING_EXACT_NEXT_OPEN:2026-09-02"):
+    with pytest.raises(BSelectLifecycleError, match="MISSING_EXACT_NEXT_OPEN:2026-09-01"):
         replay_lifecycle(
-            [{"date": "2026-09-01", "state": "DEPRESSED"}],
+            [{"date": "2026-08-31", "state": "DEPRESSED"}],
             [{
-                "date": "2026-09-01",
+                "date": "2026-08-31",
                 "pattern_a_stage": "PROGRESSED",
                 "previous_pattern_a_stage": "TRANSITION",
             }],
-            trading_dates=["2026-09-01", "2026-09-02"],
+            trading_dates=["2026-08-31", "2026-09-01"],
             exact_opens={},
-            reference_market_date="2026-09-02",
+            reference_market_date="2026-09-01",
         )
 
 
 def test_overlapping_entry_is_suppressed_while_position_is_open():
     result = replay_lifecycle(
         [
-            {"date": "2026-09-01", "state": "DEPRESSED"},
-            {"date": "2026-09-03", "state": "DEPRESSED"},
+            {"date": "2026-08-31", "state": "DEPRESSED"},
+            {"date": "2026-09-30", "state": "DEPRESSED"},
         ],
         [
-            {"date": "2026-09-01", "pattern_a_stage": "PROGRESSED", "previous_pattern_a_stage": "TRANSITION"},
-            {"date": "2026-09-03", "pattern_a_stage": "PROGRESSED", "previous_pattern_a_stage": "EARLY_TREND"},
+            {"date": "2026-08-31", "pattern_a_stage": "PROGRESSED", "previous_pattern_a_stage": "TRANSITION"},
+            {"date": "2026-09-30", "pattern_a_stage": "PROGRESSED", "previous_pattern_a_stage": "EARLY_TREND"},
         ],
-        trading_dates=["2026-09-01", "2026-09-02", "2026-09-03", "2026-09-04"],
-        exact_opens={"2026-09-02": 100.0},
-        reference_market_date="2026-09-03",
+        trading_dates=["2026-08-31", "2026-09-01", "2026-09-30", "2026-10-01"],
+        exact_opens={"2026-09-01": 100.0},
+        reference_market_date="2026-09-30",
     )
 
-    assert result["position"]["entry_signal_date"] == "2026-09-01"
+    assert result["position"]["entry_signal_date"] == "2026-08-31"
     assert result["suppressed_entry_count"] == 1
     assert result["pending"] is None
 
@@ -175,60 +243,59 @@ def test_replay_rejects_future_observation_and_unbacked_entry():
         )
     with pytest.raises(BSelectLifecycleError, match="ENTRY_SIGNAL_NOT_BACKED"):
         replay_lifecycle(
-            [{"date": "2026-09-01", "state": "NORMAL"}],
+            [{"date": "2026-08-31", "state": "NORMAL"}],
             [{
-                "date": "2026-09-01",
+                "date": "2026-08-31",
                 "pattern_a_stage": "PROGRESSED",
                 "previous_pattern_a_stage": "TRANSITION",
             }],
-            trading_dates=["2026-09-01", "2026-09-02"],
+            trading_dates=["2026-08-31", "2026-09-01"],
             exact_opens={},
-            reference_market_date="2026-09-01",
+            reference_market_date="2026-08-31",
         )
 
 
 def test_gap_replay_fills_entry_from_exact_next_session_open():
-    calendar = ["2026-09-25", "2026-09-28", "2026-09-29", "2026-09-30"]
+    calendar = ["2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01"]
     result = replay_lifecycle(
         [
-            {"date": "2026-09-25", "state": "NORMAL"},
             {"date": "2026-09-28", "state": "DEPRESSED"},
             {"date": "2026-09-29", "state": "DEPRESSED"},
             {"date": "2026-09-30", "state": "DEPRESSED"},
         ],
         [{
-            "date": "2026-09-28",
+            "date": "2026-09-30",
             "pattern_a_stage": "PROGRESSED",
             "previous_pattern_a_stage": "TRANSITION",
         }],
         trading_dates=calendar,
-        exact_opens={"2026-09-29": 101.5},
-        reference_market_date="2026-09-30",
+        exact_opens={"2026-10-01": 101.5},
+        reference_market_date="2026-10-01",
     )
 
-    assert result["position"]["entry_signal_date"] == "2026-09-28"
-    assert result["position"]["entry_execution_date"] == "2026-09-29"
+    assert result["position"]["entry_signal_date"] == "2026-09-30"
+    assert result["position"]["entry_execution_date"] == "2026-10-01"
     assert result["position"]["entry_open"] == 101.5
     assert result["pending"] is None
     assert result["completed_trades"] == []
 
 
 def test_gap_replay_realizes_normal_exit_and_preserves_completed_trade():
-    calendar = ["2026-09-25", "2026-09-28", "2026-09-29", "2026-09-30"]
+    calendar = ["2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01"]
     result = replay_lifecycle(
         [
-            {"date": "2026-09-25", "state": "DEPRESSED"},
-            {"date": "2026-09-28", "state": "NORMAL"},
+            {"date": "2026-09-28", "state": "DEPRESSED"},
             {"date": "2026-09-29", "state": "NORMAL"},
+            {"date": "2026-09-30", "state": "NORMAL"},
         ],
         [],
         trading_dates=calendar,
-        exact_opens={"2026-09-29": 120.0},
-        reference_market_date="2026-09-29",
+        exact_opens={"2026-10-01": 120.0},
+        reference_market_date="2026-10-01",
         initial_position={
             "trade_sequence": 4,
-            "entry_signal_date": "2026-09-01",
-            "entry_execution_date": "2026-09-02",
+            "entry_signal_date": "2026-08-31",
+            "entry_execution_date": "2026-09-01",
             "entry_open": 100.0,
             "exit_signal_date": None,
             "exit_execution_date": None,
@@ -241,11 +308,11 @@ def test_gap_replay_realizes_normal_exit_and_preserves_completed_trade():
     trade = result["completed_trades"][0]
     assert {key: value for key, value in trade.items() if key != "return_pct"} == {
         "trade_sequence": 4,
-        "entry_signal_date": "2026-09-01",
-        "entry_execution_date": "2026-09-02",
+        "entry_signal_date": "2026-08-31",
+        "entry_execution_date": "2026-09-01",
         "entry_open": 100.0,
-        "exit_signal_date": "2026-09-28",
-        "exit_execution_date": "2026-09-29",
+        "exit_signal_date": "2026-09-30",
+        "exit_execution_date": "2026-10-01",
         "exit_price": 120.0,
         "exit_reason": "PATTERN_B_NORMAL_NEXT_OPEN",
         "trade_status": "REALIZED",
@@ -254,40 +321,42 @@ def test_gap_replay_realizes_normal_exit_and_preserves_completed_trade():
 
 
 def test_gap_replay_executes_prior_pending_entry_once():
-    calendar = ["2026-09-25", "2026-09-28", "2026-09-29"]
+    calendar = ["2026-08-31", "2026-09-01", "2026-09-30", "2026-10-01"]
     result = replay_lifecycle(
         [
-            {"date": "2026-09-25", "state": "DEPRESSED"},
-            {"date": "2026-09-28", "state": "DEPRESSED"},
-            {"date": "2026-09-29", "state": "DEPRESSED"},
+            {"date": "2026-08-31", "state": "DEPRESSED"},
+            {"date": "2026-09-01", "state": "DEPRESSED"},
+            {"date": "2026-09-30", "state": "DEPRESSED"},
         ],
         [{
-            "date": "2026-09-28",
+            "date": "2026-09-30",
             "pattern_a_stage": "PROGRESSED",
             "previous_pattern_a_stage": "EARLY_TREND",
         }],
         trading_dates=calendar,
-        exact_opens={"2026-09-28": 55.0},
-        reference_market_date="2026-09-29",
+        exact_opens={"2026-09-01": 55.0},
+        reference_market_date="2026-09-30",
         initial_pending={
             "kind": "ENTRY",
-            "signal_date": "2026-09-25",
-            "execution_date": "2026-09-28",
+            "signal_date": "2026-08-31",
+            "execution_date": "2026-09-01",
             "sequence": 1,
         },
         initial_trade_sequence=1,
     )
 
-    assert result["position"]["entry_signal_date"] == "2026-09-25"
-    assert result["position"]["entry_execution_date"] == "2026-09-28"
+    assert result["position"]["entry_signal_date"] == "2026-08-31"
+    assert result["position"]["entry_execution_date"] == "2026-09-01"
     assert result["position"]["entry_open"] == 55.0
     assert result["pending"] is None
     assert result["suppressed_entry_count"] == 1
 
 
 def test_gap_catchup_matches_session_by_session_reference_replay():
-    calendar = ["2026-09-25", "2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02"]
+    calendar = ["2026-08-31", "2026-09-01", "2026-09-25", "2026-09-28", "2026-09-29", "2026-09-30", "2026-10-01", "2026-10-02"]
     observations = [
+        {"date": "2026-08-31", "state": "DEPRESSED"},
+        {"date": "2026-09-01", "state": "DEPRESSED"},
         {"date": "2026-09-25", "state": "NORMAL"},
         {"date": "2026-09-28", "state": "DEPRESSED"},
         {"date": "2026-09-29", "state": "DEPRESSED"},
@@ -296,11 +365,9 @@ def test_gap_catchup_matches_session_by_session_reference_replay():
         {"date": "2026-10-02", "state": "DEPRESSED"},
     ]
     signals = [
-        {"date": "2026-09-28", "pattern_a_stage": "PROGRESSED", "previous_pattern_a_stage": "TRANSITION"},
-        {"date": "2026-09-29", "pattern_a_stage": "PROGRESSED", "previous_pattern_a_stage": "TRANSITION"},
-        {"date": "2026-10-02", "pattern_a_stage": "PROGRESSED", "previous_pattern_a_stage": "EARLY_TREND"},
+        {"date": "2026-08-31", "pattern_a_stage": "PROGRESSED", "previous_pattern_a_stage": "TRANSITION"},
     ]
-    exact_opens = {"2026-09-29": 100.0, "2026-10-01": 115.0}
+    exact_opens = {"2026-09-01": 100.0, "2026-10-01": 115.0}
     batch = replay_lifecycle(
         observations,
         signals,
@@ -346,10 +413,7 @@ def test_gap_catchup_matches_session_by_session_reference_replay():
         "last_pattern_b_state": observations[-1]["state"],
     }
     assert batch == sequential
+    assert batch["position"] is None
+    assert batch["completed_trades"][0]["exit_signal_date"] == "2026-09-30"
     assert batch["completed_trades"][0]["exit_execution_date"] == "2026-10-01"
-    assert batch["pending"] == {
-        "kind": "ENTRY",
-        "signal_date": "2026-10-02",
-        "execution_date": "2026-10-05",
-        "sequence": 2,
-    }
+    assert batch["pending"] is None

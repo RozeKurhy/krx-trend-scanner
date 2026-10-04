@@ -52,6 +52,9 @@ Pattern B 자체의 버전 번호는 없다. 현재 기준은 "Pattern B, 현재
 ## 4. 경계
 
 - Pattern B 상태는 매수·보유·매도 신호가 아니다.
+- Pattern B 상태 evaluator는 기준일의 일별 자료로 현재 상태를 판정할 수 있다. 이를 사용하는
+  B Select Core V1의 ENTRY/EXIT lifecycle은 전략 문서의 월말 cadence를 따른다. 매일 상태를
+  표시해도 월중 observation으로 매매 신호를 만들지 않는다.
 - Pattern B의 "싸다"는 자기 과거 가격 대비 침체라는 뜻이며, 기업가치 평가가 아니다.
 - Pattern B는 상태를 판정하는 공식 패턴이고 매매 규칙은 정의하지 않는다. 이 상태와 Pattern A Stage를
   사용하는 별도 공식 전략은 [B Select Core V1](../strategy/PATTERN_B_SELECT_CORE_V01.md)이며,

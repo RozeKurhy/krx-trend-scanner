@@ -75,6 +75,52 @@ def test_exact_daily_stage_fails_closed_on_available_same_day_monthly_mismatch()
         )
 
 
+def test_missing_month_end_state_reuses_exact_same_run_report_history():
+    report = {
+        "identity": {"ticker": "017960", "name": "한국카본"},
+        "pattern_b": {
+            "monthly_history": [{
+                "as_of": "2026-09-30",
+                "evaluation_status": "READY",
+                "pattern_b_state": "DEPRESSED",
+                "monthly_last_bar": "2026-09-29",
+                "weekly_last_bar": "2026-09-25",
+            }],
+            "monthly_history_24m": [{
+                "as_of": "2026-09-30",
+                "evaluation_status": "READY",
+                "pattern_b_state": "DEPRESSED",
+                "monthly_last_bar": "2026-09-29",
+                "weekly_last_bar": "2026-09-25",
+            }],
+        },
+        "pattern": {
+            "official_stage": "PROGRESSED",
+            "history_12m": [
+                {"as_of": "2026-08-31", "stage": "TRANSITION", "data_available": True},
+                {"as_of": "2026-09-30", "stage": "PROGRESSED", "data_available": True},
+            ],
+            "history_24m": [
+                {"as_of": "2026-08-31", "stage": "TRANSITION", "data_available": True},
+                {"as_of": "2026-09-30", "stage": "PROGRESSED", "data_available": True},
+            ],
+        },
+    }
+    context = status_builder._month_end_context_from_report(
+        report,
+        day="2026-09-30",
+        trading_dates=["2026-08-31", "2026-09-30", "2026-10-01"],
+        root=Path("."),
+        identity={"ticker": "017960", "effective_from": "2020-01-01"},
+        repository=object(),
+    )
+
+    assert context["pattern_b_state"] == "DEPRESSED"
+    assert context["pattern_a_stage"] == "PROGRESSED"
+    assert context["previous_pattern_a_stage"] == "TRANSITION"
+    assert context["previous_pattern_a_stage_date"] == "2026-08-31"
+
+
 def test_status_builder_rejects_report_date_mismatch(tmp_path: Path):
     index_path = tmp_path / "stock-index.json"
     index_path.write_text(

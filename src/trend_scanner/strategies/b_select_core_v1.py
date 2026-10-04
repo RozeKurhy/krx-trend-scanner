@@ -46,6 +46,21 @@ def next_exact_session(signal_date: str, trading_dates: Sequence[str]) -> str | 
     return days[position] if position < len(days) else None
 
 
+def exact_month_end_sessions(trading_dates: Sequence[str]) -> frozenset[str]:
+    """Return exact sessions whose immediate next KRX session is in a new month.
+
+    The final calendar session is excluded because the authority does not yet
+    prove that its month has ended. This naturally handles month ends on
+    holidays, weekends, Fridays, February, and year boundaries.
+    """
+    days = sorted({str(day)[:10] for day in trading_dates})
+    return frozenset(
+        day
+        for day, next_day in zip(days, days[1:])
+        if day[:7] != next_day[:7]
+    )
+
+
 def resolve_progressed_episode(
     active_dates: Sequence[str],
     stage_by_date: Mapping[str, str],
@@ -126,6 +141,7 @@ def replay_lifecycle(
     """
     reference = str(reference_market_date)[:10]
     calendar = sorted({str(day)[:10] for day in trading_dates})
+    month_end_sessions = exact_month_end_sessions(calendar)
     if any(str(row.get("date", ""))[:10] > reference for row in observations):
         raise BSelectLifecycleError("FUTURE_OBSERVATION")
     by_date: dict[str, Mapping[str, Any]] = {}
@@ -139,6 +155,8 @@ def replay_lifecycle(
         day = str(row.get("date", ""))[:10]
         if not day or day in signal_by_date:
             raise BSelectLifecycleError("INVALID_OR_DUPLICATE_ENTRY_SIGNAL_DATE")
+        if day not in month_end_sessions:
+            raise BSelectLifecycleError("ENTRY_SIGNAL_NOT_MONTH_END_EXACT_KRX_SESSION")
         if day not in by_date or by_date[day].get("state") != "DEPRESSED":
             raise BSelectLifecycleError("ENTRY_SIGNAL_NOT_BACKED_BY_DEPRESSED_OBSERVATION")
         if not is_entry_signal(
@@ -152,6 +170,10 @@ def replay_lifecycle(
     event_days = sorted(set(by_date) | set(signal_by_date))
     position: dict[str, Any] | None = dict(initial_position) if initial_position else None
     pending: dict[str, Any] | None = dict(initial_pending) if initial_pending else None
+    if pending is not None and pending.get("signal_date"):
+        pending_signal_day = str(pending["signal_date"])[:10]
+        if pending_signal_day not in month_end_sessions:
+            raise BSelectLifecycleError("PENDING_SIGNAL_NOT_MONTH_END_EXACT_KRX_SESSION")
     completed_trades: list[dict[str, Any]] = []
     suppressed_entry_count = 0
     sequence = max(
@@ -209,7 +231,11 @@ def replay_lifecycle(
         if position is not None:
             if day in signal_by_date:
                 suppressed_entry_count += 1
-            if pending is None and is_exit_signal(is_open=True, pattern_b_state=state):
+            if (
+                pending is None
+                and day in month_end_sessions
+                and is_exit_signal(is_open=True, pattern_b_state=state)
+            ):
                 execution = next_exact_session(day, calendar)
                 position["exit_signal_date"] = day
                 position["exit_execution_date"] = execution
@@ -275,6 +301,7 @@ __all__ = [
     "STRATEGY_NAME",
     "is_entry_signal",
     "is_exit_signal",
+    "exact_month_end_sessions",
     "next_exact_session",
     "resolve_progressed_episode",
     "replay_lifecycle",

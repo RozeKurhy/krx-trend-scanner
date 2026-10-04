@@ -75,9 +75,11 @@
   투영한다. Strategy Monitor v2는 A FAST Core V2와 B Select Core V1을 공개 COMMON
   범위로, Julia V1을 Official ETF 36으로 별도 투영한다. 기본 선택은 A FAST Core V2다.
 - B Select current status는 고정된 Pattern B 월별 state·Pattern A stage lineage와
-  같은 실행의 현재 COMMON 리포트 상태를 exact PIT identity로 replay해 만든다. exact
-  KRX 다음 세션 시가만 채우며 reference 뒤 fill은 pending으로 남긴다. Web JavaScript는
-  전략을 계산하지 않고 전략 선택·검색·필터·정렬과 표시만 수행한다.
+  같은 실행의 현재 COMMON 리포트 상태를 exact PIT identity로 replay해 만든다. 일일 상태·가격·
+  data health 표시는 유지하고, B Select ENTRY/EXIT는 완결된 월의 마지막 exact KRX 거래일
+  observation에서만 생성한다. 신호 다음 exact KRX session open만 채우며 reference 뒤 fill은
+  pending으로 남긴다. Web JavaScript는 전략을 계산하지 않고 전략 선택·검색·필터·정렬과 표시만
+  수행한다.
 
 ## 웹 데이터 생성 원칙
 

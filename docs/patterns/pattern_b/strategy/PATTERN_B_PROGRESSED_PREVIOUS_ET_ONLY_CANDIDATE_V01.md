@@ -23,10 +23,16 @@ BASE, WEAK, UNAVAILABLE 및 그 밖의 직전 stage는 제외해. 이 후보에�
 
 기존 Pattern B lifecycle을 그대로 사용해.
 
-- Entry signal: Pattern B가 DEPRESSED에 진입하고, 현재 Pattern A가 PROGRESSED이며, 직전 Pattern A stage가 허용 목록에 있어.
+- Entry signal은 매월 마지막 exact KRX 거래일 observation에서만 판정해. 그때 Pattern B가
+  DEPRESSED이고, 현재 Pattern A가 PROGRESSED이며, 직전 Pattern A stage가 허용 목록에 있으면 신호야.
 - Entry execution: 신호 날짜 다음의 첫 exact KRX session open.
-- Exit signal: 보유 중 Pattern B가 NORMAL이 되는 날짜.
+- Exit signal도 매월 마지막 exact KRX 거래일 observation에서만 판정해. 보유 중 그 월말
+  observation에서 Pattern B가 NORMAL이면 신호야. 월중 NORMAL만으로 청산하지 않고, 월말 전에
+  다시 상태가 바뀌면 해당 월에는 청산 신호가 없어.
 - Exit execution: exit signal 다음의 첫 exact KRX session open.
+- 매일 실행되는 Daily Update와 Strategy Monitor는 현재 상태·가격·데이터 health를 표시할 수 있지만,
+  월중 observation에서 ENTRY/EXIT를 만들지 않아. 기준은 요일이나 다음 월요일이 아니라 exact KRX
+  거래일 달력이야.
 - Effective cutoff 이후 신규 진입은 금지해.
 - Execution support session은 cutoff 전까지 발생한 NORMAL exit의 정산에만 허용해.
 - Carry-in은 허용하지 않고, 같은 ISU의 보유 기간 중 겹치는 거래도 허용하지 않아.

@@ -218,15 +218,8 @@ def test_interaction_detail_payload_preserves_authority_history(payload, exporte
     ]
     assert compact["pattern"]["history_12m"] == expected_pattern
     assert len(compact["pattern"]["history_12m"]) == source["monthly_history"]["recent_12m_observation_count"]
-    assert compact["pattern"]["history_12m"][0] == {
-        "as_of": "2025-08-29",
-        "close": 69700.0,
-        "score": 61.93,
-        "stage": "TRANSITION",
-        "candidate_state": "candidate",
-        "data_available": True,
-    }
-    assert compact["pattern"]["history_12m"][-1]["as_of"] == "2026-08-31"
+    assert compact["pattern"]["history_12m"][0] == expected_pattern[0]
+    assert compact["pattern"]["history_12m"][-1]["as_of"] == expected_pattern[-1]["as_of"]
     expected_pattern_24m = [
         {
             "as_of": item["as_of"],
@@ -240,7 +233,7 @@ def test_interaction_detail_payload_preserves_authority_history(payload, exporte
     ]
     assert compact["pattern"]["history_24m"] == expected_pattern_24m
     assert len(compact["pattern"]["history_24m"]) == min(25, len(source["monthly_history"]["full_monthly_history"]))
-    assert compact["pattern"]["history_24m"][0]["as_of"] == "2024-08-30"
+    assert compact["pattern"]["history_24m"][0]["as_of"] == expected_pattern_24m[0]["as_of"]
     assert compact["pattern_b"]["monthly_history"] == source["pattern_b"]["monthly_history"]
     assert compact["pattern_b"]["monthly_history_24m"] == source["pattern_b"]["monthly_history_24m"]
     assert len(compact["pattern_b"]["monthly_history"]) == 12
@@ -594,6 +587,13 @@ def test_common_report_dual_strategy_ui_reuses_monitor_and_fails_closed():
         strategy for strategy in monitor["strategies"]
         if strategy["id"] == "PATTERN_B_SELECT_CORE_V01"
     )
+    b_select_status_path = (
+        ROOT
+        / "artifacts/strategies/b_select_core_v1/production"
+        / monitor["requested_as_of"].replace("-", "")
+        / "status.json"
+    )
+    b_select_status = json.loads(b_select_status_path.read_text(encoding="utf-8"))
 
     assert 'id="decision-strategies"' in html
     assert 'const STRATEGY_MONITOR_URL = "./data/strategy-monitor.json";' in js
@@ -622,8 +622,10 @@ def test_common_report_dual_strategy_ui_reuses_monitor_and_fails_closed():
     assert 'trade.entry_open ?? trade.entry_price' in js
     assert 'trade.exit_type || trade.exit_reason' in js
     assert 'OPEN_AT_REFERENCE: "보유 중"' in js
-    assert b_select["scope"]["report_count"] == 1451
-    assert len(b_select["trade_history"]) == 312
+    assert b_select["scope"]["report_count"] == b_select_status["count"]
+    assert len(b_select["trade_history"]) == sum(
+        len(item.get("trade_history") or []) for item in b_select_status["items"]
+    )
 
     summary = js[js.index("function buildSummary(report)"):js.index("function renderStatusStepper")]
     assert 'report.identity.asset_type === "ETF"' in summary

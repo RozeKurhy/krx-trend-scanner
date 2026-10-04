@@ -42,19 +42,23 @@ B Select Core V1은 검증 후보 `PATTERN_B_PROGRESSED_PREVIOUS_ET_ONLY_CANDIDA
 
 ### 진입
 
-아래 조건을 모두 충족할 때 진입 신호를 만든다.
+진입 판정은 매월 마지막 exact KRX 거래일 observation에서만 한다. 그 월말에 아래 조건을
+모두 충족할 때 진입 신호를 만든다.
 
 1. Pattern B 진입 상태가 `DEPRESSED`다.
 2. 현재 Pattern A Stage가 `PROGRESSED`다.
 3. 진입 시점의 권위 있는 직전 Pattern A Stage가 `EARLY_TREND` 또는 `TRANSITION`이다.
 
 직전 Stage가 `BASE`, `WEAK`, `UNAVAILABLE` 또는 그 밖의 값이면 진입하지 않는다.
-신호일 다음 첫 정확한 KRX 거래일 시가에 체결한다.
+신호일 다음 첫 exact KRX 거래일 시가에 체결한다. 이는 다음 월요일을 뜻하지 않는다.
 
 ### 청산과 생애주기
 
-- 보유 중 Pattern B가 `NORMAL`이 되는 날짜에 청산 신호를 만든다.
-- 청산 신호일 다음 첫 정확한 KRX 거래일 시가에 체결한다.
+- 청산 판정도 매월 마지막 exact KRX 거래일 observation에서만 한다.
+- 보유 중 해당 월말 observation에서 Pattern B가 `NORMAL`이면 청산 신호를 만든다.
+- 월중 `NORMAL` 관측만으로 청산 신호를 만들지 않는다. 월중 상태가 다시 바뀌면 그 달에는
+  청산하지 않는다.
+- 청산 신호일 다음 첫 exact KRX 거래일 시가에 전량 체결한다. 요일 기준으로 계산하지 않는다.
 - 유효 기간 종료 뒤에는 신규 진입하지 않는다. 유효 기간 안에 발생한 `NORMAL` 청산 신호의
   정산에만 체결 지원일을 허용한다.
 - 이월 보유는 허용하지 않는다. 동일 종목 식별자의 보유 기간이 서로 겹치지 않는다.
@@ -73,9 +77,11 @@ artifacts/strategies/b_select_core_v1/production/{YYYYMMDD}/status.json
 
 이 artifact는 Strategy Monitor의 현재 상태 projection이다. 과거 completed Pattern B
 관측과 해시 검증된 Pattern A progressed-episode stage lineage로 종목별 lifecycle을 복원하고,
-동일 실행의 최신 공개 COMMON Stock Report 상태를 반영한다. exact KRX 다음 세션 시가만
-체결로 인정한다. `reference_market_date` 이후 체결은 pending으로 남기며 미래 시가를
-조회하지 않는다. 새 backtest·portfolio simulation·성과 metric을 만들지 않는다.
+동일 실행의 최신 공개 COMMON Stock Report 상태를 반영한다. Pattern A/B 현재 상태와 데이터
+health는 매 거래일 표시할 수 있지만, 신규 ENTRY/EXIT lifecycle 신호는 완결된 월의 마지막
+exact KRX 거래일 observation에서만 만든다. 체결은 신호 다음 첫 exact KRX session open만
+인정한다. `reference_market_date` 이후 체결은 pending으로 남기며 미래 시가를 조회하지 않는다.
+새 backtest·portfolio simulation·성과 metric을 만들지 않는다.
 
 Monitor scope는 해당 실행에서 공개된 COMMON 리포트 집합이다. 2026-09-25 기준 공개 집합은
 1,451개다. B Select 공식 전략의 전체 PIT COMMON 적용 범위와 웹 Monitor의 공개 리포트 범위는

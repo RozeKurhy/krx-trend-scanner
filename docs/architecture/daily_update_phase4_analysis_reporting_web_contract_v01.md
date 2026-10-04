@@ -262,8 +262,10 @@ Strategy Monitor v2의 세 전략 projection과 웹 상태가 포함된다.
 - B Select current status: Phase4C가 `build_b_select_core_v1_status.py`를 한 번 실행한다. 이 생성기는 해시 검증된 기존
   candidate-stage authority와 월별 Pattern B state를 exact PIT identity에 연결하고,
   현재 공개 COMMON 리포트의 같은 실행 기준일 상태를 더해 per-identity lifecycle을
-  복원한다. exact KRX 다음 세션 시가만 체결로 사용한다. reference 뒤 체결은 pending으로
-  남기며 해당 시가를 조회하지 않는다. 이 경로는 성과 지표·portfolio simulation을 만들지 않는다.
+  복원한다. 매일 현재 상태와 data health는 표시하되, 신규 ENTRY/EXIT lifecycle 신호는
+  완결된 월의 마지막 exact KRX 거래일 observation에서만 만든다. 신호 다음 exact KRX session
+  open만 체결로 사용한다. reference 뒤 체결은 pending으로 남기며 해당 시가를 조회하지 않는다.
+  이 경로는 성과 지표·portfolio simulation을 만들지 않는다.
 - 실패 정책: B Select status가 없거나 날짜·범위·lifecycle 검증에 실패하면 Strategy Monitor를
   가짜 WAIT로 채우지 않고 Phase4C/4D를 실패 처리한다. Phase4D는 Phase4C가 만든
   같은 실행의 status를 재사용해 날짜별 artifact로 보존한다.
