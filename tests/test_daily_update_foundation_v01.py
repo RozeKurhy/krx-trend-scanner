@@ -239,7 +239,42 @@ def test_target_is_single_and_propagated_to_all_legs(tmp_path):
     result = foundation.execute("2026-09-02", dry_run=False)
     assert result["final_status"] == "PASS"
     assert common_raw.calls[0][1] == etf_raw.calls[0][1] == common_adjusted.calls[0][1] == etf_adjusted.calls[0][1] == "2026-09-02"
+    assert "2026-09-02" in common_raw.calls[0][2]
     assert result["leg_results"]["repository_v2"]["target"] == "2026-09-02"
+
+
+def test_confirmed_krx_holiday_skips_raw_fetch_and_keeps_failed_diagnostic(tmp_path):
+    target = "2026-10-05"
+    foundation, raw, authority, common_raw, etf_raw, common_adjusted, etf_adjusted = _foundation(
+        tmp_path,
+        calendar=["2026-10-02"],
+        complete=["2026-10-02"],
+        certified="2026-10-03",
+    )
+    for market in ("KOSPI", "KOSDAQ"):
+        raw.rows[market][target] = {"market": market, "date": target, "status": "FAILED"}
+    calendar_path = authority / "merged_trading_calendar.json"
+    calendar_before = calendar_path.read_bytes()
+
+    plan = foundation.plan(target)
+    result = foundation.execute(target, dry_run=False)
+
+    assert plan["confirmed_closed_candidate_dates"] == [target]
+    assert plan["required_candidate_dates"] == ["2026-10-02"]
+    assert plan["common_raw"]["missing_dates"] == []
+    assert result["final_status"] == "PASS"
+    assert result["status"] == "CERTIFICATION_ONLY_PROMOTED"
+    assert result["target_as_of"] == target
+    assert result["market_authority_as_of"] == "2026-10-02"
+    assert result["network_request_count"] == result["production_write_count"] == 0
+    assert result["authority_promotion"] == 1
+    assert not common_raw.calls and not etf_raw.calls
+    assert not common_adjusted.calls and not etf_adjusted.calls
+    assert raw.get_manifest("KOSPI", target)["status"] == "FAILED"
+    assert raw.get_manifest("KOSDAQ", target)["status"] == "FAILED"
+    assert (authority / "manifest.json").exists()
+    assert calendar_path.read_bytes() == calendar_before
+    assert target not in json.loads(calendar_path.read_text(encoding="utf-8"))["trading_dates"]
 
 
 def test_repository_validator_uses_etf_adjusted_lower_bound_and_keeps_common_legacy_start(monkeypatch, tmp_path):

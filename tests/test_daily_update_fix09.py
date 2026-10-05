@@ -123,6 +123,54 @@ def test_common_raw_incomplete_without_runner_blocker_fails_fast(tmp_path):
     assert not etf_raw.calls and not common_adjusted.calls and not etf_adjusted.calls
 
 
+def test_unresolved_weekday_transport_failure_stays_required_and_blocks_without_promotion(tmp_path):
+    day = "2026-10-06"
+    foundation, raw, authority, _common_raw, etf_raw, common_adjusted, etf_adjusted = _foundation(
+        tmp_path,
+        calendar=["2026-10-02"],
+        complete=["2026-10-02"],
+        certified="2026-10-03",
+    )
+
+    class TransportFailure:
+        def __init__(self):
+            self.calls = []
+
+        def refresh(self, boundary, target, *, required_dates):
+            self.calls.append((boundary, target, list(required_dates)))
+            return {
+                "required_dates": list(required_dates),
+                "new_boundary": boundary,
+                "runner_result": {
+                    "status": "BLOCKED_KRX_TRANSPORT",
+                    "blockers": ["BLOCKED_KRX_TRANSPORT"],
+                    "krx_open_api_attempt_count": 2,
+                    "retry_attempt_count": 0,
+                },
+            }
+
+    transport = TransportFailure()
+    foundation.common_raw_updater = transport
+    before = (authority / "manifest.json").read_bytes()
+
+    plan = foundation.plan(day)
+    result = foundation.execute(day, dry_run=False)
+
+    assert "2026-10-05" in plan["confirmed_closed_candidate_dates"]
+    assert day in plan["required_candidate_dates"]
+    assert plan["common_raw"]["missing_dates"] == [day]
+    assert transport.calls == [("2026-10-03", day, ["2026-10-02", day])]
+    assert result["reason"] == "BLOCKED_COMMON_RAW:BLOCKED_KRX_TRANSPORT"
+    assert result["network_request_count"] == 2
+    assert result["leg_results"]["common_raw"]["runner_result"]["retry_attempt_count"] == 0
+    assert result["production_write_count"] == result["authority_promotion"] == 0
+    assert result["boundary_unchanged"] is True
+    assert (authority / "manifest.json").read_bytes() == before
+    assert raw.get_manifest("KOSPI", day) is None
+    assert raw.get_manifest("KOSDAQ", day) is None
+    assert not etf_raw.calls and not common_adjusted.calls and not etf_adjusted.calls
+
+
 def test_market_index_plan_defers_known_raw_pair_blocker(tmp_path):
     foundation, _raw, _authority, *_ = _foundation(
         tmp_path,

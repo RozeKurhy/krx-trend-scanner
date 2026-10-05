@@ -94,6 +94,14 @@ target_as_of = 사용자가 지정한 포함 기준일
 검증에 실패하면 현재 목록이나 임의 규칙으로 우회하지 않고 `BLOCKED`로
 처리한다.
 
+운영 거래일 달력의 frontier 이후 날짜는 우선 평일 후보로 계산한다. 다만
+공식 출처로 확정한 KRX 휴장일은
+`data/reference/krx_confirmed_closed_dates.json`에 명시적으로 기록해 필요한
+날짜와 Phase 1 fetch 대상에서 제외한다. 이 목록은 기록된 날짜만 휴장으로
+판정한다. 목록에 없는 미확정 평일은 거래일 후보로 남겨 기존 KRX raw 검증과
+fail-closed 계약을 따른다. 휴장 기록이 rolling 거래일 달력 또는 KOSPI/KOSDAQ
+`COMPLETE` raw와 충돌하면 우회하지 않고 `BLOCKED` 처리한다.
+
 예를 들어 토요일을 `target_as_of`로 지정하면 금요일까지의 필요한 거래일이
 완성되어야 한다. 토요일이라는 이유로 기준일을 금요일로 다시
 기록하지 않는다.
@@ -144,6 +152,8 @@ target_as_of
 
 공휴일과 주말은 누락 거래일이 아니다. 검증된 운영 거래일 권위에서 필요한
 거래일인지 먼저 판정하고, 필요한 거래일만 완료 여부를 확인한다.
+명시적으로 확정한 휴장일에는 가짜 raw row나 거래일 calendar 항목을 만들지
+않으며, `reference_market_date`는 직전 exact trading session으로 유지한다.
 
 ### 4.3 기존 이력 보존
 

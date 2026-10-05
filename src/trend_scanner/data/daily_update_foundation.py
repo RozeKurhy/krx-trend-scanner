@@ -46,6 +46,14 @@ from trend_scanner.data.rolling_market_data_refresh import (
 )
 
 
+DEFAULT_CLOSED_DATE_AUTHORITY_PATH = (
+    Path(__file__).resolve().parents[3]
+    / "data"
+    / "reference"
+    / "krx_confirmed_closed_dates.json"
+)
+
+
 class DailyUpdateFoundationError(RuntimeError):
     """Expected, reportable failure of the single-target daily foundation."""
 
@@ -140,6 +148,50 @@ def _candidate_tail(calendar_dates: Sequence[str], target_as_of: str) -> list[st
     return [day.date().isoformat() for day in pd.bdate_range(start, target_as_of)]
 
 
+def _load_confirmed_closed_dates(path: Path) -> dict[str, dict[str, Any]]:
+    """Load individually confirmed KRX closure dates; absent dates stay unresolved."""
+
+    if not Path(path).exists():
+        return {}
+    try:
+        payload = _read_json(Path(path))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise DailyUpdateFoundationError("BLOCKED_CLOSED_DATE_AUTHORITY_INVALID") from exc
+    if payload.get("schema_version") != "KRX_CONFIRMED_CLOSED_DATES_V01":
+        raise DailyUpdateFoundationError("BLOCKED_CLOSED_DATE_AUTHORITY_INVALID")
+    records = payload.get("closed_dates")
+    if not isinstance(records, list):
+        raise DailyUpdateFoundationError("BLOCKED_CLOSED_DATE_AUTHORITY_INVALID")
+
+    closed: dict[str, dict[str, Any]] = {}
+    for record in records:
+        if not isinstance(record, Mapping):
+            raise DailyUpdateFoundationError("BLOCKED_CLOSED_DATE_AUTHORITY_INVALID")
+        raw_date = record.get("date")
+        try:
+            day = normalize_target_as_of(raw_date)
+        except (DailyUpdateFoundationError, TypeError):
+            raise DailyUpdateFoundationError("BLOCKED_CLOSED_DATE_AUTHORITY_INVALID") from None
+        sources = record.get("sources")
+        if (
+            record.get("market") != "KRX"
+            or record.get("status") != "CLOSED"
+            or not str(record.get("reason", "")).strip()
+            or not isinstance(sources, list)
+            or not sources
+            or any(
+                not isinstance(source, Mapping)
+                or not str(source.get("title", "")).strip()
+                or not str(source.get("url", "")).startswith("https://")
+                for source in sources
+            )
+            or day in closed
+        ):
+            raise DailyUpdateFoundationError("BLOCKED_CLOSED_DATE_AUTHORITY_INVALID")
+        closed[day] = dict(record)
+    return closed
+
+
 def _leg_summary(
     status: str,
     *,
@@ -169,6 +221,7 @@ class DailyUpdateFoundation:
         self,
         *,
         authority_dir: Path = DEFAULT_ROLLING_AUTHORITY_DIR,
+        closed_date_authority_path: Path = DEFAULT_CLOSED_DATE_AUTHORITY_PATH,
         raw_store: KrxRawStockStore,
         adjusted_store: AdjustedPriceStore,
         common_adjusted_tickers: Sequence[str] = (),
@@ -187,6 +240,7 @@ class DailyUpdateFoundation:
         corporate_action_snapshot_loader: Callable[[str], Sequence[CorporateActionSnapshot]] | None = None,
     ) -> None:
         self.authority_dir = Path(authority_dir)
+        self.closed_date_authority_path = Path(closed_date_authority_path)
         self.raw_store = raw_store
         self.adjusted_store = adjusted_store
         self.common_adjusted_tickers = tuple(str(t).zfill(6) for t in common_adjusted_tickers)
@@ -223,8 +277,28 @@ class DailyUpdateFoundation:
         manifest, authority = self._load_state(target)
         known_dates = authority["calendar_dates"]
         finalized_no_data = set(_paired_no_data_dates(self.raw_store, target))
+        confirmed_closed = _load_confirmed_closed_dates(self.closed_date_authority_path)
+        confirmed_closed_dates = set(confirmed_closed)
+        raw_complete_dates = {
+            str(row.get("date", ""))
+            for market in ("KOSPI", "KOSDAQ")
+            for row in self.raw_store.list_manifest(market)
+            if str(row.get("date", "")) <= target
+            and str(row.get("status", "")).upper() == "COMPLETE"
+        }
+        closure_conflicts = (confirmed_closed_dates & set(known_dates)) | (
+            confirmed_closed_dates & raw_complete_dates
+        )
+        if closure_conflicts:
+            raise DailyUpdateFoundationError(
+                f"BLOCKED_CLOSED_DATE_TRADING_EVIDENCE_CONFLICT:{','.join(sorted(closure_conflicts))}"
+            )
         candidate_tail = _candidate_tail(known_dates, target)
-        tail_candidates = [day for day in candidate_tail if day not in finalized_no_data]
+        closed_tail_candidates = sorted(set(candidate_tail) & confirmed_closed_dates)
+        candidate_tail = [day for day in candidate_tail if day not in confirmed_closed_dates]
+        tail_candidates = [
+            day for day in candidate_tail if day not in finalized_no_data
+        ]
         # Keep terminal NO_DATA dates in raw coverage, but only paired COMPLETE
         # observations may become operating trading-calendar extension candidates.
         required_candidates = sorted(set(known_dates) | set(candidate_tail))
@@ -308,6 +382,7 @@ class DailyUpdateFoundation:
             "current_certified_through": manifest.certified_through,
             "operating_calendar_frontier": authority["operating_frontier"],
             "required_candidate_dates": required_candidates,
+            "confirmed_closed_candidate_dates": closed_tail_candidates,
             "common_raw": _leg_summary("PLAN", missing=common_missing, reason="REQUIRED_MINUS_COMPLETE"),
             "etf_raw": _leg_summary(
                 "PLAN",
