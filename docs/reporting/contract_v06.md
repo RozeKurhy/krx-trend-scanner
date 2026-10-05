@@ -9,7 +9,7 @@ Julia V1 (`JULIA_ETF_STRATEGY_V01`)로 제공한다. 일반 종목 v0.5의 의�
 
 ETF v0.6은 `a_fast_core`를 포함하지 않는다. 해당 필드는 v0.5에서 A FAST Core V2
 전략을 뜻하며 Julia V1을 담는 용도로 재사용할 수 없다. ETF 전략은 최상위
-`official_strategy`에만 둔다. B Select Core V1은 기본 전략 라우팅에 넣지 않는다.
+`official_strategy`에만 둔다. B Select Core V2는 일반 COMMON 전략이므로 ETF v0.6 라우팅에 넣지 않는다.
 
 ## 기준일과 데이터 권위
 

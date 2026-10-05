@@ -233,13 +233,15 @@ def _stage_payloads(
             reference_market_date=reference_market_date,
         )
     _write_json(stage_data / B_SELECT_STATUS_STAGING_NAME, b_status)
-    strategy = strategy_web.build_strategy_monitor(
-        index_path=stage_data / "stock-index.json",
-        stocks_path=stocks_dir,
-        target_as_of=target_as_of,
-        reference_market_date=reference_market_date,
-        b_select_status=b_status,
-    )
+    strategy = phase4c_result.get("_strategy_monitor_for_phase4d")
+    if not isinstance(strategy, dict):
+        strategy = strategy_web.build_strategy_monitor(
+            index_path=stage_data / "stock-index.json",
+            stocks_path=stocks_dir,
+            target_as_of=target_as_of,
+            reference_market_date=reference_market_date,
+            b_select_status=b_status,
+        )
     _write_json(stage_data / "strategy-monitor.json", strategy)
 
     dt_clean = target_as_of.replace("-", "")
@@ -444,6 +446,39 @@ def validate_staging(
         or strategy_by_id[B_SELECT_ID].get("label") != "B Select Core V2"
     ):
         raise Phase4DError("PHASE4D_B_SELECT_MIGRATION_AUDIT_INVALID")
+    if target_as_of == phase4c.V2_PROMOTION_SEED_TARGET_AS_OF:
+        catchup_audit = b_status.get("catchup_audit") or {}
+        migrated_keys = {
+            (str(row.get("ticker", "")).zfill(6), str(row.get("isu_cd", "")).upper())
+            for row in migrated_open
+            if isinstance(row, dict)
+        }
+        excluded_open_key = ("011080", "KR7011080009")
+        excluded_open_item = next(
+            (
+                item for item in b_status.get("items", [])
+                if (str(item.get("ticker", "")).zfill(6), str(item.get("isu_cd", "")).upper())
+                == excluded_open_key
+            ),
+            None,
+        )
+        if (
+            reference_market_date != phase4c.V2_PROMOTION_BASELINE_REFERENCE_DATE
+            or len(migrated_open) != 26
+            or len(migrated_keys) != 26
+            or excluded_open_key not in migrated_keys
+            or b_status.get("reference_run_entry_signal_count") != 0
+            or b_status.get("inherited_excluded_open_exception_count") != 1
+            or catchup_audit.get("replay_mode") != "V1_SAME_REFERENCE_PROMOTION_SEED_NO_RETROACTIVE_SIGNALS"
+            or catchup_audit.get("catchup_session_count") != 0
+            or catchup_audit.get("catchup_identity_count") != 0
+            or catchup_audit.get("catchup_intermediate_observation_count") != 0
+            or not isinstance(excluded_open_item, dict)
+            or excluded_open_item.get("canonical_position") != "OPEN"
+            or excluded_open_item.get("inherited_excluded_open_exception") is not True
+            or excluded_open_item.get("permanent_identity_excluded") is not True
+        ):
+            raise Phase4DError("PHASE4D_B_SELECT_V2_PROMOTION_SEED_INVALID")
     for item in b_status.get("items", []):
         if item.get("permanent_identity_excluded") is True and any(
             trade.get("strategy_id") == B_SELECT_ID
@@ -555,9 +590,12 @@ def run_phase4d(
     execute_live: bool,
     root: Path = ROOT,
     phase4c_result: dict[str, Any] | None = None,
+    v2_promotion_seed: bool = False,
 ) -> dict[str, Any]:
     if root != ROOT:
         raise Phase4DError("PHASE4D_REPOSITORY_ROOT_MISMATCH")
+    if v2_promotion_seed and target_as_of != phase4c.V2_PROMOTION_SEED_TARGET_AS_OF:
+        raise Phase4DError("PHASE4D_V2_PROMOTION_SEED_SCOPE_INVALID")
     published = inspect_published_payload(root, target_as_of, require_etf_source=True)
     if published is not None:
         return {
@@ -575,6 +613,12 @@ def run_phase4d(
     try:
         stage_data = stage_root / "data"
         stage_data.mkdir()
+        if phase4c_result is None and v2_promotion_seed:
+            phase4c_result = phase4c.run_phase4c(
+                target_as_of,
+                root=ROOT,
+                v2_promotion_seed=True,
+            )
         context = _stage_payloads(target_as_of, stage_data, phase4c_result=phase4c_result)
         validation = validate_staging(
             stage_data, target_as_of, context["reference_market_date"], require_etf36=True,
@@ -609,13 +653,22 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target-as-of", required=True, help="explicit YYYY-MM-DD target (no default)")
     parser.add_argument("--execute-live", action="store_true", help="promote validated staging payloads to web/data")
+    parser.add_argument(
+        "--v2-promotion-seed",
+        action="store_true",
+        help="authorize only the 2026-10-03 V2 seed from the sealed 2026-10-02 V1 snapshot",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
-        print(json.dumps(run_phase4d(args.target_as_of, execute_live=args.execute_live), ensure_ascii=False, indent=2))
+        print(json.dumps(run_phase4d(
+            args.target_as_of,
+            execute_live=args.execute_live,
+            v2_promotion_seed=args.v2_promotion_seed,
+        ), ensure_ascii=False, indent=2))
         return 0
     except (Phase4DError, ValueError, FileNotFoundError) as exc:
         print(json.dumps({"status": "FAILED", "error": str(exc)}, ensure_ascii=False, indent=2))

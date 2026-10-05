@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from scripts import build_b_select_core_v2_status as status_v2
+from scripts import export_strategy_monitor_web as strategy_monitor
 
 
 APPROVED_SEVEN = {
@@ -75,6 +76,64 @@ def test_latest_sealed_v1_status_inventory_has_26_open_positions_including_exclu
     }
     assert ("011080", "KR7011080009") in migrated_keys
     assert all(item["quantity"] is None for item in payload["migrated_open_positions"])
+
+
+def test_promotion_monitor_authority_reads_v1_open_entry_context_without_rewriting_lineage():
+    root = Path(__file__).resolve().parents[1]
+    source_path = root / "artifacts/strategies/b_select_core_v1/production/20261003/status.json"
+    prior = json.loads(source_path.read_text(encoding="utf-8"))
+    migration = status_v2._promotion_migration_payload(
+        prior,
+        str(source_path.relative_to(root)),
+    )
+    current = {
+        "strategy_id": status_v2.STRATEGY_ID,
+        "requested_as_of": "2026-10-03",
+        "reference_market_date": "2026-10-02",
+        "promotion_migration": migration,
+        "catchup_audit": {
+            "replay_mode": "V1_SAME_REFERENCE_PROMOTION_SEED_NO_RETROACTIVE_SIGNALS",
+            "catchup_session_count": 0,
+            "catchup_session_dates": [],
+            "recovered_month_end_dates": [],
+            "skipped_krx_session_count": 0,
+        },
+        "catchup_entry_pattern_a_authorities": [],
+    }
+
+    authority = strategy_monitor._read_catchup_entry_stage_authority(current, repo_root=root)
+
+    expected_key = ("064260", "KR7064260003", "064260:KR7064260003:000", "2026-09-30")
+    assert len(authority) == 26
+    assert authority[expected_key]["source"] == "V1_PROMOTION_BASELINE_STATUS"
+    assert authority[expected_key]["entry_pattern_a_stage_recomputed"] == "PROGRESSED"
+
+
+def test_same_reference_v1_baseline_requires_the_exact_explicit_promotion_seed(tmp_path):
+    source = tmp_path / "artifacts/strategies/b_select_core_v1/production/20261003/status.json"
+    source.parent.mkdir(parents=True)
+    source.write_text(json.dumps({
+        "status": "PASS",
+        "strategy_id": "PATTERN_B_SELECT_CORE_V01",
+        "requested_as_of": "2026-10-03",
+        "reference_market_date": "2026-10-02",
+    }))
+
+    prior, relative_path = status_v2._latest_prior_status(
+        tmp_path,
+        "2026-10-02",
+        ["2026-10-02"],
+        allow_same_reference_v1_seed=True,
+    )
+    assert prior["strategy_id"] == "PATTERN_B_SELECT_CORE_V01"
+    assert relative_path == "artifacts/strategies/b_select_core_v1/production/20261003/status.json"
+
+    try:
+        status_v2._latest_prior_status(tmp_path, "2026-10-02", ["2026-10-02"])
+    except status_v2.BSelectStatusError as exc:
+        assert str(exc) == "B_SELECT_V1_BASELINE_NOT_BEFORE_PROMOTION_REFERENCE"
+    else:
+        raise AssertionError("same-reference V1 baseline was accepted without promotion authorization")
 
 
 def test_seven_approved_exclusions_block_new_entries_but_only_baseline_open_identity_migrates():

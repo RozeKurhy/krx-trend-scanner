@@ -1,4 +1,4 @@
-"""Display-only B Select Core V1 historical PIT fundamental status."""
+"""Display-only B Select lineage historical PIT fundamental status."""
 
 from __future__ import annotations
 
@@ -97,9 +97,9 @@ def _ledger():
 def test_published_statuses_are_historical_pit_and_consistent():
     monitor = _monitor()
     as_of = monitor["requested_as_of"]
-    b_select = next(s for s in monitor["strategies"] if s["id"] == "PATTERN_B_SELECT_CORE_V01")
+    b_select = next(s for s in monitor["strategies"] if s["id"] == "PATTERN_B_SELECT_CORE_V02")
     ledger = _ledger()
-    source = json.loads((ROOT / "artifacts/strategies/b_select_core_v1/production" / as_of.replace("-", "") / "status.json").read_text(encoding="utf-8"))
+    source = json.loads((ROOT / "artifacts/strategies/b_select_core_v2/production" / as_of.replace("-", "") / "status.json").read_text(encoding="utf-8"))
     isu = {item["ticker"]: item["isu_cd"] for item in source["items"]}
     history = {(t["ticker"], t["entry_signal_date"]): t["fundamental_status"] for t in b_select["trade_history"]}
     for item in b_select["items"]:
@@ -123,8 +123,8 @@ def test_published_statuses_are_historical_pit_and_consistent():
 
 def test_b_select_signals_buckets_and_trades_are_unchanged():
     monitor = _monitor()
-    b_select = next(s for s in monitor["strategies"] if s["id"] == "PATTERN_B_SELECT_CORE_V01")
-    source = json.loads((ROOT / "artifacts/strategies/b_select_core_v1/production" / monitor["requested_as_of"].replace("-", "") / "status.json").read_text(encoding="utf-8"))
+    b_select = next(s for s in monitor["strategies"] if s["id"] == "PATTERN_B_SELECT_CORE_V02")
+    source = json.loads((ROOT / "artifacts/strategies/b_select_core_v2/production" / monitor["requested_as_of"].replace("-", "") / "status.json").read_text(encoding="utf-8"))
     assert b_select["counts"] == source["counts"]
     projected = [{k: v for k, v in item.items() if k != "fundamental_status"} for item in b_select["items"]]
     assert projected == [{k: v for k, v in item.items() if k != "trade_history"} for item in source["items"]]
@@ -153,7 +153,8 @@ def test_ui_wiring_for_list_history_filters_and_card():
     assert "strategy-trade-heading" not in js and "strategy-trade-heading" not in history_css
     assert '"종목", "매수 체결일"' not in js
     assert ".strategy-trade-row-b-select { grid-template-columns:" in history_css
-    # Current-state value keeps a fixed three-line height.
-    assert ".strategy-item-position .strategy-item-value { min-height: calc(1.35em * 3 + 2px);" in css
+    # Current status fields share a centered 48px field box and 2.4em value height.
+    assert ".strategy-item-field { display: flex; align-self: center; flex-direction: column; justify-content: center; gap: 4px; min-height: 48px; }" in css
+    assert ".strategy-item-value { display: block; min-height: 2.4em;" in css
     # Report card keeps the "{status}.{action}" form.
     assert "`${status}.${action}`" in report_js

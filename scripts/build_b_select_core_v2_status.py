@@ -68,6 +68,11 @@ STAGE_HISTORY_METADATA_REL = Path(
 MONTHLY_SAMPLE_REL = pattern_b_source.SAMPLE_PATH
 STATUS_RELATIVE = Path("artifacts/strategies/b_select_core_v2/production")
 LEGACY_STATUS_RELATIVE = Path("artifacts/strategies/b_select_core_v1/production")
+V2_PROMOTION_SEED_REQUESTED_AS_OF = "2026-10-03"
+V2_PROMOTION_SEED_REFERENCE_MARKET_DATE = "2026-10-02"
+V2_PROMOTION_SEED_SOURCE = (
+    LEGACY_STATUS_RELATIVE / "20261003" / "status.json"
+)
 ASSET_TYPE = "COMMON"
 SCOPE_TYPE = "PUBLISHED_COMMON_REPORTS"
 SCOPE_LABEL = "현재 공개 COMMON 리포트 기준"
@@ -537,6 +542,8 @@ def _latest_prior_status(
     root: Path,
     reference_market_date: str,
     trading_dates: list[str],
+    *,
+    allow_same_reference_v1_seed: bool = False,
 ) -> tuple[dict[str, Any], str] | None:
     candidates: list[tuple[str, str, dict[str, Any], Path]] = []
     for path in (root / STATUS_RELATIVE).glob("*/status.json"):
@@ -561,16 +568,34 @@ def _latest_prior_status(
                 legacy_candidates.append((prior_reference, str(value.get("requested_as_of", ""))[:10], value, path))
         if legacy_candidates:
             latest_legacy = max(legacy_candidates, key=lambda item: (item[0], item[1]))
-            if latest_legacy[0] >= reference_market_date:
+            same_reference_seed = (
+                allow_same_reference_v1_seed
+                and latest_legacy[0] == reference_market_date
+                and latest_legacy[1] == V2_PROMOTION_SEED_REQUESTED_AS_OF
+            )
+            if latest_legacy[0] > reference_market_date or (
+                latest_legacy[0] == reference_market_date and not same_reference_seed
+            ):
                 raise BSelectStatusError("B_SELECT_V1_BASELINE_NOT_BEFORE_PROMOTION_REFERENCE")
             candidates.append(latest_legacy)
     if not candidates:
         return None
     prior_reference, _, value, path = max(candidates, key=lambda item: (item[0], item[1]))
-    try:
-        _catchup_session_dates(prior_reference, reference_market_date, trading_dates)
-    except ValueError as exc:
-        raise BSelectStatusError("B_SELECT_PRIOR_STATUS_DATE_NOT_IN_KRX_CALENDAR") from exc
+    if prior_reference == reference_market_date:
+        same_reference_v1_seed = (
+            allow_same_reference_v1_seed
+            and value.get("strategy_id") == V1_STRATEGY_ID
+            and str(value.get("requested_as_of") or "")[:10] == V2_PROMOTION_SEED_REQUESTED_AS_OF
+            and prior_reference == V2_PROMOTION_SEED_REFERENCE_MARKET_DATE
+            and Path(str(path.relative_to(root))) == V2_PROMOTION_SEED_SOURCE
+        )
+        if not same_reference_v1_seed:
+            raise BSelectStatusError("B_SELECT_PRIOR_STATUS_DATE_NOT_BEFORE_REFERENCE")
+    else:
+        try:
+            _catchup_session_dates(prior_reference, reference_market_date, trading_dates)
+        except ValueError as exc:
+            raise BSelectStatusError("B_SELECT_PRIOR_STATUS_DATE_NOT_IN_KRX_CALENDAR") from exc
     return value, str(path.relative_to(root))
 
 
@@ -887,8 +912,14 @@ def build_b_select_status(
     stocks_path: Path | None = None,
     target_as_of: str,
     reference_market_date: str,
+    allow_same_reference_v1_seed: bool = False,
 ) -> dict[str, Any]:
     root = Path(repo_root)
+    if allow_same_reference_v1_seed and (
+        target_as_of != V2_PROMOTION_SEED_REQUESTED_AS_OF
+        or reference_market_date != V2_PROMOTION_SEED_REFERENCE_MARKET_DATE
+    ):
+        raise BSelectStatusError("B_SELECT_SAME_REFERENCE_SEED_SCOPE_INVALID")
     index_path = Path(index_path or root / "web/data/stock-index.json")
     stocks_path = Path(stocks_path or root / "web/data/stocks")
     index = _read_json(index_path)
@@ -977,7 +1008,12 @@ def build_b_select_status(
                 expected_exit_execution_date,
                 saved_exit_execution_date,
             ))
-    prior_status_result = _latest_prior_status(root, reference_market_date, trading_dates)
+    prior_status_result = _latest_prior_status(
+        root,
+        reference_market_date,
+        trading_dates,
+        allow_same_reference_v1_seed=allow_same_reference_v1_seed,
+    )
     prior_status = prior_status_result[0] if prior_status_result else None
     prior_artifact_path = prior_status_result[1] if prior_status_result else None
     catchup_session_dates: list[str] = []
@@ -1002,13 +1038,27 @@ def build_b_select_status(
     ):
         raise BSelectStatusError("B_SELECT_PROMOTION_BASELINE_CONTRACT_INVALID")
     try:
-        catchup_session_dates = _catchup_session_dates(
-            str(prior_status["reference_market_date"]),
-            reference_market_date,
-            trading_dates,
+        prior_reference = str(prior_status["reference_market_date"])[:10]
+        same_reference_v1_seed = (
+            allow_same_reference_v1_seed
+            and prior_status.get("strategy_id") == V1_STRATEGY_ID
+            and prior_reference == reference_market_date
+            and prior_reference == V2_PROMOTION_SEED_REFERENCE_MARKET_DATE
+            and str(prior_status.get("requested_as_of") or "")[:10]
+            == V2_PROMOTION_SEED_REQUESTED_AS_OF
+            and prior_artifact_path == str(V2_PROMOTION_SEED_SOURCE)
+        )
+        if prior_reference == reference_market_date and not same_reference_v1_seed:
+            raise ValueError("same-reference baseline is not an authorized V1 promotion seed")
+        catchup_session_dates = (
+            []
+            if same_reference_v1_seed
+            else _catchup_session_dates(prior_reference, reference_market_date, trading_dates)
         )
     except ValueError as exc:
         raise BSelectStatusError("B_SELECT_PRIOR_STATUS_SESSION_RANGE_INVALID") from exc
+    if allow_same_reference_v1_seed and not same_reference_v1_seed:
+        raise BSelectStatusError("B_SELECT_V1_SAME_REFERENCE_SEED_NOT_FOUND")
     prior_by_identity: dict[tuple[str, str], dict[str, Any]] = {}
     if prior_status:
         for item in prior_status.get("items", []):
@@ -1045,6 +1095,7 @@ def build_b_select_status(
     inherited_excluded_open_exception_count = 0
     catchup_identity_count = 0
     catchup_observation_count = 0
+    reference_run_entry_signal_count = 0
     exact_open_missing_count = 0
     lifecycle_error_details: list[str] = []
     catchup_entry_stage_authorities: dict[tuple[str, str, str, str], dict[str, str]] = {}
@@ -1076,6 +1127,8 @@ def build_b_select_status(
             raise BSelectStatusError(f"B_SELECT_PATTERN_B_REFERENCE_MISMATCH:{ticker}")
         pair = (ticker, identity["isu_cd"])
         prior_item = prior_by_identity.get(pair)
+        if same_reference_v1_seed and prior_item is None:
+            raise BSelectStatusError(f"B_SELECT_SAME_REFERENCE_SEED_IDENTITY_MISSING:{ticker}")
         is_excluded_identity = not _is_new_entry_allowed(*pair)
         if is_excluded_identity:
             excluded_identity_scope_count += 1
@@ -1244,17 +1297,34 @@ def build_b_select_status(
                     "sequence": int((prior_trade or {}).get("trade_sequence") or 1),
                     "strategy_id": str(prior_pending.get("strategy_id") or baseline_strategy_id),
                 }
-            session_contexts = _build_exact_session_contexts(
-                root=root,
-                ticker=ticker,
-                name=name,
-                identity=identity,
-                intervals=intervals,
-                trading_dates=trading_dates,
-                session_dates=catchup_session_dates,
-                report_pattern_history=report_pattern.get("history_12m") or [],
-                repository=repo,
-            )
+            if same_reference_v1_seed:
+                # The user-authorized 2026-10-03 closure intentionally seeds
+                # V2 from the already-sealed 2026-10-02 V1 snapshot. Use the
+                # same-date published report as the projection only; do not
+                # replay or retroactively apply V2 exits to this baseline.
+                session_contexts = [{
+                    "date": reference_market_date,
+                    "pattern_b_state": b_state,
+                    "pattern_b_evaluation_status": pattern_b.get("evaluation_status"),
+                    "pattern_a_stage": current_stage,
+                    "previous_pattern_a_stage": previous_stage,
+                    "previous_pattern_a_stage_date": (
+                        previous_context.get("previous_pattern_a_stage_date")
+                        if previous_context else None
+                    ),
+                }]
+            else:
+                session_contexts = _build_exact_session_contexts(
+                    root=root,
+                    ticker=ticker,
+                    name=name,
+                    identity=identity,
+                    intervals=intervals,
+                    trading_dates=trading_dates,
+                    session_dates=catchup_session_dates,
+                    report_pattern_history=report_pattern.get("history_12m") or [],
+                    repository=repo,
+                )
             if not session_contexts or session_contexts[-1]["date"] != reference_market_date:
                 raise BSelectStatusError(f"B_SELECT_CATCHUP_FINAL_SESSION_MISSING:{ticker}")
             final_context = session_contexts[-1]
@@ -1270,7 +1340,8 @@ def build_b_select_status(
             if final_context["previous_pattern_a_stage"] != previous_stage:
                 date_mismatch_count += 1
                 raise BSelectStatusError(f"B_SELECT_CATCHUP_FINAL_PREVIOUS_STAGE_PARITY_MISMATCH:{ticker}")
-            catchup_identity_count += 1
+            if not same_reference_v1_seed:
+                catchup_identity_count += 1
             for context in session_contexts[:-1]:
                 observations.append({"date": context["date"], "state": context["pattern_b_state"]})
                 catchup_observation_count += 1
@@ -1344,9 +1415,14 @@ def build_b_select_status(
         # If it satisfies entry, this is a signal on the reference date and its
         # next-session fill remains pending until a later reference run.
         observations = [row for row in observations if row["date"] != reference_market_date]
-        observations.append({"date": reference_market_date, "state": b_state})
+        observations.append({
+            "date": reference_market_date,
+            "state": b_state,
+            **({"exit_signal_eligible": False} if same_reference_v1_seed else {}),
+        })
         if (
-            _is_new_entry_allowed(*pair)
+            not same_reference_v1_seed
+            and _is_new_entry_allowed(*pair)
             and reference_market_date in month_end_sessions
             and is_entry_signal(b_state, current_stage, previous_stage)
         ):
@@ -1369,6 +1445,8 @@ def build_b_select_status(
                 "source_entry_execution_date": None,
                 "source_entry_open": None,
             })
+
+        reference_run_entry_signal_count += len(entry_signals)
 
         # Candidate rows already carry exact historic next-open dates/prices.
         # Cross-check the dates against the authoritative KRX calendar, then
@@ -1720,6 +1798,7 @@ def build_b_select_status(
         "permanent_identity_excluded_common_item_count": excluded_identity_scope_count,
         "inherited_excluded_open_exception_count": inherited_excluded_open_exception_count,
         "migration_open_position_parity_count": migration_open_position_parity_count,
+        "reference_run_entry_signal_count": reference_run_entry_signal_count,
         "historical_candidate_signal_count": sum(
             1 for row in candidate_rows
             if str(row.get("previous_pattern_a_stage", "")) in ALLOWED_PREVIOUS_STAGES
@@ -1760,7 +1839,11 @@ def build_b_select_status(
         "duplicate_item_count": duplicate_item_count,
         "cross_strategy_contamination_count": cross_contamination_count,
         "catchup_audit": {
-            "replay_mode": "INCREMENTAL_DAILY_V2_CATCHUP",
+            "replay_mode": (
+                "V1_SAME_REFERENCE_PROMOTION_SEED_NO_RETROACTIVE_SIGNALS"
+                if same_reference_v1_seed
+                else "INCREMENTAL_DAILY_V2_CATCHUP"
+            ),
             "prior_artifact_path": prior_artifact_path,
             "prior_reference_market_date": (
                 str(prior_status.get("reference_market_date"))[:10] if prior_status else None

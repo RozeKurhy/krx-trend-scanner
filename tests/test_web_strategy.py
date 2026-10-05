@@ -43,7 +43,7 @@ def test_strategy_monitor_schema_and_source_count_are_consistent():
     index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
     strategies = {strategy["id"]: strategy for strategy in monitor["strategies"]}
     common = strategies["PATTERN_A_FAST_FINAL_STRATEGY_V02"]
-    b_select = strategies["PATTERN_B_SELECT_CORE_V01"]
+    b_select = strategies["PATTERN_B_SELECT_CORE_V02"]
     julia = strategies["JULIA_ETF_STRATEGY_V01"]
     items = common["items"]
 
@@ -51,7 +51,7 @@ def test_strategy_monitor_schema_and_source_count_are_consistent():
     assert monitor["default_strategy_id"] == "PATTERN_A_FAST_FINAL_STRATEGY_V02"
     assert [strategy["id"] for strategy in monitor["strategies"]] == [
         "PATTERN_A_FAST_FINAL_STRATEGY_V02",
-        "PATTERN_B_SELECT_CORE_V01",
+        "PATTERN_B_SELECT_CORE_V02",
         "JULIA_ETF_STRATEGY_V01",
     ]
     assert monitor["source"]["type"] == "PUBLISHED_STOCK_REPORTS"
@@ -108,17 +108,17 @@ def test_b_select_open_entry_pattern_a_context_matches_exact_authority():
     monitor = _load_monitor()
     b_select = next(
         strategy for strategy in monitor["strategies"]
-        if strategy["id"] == "PATTERN_B_SELECT_CORE_V01"
+        if strategy["id"] == "PATTERN_B_SELECT_CORE_V02"
     )
     authority = exporter._read_entry_stage_authority(ROOT)
     status_path = (
         ROOT
-        / "artifacts/strategies/b_select_core_v1/production"
+        / "artifacts/strategies/b_select_core_v2/production"
         / monitor["requested_as_of"].replace("-", "")
         / "status.json"
     )
     status = json.loads(status_path.read_text(encoding="utf-8"))
-    catchup_authority = exporter._read_catchup_entry_stage_authority(status)
+    catchup_authority = exporter._read_catchup_entry_stage_authority(status, repo_root=ROOT)
     exporter._validate_b_select_entry_contexts(
         b_select["items"], authority, catchup_authority=catchup_authority
     )
@@ -551,16 +551,23 @@ def test_strategy_position_examples_keep_meaningful_two_line_values():
 def test_strategy_monitor_json_matches_clean_exporter_projection():
     exporter = _load_exporter()
     monitor = _load_monitor()
-    # The checked-in payload is the last sealed pre-promotion snapshot. It
-    # remains historical V1 data until Phase 4D publishes the first V2 status.
     assert monitor["reference_market_date"] == "2026-10-02"
     assert [row["id"] for row in monitor["strategies"]] == [
         "PATTERN_A_FAST_FINAL_STRATEGY_V02",
-        exporter.LEGACY_B_SELECT_ID,
+        exporter.B_SELECT_ID,
         "JULIA_ETF_STRATEGY_V01",
     ]
     assert exporter.B_SELECT_ID == "PATTERN_B_SELECT_CORE_V02"
     assert exporter.B_SELECT_LABEL == "B Select Core V2"
+    status_path = ROOT / "artifacts/strategies/b_select_core_v2/production/20261003/status.json"
+    status = json.loads(status_path.read_text(encoding="utf-8"))
+    projected = exporter.build_strategy_monitor(
+        repo_root=ROOT,
+        target_as_of=monitor["requested_as_of"],
+        reference_market_date=monitor["reference_market_date"],
+        b_select_status=status,
+    )
+    assert projected == monitor
 
 
 def test_b_select_exporter_keeps_entry_and_exit_strategy_lineage():
@@ -630,11 +637,11 @@ def test_three_strategy_trade_history_counts_identity_and_source_parity():
         source_tickers[strategy_id].add(item["ticker"])
 
     fast = strategies["PATTERN_A_FAST_FINAL_STRATEGY_V02"]["trade_history"]
-    b_select = strategies["PATTERN_B_SELECT_CORE_V01"]["trade_history"]
+    b_select = strategies["PATTERN_B_SELECT_CORE_V02"]["trade_history"]
     julia = strategies["JULIA_ETF_STRATEGY_V01"]["trade_history"]
     b_status_path = (
         ROOT
-        / "artifacts/strategies/b_select_core_v1/production"
+        / "artifacts/strategies/b_select_core_v2/production"
         / monitor["requested_as_of"].replace("-", "")
         / "status.json"
     )
@@ -650,12 +657,12 @@ def test_three_strategy_trade_history_counts_identity_and_source_parity():
         for key in ("entry", "hold", "exit", "watch", "unavailable")
     }
 
-    source_counts["PATTERN_B_SELECT_CORE_V01"] = b_source_counts
-    source_history_counts["PATTERN_B_SELECT_CORE_V01"] = len(b_status_trades)
-    source_tickers["PATTERN_B_SELECT_CORE_V01"] = {item["ticker"] for item in b_source_items}
+    source_counts["PATTERN_B_SELECT_CORE_V02"] = b_source_counts
+    source_history_counts["PATTERN_B_SELECT_CORE_V02"] = len(b_status_trades)
+    source_tickers["PATTERN_B_SELECT_CORE_V02"] = {item["ticker"] for item in b_source_items}
     for strategy_id, expected_asset_type in (
         ("PATTERN_A_FAST_FINAL_STRATEGY_V02", "COMMON"),
-        ("PATTERN_B_SELECT_CORE_V01", "COMMON"),
+        ("PATTERN_B_SELECT_CORE_V02", "COMMON"),
         ("JULIA_ETF_STRATEGY_V01", "ETF"),
     ):
         strategy = strategies[strategy_id]
@@ -669,14 +676,14 @@ def test_three_strategy_trade_history_counts_identity_and_source_parity():
         assert {item["ticker"] for item in strategy["items"]} == source_tickers[strategy_id]
         assert all(item["asset_type"] == expected_asset_type for item in strategy["items"])
 
-    assert source_tickers["PATTERN_A_FAST_FINAL_STRATEGY_V02"] == source_tickers["PATTERN_B_SELECT_CORE_V01"]
+    assert source_tickers["PATTERN_A_FAST_FINAL_STRATEGY_V02"] == source_tickers["PATTERN_B_SELECT_CORE_V02"]
     assert source_tickers["JULIA_ETF_STRATEGY_V01"] == {
         item["ticker"] for item in strategies["JULIA_ETF_STRATEGY_V01"]["items"]
     }
 
     for strategy_id, trades in (
         ("PATTERN_A_FAST_FINAL_STRATEGY_V02", fast),
-        ("PATTERN_B_SELECT_CORE_V01", b_select),
+        ("PATTERN_B_SELECT_CORE_V02", b_select),
         ("JULIA_ETF_STRATEGY_V01", julia),
     ):
         identities = [

@@ -585,11 +585,11 @@ def test_common_report_dual_strategy_ui_reuses_monitor_and_fails_closed():
     monitor = json.loads((ROOT / "web/data/strategy-monitor.json").read_text(encoding="utf-8"))
     b_select = next(
         strategy for strategy in monitor["strategies"]
-        if strategy["id"] == "PATTERN_B_SELECT_CORE_V01"
+        if strategy["id"] == "PATTERN_B_SELECT_CORE_V02"
     )
     b_select_status_path = (
         ROOT
-        / "artifacts/strategies/b_select_core_v1/production"
+        / "artifacts/strategies/b_select_core_v2/production"
         / monitor["requested_as_of"].replace("-", "")
         / "status.json"
     )

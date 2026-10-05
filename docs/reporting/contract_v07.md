@@ -28,7 +28,7 @@ v0.7의 JSON 구조는 [schema_v07.json](schema_v07.json)을 따른다. 이 스�
 ## 전략 및 기존 필드 의미
 
 - Pattern B는 종목의 장기 위치와 상태를 보여주는 정보성 분석이다.
-  `B Select Core V1` 매매 전략 실행이나 매수·매도 신호가 아니다.
+  현재 공식 전략인 `B Select Core V2` 매매 실행이나 매수·매도 신호가 아니다.
 - `pattern_b`를 `a_fast_core` 또는 A FAST Core V2 라우팅에 연결하지 않는다.
 - Pattern A, fundamentals, foreign flow, market/sector RS 및 기존 전략 필드의
   의미와 산식은 변경하지 않는다.
