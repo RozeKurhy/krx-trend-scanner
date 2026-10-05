@@ -43,12 +43,26 @@
   const STRATEGY_LABELS = {
     PATTERN_A_FAST_FINAL_STRATEGY_V02: "A FAST Core V2",
     PATTERN_B_SELECT_CORE_V01: "B Select Core V1",
+    PATTERN_B_SELECT_CORE_V02: "B Select Core V2",
     JULIA_ETF_STRATEGY_V01: "Julia V1",
   };
-  const EXPECTED_STRATEGY_IDS = Object.keys(STRATEGY_LABELS);
+  const CURRENT_STRATEGY_IDS = [
+    "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "PATTERN_B_SELECT_CORE_V02",
+    "JULIA_ETF_STRATEGY_V01",
+  ];
+  const LEGACY_STRATEGY_IDS = [
+    "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "PATTERN_B_SELECT_CORE_V01",
+    "JULIA_ETF_STRATEGY_V01",
+  ];
   const SECTION_IDS = { hold: "hold", entry: "entry", exit: "exit", watch: "watch", unavailable: "unavailable" };
   const FILTERS = new Set(["all", ...Object.keys(SECTION_IDS)]);
-  const B_SELECT_STRATEGY_ID = "PATTERN_B_SELECT_CORE_V01";
+  const B_SELECT_STRATEGY_ID = "PATTERN_B_SELECT_CORE_V02";
+  const LEGACY_B_SELECT_STRATEGY_ID = "PATTERN_B_SELECT_CORE_V01";
+  const isBSelectLineageId = (strategyId) => (
+    strategyId === B_SELECT_STRATEGY_ID || strategyId === LEGACY_B_SELECT_STRATEGY_ID
+  );
   const FUNDAMENTAL_STATUSES = ["우수", "양호", "보통", "주의", "미상"];
   const FUNDAMENTAL_FILTERS = new Set(["all", ...FUNDAMENTAL_STATUSES]);
   const SORT_OPTIONS = new Set(["entry-date", "return", "name"]);
@@ -171,7 +185,7 @@
   }
 
   function fundamentalFilterActive() {
-    return activeStrategyId === B_SELECT_STRATEGY_ID && fundamentalFilter !== "all";
+    return isBSelectLineageId(activeStrategyId) && fundamentalFilter !== "all";
   }
 
   function fundamentalMatches(item) {
@@ -288,7 +302,7 @@
 
   function createStrategyItem(item) {
     const strategyId = activeStrategyId;
-    const layoutClass = strategyId === "PATTERN_B_SELECT_CORE_V01"
+    const layoutClass = isBSelectLineageId(strategyId)
       ? "strategy-item-b-select"
       : strategyId === "JULIA_ETF_STRATEGY_V01"
         ? "strategy-item-julia"
@@ -306,7 +320,7 @@
 
     const position = createPositionField(item);
     let detailFields = [];
-    if (strategyId === "PATTERN_B_SELECT_CORE_V01") {
+    if (isBSelectLineageId(strategyId)) {
       const hasEntryPatternAContext =
         item.entry_pattern_a_stage != null || item.entry_previous_pattern_a_stage != null;
       const previousPatternAStage = hasEntryPatternAContext
@@ -362,7 +376,7 @@
   }
 
   function historyFundamentalFilterActive() {
-    return activeStrategyId === B_SELECT_STRATEGY_ID && historyFundamentalFilter !== "all";
+    return isBSelectLineageId(activeStrategyId) && historyFundamentalFilter !== "all";
   }
 
   function historyTrades() {
@@ -383,7 +397,7 @@
   }
 
   function createTradeHistoryRow(trade) {
-    const bSelect = activeStrategyId === B_SELECT_STRATEGY_ID;
+    const bSelect = isBSelectLineageId(activeStrategyId);
     const row = createElement("a", `strategy-trade-row${bSelect ? " strategy-trade-row-b-select" : ""}`);
     row.href = `./report.html?ticker=${encodeURIComponent(trade.ticker)}`;
     row.setAttribute("aria-label", `${trade.name || trade.ticker} ${trade.ticker} 거래 이력, 리포트 보기`);
@@ -570,7 +584,7 @@
   }
 
   function syncFundamentalFilterVisibility() {
-    const visible = activeStrategyId === B_SELECT_STRATEGY_ID;
+    const visible = isBSelectLineageId(activeStrategyId);
     [
       ["strategy-fundamental-filter-row", "strategy-fundamental-filter", fundamentalFilter],
       ["history-fundamental-filter-row", "history-fundamental-filter", historyFundamentalFilter],
@@ -599,7 +613,7 @@
   function syncHistorySortVisibility() {
     const row = byId("history-sort-row");
     const select = byId("history-sort");
-    const visible = activeStrategyId === B_SELECT_STRATEGY_ID;
+    const visible = isBSelectLineageId(activeStrategyId);
     if (row) row.hidden = !visible;
     if (select) {
       select.disabled = !visible;
@@ -701,11 +715,13 @@
       || !/^\d{4}-\d{2}-\d{2}$/.test(value.reference_market_date || "")
       || value.reference_market_date > value.requested_as_of
       || !Array.isArray(value.strategies)
-      || value.strategies.length !== EXPECTED_STRATEGY_IDS.length
     ) return false;
     const byId = new Map(value.strategies.map((strategy) => [strategy && strategy.id, strategy]));
-    if (EXPECTED_STRATEGY_IDS.some((id) => !byId.has(id))) return false;
-    for (const id of EXPECTED_STRATEGY_IDS) {
+    const expectedIds = byId.has(B_SELECT_STRATEGY_ID)
+      ? CURRENT_STRATEGY_IDS
+      : byId.has(LEGACY_B_SELECT_STRATEGY_ID) ? LEGACY_STRATEGY_IDS : null;
+    if (!expectedIds || value.strategies.length !== expectedIds.length || expectedIds.some((id) => !byId.has(id))) return false;
+    for (const id of expectedIds) {
       const strategy = byId.get(id);
       const expectedScope = id === "JULIA_ETF_STRATEGY_V01" ? "OFFICIAL_ETF_36" : "COMMON";
       const expectedScopeType = expectedScope === "OFFICIAL_ETF_36" ? "OFFICIAL_ETF_36" : "PUBLISHED_COMMON_REPORTS";
@@ -731,7 +747,12 @@
           || (trade.exit_execution_date && !/^\d{4}-\d{2}-\d{2}$/.test(trade.exit_execution_date))
           || (trade.return_pct != null && !Number.isFinite(Number(trade.return_pct)))
         ) return false;
-        const identity = `${id}\u0000${trade.ticker}\u0000${trade.trade_sequence}\u0000${trade.entry_execution_date}`;
+        const sourceId = trade.strategy_id || id;
+        const allowedSourceIds = id === B_SELECT_STRATEGY_ID
+          ? [B_SELECT_STRATEGY_ID, LEGACY_B_SELECT_STRATEGY_ID]
+          : [id];
+        if (!allowedSourceIds.includes(sourceId)) return false;
+        const identity = `${sourceId}\u0000${trade.ticker}\u0000${trade.trade_sequence}\u0000${trade.entry_execution_date}`;
         if (historySeen.has(identity)) return false;
         historySeen.add(identity);
       }
@@ -745,7 +766,8 @@
       if (Object.keys(counts).some((key) => Number(strategy.counts[key] || 0) !== counts[key])) return false;
     }
     const commonA = new Set(byId.get("PATTERN_A_FAST_FINAL_STRATEGY_V02").items.map((item) => item.ticker));
-    const commonB = new Set(byId.get("PATTERN_B_SELECT_CORE_V01").items.map((item) => item.ticker));
+    const bId = byId.has(B_SELECT_STRATEGY_ID) ? B_SELECT_STRATEGY_ID : LEGACY_B_SELECT_STRATEGY_ID;
+    const commonB = new Set(byId.get(bId).items.map((item) => item.ticker));
     return commonA.size === commonB.size && Array.from(commonA).every((ticker) => commonB.has(ticker));
   }
 

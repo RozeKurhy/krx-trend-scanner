@@ -415,6 +415,12 @@
       : null;
   }
 
+  function monitorBSelectId(monitor) {
+    if (monitorStrategy(monitor, "PATTERN_B_SELECT_CORE_V02")) return "PATTERN_B_SELECT_CORE_V02";
+    if (monitorStrategy(monitor, "PATTERN_B_SELECT_CORE_V01")) return "PATTERN_B_SELECT_CORE_V01";
+    return "PATTERN_B_SELECT_CORE_V02";
+  }
+
   function monitorStrategyItem(monitor, strategyId, ticker) {
     const strategy = monitorStrategy(monitor, strategyId);
     if (!strategy || !Array.isArray(strategy.items)) return null;
@@ -450,7 +456,7 @@
     return B_SELECT_FUNDAMENTAL_STATUSES.includes(status) ? `${status}.${action}` : action;
   }
 
-  function commonStrategyActions(report, bSelectItem) {
+  function commonStrategyActions(report, bSelectItem, bSelectStrategyId) {
     const aFast = report.strategy || {};
     return [
       {
@@ -458,7 +464,7 @@
         action: strategyActionLabel(aFast.action, aFast.state, aFast.position),
       },
       {
-        name: "B Select Core V1",
+        name: bSelectStrategyId === "PATTERN_B_SELECT_CORE_V01" ? "B Select Core V1" : "B Select Core V2",
         action: withFundamentalStatus(bSelectItem, strategyActionLabel(
           bSelectItem && bSelectItem.action,
           bSelectItem && bSelectItem.strategy_state,
@@ -468,8 +474,8 @@
     ];
   }
 
-  function renderCommonStrategySummary(report, bSelectItem) {
-    const rows = commonStrategyActions(report, bSelectItem);
+  function renderCommonStrategySummary(report, bSelectItem, bSelectStrategyId) {
+    const rows = commonStrategyActions(report, bSelectItem, bSelectStrategyId);
     const decisionHeading = byId("decision-heading");
     if (decisionHeading) {
       decisionHeading.textContent = "전략별 현재 판단";
@@ -483,10 +489,10 @@
     setHidden("strategy-detail", true);
   }
 
-  function renderStrategySummary(report, bSelectItem = null) {
+  function renderStrategySummary(report, bSelectItem = null, bSelectStrategyId = "PATTERN_B_SELECT_CORE_V02") {
     const strategy = report.strategy || {};
     if (report.identity && report.identity.asset_type === "COMMON") {
-      renderCommonStrategySummary(report, bSelectItem);
+      renderCommonStrategySummary(report, bSelectItem, bSelectStrategyId);
       return;
     }
     const decisionHeading = byId("decision-heading");
@@ -1420,14 +1426,16 @@
     tabGroup.setAttribute("role", "group");
     tabGroup.setAttribute("aria-label", "전략 거래 이력 선택");
     const historyPanel = createElement("div", "report-strategy-history");
+    const bSelectId = monitorBSelectId(strategyMonitorData);
+    const bSelectLabel = bSelectId === "PATTERN_B_SELECT_CORE_V01" ? "B Select Core V1" : "B Select Core V2";
     const tabs = [
       ["PATTERN_A_FAST_FINAL_STRATEGY_V02", "A FAST Core V2"],
-      ["PATTERN_B_SELECT_CORE_V01", "B Select Core V1"],
+      [bSelectId, bSelectLabel],
     ];
     const renderSelectedHistory = () => {
       while (historyPanel.firstChild) historyPanel.removeChild(historyPanel.firstChild);
-      const history = activeCommonStrategyId === "PATTERN_B_SELECT_CORE_V01"
-        ? monitorTradeHistory(strategyMonitorData, "PATTERN_B_SELECT_CORE_V01", report.identity.ticker)
+      const history = activeCommonStrategyId === bSelectId
+        ? monitorTradeHistory(strategyMonitorData, bSelectId, report.identity.ticker)
         : (Array.isArray(report.strategy && report.strategy.history) ? report.strategy.history : []);
       appendStrategyHistory(history, historyPanel);
       if (history.length) {
@@ -1616,7 +1624,8 @@
     if (identity.asset_type === "COMMON") {
       loadStrategyMonitorOnce().then((monitor) => {
         if (currentReport !== report) return;
-        renderStrategySummary(report, monitorStrategyItem(monitor, "PATTERN_B_SELECT_CORE_V01", identity.ticker));
+        const bSelectId = monitorBSelectId(monitor);
+        renderStrategySummary(report, monitorStrategyItem(monitor, bSelectId, identity.ticker), bSelectId);
         if (activeDetailKey === "strategy") renderDetail("strategy", report);
       });
     }

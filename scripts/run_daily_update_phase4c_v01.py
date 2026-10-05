@@ -30,7 +30,8 @@ from scripts import export_sector_rs_ranking_web as sector_rs_web
 from scripts import export_stock_report_web as stock_report_web
 from scripts import export_strategy_monitor_web as strategy_monitor_web
 from scripts import export_web_data as health_web
-from scripts import build_b_select_core_v1_status as b_select_status_web
+from scripts import build_b_select_core_v2_status as b_select_status_web
+from scripts import build_b_select_core_v1_status as historical_b_select_status_web
 from trend_scanner.data.sector_membership import (
     SectorMembershipSnapshotUnavailable,
     resolve_sector_membership_snapshot_for_target,
@@ -45,6 +46,16 @@ logger = logging.getLogger("run_daily_update_phase4c_v01")
 
 class Phase4CError(RuntimeError):
     """Phase 4C fail-closed error (input validation, cross-payload validation)."""
+
+
+V2_PROMOTION_BASELINE_REFERENCE_DATE = "2026-10-02"
+
+
+def _b_select_status_builder(reference_market_date: str):
+    """Use V1 rules only for explicit pre-promotion historical replays."""
+    if str(reference_market_date)[:10] <= V2_PROMOTION_BASELINE_REFERENCE_DATE:
+        return historical_b_select_status_web
+    return b_select_status_web
 
 
 def resolve_sector_membership_for_target(target_as_of: str, *, root: Path) -> tuple[str, Path]:
@@ -218,7 +229,8 @@ def run_phase4c(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
             )
 
         # 6. Strategy monitor
-        b_select_status = b_select_status_web.build_b_select_status(
+        b_select_builder = _b_select_status_builder(reference_market_date)
+        b_select_status = b_select_builder.build_b_select_status(
             repo_root=root,
             index_path=temp_index_path,
             stocks_path=temp_stocks_dir,
@@ -244,9 +256,12 @@ def run_phase4c(target_as_of: str, root: Path = ROOT) -> dict[str, Any]:
                 f"PHASE4C_STRATEGY_MONITOR_REPORT_COUNT_MISMATCH: "
                 f"{strategy_by_id['PATTERN_A_FAST_FINAL_STRATEGY_V02']['scope']['report_count']} != {report_json_count}"
             )
+        expected_b_select_id = str(b_select_status.get("strategy_id") or "")
+        if expected_b_select_id not in {"PATTERN_B_SELECT_CORE_V01", "PATTERN_B_SELECT_CORE_V02"}:
+            raise Phase4CError("PHASE4C_B_SELECT_STRATEGY_ID_INVALID")
         if [row["id"] for row in strategy_rows] != [
             "PATTERN_A_FAST_FINAL_STRATEGY_V02",
-            "PATTERN_B_SELECT_CORE_V01",
+            expected_b_select_id,
             "JULIA_ETF_STRATEGY_V01",
         ]:
             raise Phase4CError("PHASE4C_STRATEGY_MONITOR_STRATEGY_ID_MISMATCH")

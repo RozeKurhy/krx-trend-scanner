@@ -1,7 +1,7 @@
-"""Display-only historical PIT fundamental status for B Select Core V1.
+"""Display-only historical PIT fundamental status for the B Select lineage.
 
-The status is informational and never changes B Select Core V1 signals,
-buckets or lifecycle.  It is evaluated with the V03 FIX01 PIT path
+The status is informational and never changes B Select Core V1/V2 signals,
+buckets or lifecycle. It is evaluated with the V03 FIX01 PIT path
 (``b_select_core_oi_1q_pit``) at a fixed status date per key:
 
 * a trade, an open position or a pending exit: its ``entry_signal_date``;

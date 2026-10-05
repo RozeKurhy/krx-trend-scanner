@@ -499,7 +499,7 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert 'formatSignedRate(value)' in js
     for removed in (
         "가격 권위 ",
-        "Pattern B는 정보성 상태 분석이며 B Select Core V1의 매수·매도 전략 실행과 별개입니다.",
+        "Pattern B는 정보성 상태 분석이며 B Select Core V2의 매수·매도 전략 실행과 별개입니다.",
         "마지막 월봉 ",
     ):
         assert removed not in js
@@ -604,7 +604,7 @@ def test_common_report_dual_strategy_ui_reuses_monitor_and_fails_closed():
     assert 'value.source?.type !== "PUBLISHED_STOCK_REPORTS"' in js
     assert 'item.asset_type === "COMMON" && item.ticker === ticker' in js
     assert 'name: "A FAST Core V2"' in js
-    assert 'name: "B Select Core V1"' in js
+    assert 'name: bSelectStrategyId === "PATTERN_B_SELECT_CORE_V01" ? "B Select Core V1" : "B Select Core V2"' in js
     assert 'action: strategyActionLabel(' in js
     assert 'typeof action !== "string" || typeof state !== "string" || typeof position !== "string"' in js
     for label in ('"진입"', '"보유"', '"청산 대기"', '"관찰"', '"정보 없음"'):
@@ -615,9 +615,9 @@ def test_common_report_dual_strategy_ui_reuses_monitor_and_fails_closed():
     assert 'function monitorTradeHistory(monitor, strategyId, ticker)' in js
     assert 'trade && trade.ticker === ticker' in js
     assert '"PATTERN_A_FAST_FINAL_STRATEGY_V02", "A FAST Core V2"' in js
-    assert '"PATTERN_B_SELECT_CORE_V01", "B Select Core V1"' in js
+    assert 'function monitorBSelectId(monitor)' in js
     assert '(Array.isArray(report.strategy && report.strategy.history) ? report.strategy.history : [])' in js
-    assert 'monitorTradeHistory(strategyMonitorData, "PATTERN_B_SELECT_CORE_V01", report.identity.ticker)' in js
+    assert 'monitorTradeHistory(strategyMonitorData, bSelectId, report.identity.ticker)' in js
     assert 'createDetailTable(["회차", "진입일", "진입가", "청산일", "청산가", "수익률", "상태", "종료 사유"]' in js
     assert 'trade.entry_open ?? trade.entry_price' in js
     assert 'trade.exit_type || trade.exit_reason' in js

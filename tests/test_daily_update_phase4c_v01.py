@@ -27,6 +27,11 @@ REAL_TARGET = "2026-09-25"
 REAL_REFERENCE_MARKET_DATE = "2026-09-23"
 
 
+def test_phase4c_uses_v1_only_for_pre_promotion_historical_replays():
+    assert phase4c._b_select_status_builder(REAL_REFERENCE_MARKET_DATE).__name__.endswith("build_b_select_core_v1_status")
+    assert phase4c._b_select_status_builder("2026-10-05").STRATEGY_ID == "PATTERN_B_SELECT_CORE_V02"
+
+
 def _write_scanner_summary(
     root: Path,
     target_as_of: str,

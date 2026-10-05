@@ -13,8 +13,8 @@
 | 역할 | 종목 자신의 장기 가격 사이클에서 현재 가격이 침체 쪽인지 과열 쪽인지 5단계로 분류 |
 | 현재 상태 판정 규칙 | 상태 판정 규칙 V02 (`PATTERN_B_STATE_RULE_V02`) |
 | 지표 계약 | 지표 계약 V01 중 유지 지표 3개 |
-| 운영 상태 | 스캐너·일일 갱신·웹의 현재 운영 범위에 포함되지 않음 |
-| 관련 공식 전략 | [B Select Core V1](../strategy/PATTERN_B_SELECT_CORE_V01.md) (`PATTERN_B_SELECT_CORE_V01`). 패턴 규칙과 별도 관리 |
+| 운영 상태 | Stock Report에 독립 Pattern B 상태로 노출하지 않음. B Select Core V2가 전략 status에서 완료된 exact KRX 세션을 평가 |
+| 관련 현재 공식 전략 | [B Select Core V2](../strategy/PATTERN_B_SELECT_CORE_V02.md) (`PATTERN_B_SELECT_CORE_V02`). 패턴 규칙과 별도 관리 |
 | 추가 튜닝 | 현재 없음. 규칙 변경은 별도 버전으로 관리한다 |
 
 Pattern B 자체의 버전 번호는 없다. 현재 기준은 "Pattern B, 현재 상태 판정 규칙 V02"로 부른다.
@@ -29,7 +29,7 @@ Pattern B 자체의 버전 번호는 없다. 현재 기준은 "Pattern B, 현재
 | 운영 계약 | [운영 계약 V02](production_contract_v02.md) |
 | 운영 검증 | [전체 종목 운영 감사 V02](../validation/full_universe_operational_audit_v02.md) |
 | 채택 근거 | [공식 패턴 채택 판단 V01](../validation/adoption_decision_v01.md) |
-| 관련 전략 규칙·채택 근거 | [B Select Core V1 공식 전략](../strategy/PATTERN_B_SELECT_CORE_V01.md) |
+| 관련 전략 규칙·채택 근거 | [B Select Core V2 공식 전략](../strategy/PATTERN_B_SELECT_CORE_V02.md) |
 
 종목 구간 규칙: 기준일을 포함하는 PIT COMMON 종목 구간 안에서만 조정 가격을 읽고, 다른 종목
 구간과 이어 붙이지 않는다. 같은 `isu_cd`의 연속된 KOSPI ↔ KOSDAQ 시장 이전 구간만 예외로
@@ -52,12 +52,12 @@ Pattern B 자체의 버전 번호는 없다. 현재 기준은 "Pattern B, 현재
 ## 4. 경계
 
 - Pattern B 상태는 매수·보유·매도 신호가 아니다.
-- Pattern B 상태 evaluator는 기준일의 일별 자료로 현재 상태를 판정할 수 있다. 이를 사용하는
-  B Select Core V1의 ENTRY/EXIT lifecycle은 전략 문서의 월말 cadence를 따른다. 매일 상태를
-  표시해도 월중 observation으로 매매 신호를 만들지 않는다.
+- Pattern B 상태 evaluator는 완료된 기준일의 일별 자료로 현재 상태를 판정할 수 있다. 이를 사용하는
+  B Select Core V2는 월말 ENTRY와 매 exact KRX session의 `NORMAL` EXIT를 구분해 적용한다.
+  월말 ENTRY와 월말 EXIT를 사용한 B Select Core V1은 역사적 버전으로 보존한다.
 - Pattern B의 "싸다"는 자기 과거 가격 대비 침체라는 뜻이며, 기업가치 평가가 아니다.
 - Pattern B는 상태를 판정하는 공식 패턴이고 매매 규칙은 정의하지 않는다. 이 상태와 Pattern A Stage를
-  사용하는 별도 공식 전략은 [B Select Core V1](../strategy/PATTERN_B_SELECT_CORE_V01.md)이며,
+  사용하는 현재 별도 공식 전략은 [B Select Core V2](../strategy/PATTERN_B_SELECT_CORE_V02.md)이며,
   전략 생애주기는 [공통 절차](../../../strategies/strategy_lifecycle.md)를 따른다.
 - 가치 함정이나 구조 붕괴 위험을 걸러 내지 않는다.
 
@@ -71,9 +71,9 @@ Pattern B 자체의 버전 번호는 없다. 현재 기준은 "Pattern B, 현재
 - 규칙 V02의 `DEPRESSED`는 사용자 판정 개념보다 좁다.
 - 과열 쪽은 사용자 개념과의 일치를 말할 근거가 적다.
 - 기준일에 거래정지 중인 종목은 마지막 거래 봉으로 상태가 계산된다. 운영 계약 V02는 상태를 바꾸지
-  않고 가격 신선도를 `STALE`로 표시한다. Pattern B는 스캐너·일일 갱신·웹의 현재 운영 범위에
-  연결되어 있지 않으며, 소비자에 표시할 때 `STALE`을 `CURRENT`로 취급하지 않는 경계는
-  [운영 계약 V02](production_contract_v02.md)에 기록되어 있다.
+  않고 가격 신선도를 `STALE`로 표시한다. Pattern B는 Stock Report에 독립 상태로 노출하지 않으며,
+  전략 소비자인 B Select Core V2의 exact-session EXIT 평가는 [전략 문서](../strategy/PATTERN_B_SELECT_CORE_V02.md)를 따른다.
+  소비자에 표시할 때 `STALE`을 `CURRENT`로 취급하지 않는 경계는 [운영 계약 V02](production_contract_v02.md)에 기록되어 있다.
 - [전체 종목 운영 감사 V02](../validation/full_universe_operational_audit_v02.md)(2026-09-21, `PASS`)에서
   2,544종목의 가격 로딩, 종목 구간, 시장 이전 연결(19종목), 신선도(`STALE` 97종목), 평가를 한 번
   점검했다. 계산 불가는 267종목이었다. 한 기준일의 결과이며, 일일 갱신 운영을 검증한 것은 아니다.

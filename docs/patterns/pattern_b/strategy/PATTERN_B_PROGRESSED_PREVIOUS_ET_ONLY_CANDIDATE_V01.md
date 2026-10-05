@@ -1,6 +1,6 @@
 # Pattern B PROGRESSED / Previous E-T Candidate V1
 
-> 역사적 상태: 공식 승격 전 당시 판정은 `HOLD`였다. 이 문서는 승격 전 후보와 당시 검증 이력을 보존한다. 현재 공식 전략은 [B Select Core V1](PATTERN_B_SELECT_CORE_V01.md) (`PATTERN_B_SELECT_CORE_V01`)이며, 규칙은 이 후보와 동일하다.
+> 역사적 상태: 공식 승격 전 당시 판정은 `HOLD`였다. 이 문서는 승격 전 후보와 당시 검증 이력을 보존한다. 이 후보의 진입 규칙은 당시 공식 B Select Core V1과 같았고, 현재 공식 후속 버전은 [B Select Core V2](PATTERN_B_SELECT_CORE_V02.md) (`PATTERN_B_SELECT_CORE_V02`)다. V2는 V1의 진입 규칙을 계승하고 보유 중 `NORMAL` 청산 관측만 매 완료 exact KRX 거래일로 바꿨다.
 
 ## 식별자
 

@@ -39,8 +39,9 @@ ENTRY_STAGE_HISTORY_METADATA_REL = Path(
 ALLOWED_ENTRY_PREVIOUS_STAGES = {"EARLY_TREND", "TRANSITION"}
 STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
 STRATEGY_LABEL = "A FAST Core V2"
-B_SELECT_ID = "PATTERN_B_SELECT_CORE_V01"
-B_SELECT_LABEL = "B Select Core V1"
+B_SELECT_ID = "PATTERN_B_SELECT_CORE_V02"
+B_SELECT_LABEL = "B Select Core V2"
+LEGACY_B_SELECT_ID = "PATTERN_B_SELECT_CORE_V01"
 JULIA_ID = "JULIA_ETF_STRATEGY_V01"
 JULIA_LABEL = "Julia V1"
 DEFAULT_STRATEGY_ID = STRATEGY_ID
@@ -281,6 +282,12 @@ def _normalize_trade(
     if exit_execution_date:
         exit_reason = _first_value(trade, "exit_type", "exit_reason")
     return {
+        "strategy_id": str(trade.get("strategy_id") or strategy_id),
+        "exit_strategy_id": (
+            str(trade.get("exit_strategy_id"))
+            if trade.get("exit_strategy_id") is not None
+            else None
+        ),
         "ticker": ticker,
         "name": name,
         "market": market,
@@ -298,9 +305,24 @@ def _normalize_trade(
     }
 
 
-def _validate_history_identities(strategy_id: str, trades: list[dict[str, Any]]) -> None:
+def _validate_history_identities(
+    strategy_id: str,
+    trades: list[dict[str, Any]],
+    *,
+    allowed_source_ids: set[str] | None = None,
+) -> None:
+    allowed_source_ids = allowed_source_ids or {strategy_id}
+    for trade in trades:
+        source_id = str(trade.get("strategy_id") or strategy_id)
+        if source_id not in allowed_source_ids:
+            raise ValueError(f"unexpected {strategy_id} history source strategy: {source_id}")
     identities = [
-        (strategy_id, trade["ticker"], trade["trade_sequence"], trade["entry_execution_date"])
+        (
+            str(trade.get("strategy_id") or strategy_id),
+            trade["ticker"],
+            trade["trade_sequence"],
+            trade["entry_execution_date"],
+        )
         for trade in trades
     ]
     if len(identities) != len(set(identities)):
@@ -491,13 +513,19 @@ def build_strategy_monitor(
     )
 
     if b_select_status is None:
-        b_select_path = repo_root / "artifacts/strategies/b_select_core_v1/production" / resolved_as_of.replace("-", "") / "status.json"
+        b_select_path = repo_root / "artifacts/strategies/b_select_core_v2/production" / resolved_as_of.replace("-", "") / "status.json"
         if not b_select_path.is_file():
             raise ValueError("B Select current status artifact is missing")
         b_select_status = _read_json(b_select_path)
+    b_select_strategy_id = str(b_select_status.get("strategy_id") or "")
+    b_select_label = (
+        "B Select Core V2" if b_select_strategy_id == B_SELECT_ID
+        else "B Select Core V1" if b_select_strategy_id == LEGACY_B_SELECT_ID
+        else ""
+    )
     if (
         b_select_status.get("status") != "PASS"
-        or b_select_status.get("strategy_id") != B_SELECT_ID
+        or b_select_strategy_id not in {B_SELECT_ID, LEGACY_B_SELECT_ID}
         or b_select_status.get("requested_as_of") != resolved_as_of
         or b_select_status.get("reference_market_date") != resolved_reference
         or (b_select_status.get("scope") or {}).get("type") != "PUBLISHED_COMMON_REPORTS"
@@ -543,7 +571,7 @@ def build_strategy_monitor(
     # Display-only historical PIT fundamental status (entry_signal_date for a
     # trade/position, requested_as_of for an item without a signal). One value
     # per key is shared by the list, its filter, the trade history and the stock
-    # report card; it never changes B Select Core V1 signals or buckets.
+    # report card; it never changes B Select Core V2 signals or buckets.
     fundamental = resolve_statuses(status_keys(b_items, resolved_as_of), repo_root)
 
     def fundamental_for(ticker: Any, isu_cd: Any, asof: Any) -> str:
@@ -561,7 +589,7 @@ def build_strategy_monitor(
             if not isinstance(trade, dict):
                 raise ValueError(f"invalid B Select trade history row: {item.get('ticker')}")
             normalized = _normalize_trade(
-                B_SELECT_ID,
+                b_select_strategy_id,
                 trade,
                 ticker=str(item.get("ticker") or "").zfill(6),
                 name=str(item.get("name") or item.get("ticker") or ""),
@@ -571,7 +599,11 @@ def build_strategy_monitor(
             normalized["fundamental_status"] = fundamental_for(item.get("ticker"), item.get("isu_cd"), trade.get("entry_signal_date"))
             b_history.append(normalized)
     _validate_history_identities(STRATEGY_ID, fast_history)
-    _validate_history_identities(B_SELECT_ID, b_history)
+    _validate_history_identities(
+        b_select_strategy_id,
+        b_history,
+        allowed_source_ids={LEGACY_B_SELECT_ID, B_SELECT_ID},
+    )
     _validate_history_identities(JULIA_ID, julia_history)
     b_current_items = [
         {key: value for key, value in item.items() if key != "trade_history"}
@@ -605,8 +637,8 @@ def build_strategy_monitor(
             "trade_history": fast_history,
         },
         {
-            "id": B_SELECT_ID,
-            "label": B_SELECT_LABEL,
+            "id": b_select_strategy_id,
+            "label": b_select_label,
             "asset_scope": "COMMON",
             "scope": {
                 "type": "PUBLISHED_COMMON_REPORTS",

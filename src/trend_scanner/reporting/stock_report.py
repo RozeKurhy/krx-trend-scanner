@@ -433,7 +433,7 @@ def _render_fundamentals_section(section: FundamentalsSection) -> list[str]:
 def _render_pattern_b_section(section) -> list[str]:
     lines = [
         "## 1.6. Pattern B 정보 분석",
-        "- **분석 구분**: 정보성 상태 분석 (B Select Core V1 전략 실행과 별도)",
+        "- **분석 구분**: 정보성 상태 분석 (B Select Core V2 전략 실행과 별도)",
         f"- **평가 상태 / 현재 상태**: `{section.evaluation_status}` / `{section.pattern_b_state or 'N/A'}`",
         f"- **기준일**: `{section.as_of}`",
         f"- **마지막 월봉 / 주봉**: `{section.monthly_last_bar or 'N/A'}` / `{section.weekly_last_bar or 'N/A'}`",

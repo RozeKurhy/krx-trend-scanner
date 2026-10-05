@@ -28,7 +28,7 @@ from scripts import export_sector_rs_ranking_web as sector_web
 from scripts import export_stock_report_web as stock_web
 from scripts import export_strategy_monitor_web as strategy_web
 from scripts import export_web_data as health_web
-from scripts import build_b_select_core_v1_status as b_select_status_web
+from scripts import build_b_select_core_v2_status as b_select_status_web
 from scripts import run_daily_update_phase4c_v01 as phase4c
 from scripts import run_pattern_a_universe_scanner as phase4a
 
@@ -46,13 +46,13 @@ REQUIRED_FILES = (
     "health.json",
 )
 STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
-B_SELECT_ID = "PATTERN_B_SELECT_CORE_V01"
+B_SELECT_ID = "PATTERN_B_SELECT_CORE_V02"
 JULIA_ID = "JULIA_ETF_STRATEGY_V01"
 B_SELECT_STATUS_STAGING_NAME = "b-select-status.json"
 
 
 def _b_select_status_path(root: Path, target_as_of: str) -> Path:
-    return root / "artifacts/strategies/b_select_core_v1/production" / target_as_of.replace("-", "") / "status.json"
+    return root / "artifacts/strategies/b_select_core_v2/production" / target_as_of.replace("-", "") / "status.json"
 
 
 def _write_json(path: Path, value: dict[str, Any]) -> None:
@@ -422,6 +422,8 @@ def validate_staging(
         or b_status.get("future_reference_count") != 0
         or b_status.get("duplicate_item_count") != 0
         or b_status.get("cross_strategy_contamination_count") != 0
+        or b_status.get("permanent_identity_exclusion_count") != 181
+        or (b_status.get("source_authorities") or {}).get("signal_cadence") != "MONTH_END_ENTRY_DAILY_NORMAL_EXIT"
         or b_status.get("scope", {}).get("type") != "PUBLISHED_COMMON_REPORTS"
         or b_status.get("count") != len(common_tickers)
         or len(b_status.get("items", [])) != len(common_tickers)
@@ -430,7 +432,25 @@ def validate_staging(
         or strategy_by_id[B_SELECT_ID].get("counts") != b_status.get("counts")
     ):
         raise Phase4DError("PHASE4D_B_SELECT_STATUS_INVALID")
-    for item in b_items:
+    migration = b_status.get("promotion_migration")
+    migrated_open = migration.get("migrated_open_positions") if isinstance(migration, dict) else None
+    if (
+        not isinstance(migration, dict)
+        or migration.get("source_strategy_id") != "PATTERN_B_SELECT_CORE_V01"
+        or not isinstance(migrated_open, list)
+        or migration.get("migrated_open_position_count") != len(migrated_open)
+        or b_status.get("migration_open_position_parity_count") != len(migrated_open)
+        or len({(row.get("ticker"), row.get("isu_cd")) for row in migrated_open if isinstance(row, dict)}) != len(migrated_open)
+        or strategy_by_id[B_SELECT_ID].get("label") != "B Select Core V2"
+    ):
+        raise Phase4DError("PHASE4D_B_SELECT_MIGRATION_AUDIT_INVALID")
+    for item in b_status.get("items", []):
+        if item.get("permanent_identity_excluded") is True and any(
+            trade.get("strategy_id") == B_SELECT_ID
+            for trade in item.get("trade_history", [])
+            if isinstance(trade, dict)
+        ):
+            raise Phase4DError(f"PHASE4D_B_SELECT_EXCLUDED_ENTRY_LEAKAGE:{item.get('ticker')}")
         if item.get("latest_close_as_of") not in {None, reference_market_date}:
             raise Phase4DError(f"PHASE4D_B_SELECT_LATEST_CLOSE_DATE_INVALID:{item.get('ticker')}")
         trade = item.get("current_trade")

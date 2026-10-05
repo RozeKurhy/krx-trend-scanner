@@ -74,9 +74,9 @@ artifacts/patterns/pattern_a/production/scanner/
 ### 3.2 공식 전략과 Stock Report
 
 일반 종목의 공식 전략은 A FAST Core V2
-(PATTERN_A_FAST_FINAL_STRATEGY_V02)와 B Select Core V1
-(PATTERN_B_SELECT_CORE_V01)이다. A FAST Core V2가 기본 전략이자
-CONTROL이고, B Select Core V1은 기본 전략·CONTROL이 아닌 독립 공식 전략이다.
+(PATTERN_A_FAST_FINAL_STRATEGY_V02)와 B Select Core V2
+(PATTERN_B_SELECT_CORE_V02)이다. A FAST Core V2가 기본 전략이자
+CONTROL이고, B Select Core V2는 기본 전략·CONTROL이 아닌 독립 공식 전략이다.
 ETF 전용 공식 전략은 Julia V1 (JULIA_ETF_STRATEGY_V01)이며 공식 ETF 36에만
 적용한다. COMMON 4B 성공 뒤 같은 `target_as_of`와 4A가 확정한
 `reference_market_date`로 ETF36 전용 Stock Report v0.6
@@ -257,14 +257,15 @@ Strategy Monitor v2의 세 전략 projection과 웹 상태가 포함된다.
   filter로 사용하지 않는다.
 - 범위 분리: 종목 index/JSON은 COMMON과 ETF36을 함께 포함한다. Market RS,
   Sector RS 및 외인 랭킹은 기존 COMMON 집합만 포함한다. Strategy Monitor v2는
-  A FAST Core V2와 B Select Core V1을 공개 COMMON 집합에, Julia V1을 Official ETF 36에
+  A FAST Core V2와 B Select Core V2를 공개 COMMON 집합에, Julia V1을 Official ETF 36에
   각각 분리해 저장하며 기본 선택은 A FAST Core V2다. ETF Pattern B는 적용하지 않는다.
-- B Select current status: Phase4C가 `build_b_select_core_v1_status.py`를 한 번 실행한다. 이 생성기는 해시 검증된 기존
+- B Select current status: Phase4C가 `build_b_select_core_v2_status.py`를 한 번 실행한다. 최초 V2 생성은 마지막 PASS V1 status를
+  마이그레이션 기준으로 삼아 기준일 이후 exact KRX 거래일만 catch-up하고, 이후 실행은 직전 V2 status부터 이어간다. 이 생성기는 해시 검증된 기존
   candidate-stage authority와 월별 Pattern B state를 exact PIT identity에 연결하고,
   현재 공개 COMMON 리포트의 같은 실행 기준일 상태를 더해 per-identity lifecycle을
-  복원한다. 매일 현재 상태와 data health는 표시하되, 신규 ENTRY/EXIT lifecycle 신호는
-  완결된 월의 마지막 exact KRX 거래일 observation에서만 만든다. 신호 다음 exact KRX session
-  open만 체결로 사용한다. reference 뒤 체결은 pending으로 남기며 해당 시가를 조회하지 않는다.
+  복원한다. ENTRY는 V1과 동일하게 월말의 마지막 exact KRX 거래일에만 판단한다. 보유 중
+  Pattern B `NORMAL` EXIT는 완료된 매 exact KRX 거래일에 판단한다. ENTRY/EXIT 모두 신호 다음
+  exact KRX session open만 체결로 사용한다. reference 뒤 체결은 pending으로 남기며 해당 시가를 조회하지 않는다.
   이 경로는 성과 지표·portfolio simulation을 만들지 않는다.
 - 실패 정책: B Select status가 없거나 날짜·범위·lifecycle 검증에 실패하면 Strategy Monitor를
   가짜 WAIT로 채우지 않고 Phase4C/4D를 실패 처리한다. Phase4D는 Phase4C가 만든
@@ -317,8 +318,8 @@ artifacts/reporting/stock_reports/{YYYYMMDD}/
 ETF36 Julia V1 Stock Report:
 artifacts/reporting/etf_stock_reports/{YYYYMMDD}/
 
-B Select Core V1 current status:
-artifacts/strategies/b_select_core_v1/production/{YYYYMMDD}/status.json
+B Select Core V2 current status:
+artifacts/strategies/b_select_core_v2/production/{YYYYMMDD}/status.json
 
 웹 정적 투영:
 web/data/

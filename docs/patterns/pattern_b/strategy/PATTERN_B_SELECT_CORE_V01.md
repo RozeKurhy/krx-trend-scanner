@@ -4,7 +4,11 @@
 >
 > 전략 ID: `PATTERN_B_SELECT_CORE_V01`
 >
-> 공식 상태: `OFFICIAL_STRATEGY_ADOPTED`
+> 기록 상태: 역사적 공식 버전. 후속 공식 버전은 [B Select Core V2](PATTERN_B_SELECT_CORE_V02.md)다.
+
+V1은 당시 월말 ENTRY·EXIT 규칙, production artifact, 거래 이력을 보존한다. V1 EXIT cadence는
+월말 observation only이며, 현재 운영 전략 규칙은 V2 문서를 따른다. 과거 산출물의 전략 ID와
+내용은 수정하지 않는다.
 
 ## 현재 상태와 역할
 

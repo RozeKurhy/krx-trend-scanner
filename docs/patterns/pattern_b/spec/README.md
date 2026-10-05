@@ -42,7 +42,7 @@ Pattern B의 “싸다”는 **자기 과거 가격 상태 대비 극단적으�
 뜻이다. 기업가치 평가 영역에서 말하는 **기업가치 대비 싸다**와 같은 의미가 아니다.
 
 패턴과 전략은 분리한다. Pattern B는 상태를 판단하며 매매 신호를 만들지 않는다. 이 상태와
-Pattern A Stage를 이용하는 별도 공식 전략은 [B Select Core V1](../strategy/PATTERN_B_SELECT_CORE_V01.md)이고,
+Pattern A Stage를 이용하는 현재 별도 공식 전략은 [B Select Core V2](../strategy/PATTERN_B_SELECT_CORE_V02.md)이고,
 진입·보유·청산 규칙은 그 전략 문서의 범위다.
 
 ## 시간축 역할
@@ -102,4 +102,4 @@ Pattern B는 망하는 회사를 가려내는 패턴이 아니다. 가격이 침
 ## 범위 밖
 
 - 적격성·위험 판단 층: 존재 여부와 기준을 정하지 않았다.
-- Pattern B를 이용하는 전략 규칙과 백테스트: [B Select Core V1](../strategy/PATTERN_B_SELECT_CORE_V01.md) 등 전략 문서에서 다룬다.
+- Pattern B를 이용하는 현재 전략 규칙과 채택 근거: [B Select Core V2](../strategy/PATTERN_B_SELECT_CORE_V02.md)에서 다룬다. 월말 EXIT를 사용한 [B Select Core V1](../strategy/PATTERN_B_SELECT_CORE_V01.md)은 역사 기록이다.

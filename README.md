@@ -39,7 +39,7 @@ Pattern A의 가격 구조에서 빠른 전환 징후를 살피는 패턴이다.
 전략은 패턴과 다른 조건을 진입·보유·청산 규칙에 연결한다. 전략별 적용 범위, 세부 규칙, 채택·검증 기록은 해당 문서에서 확인한다.
 
 - **A FAST Core V2** — Pattern A FAST 기반 일반 종목 전략. [전략 계약](docs/patterns/pattern_a_fast/strategy/version_02/README.md)
-- **B Select Core V1** — Pattern A Stage와 Pattern B 상태를 결합하는 전략. [전략 문서](docs/patterns/pattern_b/strategy/PATTERN_B_SELECT_CORE_V01.md)
+- **B Select Core V2** — Pattern A Stage와 Pattern B 상태를 결합하는 현재 공식 전략. [전략 문서](docs/patterns/pattern_b/strategy/PATTERN_B_SELECT_CORE_V02.md). 월말 EXIT를 사용한 V1 기록은 [역사 문서](docs/patterns/pattern_b/strategy/PATTERN_B_SELECT_CORE_V01.md)에 보존한다.
 - **Julia V1** — ETF 적용을 위한 전략. [전략 문서](docs/strategies/julia/JULIA_ETF_STRATEGY_V01.md)
 
 패턴의 세부 규격은 [Pattern A 공식 규격](docs/patterns/pattern_a/spec/production_authority.md),

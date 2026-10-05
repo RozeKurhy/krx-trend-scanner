@@ -14,16 +14,19 @@
 | 공식 표시명 | 전략 ID | 역할 | 규칙 문서 |
 |---|---|---|---|
 | A FAST Core V2 | `PATTERN_A_FAST_FINAL_STRATEGY_V02` | 기본 전략·CONTROL, 투자 의사결정 지원 | [A FAST Core V2](../patterns/pattern_a_fast/strategy/version_02/README.md) |
-| B Select Core V1 | `PATTERN_B_SELECT_CORE_V01` | Pattern B와 Pattern A Stage를 결합한 별도 공식 전략. 기본 전략은 아님 | [B Select Core V1](../patterns/pattern_b/strategy/PATTERN_B_SELECT_CORE_V01.md) |
+| B Select Core V2 | `PATTERN_B_SELECT_CORE_V02` | Pattern B와 Pattern A Stage를 결합한 별도 공식 전략. 기본 전략은 아님 | [B Select Core V2](../patterns/pattern_b/strategy/PATTERN_B_SELECT_CORE_V02.md) |
 | Julia V1 | `JULIA_ETF_STRATEGY_V01` | ETF 36 전용 공식 전략; 일반 종목에는 적용하지 않음 | [Julia V1](julia/JULIA_ETF_STRATEGY_V01.md) |
 
-현재 공식 전략은 위 세 개다. 일반 종목 공식 전략은 A FAST Core V2와 B Select Core V1이고, ETF 전용 공식 전략은 Julia V1이다.
-A FAST Core V2가 기본 전략·CONTROL로 유지된다. B Select Core V1과 Julia V1은 기본 전략이 아니며, 어느 전략도 이 등록만으로 자동 주문 승인을 얻지 않는다.
+현재 공식 전략은 위 세 개다. 일반 종목 공식 전략은 A FAST Core V2와 B Select Core V2이고, ETF 전용 공식 전략은 Julia V1이다.
+A FAST Core V2가 기본 전략·CONTROL로 유지된다. B Select Core V2와 Julia V1은 기본 전략이 아니며, 어느 전략도 이 등록만으로 자동 주문 승인을 얻지 않는다.
 
 세 공식 전략은 Phase 4의 Strategy Monitor v2에서 선택할 수 있다. A FAST Core V2가
-기본 선택이고, B Select Core V1은 현재 공개 COMMON 리포트 범위의 독립 current status,
+기본 선택이고, B Select Core V2는 현재 공개 COMMON 리포트 범위의 독립 current status,
 Julia V1은 Official ETF 36 전용 Stock Report projection을 사용한다. COMMON 랭킹에
 ETF를 합치지 않으며, Monitor 연결은 자동 주문을 승인하지 않는다.
+
+B Select Core V1 (`PATTERN_B_SELECT_CORE_V01`)은 월말 EXIT 규칙을 사용했던 역사적 공식
+버전이다. V1 status와 거래 기록은 당시 버전 기준으로 보존한다. 상세는 [V1 기록](../patterns/pattern_b/strategy/PATTERN_B_SELECT_CORE_V01.md)을 따른다.
 
 ## 연구 및 적용 범위
 

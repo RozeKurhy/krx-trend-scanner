@@ -287,7 +287,7 @@ def test_exit_next_open_and_exit_actions_map_to_exit_bucket():
     cases = (
         ("A FAST Core V2", "EXIT_NEXT_OPEN"),
         ("Julia V1", "EXIT_NEXT_OPEN"),
-        ("B Select Core V1", "EXIT"),
+        ("B Select Core V2", "EXIT"),
     )
     for strategy_name, action in cases:
         item = {
@@ -389,7 +389,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert 'createField("Pattern B", patternBLabel(item.pattern_b_state))' in strategy_js
     assert 'function stageLabel(value) { return STAGE_LABELS[value] || "확인 필요"; }' in strategy_js
     assert 'function patternBLabel(value) { return PATTERN_B_LABELS[value] || (value ? "확인 필요" : "확인 필요"); }' in strategy_js
-    b_select_fields = strategy_js[strategy_js.index('if (strategyId === "PATTERN_B_SELECT_CORE_V01")'):strategy_js.index('} else if (strategyId === "JULIA_ETF_STRATEGY_V01")')]
+    b_select_fields = strategy_js[strategy_js.index("if (isBSelectLineageId(strategyId))"):strategy_js.index('} else if (strategyId === "JULIA_ETF_STRATEGY_V01")')]
     assert "previous_pattern_a_stage" in b_select_fields
     assert "pattern_a_stage" in b_select_fields
     assert "entry_previous_pattern_a_stage" in b_select_fields
@@ -502,7 +502,7 @@ def test_b_select_trade_history_sort_reuses_hold_sort_contract_and_filters():
     assert 'const SORT_OPTIONS = new Set(["entry-date", "return", "name"]);' in strategy_js
     assert 'return compareByTradeSort(a, b, holdSort);' in strategy_js
     assert 'return compareByTradeSort(a, b, historySort);' in strategy_js
-    assert 'const visible = activeStrategyId === B_SELECT_STRATEGY_ID;' in strategy_js
+    assert 'const visible = isBSelectLineageId(activeStrategyId);' in strategy_js
     assert 'const monthEvents = months.get(month).sort(compareMonthlyEvents);' in strategy_js
     assert 'entry_execution_date: a.date, return_pct: a.trade_return_pct' in strategy_js
     assert 'historySortSelect.addEventListener("change"' in strategy_js
@@ -550,7 +550,49 @@ def test_strategy_position_examples_keep_meaningful_two_line_values():
 
 def test_strategy_monitor_json_matches_clean_exporter_projection():
     exporter = _load_exporter()
-    assert _load_monitor() == exporter.build_strategy_monitor()
+    monitor = _load_monitor()
+    # The checked-in payload is the last sealed pre-promotion snapshot. It
+    # remains historical V1 data until Phase 4D publishes the first V2 status.
+    assert monitor["reference_market_date"] == "2026-10-02"
+    assert [row["id"] for row in monitor["strategies"]] == [
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        exporter.LEGACY_B_SELECT_ID,
+        "JULIA_ETF_STRATEGY_V01",
+    ]
+    assert exporter.B_SELECT_ID == "PATTERN_B_SELECT_CORE_V02"
+    assert exporter.B_SELECT_LABEL == "B Select Core V2"
+
+
+def test_b_select_exporter_keeps_entry_and_exit_strategy_lineage():
+    exporter = _load_exporter()
+    trade = exporter._normalize_trade(
+        exporter.B_SELECT_ID,
+        {
+            "strategy_id": exporter.LEGACY_B_SELECT_ID,
+            "exit_strategy_id": exporter.B_SELECT_ID,
+            "trade_sequence": 2,
+            "entry_signal_date": "2025-06-30",
+            "entry_execution_date": "2025-07-01",
+            "entry_open": 100.0,
+            "exit_signal_date": "2026-10-05",
+            "exit_execution_date": "2026-10-06",
+            "exit_price": 110.0,
+            "return_pct": 10.0,
+            "trade_status": "REALIZED",
+            "exit_reason": "PATTERN_B_NORMAL_NEXT_OPEN",
+        },
+        ticker="011080",
+        name="형지I&C",
+        market="KOSDAQ",
+        asset_type="COMMON",
+    )
+    exporter._validate_history_identities(
+        exporter.B_SELECT_ID,
+        [trade],
+        allowed_source_ids={exporter.LEGACY_B_SELECT_ID, exporter.B_SELECT_ID},
+    )
+    assert trade["strategy_id"] == exporter.LEGACY_B_SELECT_ID
+    assert trade["exit_strategy_id"] == exporter.B_SELECT_ID
 
 
 def test_three_strategy_trade_history_counts_identity_and_source_parity():

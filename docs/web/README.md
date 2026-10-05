@@ -51,7 +51,7 @@
 | 섹터 RS·섹터 랭킹 | Sector RS 권위 Parquet·메타데이터, 기준일별 KRX Basic Info, 종목 리포트 파일 집합 | [`export_sector_rs_ranking_web.py`](../../scripts/export_sector_rs_ranking_web.py) | [`sector-rs-ranking.json`](../../web/data/sector-rs-ranking.json) | [`sector.js`](../../web/js/sector.js), [`sector-ranking.js`](../../web/js/sector-ranking.js) | [`sector.html`](../../web/sector.html), [`sector-ranking.html`](../../web/sector-ranking.html) |
 | 외인 순매수 | 외인 수급 일별 원천과 보통주 권위 집합·섹터 구성. 1·5·10·20·60일 누적 순매수와 같은 기간 주가수익률을 계산하며, `stock-index.json`은 `report_available` 확인에만 사용 | [`export_foreign_net_buy_ranking_web.py`](../../scripts/export_foreign_net_buy_ranking_web.py) | [`foreign-net-buy-ranking.json`](../../web/data/foreign-net-buy-ranking.json) | [`foreign.js`](../../web/js/foreign.js) | [`foreign.html`](../../web/foreign.html) |
 | 종목 리포트 | 같은 exact-date COMMON v0.7 + Official ETF36 v0.6 JSON, PIT 종목 메타데이터, 기준일 종가 | [`export_stock_report_web.py`](../../scripts/export_stock_report_web.py) | `stock-index.json`, `stocks/*.json` | [`report.js`](../../web/js/report.js) | [`report.html`](../../web/report.html) |
-| 전략 운용 | 공개 COMMON·ETF36 종목 리포트와 B Select exact-date current status | [`build_b_select_core_v1_status.py`](../../scripts/build_b_select_core_v1_status.py), [`export_strategy_monitor_web.py`](../../scripts/export_strategy_monitor_web.py) | [`strategy-monitor.json`](../../web/data/strategy-monitor.json) v2 | [`strategy.js`](../../web/js/strategy.js) | [`strategy.html`](../../web/strategy.html) |
+| 전략 운용 | 공개 COMMON·ETF36 종목 리포트와 B Select exact-date current status | [`build_b_select_core_v2_status.py`](../../scripts/build_b_select_core_v2_status.py), [`export_strategy_monitor_web.py`](../../scripts/export_strategy_monitor_web.py) | [`strategy-monitor.json`](../../web/data/strategy-monitor.json) v2 | [`strategy.js`](../../web/js/strategy.js) | [`strategy.html`](../../web/strategy.html) |
 
 ### 종목 리포트와 후속 데이터
 
@@ -72,13 +72,14 @@
   표시용 교차 업종 정렬이고 새 전략이나 새 분석 권위가 아니다. 상승 종목 수는
   설명용 집계이며 순위 기준에 포함하지 않는다.
 - 마켓 RS는 공개된 모든 파일의 일치 여부를 확인한 뒤 기존 COMMON 리포트 집합만
-  투영한다. Strategy Monitor v2는 A FAST Core V2와 B Select Core V1을 공개 COMMON
+  투영한다. Strategy Monitor v2는 A FAST Core V2와 B Select Core V2를 공개 COMMON
   범위로, Julia V1을 Official ETF 36으로 별도 투영한다. 기본 선택은 A FAST Core V2다.
-- B Select current status는 고정된 Pattern B 월별 state·Pattern A stage lineage와
-  같은 실행의 현재 COMMON 리포트 상태를 exact PIT identity로 replay해 만든다. 일일 상태·가격·
-  data health 표시는 유지하고, B Select ENTRY/EXIT는 완결된 월의 마지막 exact KRX 거래일
-  observation에서만 생성한다. 신호 다음 exact KRX session open만 채우며 reference 뒤 fill은
-  pending으로 남긴다. Web JavaScript는 전략을 계산하지 않고 전략 선택·검색·필터·정렬과 표시만
+- B Select Core V2 current status는 고정된 Pattern B 월별 state·Pattern A stage lineage와
+  같은 실행의 현재 COMMON 리포트 상태를 exact PIT identity로 replay해 만든다. 최초 V2 status는
+  마지막 PASS V1 status를 기준으로 이전 거래 이력을 보존하고 이후 세션만 catch-up한다. ENTRY는
+  월말의 마지막 exact KRX 거래일에, 보유 중 Pattern B `NORMAL` EXIT는 완료된 매 exact KRX 거래일에
+  생성한다. 신호 다음 exact KRX session open만 채우며 reference 뒤 fill은 pending으로 남긴다.
+  Web JavaScript는 전략을 계산하지 않고 전략 선택·검색·필터·정렬과 표시만
   수행한다.
 
 ## 웹 데이터 생성 원칙

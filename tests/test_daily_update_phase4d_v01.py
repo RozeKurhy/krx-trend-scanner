@@ -14,6 +14,13 @@ def test_target_as_of_is_required():
         phase4d.build_parser().parse_args([])
 
 
+def test_phase4d_reads_v2_b_select_status_path_and_id(tmp_path: Path):
+    assert phase4d.B_SELECT_ID == "PATTERN_B_SELECT_CORE_V02"
+    assert phase4d._b_select_status_path(tmp_path, "2026-10-05") == (
+        tmp_path / "artifacts/strategies/b_select_core_v2/production/20261005/status.json"
+    )
+
+
 def test_staging_requires_all_mandatory_outputs(tmp_path: Path):
     (tmp_path / "stocks").mkdir()
     with pytest.raises(phase4d.Phase4DError, match="PHASE4D_STAGE_REQUIRED_OUTPUT_MISSING"):
@@ -64,6 +71,14 @@ def _health_validation_fixture(
         "future_reference_count": 0,
         "duplicate_item_count": 0,
         "cross_strategy_contamination_count": 0,
+        "permanent_identity_exclusion_count": 181,
+        "source_authorities": {"signal_cadence": "MONTH_END_ENTRY_DAILY_NORMAL_EXIT"},
+        "promotion_migration": {
+            "source_strategy_id": "PATTERN_B_SELECT_CORE_V01",
+            "migrated_open_position_count": 0,
+            "migrated_open_positions": [],
+        },
+        "migration_open_position_parity_count": 0,
     }
     documents: dict[str, dict] = {
         "stock-index.json": {
@@ -94,7 +109,7 @@ def _health_validation_fixture(
                 },
                 {
                     "id": phase4d.B_SELECT_ID,
-                    "label": "B Select Core V1",
+                    "label": "B Select Core V2",
                     "asset_scope": "COMMON",
                     "scope": {"type": "PUBLISHED_COMMON_REPORTS", "report_count": 1},
                     "counts": b_status["counts"],

@@ -34,8 +34,9 @@
 - 전략 의미를 보존하는 백테스트와 결과 비교
 
 Pattern A, Pattern A FAST, Pattern B는 가격 구조와 상태를 판단하는 패턴 영역이다. A FAST Core V2와
-B Select Core V1은 각기 다른 패턴 역할을 전략 규칙으로 연결하고, Julia V1은 ETF 적용 영역을 다룬다.
-전략별 계약과 채택·검증 상태는 [A FAST Core V2 문서](docs/patterns/pattern_a_fast/strategy/version_02/README.md),
+B Select Core V2는 각기 다른 패턴 역할을 전략 규칙으로 연결하고, Julia V1은 ETF 적용 영역을 다룬다.
+B Select Core V1은 월말 EXIT를 사용한 역사적 공식 버전으로 보존한다. 전략별 계약과 채택·검증 상태는 [A FAST Core V2 문서](docs/patterns/pattern_a_fast/strategy/version_02/README.md),
+[B Select Core V2 문서](docs/patterns/pattern_b/strategy/PATTERN_B_SELECT_CORE_V02.md),
 [B Select Core V1 문서](docs/patterns/pattern_b/strategy/PATTERN_B_SELECT_CORE_V01.md),
 [Julia V1 문서](docs/strategies/julia/JULIA_ETF_STRATEGY_V01.md)에서 확인한다.
 

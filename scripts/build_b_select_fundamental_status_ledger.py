@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Persist B Select Core V1 historical PIT fundamental statuses for one status date.
+"""Persist B Select lineage historical PIT fundamental statuses for one status date.
 
 Reads the B Select production status for ``--as-of``, evaluates every status key
 (trade entry signal dates, open-position entry dates, the requested date for
@@ -31,7 +31,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--as-of", required=True, help="B Select status requested_as_of (YYYY-MM-DD)")
     args = parser.parse_args()
-    status_path = ROOT / "artifacts/strategies/b_select_core_v1/production" / args.as_of.replace("-", "") / "status.json"
+    status_path = ROOT / "artifacts/strategies/b_select_core_v2/production" / args.as_of.replace("-", "") / "status.json"
     status = json.loads(status_path.read_text(encoding="utf-8"))
     if status.get("requested_as_of") != args.as_of:
         raise SystemExit(f"status requested_as_of mismatch: {status.get('requested_as_of')}")
