@@ -1222,6 +1222,55 @@ PERMANENT_IDENTITY_EXCLUSIONS: dict[tuple[str, str], dict[str, str]] = {
         "approved_date": "2026-09-29",
         "policy_version": "permanent_identity_exclusions_v01",
     },
+    ("007720", "KR7007720006"): {
+        "reason": "user-approved global permanent exclusion for unresolved adjusted-price continuity after listed-share changes; data-quality basis, not performance",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "failure_class": "VALUATION_UNIT_CONTINUITY_UNRESOLVED",
+        "approved_date": "2026-10-05",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
+    ("011080", "KR7011080009"): {
+        "reason": "user-approved global permanent exclusion for unresolved adjusted-price continuity after listed-share changes; data-quality basis, not performance",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "failure_class": "VALUATION_UNIT_CONTINUITY_UNRESOLVED",
+        "approved_date": "2026-10-05",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
+    ("019490", "KR7019490002"): {
+        "reason": "user-approved global permanent exclusion for unresolved adjusted-price continuity after listed-share changes; data-quality basis, not performance",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "failure_class": "VALUATION_UNIT_CONTINUITY_UNRESOLVED",
+        "approved_date": "2026-10-05",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
+    ("019570", "KR7019570001"): {
+        "reason": "user-approved global permanent exclusion for unexplained adjusted-price unit changes; data-quality basis, not performance",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "failure_class": "VALUATION_UNIT_CONTINUITY_UNRESOLVED",
+        "approved_date": "2026-10-05",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
+    ("066790", "KR7066790007"): {
+        "reason": "user-approved global permanent exclusion for unresolved adjusted-price continuity after multiple listed-share changes; data-quality basis, not performance",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "failure_class": "VALUATION_UNIT_CONTINUITY_UNRESOLVED",
+        "approved_date": "2026-10-05",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
+    ("073570", "KR7073570004"): {
+        "reason": "user-approved global permanent exclusion for unresolved adjusted-price continuity after listed-share changes; data-quality basis, not performance",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "failure_class": "VALUATION_UNIT_CONTINUITY_UNRESOLVED",
+        "approved_date": "2026-10-05",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
+    ("083660", "KR7083660001"): {
+        "reason": "user-approved global permanent exclusion for unresolved adjusted-price continuity after listed-share changes; data-quality basis, not performance",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "failure_class": "VALUATION_UNIT_CONTINUITY_UNRESOLVED",
+        "approved_date": "2026-10-05",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
 
 }
 
