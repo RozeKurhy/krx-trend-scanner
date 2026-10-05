@@ -103,6 +103,47 @@ def test_representative_common_open_trade_is_projected_without_recalculation():
     assert item["current_trade"] == source["current_trade"]
 
 
+def test_b_select_open_display_uses_canonical_identities_and_exact_report_routes():
+    monitor = _load_monitor()
+    b_select = next(
+        strategy for strategy in monitor["strategies"]
+        if strategy["id"] == "PATTERN_B_SELECT_CORE_V02"
+    )
+    canonical = b_select["canonical_current_open_positions"]
+    canonical_pairs = {(row["ticker"], row["isu_cd"]) for row in canonical}
+    report_item_pairs = {
+        (row["ticker"], row["isu_cd"])
+        for row in b_select["items"]
+        if row.get("canonical_position") == "OPEN"
+    }
+    missing_from_published_items = canonical_pairs - report_item_pairs
+    routes = json.loads((ROOT / "web/data/identity-report-routes.json").read_text(encoding="utf-8"))
+    routes_by_identity = {(row["ticker"], row["isu_cd"]): row for row in routes["items"]}
+
+    assert len(canonical_pairs) == 37
+    assert len(report_item_pairs) == 20
+    assert len(missing_from_published_items) == 17
+    assert len(canonical) == b_select["canonical_current_open_position_count"]
+    for identity in canonical_pairs:
+        route = routes_by_identity[identity]
+        report_path = ROOT / "web" / route["url"][2:]
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        assert (report["identity"]["ticker"], report["identity"]["isu_cd"]) == identity
+        assert route["report_type"] in {"CURRENT_STOCK_REPORT", "IDENTITY_ONLY_CURRENT"}
+    assert all(
+        routes_by_identity[identity]["report_type"] == "IDENTITY_ONLY_CURRENT"
+        for identity in missing_from_published_items
+    )
+
+    strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
+    assert "function exactIdentityKey(item)" in strategy_js
+    assert "function displayItemsForStrategy(strategy)" in strategy_js
+    assert "const openPositions = strategy.canonical_current_open_positions;" in strategy_js
+    assert "const openIdentityKeys = new Set(openPositions.map(exactIdentityKey));" in strategy_js
+    assert "const otherItems = items.filter((item) => !openIdentityKeys.has(exactIdentityKey(item)))" in strategy_js
+    assert "displayItemsForStrategy(selected).filter((item) => item.bucket === category && itemMatches(item))" in strategy_js
+
+
 def test_b_select_open_entry_pattern_a_context_matches_exact_authority():
     exporter = _load_exporter()
     monitor = _load_monitor()
@@ -305,7 +346,8 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert strategy_html.count("web-strategy-layout-v05") == 3
+    assert strategy_html.count("web-strategy-layout-v05") == 2
+    assert 'src="./js/strategy.js?v=web-strategy-open-37-v01"' in strategy_html
     assert '<label for="strategy-fundamental-filter">진입 펀더멘탈</label>' in strategy_html
     assert '<label for="history-fundamental-filter">진입 펀더멘탈</label>' in strategy_html
     assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in index_html
@@ -319,7 +361,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
         if urlsplit(url).path == "./js/strategy.js"
     ]
     assert len(strategy_scripts) == 1
-    assert strategy_scripts[0].query.startswith("v=") and strategy_scripts[0].query.removeprefix("v=")
+    assert strategy_scripts[0].query == "v=web-strategy-open-37-v01"
     assert (ROOT / "web" / strategy_scripts[0].path.removeprefix("./")).is_file()
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert 'EXIT: "다음 시가 청산 대기"' in strategy_js
@@ -339,7 +381,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert "현재 공개 리포트 기준" not in strategy_html
     assert 'formatDate(monitor.requested_as_of || monitor.as_of)' in strategy_js
     assert 'selected.scope.label' not in strategy_js
-    assert '`기준일 ${formatDate(monitor.requested_as_of || monitor.as_of)} · ${formatNumber(selected.scope.report_count)}개`' in strategy_js
+    assert '`기준일 ${formatDate(monitor.requested_as_of || monitor.as_of)} · ${formatNumber(displayCount)}개`' in strategy_js
     assert 'id="strategy-search"' in strategy_html
     assert 'data-filter="hold"' in strategy_html
     assert 'data-filter="entry"' in strategy_html
@@ -363,12 +405,13 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
         assert removed not in strategy_html
     assert 'function renderFilterCounts()' in strategy_js
     assert 'setText(`strategy-filter-count-${category}`, counts[category])' in strategy_js
-    assert 'counts.all = selected.scope.report_count' in strategy_js
+    assert 'counts.all = displayItems.length' in strategy_js
+    assert 'counts.all = matched.length' in strategy_js
     assert 'counts[item.bucket] += 1' in strategy_js
     assert 'setText(`${category}-count`, items.length)' not in strategy_js
     assert 'strategy-results-meta' not in strategy_js
     assert 'const FILTERS = new Set(["all", ...Object.keys(SECTION_IDS)]);' in strategy_js
-    assert 'link.href = `./report.html?ticker=' in strategy_js
+    assert 'link.href = reportHref(item.ticker, item.isu_cd)' in strategy_js
     assert 'const MONITOR_URL = "./data/strategy-monitor.json";' in strategy_js
     assert "function createPriceDateField" in strategy_js
     assert "function createPositionField" in strategy_js

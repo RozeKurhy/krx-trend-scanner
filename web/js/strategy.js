@@ -186,6 +186,12 @@
     return `./report.html?${params.toString()}`;
   }
 
+  function exactIdentityKey(item) {
+    const ticker = String(item && item.ticker || "").trim().toUpperCase();
+    const isuCd = String(item && item.isu_cd || "").trim().toUpperCase();
+    return ticker && isuCd ? `${ticker}\u0000${isuCd}` : null;
+  }
+
   function fundamentalStatus(item) {
     return FUNDAMENTAL_STATUSES.includes(item && item.fundamental_status) ? item.fundamental_status : "미상";
   }
@@ -362,9 +368,53 @@
     return link;
   }
 
+  function displayItemsForStrategy(strategy) {
+    const items = (strategy && strategy.items) || [];
+    if (
+      !strategy
+      || strategy.id !== B_SELECT_STRATEGY_ID
+      || !Array.isArray(strategy.canonical_current_open_positions)
+    ) return items;
+
+    const openPositions = strategy.canonical_current_open_positions;
+    const openIdentityKeys = new Set(openPositions.map(exactIdentityKey));
+    const sourceItemsByIdentity = new Map(
+      items
+        .map((item) => [exactIdentityKey(item), item])
+        .filter(([key]) => key)
+    );
+    const otherItems = items.filter((item) => !openIdentityKeys.has(exactIdentityKey(item)));
+    const openItems = openPositions.map((position) => {
+      const source = sourceItemsByIdentity.get(exactIdentityKey(position)) || {};
+      const sourceTrade = source.current_trade || {};
+      return {
+        ...source,
+        ticker: position.ticker,
+        isu_cd: position.isu_cd,
+        name: position.name || source.name || position.ticker,
+        market: position.market || source.market || "",
+        asset_type: "COMMON",
+        action: "HOLD",
+        strategy_state: "HOLD",
+        canonical_position: "OPEN",
+        data_status: "READY",
+        current_trade: {
+          ...sourceTrade,
+          trade_sequence: position.trade_sequence,
+          entry_execution_date: position.entry_execution_date,
+          entry_open: position.entry_price ?? sourceTrade.entry_open,
+          return_pct: sourceTrade.return_pct ?? position.return_pct,
+        },
+        fundamental_status: position.fundamental_status || source.fundamental_status,
+        bucket: "hold",
+      };
+    });
+    return otherItems.concat(openItems);
+  }
+
   function filteredItems(category) {
     const selected = activeStrategy();
-    const items = ((selected && selected.items) || []).filter((item) => item.bucket === category && itemMatches(item));
+    const items = displayItemsForStrategy(selected).filter((item) => item.bucket === category && itemMatches(item));
     if (category !== "hold" || activeFilter !== "hold") return items;
     return items.slice().sort(compareHoldItems);
   }
@@ -632,17 +682,18 @@
   function renderFilterCounts() {
     const selected = activeStrategy();
     if (!selected) return;
+    const displayItems = displayItemsForStrategy(selected);
     const counts = { all: 0, hold: 0, entry: 0, exit: 0, watch: 0, unavailable: 0 };
     if (searchQuery.trim() || fundamentalFilterActive()) {
-      const matched = (selected.items || []).filter(itemMatches);
+      const matched = displayItems.filter(itemMatches);
       counts.all = matched.length;
       matched.forEach((item) => {
         if (Object.prototype.hasOwnProperty.call(counts, item.bucket)) counts[item.bucket] += 1;
       });
     } else {
-      counts.all = selected.scope.report_count;
-      Object.keys(SECTION_IDS).forEach((category) => {
-        counts[category] = selected.counts[category] || 0;
+      counts.all = displayItems.length;
+      displayItems.forEach((item) => {
+        if (Object.prototype.hasOwnProperty.call(counts, item.bucket)) counts[item.bucket] += 1;
       });
     }
     Object.keys(counts).forEach((category) => setText(`strategy-filter-count-${category}`, counts[category]));
@@ -693,9 +744,10 @@
   function renderScope() {
     const selected = activeStrategy();
     if (!selected) return;
+    const displayCount = displayItemsForStrategy(selected).length;
     setText(
       "strategy-scope",
-      `기준일 ${formatDate(monitor.requested_as_of || monitor.as_of)} · ${formatNumber(selected.scope.report_count)}개`
+      `기준일 ${formatDate(monitor.requested_as_of || monitor.as_of)} · ${formatNumber(displayCount)}개`
     );
     document.querySelectorAll("[data-strategy-id]").forEach((button) => {
       const available = (monitor.strategies || []).some((strategy) => strategy.id === button.dataset.strategyId);
@@ -769,13 +821,24 @@
       if (id === B_SELECT_STRATEGY_ID) {
         const historyOpen = strategy.trade_history.filter((trade) => trade.trade_status === "OPEN_AT_REFERENCE");
         const positionKey = (trade) => `${trade.ticker}\u0000${trade.isu_cd || ""}\u0000${trade.trade_sequence}\u0000${trade.entry_execution_date}`;
+        const identityKey = (trade) => `${trade.ticker}\u0000${trade.isu_cd || ""}`;
         const expectedOpen = new Set(historyOpen.map(positionKey));
         const declaredOpen = new Set(strategy.canonical_current_open_positions.map(positionKey));
+        const expectedOpenIdentities = new Set(historyOpen.map(identityKey));
+        const declaredOpenIdentities = new Set(strategy.canonical_current_open_positions.map(identityKey));
         if (
           expectedOpen.size !== historyOpen.length
           || declaredOpen.size !== strategy.canonical_current_open_positions.length
+          || expectedOpenIdentities.size !== historyOpen.length
+          || declaredOpenIdentities.size !== strategy.canonical_current_open_positions.length
           || expectedOpen.size !== declaredOpen.size
           || Array.from(expectedOpen).some((key) => !declaredOpen.has(key))
+          || expectedOpenIdentities.size !== declaredOpenIdentities.size
+          || Array.from(expectedOpenIdentities).some((key) => !declaredOpenIdentities.has(key))
+          || strategy.canonical_current_open_positions.some((position) => (
+            !/^\d{6}$/.test(position.ticker || "")
+            || !/^[0-9A-Z]+$/.test(position.isu_cd || "")
+          ))
           || strategy.canonical_current_open_position_count !== expectedOpen.size
         ) return false;
       }
