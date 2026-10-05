@@ -21,6 +21,42 @@ def test_phase4d_reads_v2_b_select_status_path_and_id(tmp_path: Path):
     )
 
 
+def test_explicit_phase4c_rebuild_skips_validation_of_old_published_snapshot(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    def _unexpected_inspection(*args, **kwargs):
+        raise AssertionError("old published snapshot must not block an explicit rebuild")
+
+    monkeypatch.setattr(phase4d, "inspect_published_payload", _unexpected_inspection)
+
+    def _make_stage_root(*args, **kwargs):
+        path = tmp_path / "phase4d-stage"
+        path.mkdir()
+        return str(path)
+
+    monkeypatch.setattr(phase4d.tempfile, "mkdtemp", _make_stage_root)
+    monkeypatch.setattr(
+        phase4d,
+        "_stage_payloads",
+        lambda target, stage, *, phase4c_result: {
+            "reference_market_date": "2026-10-02",
+            "sector_membership": {},
+        },
+    )
+    monkeypatch.setattr(phase4d, "validate_staging", lambda *args, **kwargs: {})
+    result = phase4d.run_phase4d(
+        "2026-10-03",
+        execute_live=False,
+        phase4c_result={
+            "status": "PASS",
+            "network_calls": 0,
+            "web_data_writes": 0,
+            "reference_market_date": "2026-10-02",
+        },
+    )
+
+    assert result["status"] == "PASS"
+    assert result["post_promote_readback"] is None
+
+
 def test_staging_requires_all_mandatory_outputs(tmp_path: Path):
     (tmp_path / "stocks").mkdir()
     with pytest.raises(phase4d.Phase4DError, match="PHASE4D_STAGE_REQUIRED_OUTPUT_MISSING"):
@@ -55,7 +91,15 @@ def _health_validation_fixture(
     stage = tmp_path / "stage"
     stocks_dir = stage / "stocks"
     stocks_dir.mkdir(parents=True)
-    common_item = {"ticker": "000001", "asset_type": "COMMON", "bucket": "unavailable"}
+    common_item = {
+        "ticker": "000001",
+        "isu_cd": "KR7000000001",
+        "asset_type": "COMMON",
+        "bucket": "unavailable",
+        "trade_history": [],
+        "permanent_identity_excluded": False,
+    }
+    common_monitor_item = {key: value for key, value in common_item.items() if key != "trade_history"}
     b_status = {
         "status": "PASS",
         "strategy_id": phase4d.B_SELECT_ID,
@@ -72,13 +116,8 @@ def _health_validation_fixture(
         "duplicate_item_count": 0,
         "cross_strategy_contamination_count": 0,
         "permanent_identity_exclusion_count": 181,
+        "current_v1_source_row_count": 0,
         "source_authorities": {"signal_cadence": "MONTH_END_ENTRY_DAILY_NORMAL_EXIT"},
-        "promotion_migration": {
-            "source_strategy_id": "PATTERN_B_SELECT_CORE_V01",
-            "migrated_open_position_count": 0,
-            "migrated_open_positions": [],
-        },
-        "migration_open_position_parity_count": 0,
     }
     documents: dict[str, dict] = {
         "stock-index.json": {
@@ -105,7 +144,7 @@ def _health_validation_fixture(
                     "asset_scope": "COMMON",
                     "scope": {"type": "PUBLISHED_COMMON_REPORTS", "report_count": 1},
                     "counts": b_status["counts"],
-                    "items": [common_item],
+                    "items": [common_monitor_item],
                 },
                 {
                     "id": phase4d.B_SELECT_ID,
@@ -113,7 +152,7 @@ def _health_validation_fixture(
                     "asset_scope": "COMMON",
                     "scope": {"type": "PUBLISHED_COMMON_REPORTS", "report_count": 1},
                     "counts": b_status["counts"],
-                    "items": [common_item],
+                    "items": [common_monitor_item],
                 },
                 {
                     "id": phase4d.JULIA_ID,

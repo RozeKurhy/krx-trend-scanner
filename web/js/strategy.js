@@ -734,6 +734,10 @@
         || !Array.isArray(strategy.trade_history)
         || strategy.items.length !== strategy.scope.report_count
         || (expectedScope === "OFFICIAL_ETF_36" && strategy.scope.report_count !== 36)
+        || (id === B_SELECT_STRATEGY_ID && (
+          !Array.isArray(strategy.canonical_current_open_positions)
+          || strategy.canonical_current_open_position_count !== strategy.canonical_current_open_positions.length
+        ))
       ) return false;
       const seen = new Set();
       const counts = { entry: 0, hold: 0, exit: 0, watch: 0, unavailable: 0 };
@@ -748,13 +752,24 @@
           || (trade.return_pct != null && !Number.isFinite(Number(trade.return_pct)))
         ) return false;
         const sourceId = trade.strategy_id || id;
-        const allowedSourceIds = id === B_SELECT_STRATEGY_ID
-          ? [B_SELECT_STRATEGY_ID, LEGACY_B_SELECT_STRATEGY_ID]
-          : [id];
+        const allowedSourceIds = [id];
         if (!allowedSourceIds.includes(sourceId)) return false;
         const identity = `${sourceId}\u0000${trade.ticker}\u0000${trade.trade_sequence}\u0000${trade.entry_execution_date}`;
         if (historySeen.has(identity)) return false;
         historySeen.add(identity);
+      }
+      if (id === B_SELECT_STRATEGY_ID) {
+        const historyOpen = strategy.trade_history.filter((trade) => trade.trade_status === "OPEN_AT_REFERENCE");
+        const positionKey = (trade) => `${trade.ticker}\u0000${trade.isu_cd || ""}\u0000${trade.trade_sequence}\u0000${trade.entry_execution_date}`;
+        const expectedOpen = new Set(historyOpen.map(positionKey));
+        const declaredOpen = new Set(strategy.canonical_current_open_positions.map(positionKey));
+        if (
+          expectedOpen.size !== historyOpen.length
+          || declaredOpen.size !== strategy.canonical_current_open_positions.length
+          || expectedOpen.size !== declaredOpen.size
+          || Array.from(expectedOpen).some((key) => !declaredOpen.has(key))
+          || strategy.canonical_current_open_position_count !== expectedOpen.size
+        ) return false;
       }
       for (const item of strategy.items) {
         if (!item || !item.ticker || seen.has(String(item.ticker))) return false;

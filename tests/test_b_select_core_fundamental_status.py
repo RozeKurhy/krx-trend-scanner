@@ -102,15 +102,30 @@ def test_published_statuses_are_historical_pit_and_consistent():
     source = json.loads((ROOT / "artifacts/strategies/b_select_core_v2/production" / as_of.replace("-", "") / "status.json").read_text(encoding="utf-8"))
     isu = {item["ticker"]: item["isu_cd"] for item in source["items"]}
     history = {(t["ticker"], t["entry_signal_date"]): t["fundamental_status"] for t in b_select["trade_history"]}
+    requested_keys = {
+        status_key(item["ticker"], item["isu_cd"], item_status_asof(item, as_of)[0])
+        for item in b_select["items"]
+    }
+    requested_keys.update(
+        status_key(trade["ticker"], trade["isu_cd"], trade["entry_signal_date"])
+        for trade in b_select["trade_history"]
+    )
+    uncached = fs.resolve_statuses((key for key in requested_keys if key not in ledger), ROOT)
+
+    def record_for(key):
+        return ledger.get(key) or uncached[key]
+
     for item in b_select["items"]:
         asof, _ = item_status_asof(item, as_of)
-        record = ledger[status_key(item["ticker"], item["isu_cd"], asof)]
+        record = record_for(status_key(item["ticker"], item["isu_cd"], asof))
         assert item["fundamental_status"] == record["fundamental_status"]
         assert not record["latest_quarter_first_rcept_dt"] or record["latest_quarter_first_rcept_dt"][:10] <= asof
         if item.get("current_trade"):  # open position: same value as its own trade history row
             assert history[(item["ticker"], item["current_trade"]["entry_signal_date"])] == item["fundamental_status"]
     for trade in b_select["trade_history"]:
-        record = ledger[status_key(trade["ticker"], isu[trade["ticker"]], trade["entry_signal_date"])]
+        record = record_for(status_key(
+            trade["ticker"], trade.get("isu_cd") or isu.get(trade["ticker"]), trade["entry_signal_date"]
+        ))
         assert trade["fundamental_status"] == record["fundamental_status"] in FUNDAMENTAL_STATUSES
         assert record["status_asof_date"] == trade["entry_signal_date"]
         source_date = record["latest_quarter_first_rcept_dt"][:10]
@@ -128,7 +143,11 @@ def test_b_select_signals_buckets_and_trades_are_unchanged():
     assert b_select["counts"] == source["counts"]
     projected = [{k: v for k, v in item.items() if k != "fundamental_status"} for item in b_select["items"]]
     assert projected == [{k: v for k, v in item.items() if k != "trade_history"} for item in source["items"]]
-    assert len(b_select["trade_history"]) == sum(len(item["trade_history"]) for item in source["items"])
+    expected_history = source.get("canonical_trade_history") or [
+        {**trade, "ticker": item["ticker"], "isu_cd": item["isu_cd"]}
+        for item in source["items"] for trade in item["trade_history"]
+    ]
+    assert len(b_select["trade_history"]) == len(expected_history)
 
 
 def test_ui_wiring_for_list_history_filters_and_card():

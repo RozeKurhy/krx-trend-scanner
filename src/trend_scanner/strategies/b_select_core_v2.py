@@ -43,12 +43,15 @@ def replay_lifecycle(
     initial_position: Mapping[str, Any] | None = None,
     initial_pending: Mapping[str, Any] | None = None,
     initial_trade_sequence: int = 0,
+    execution_by_signal_date: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Replay one identity's exact-session lifecycle through the reference.
 
     Entry signals remain month-end-only and stage-qualified. A position that
     is open at an eligible observation exits on the first NORMAL observation;
-    all fills use the immediate next exact KRX session and its supplied open.
+    fills use the first exact KRX session after a signal with a valid supplied
+    open. When ``execution_by_signal_date`` is present, it is the authoritative
+    first-valid-open schedule built from the bounded Repository V2 price frame.
     ``strategy_id`` on a position records the entry lineage. The pending exit
     records the strategy that generated that exit signal.
     """
@@ -97,9 +100,11 @@ def replay_lifecycle(
             raise BSelectLifecycleError("PENDING_ENTRY_SIGNAL_NOT_MONTH_END_EXACT_KRX_SESSION")
         if pending_kind not in {"ENTRY", "EXIT"}:
             raise BSelectLifecycleError("PENDING_EVENT_KIND_INVALID")
-        expected_execution = next_exact_session(pending_day, calendar)
-        if pending_execution and expected_execution != pending_execution:
-            raise BSelectLifecycleError("PENDING_EXECUTION_NOT_IMMEDIATE_NEXT_KRX_SESSION")
+        if pending_execution and (
+            pending_execution not in calendar_set
+            or pending_execution <= pending_day
+        ):
+            raise BSelectLifecycleError("PENDING_EXECUTION_NOT_FIRST_VALID_EXACT_KRX_SESSION")
 
     completed_trades: list[dict[str, Any]] = []
     suppressed_entry_count = 0
@@ -108,6 +113,19 @@ def replay_lifecycle(
         int(position.get("trade_sequence") or 0) if position else 0,
         int(pending.get("sequence") or 0) if pending else 0,
     )
+
+    def execution_after(signal_day: str) -> str | None:
+        scheduled = (execution_by_signal_date or {}).get(signal_day)
+        if scheduled:
+            scheduled = str(scheduled)[:10]
+            if scheduled not in calendar_set or scheduled <= signal_day:
+                raise BSelectLifecycleError("EXECUTION_SCHEDULE_NOT_AFTER_SIGNAL")
+            if scheduled <= reference:
+                price = exact_opens.get(scheduled)
+                if price is None or float(price) <= 0:
+                    raise BSelectLifecycleError(f"MISSING_EXACT_SCHEDULED_OPEN:{scheduled}")
+            return scheduled
+        return next_exact_session(signal_day, calendar)
 
     def fill_pending(day: str) -> None:
         nonlocal position, pending
@@ -176,7 +194,7 @@ def replay_lifecycle(
                 and eligible
                 and is_exit_signal(is_open=True, pattern_b_state=state)
             ):
-                execution = next_exact_session(day, calendar)
+                execution = execution_after(day)
                 position["exit_signal_date"] = day
                 position["exit_execution_date"] = execution
                 pending = {
@@ -201,7 +219,7 @@ def replay_lifecycle(
         if signal is None:
             continue
         sequence += 1
-        execution = next_exact_session(day, calendar)
+        execution = execution_after(day)
         pending = {
             "kind": "ENTRY",
             "signal_date": day,

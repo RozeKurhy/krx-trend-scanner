@@ -612,20 +612,23 @@ def test_common_report_dual_strategy_ui_reuses_monitor_and_fails_closed():
     assert 'setHidden("decision-strategies", false);' in js
     assert 'return "정보 없음";' in js
 
-    assert 'function monitorTradeHistory(monitor, strategyId, ticker)' in js
+    assert 'function monitorTradeHistory(monitor, strategyId, ticker, isuCd)' in js
     assert 'trade && trade.ticker === ticker' in js
     assert '"PATTERN_A_FAST_FINAL_STRATEGY_V02", "A FAST Core V2"' in js
     assert 'function monitorBSelectId(monitor)' in js
     assert '(Array.isArray(report.strategy && report.strategy.history) ? report.strategy.history : [])' in js
-    assert 'monitorTradeHistory(strategyMonitorData, bSelectId, report.identity.ticker)' in js
+    assert 'monitorTradeHistory(strategyMonitorData, bSelectId, report.identity.ticker, report.identity.isu_cd)' in js
     assert 'createDetailTable(["회차", "진입일", "진입가", "청산일", "청산가", "수익률", "상태", "종료 사유"]' in js
     assert 'trade.entry_open ?? trade.entry_price' in js
     assert 'trade.exit_type || trade.exit_reason' in js
     assert 'OPEN_AT_REFERENCE: "보유 중"' in js
     assert b_select["scope"]["report_count"] == b_select_status["count"]
-    assert len(b_select["trade_history"]) == sum(
-        len(item.get("trade_history") or []) for item in b_select_status["items"]
-    )
+    expected_b_select_history = b_select_status.get("canonical_trade_history") or [
+        {**trade, "ticker": item["ticker"], "isu_cd": item["isu_cd"]}
+        for item in b_select_status["items"]
+        for trade in (item.get("trade_history") or [])
+    ]
+    assert len(b_select["trade_history"]) == len(expected_b_select_history)
 
     summary = js[js.index("function buildSummary(report)"):js.index("function renderStatusStepper")]
     assert 'report.identity.asset_type === "ETF"' in summary

@@ -115,6 +115,38 @@ def test_v2_never_exits_on_a_non_normal_state():
     assert result["pending"] is None
 
 
+def test_v2_uses_first_later_exact_session_with_a_valid_open():
+    result = b_select_core_v2.replay_lifecycle(
+        [
+            {"date": "2026-01-30", "state": "DEPRESSED"},
+            {"date": "2026-02-02", "state": "OVERHEATED"},
+            {"date": "2026-02-03", "state": "OVERHEATED"},
+            {"date": "2026-02-04", "state": "NORMAL"},
+        ],
+        [{
+            "date": "2026-01-30",
+            "pattern_a_stage": "PROGRESSED",
+            "previous_pattern_a_stage": "TRANSITION",
+        }],
+        trading_dates=CALENDAR,
+        exact_opens={"2026-02-03": 100.0, "2026-02-26": 110.0},
+        execution_by_signal_date={
+            "2026-01-30": "2026-02-03",
+            "2026-02-04": "2026-02-26",
+        },
+        reference_market_date="2026-02-26",
+    )
+
+    assert result["position"] is None
+    assert len(result["completed_trades"]) == 1
+    trade = result["completed_trades"][0]
+    assert trade["entry_execution_date"] == "2026-02-03"
+    assert trade["entry_open"] == 100.0
+    assert trade["exit_signal_date"] == "2026-02-04"
+    assert trade["exit_execution_date"] == "2026-02-26"
+    assert trade["exit_price"] == 110.0
+
+
 def test_v2_rejects_midmonth_entry_and_requires_exact_valid_open():
     with pytest.raises(b_select_core_v2.BSelectLifecycleError, match="ENTRY_SIGNAL_NOT_MONTH_END"):
         b_select_core_v2.replay_lifecycle(

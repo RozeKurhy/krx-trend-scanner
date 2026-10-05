@@ -48,18 +48,10 @@ class Phase4CError(RuntimeError):
     """Phase 4C fail-closed error (input validation, cross-payload validation)."""
 
 
-V2_PROMOTION_BASELINE_REFERENCE_DATE = "2026-10-02"
-V2_PROMOTION_SEED_TARGET_AS_OF = "2026-10-03"
-
-
-def _b_select_status_builder(reference_market_date: str, *, v2_promotion_seed: bool = False):
+def _b_select_status_builder(reference_market_date: str):
     """Select the historical V1 builder or current V2 builder explicitly."""
     reference = str(reference_market_date)[:10]
-    if v2_promotion_seed:
-        if reference != V2_PROMOTION_BASELINE_REFERENCE_DATE:
-            raise Phase4CError("PHASE4C_V2_PROMOTION_SEED_REFERENCE_INVALID")
-        return b_select_status_web
-    if reference < V2_PROMOTION_BASELINE_REFERENCE_DATE:
+    if reference < "2026-10-02":
         return historical_b_select_status_web
     return b_select_status_web
 
@@ -192,18 +184,13 @@ def run_phase4c(
     target_as_of: str,
     root: Path = ROOT,
     *,
-    v2_promotion_seed: bool = False,
+    b_select_status_override: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     web_data_before = snapshot_web_data(root)
 
     # 1~2. exact target/reference 확정
     scanner_summary = load_scanner_summary(root, target_as_of)
     reference_market_date = str(scanner_summary["reference_market_date"])
-    if v2_promotion_seed and (
-        target_as_of != V2_PROMOTION_SEED_TARGET_AS_OF
-        or reference_market_date != V2_PROMOTION_BASELINE_REFERENCE_DATE
-    ):
-        raise Phase4CError("PHASE4C_V2_PROMOTION_SEED_SCOPE_INVALID")
 
     # 3. 4B exact-target report corpus 존재 확인 (상세 검증은 build_web_payload가 수행)
     report_dir, report_json_count = validate_report_corpus_directory(root, target_as_of)
@@ -245,20 +232,23 @@ def run_phase4c(
             )
 
         # 6. Strategy monitor
-        b_select_builder = _b_select_status_builder(
-            reference_market_date,
-            v2_promotion_seed=v2_promotion_seed,
-        )
-        b_select_build_kwargs = {
-            "repo_root": root,
-            "index_path": temp_index_path,
-            "stocks_path": temp_stocks_dir,
-            "target_as_of": target_as_of,
-            "reference_market_date": reference_market_date,
-        }
-        if b_select_builder is b_select_status_web:
-            b_select_build_kwargs["allow_same_reference_v1_seed"] = v2_promotion_seed
-        b_select_status = b_select_builder.build_b_select_status(**b_select_build_kwargs)
+        if b_select_status_override is not None:
+            b_select_status = b_select_status_override
+            if (
+                b_select_status.get("strategy_id") != "PATTERN_B_SELECT_CORE_V02"
+                or b_select_status.get("requested_as_of") != target_as_of
+                or b_select_status.get("reference_market_date") != reference_market_date
+            ):
+                raise Phase4CError("PHASE4C_B_SELECT_OVERRIDE_DATE_OR_STRATEGY_MISMATCH")
+        else:
+            b_select_builder = _b_select_status_builder(reference_market_date)
+            b_select_status = b_select_builder.build_b_select_status(
+                repo_root=root,
+                index_path=temp_index_path,
+                stocks_path=temp_stocks_dir,
+                target_as_of=target_as_of,
+                reference_market_date=reference_market_date,
+            )
         strategy_monitor = strategy_monitor_web.build_strategy_monitor(
             repo_root=root,
             index_path=temp_index_path,
@@ -415,7 +405,7 @@ def run_phase4c(
         "target_as_of": target_as_of,
         "requested_as_of": target_as_of,
         "reference_market_date": reference_market_date,
-        "v2_promotion_seed": v2_promotion_seed,
+        "b_select_status_source": "CANONICAL_OVERRIDE" if b_select_status_override is not None else "PRODUCTION_BUILDER",
         "scanner_common_count": scanner_summary.get("official_common_total"),
         "stock_report": {
             "source_report_directory": stock_report_stats["source_report_directory"],
@@ -487,11 +477,6 @@ def run_phase4c(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target-as-of", required=True, help="explicit YYYY-MM-DD target (no default)")
-    parser.add_argument(
-        "--v2-promotion-seed",
-        action="store_true",
-        help="authorize only the 2026-10-03 V2 seed from the sealed 2026-10-02 V1 snapshot",
-    )
     return parser
 
 
@@ -499,7 +484,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        result = run_phase4c(args.target_as_of, v2_promotion_seed=args.v2_promotion_seed)
+        result = run_phase4c(args.target_as_of)
     except Phase4CError as exc:
         print(json.dumps({"status": "FAIL", "error": str(exc)}, ensure_ascii=False, indent=2))
         return 1

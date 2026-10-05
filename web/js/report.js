@@ -1415,10 +1415,10 @@
     container.appendChild(createDetailTable(["회차", "진입일", "진입가", "청산일", "청산가", "수익률", "상태", "종료 사유"], rows, "strategy-history-table"));
   }
 
-  function monitorTradeHistory(monitor, strategyId, ticker) {
+  function monitorTradeHistory(monitor, strategyId, ticker, isuCd) {
     const strategy = monitorStrategy(monitor, strategyId);
     if (!strategy || !Array.isArray(strategy.trade_history)) return [];
-    return strategy.trade_history.filter((trade) => trade && trade.ticker === ticker);
+    return strategy.trade_history.filter((trade) => trade && trade.ticker === ticker && (!isuCd || !trade.isu_cd || trade.isu_cd === isuCd));
   }
 
   function renderCommonStrategyDetail(report, container) {
@@ -1435,7 +1435,7 @@
     const renderSelectedHistory = () => {
       while (historyPanel.firstChild) historyPanel.removeChild(historyPanel.firstChild);
       const history = activeCommonStrategyId === bSelectId
-        ? monitorTradeHistory(strategyMonitorData, bSelectId, report.identity.ticker)
+        ? monitorTradeHistory(strategyMonitorData, bSelectId, report.identity.ticker, report.identity.isu_cd)
         : (Array.isArray(report.strategy && report.strategy.history) ? report.strategy.history : []);
       appendStrategyHistory(history, historyPanel);
       if (history.length) {

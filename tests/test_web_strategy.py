@@ -570,7 +570,7 @@ def test_strategy_monitor_json_matches_clean_exporter_projection():
     assert projected == monitor
 
 
-def test_b_select_exporter_keeps_entry_and_exit_strategy_lineage():
+def test_b_select_exporter_rejects_v1_rows_from_current_v2_history():
     exporter = _load_exporter()
     trade = exporter._normalize_trade(
         exporter.B_SELECT_ID,
@@ -593,13 +593,14 @@ def test_b_select_exporter_keeps_entry_and_exit_strategy_lineage():
         market="KOSDAQ",
         asset_type="COMMON",
     )
-    exporter._validate_history_identities(
-        exporter.B_SELECT_ID,
-        [trade],
-        allowed_source_ids={exporter.LEGACY_B_SELECT_ID, exporter.B_SELECT_ID},
-    )
-    assert trade["strategy_id"] == exporter.LEGACY_B_SELECT_ID
-    assert trade["exit_strategy_id"] == exporter.B_SELECT_ID
+    import pytest
+
+    with pytest.raises(ValueError, match="unexpected PATTERN_B_SELECT_CORE_V02 history source strategy"):
+        exporter._validate_history_identities(
+            exporter.B_SELECT_ID,
+            [trade],
+            allowed_source_ids={exporter.B_SELECT_ID},
+        )
 
 
 def test_three_strategy_trade_history_counts_identity_and_source_parity():
@@ -637,7 +638,8 @@ def test_three_strategy_trade_history_counts_identity_and_source_parity():
         source_tickers[strategy_id].add(item["ticker"])
 
     fast = strategies["PATTERN_A_FAST_FINAL_STRATEGY_V02"]["trade_history"]
-    b_select = strategies["PATTERN_B_SELECT_CORE_V02"]["trade_history"]
+    b_select_strategy = strategies["PATTERN_B_SELECT_CORE_V02"]
+    b_select = b_select_strategy["trade_history"]
     julia = strategies["JULIA_ETF_STRATEGY_V01"]["trade_history"]
     b_status_path = (
         ROOT
@@ -648,10 +650,15 @@ def test_three_strategy_trade_history_counts_identity_and_source_parity():
     b_status = json.loads(b_status_path.read_text(encoding="utf-8"))
     b_source_items = b_status["items"]
     b_source_counts = Counter(item["bucket"] for item in b_source_items)
-    b_status_trades = [
-        trade for item in b_source_items for trade in item.get("trade_history", [])
+    b_status_trades = b_status.get("canonical_trade_history") or [
+        {**trade, "ticker": item["ticker"], "isu_cd": item["isu_cd"]}
+        for item in b_source_items for trade in item.get("trade_history", [])
     ]
     assert len(b_select) == len(b_status_trades)
+    assert b_select_strategy["canonical_current_open_position_count"] == b_status.get("canonical_current_open_position_count")
+    assert b_select_strategy["canonical_current_open_position_count"] == sum(
+        trade["trade_status"] == "OPEN_AT_REFERENCE" for trade in b_status_trades
+    )
     assert b_status["counts"] == {
         key: b_source_counts.get(key, 0)
         for key in ("entry", "hold", "exit", "watch", "unavailable")
@@ -754,10 +761,9 @@ def test_three_strategy_trade_history_counts_identity_and_source_parity():
     realized_b = next(trade for trade in b_status_trades if trade["trade_status"] == "REALIZED")
     realized_b_projected = next(
         trade for trade in b_select
-        if trade["ticker"] == next(
-            item["ticker"] for item in b_status["items"]
-            if realized_b in item.get("trade_history", [])
-        ) and trade["trade_sequence"] == realized_b["trade_sequence"]
+        if trade["ticker"] == realized_b["ticker"]
+        and trade["trade_sequence"] == realized_b["trade_sequence"]
+        and trade["entry_signal_date"] == realized_b["entry_signal_date"]
     )
     assert realized_b_projected["entry_execution_date"] == realized_b["entry_execution_date"]
     assert realized_b_projected["entry_price"] == realized_b["entry_open"]

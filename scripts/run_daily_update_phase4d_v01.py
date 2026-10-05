@@ -31,6 +31,8 @@ from scripts import export_web_data as health_web
 from scripts import build_b_select_core_v2_status as b_select_status_web
 from scripts import run_daily_update_phase4c_v01 as phase4c
 from scripts import run_pattern_a_universe_scanner as phase4a
+from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
+from trend_scanner.universe.permanent_identity_exclusions import PERMANENT_IDENTITY_EXCLUSIONS
 
 
 class Phase4DError(RuntimeError):
@@ -434,51 +436,132 @@ def validate_staging(
         or strategy_by_id[B_SELECT_ID].get("counts") != b_status.get("counts")
     ):
         raise Phase4DError("PHASE4D_B_SELECT_STATUS_INVALID")
-    migration = b_status.get("promotion_migration")
-    migrated_open = migration.get("migrated_open_positions") if isinstance(migration, dict) else None
-    if (
-        not isinstance(migration, dict)
-        or migration.get("source_strategy_id") != "PATTERN_B_SELECT_CORE_V01"
-        or not isinstance(migrated_open, list)
-        or migration.get("migrated_open_position_count") != len(migrated_open)
-        or b_status.get("migration_open_position_parity_count") != len(migrated_open)
-        or len({(row.get("ticker"), row.get("isu_cd")) for row in migrated_open if isinstance(row, dict)}) != len(migrated_open)
-        or strategy_by_id[B_SELECT_ID].get("label") != "B Select Core V2"
-    ):
-        raise Phase4DError("PHASE4D_B_SELECT_MIGRATION_AUDIT_INVALID")
-    if target_as_of == phase4c.V2_PROMOTION_SEED_TARGET_AS_OF:
-        catchup_audit = b_status.get("catchup_audit") or {}
-        migrated_keys = {
-            (str(row.get("ticker", "")).zfill(6), str(row.get("isu_cd", "")).upper())
-            for row in migrated_open
-            if isinstance(row, dict)
-        }
-        excluded_open_key = ("011080", "KR7011080009")
-        excluded_open_item = next(
-            (
-                item for item in b_status.get("items", [])
-                if (str(item.get("ticker", "")).zfill(6), str(item.get("isu_cd", "")).upper())
-                == excluded_open_key
-            ),
-            None,
+    if strategy_by_id[B_SELECT_ID].get("label") != "B Select Core V2":
+        raise Phase4DError("PHASE4D_B_SELECT_LABEL_INVALID")
+    calendar = load_rolling_production_market_calendar(ROOT)
+    trading_dates = {day.strftime("%Y-%m-%d") for day in calendar.trading_dates}
+    from trend_scanner.strategies.b_select_core_v2 import exact_month_end_sessions
+
+    month_end_dates = set(exact_month_end_sessions(sorted(trading_dates)))
+    item_history_rows: list[dict[str, Any]] = []
+    v1_source_rows = 0
+    excluded_entry_rows = 0
+    exact_session_violations = 0
+    non_normal_exits = 0
+    month_internal_entries = 0
+    for item in b_status.get("items", []):
+        history = item.get("trade_history")
+        if not isinstance(history, list):
+            raise Phase4DError(f"PHASE4D_B_SELECT_HISTORY_INVALID:{item.get('ticker')}")
+        for trade in history:
+            if not isinstance(trade, dict):
+                raise Phase4DError(f"PHASE4D_B_SELECT_HISTORY_ROW_INVALID:{item.get('ticker')}")
+            if trade.get("strategy_id") != B_SELECT_ID:
+                raise Phase4DError(f"PHASE4D_B_SELECT_NON_V2_HISTORY:{item.get('ticker')}")
+            item_history_rows.append({
+                **trade,
+                "ticker": str(item.get("ticker", "")).zfill(6),
+                "isu_cd": str(item.get("isu_cd", "")).upper(),
+            })
+        if item.get("permanent_identity_excluded") is True and history:
+            excluded_entry_rows += 0
+    canonical_history_available = isinstance(b_status.get("canonical_trade_history"), list)
+    history_rows = b_status.get("canonical_trade_history")
+    if not canonical_history_available:
+        history_rows = item_history_rows
+    if not isinstance(history_rows, list):
+        raise Phase4DError("PHASE4D_B_SELECT_CANONICAL_HISTORY_INVALID")
+    for trade in history_rows:
+        if not isinstance(trade, dict):
+            raise Phase4DError("PHASE4D_B_SELECT_CANONICAL_HISTORY_ROW_INVALID")
+        if trade.get("strategy_id") != B_SELECT_ID or trade.get("exit_strategy_id") not in {None, B_SELECT_ID}:
+            if trade.get("strategy_id") == "PATTERN_B_SELECT_CORE_V01":
+                v1_source_rows += 1
+            raise Phase4DError("PHASE4D_B_SELECT_NON_V2_HISTORY")
+        identity_pair = (str(trade.get("ticker", "")).zfill(6), str(trade.get("isu_cd", "")).upper())
+        if identity_pair in PERMANENT_IDENTITY_EXCLUSIONS:
+            excluded_entry_rows += 1
+        signal_date = str(trade.get("entry_signal_date") or "")[:10]
+        execution_date = str(trade.get("entry_execution_date") or "")[:10]
+        if signal_date not in month_end_dates:
+            month_internal_entries += 1
+        if signal_date not in trading_dates or execution_date not in trading_dates:
+            exact_session_violations += 1
+        exit_signal = str(trade.get("exit_signal_date") or "")[:10]
+        exit_execution = str(trade.get("exit_execution_date") or "")[:10]
+        if trade.get("trade_status") == "REALIZED":
+            if trade.get("exit_reason") != "PATTERN_B_NORMAL_NEXT_OPEN" or trade.get("exit_strategy_id") != B_SELECT_ID:
+                non_normal_exits += 1
+            if exit_signal not in trading_dates or exit_execution not in trading_dates:
+                exact_session_violations += 1
+    monitor_history = strategy_by_id[B_SELECT_ID].get("trade_history")
+    def _history_signature(row: dict[str, Any], *, monitor_row: bool) -> tuple[Any, ...]:
+        price_key = "entry_price" if monitor_row else "entry_open"
+        return (
+            str(row.get("ticker", "")).zfill(6),
+            int(row.get("trade_sequence") or 0),
+            str(row.get("entry_signal_date") or "")[:10],
+            str(row.get("entry_execution_date") or "")[:10],
+            round(float(row.get(price_key) or 0), 10),
+            str(row.get("exit_signal_date") or "")[:10],
+            str(row.get("exit_execution_date") or "")[:10],
+            round(float(row.get("exit_price") or 0), 10),
+            str(row.get("trade_status") or ""),
+            str(row.get("strategy_id") or ""),
+            str(row.get("exit_strategy_id") or ""),
+            str(row.get("exit_reason") or ""),
         )
+    if target_as_of == "2026-10-03" and not canonical_history_available:
+        raise Phase4DError("PHASE4D_B_SELECT_CANONICAL_HISTORY_MISSING")
+    if target_as_of == "2026-10-03":
+        canonical_open_rows = b_status.get("canonical_current_open_positions")
+        monitor_open_rows = strategy_by_id[B_SELECT_ID].get("canonical_current_open_positions")
+        expected_open_rows = [
+            trade for trade in history_rows
+            if isinstance(trade, dict) and trade.get("trade_status") == "OPEN_AT_REFERENCE"
+        ]
         if (
-            reference_market_date != phase4c.V2_PROMOTION_BASELINE_REFERENCE_DATE
-            or len(migrated_open) != 26
-            or len(migrated_keys) != 26
-            or excluded_open_key not in migrated_keys
-            or b_status.get("reference_run_entry_signal_count") != 0
-            or b_status.get("inherited_excluded_open_exception_count") != 1
-            or catchup_audit.get("replay_mode") != "V1_SAME_REFERENCE_PROMOTION_SEED_NO_RETROACTIVE_SIGNALS"
-            or catchup_audit.get("catchup_session_count") != 0
-            or catchup_audit.get("catchup_identity_count") != 0
-            or catchup_audit.get("catchup_intermediate_observation_count") != 0
-            or not isinstance(excluded_open_item, dict)
-            or excluded_open_item.get("canonical_position") != "OPEN"
-            or excluded_open_item.get("inherited_excluded_open_exception") is not True
-            or excluded_open_item.get("permanent_identity_excluded") is not True
+            not isinstance(canonical_open_rows, list)
+            or not isinstance(monitor_open_rows, list)
+            or b_status.get("canonical_current_open_position_count") != len(expected_open_rows)
+            or strategy_by_id[B_SELECT_ID].get("canonical_current_open_position_count") != len(expected_open_rows)
+            or sorted(_history_signature(row, monitor_row=False) for row in canonical_open_rows)
+            != sorted(_history_signature(row, monitor_row=False) for row in expected_open_rows)
+            or sorted(_history_signature(row, monitor_row=True) for row in monitor_open_rows)
+            != sorted(_history_signature(row, monitor_row=False) for row in expected_open_rows)
         ):
-            raise Phase4DError("PHASE4D_B_SELECT_V2_PROMOTION_SEED_INVALID")
+            raise Phase4DError("PHASE4D_B_SELECT_CANONICAL_OPEN_POSITION_MISMATCH")
+    if canonical_history_available and (
+        not isinstance(monitor_history, list)
+        or sorted(_history_signature(row, monitor_row=False) for row in history_rows)
+        != sorted(_history_signature(row, monitor_row=True) for row in monitor_history)
+        or b_status.get("canonical_trade_history_row_count", len(history_rows)) != len(history_rows)
+    ):
+        raise Phase4DError("PHASE4D_B_SELECT_MONITOR_CANONICAL_HISTORY_MISMATCH")
+    if (
+        v1_source_rows != 0
+        or b_status.get("current_v1_source_row_count") != 0
+        or excluded_entry_rows != 0
+        or exact_session_violations != 0
+        or non_normal_exits != 0
+        or month_internal_entries != 0
+    ):
+        raise Phase4DError(
+            "PHASE4D_B_SELECT_CANONICAL_LEDGER_INVALID:"
+            f"v1={v1_source_rows},excluded={excluded_entry_rows},exact={exact_session_violations},"
+            f"non_normal={non_normal_exits},midmonth_entry={month_internal_entries}"
+        )
+    if target_as_of == "2026-10-03":
+        canonical = b_status.get("canonical_history") or {}
+        if (
+            reference_market_date != "2026-10-02"
+            or canonical.get("status") != "FRESH_REPLAY"
+            or canonical.get("end_date") != reference_market_date
+            or canonical.get("current_v1_source_row_count") != 0
+            or b_status.get("catchup_audit", {}).get("replay_mode") != "V2_CANONICAL_FULL_HISTORY_REPLAY"
+            or canonical.get("trade_history_row_count") != len(history_rows)
+        ):
+            raise Phase4DError("PHASE4D_B_SELECT_CANONICAL_REPLAY_AUDIT_INVALID")
     for item in b_status.get("items", []):
         if item.get("permanent_identity_excluded") is True and any(
             trade.get("strategy_id") == B_SELECT_ID
@@ -540,6 +623,20 @@ def validate_staging(
         "health_overall_status": health.get("overall_status"),
         "strategy_monitor_strategy_count": len(strategy_rows),
         "b_select_status_count": b_status.get("count"),
+        "b_select_canonical_trade_history_row_count": b_status.get("canonical_trade_history_row_count"),
+        "b_select_canonical_current_open_position_count": b_status.get("canonical_current_open_position_count"),
+        "b_select_published_item_open_position_count": sum(
+            item.get("canonical_position") == "OPEN" for item in b_status.get("items", [])
+        ),
+        "b_select_historical_only_open_position_count": sum(
+            (str(trade.get("ticker", "")).zfill(6), str(trade.get("isu_cd", "")).upper())
+            not in {
+                (str(item.get("ticker", "")).zfill(6), str(item.get("isu_cd", "")).upper())
+                for item in b_status.get("items", [])
+            }
+            for trade in b_status.get("canonical_current_open_positions", [])
+            if isinstance(trade, dict)
+        ),
         "b_select_evaluation_error_count": b_status.get("evaluation_error_count"),
         "b_select_date_mismatch_count": b_status.get("date_mismatch_count"),
         "b_select_future_reference_count": b_status.get("future_reference_count"),
@@ -590,14 +687,15 @@ def run_phase4d(
     execute_live: bool,
     root: Path = ROOT,
     phase4c_result: dict[str, Any] | None = None,
-    v2_promotion_seed: bool = False,
 ) -> dict[str, Any]:
     if root != ROOT:
         raise Phase4DError("PHASE4D_REPOSITORY_ROOT_MISMATCH")
-    if v2_promotion_seed and target_as_of != phase4c.V2_PROMOTION_SEED_TARGET_AS_OF:
-        raise Phase4DError("PHASE4D_V2_PROMOTION_SEED_SCOPE_INVALID")
-    published = inspect_published_payload(root, target_as_of, require_etf_source=True)
-    if published is not None:
+    published = (
+        inspect_published_payload(root, target_as_of, require_etf_source=True)
+        if phase4c_result is None
+        else None
+    )
+    if published is not None and phase4c_result is None:
         return {
             "status": "NOOP_ALREADY_COMPLETE",
             "target_as_of": target_as_of,
@@ -613,12 +711,6 @@ def run_phase4d(
     try:
         stage_data = stage_root / "data"
         stage_data.mkdir()
-        if phase4c_result is None and v2_promotion_seed:
-            phase4c_result = phase4c.run_phase4c(
-                target_as_of,
-                root=ROOT,
-                v2_promotion_seed=True,
-            )
         context = _stage_payloads(target_as_of, stage_data, phase4c_result=phase4c_result)
         validation = validate_staging(
             stage_data, target_as_of, context["reference_market_date"], require_etf36=True,
@@ -653,11 +745,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target-as-of", required=True, help="explicit YYYY-MM-DD target (no default)")
     parser.add_argument("--execute-live", action="store_true", help="promote validated staging payloads to web/data")
-    parser.add_argument(
-        "--v2-promotion-seed",
-        action="store_true",
-        help="authorize only the 2026-10-03 V2 seed from the sealed 2026-10-02 V1 snapshot",
-    )
     return parser
 
 
@@ -667,7 +754,6 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(run_phase4d(
             args.target_as_of,
             execute_live=args.execute_live,
-            v2_promotion_seed=args.v2_promotion_seed,
         ), ensure_ascii=False, indent=2))
         return 0
     except (Phase4DError, ValueError, FileNotFoundError) as exc:

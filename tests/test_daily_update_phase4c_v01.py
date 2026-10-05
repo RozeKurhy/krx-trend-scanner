@@ -27,14 +27,11 @@ REAL_TARGET = "2026-09-25"
 REAL_REFERENCE_MARKET_DATE = "2026-09-23"
 
 
-def test_phase4c_uses_v1_only_for_pre_promotion_historical_replays():
+def test_phase4c_uses_v1_only_for_pre_v2_historical_replays():
     assert phase4c._b_select_status_builder(REAL_REFERENCE_MARKET_DATE).__name__.endswith("build_b_select_core_v1_status")
     assert phase4c._b_select_status_builder("2026-10-01").__name__.endswith("build_b_select_core_v1_status")
     assert phase4c._b_select_status_builder("2026-10-02").STRATEGY_ID == "PATTERN_B_SELECT_CORE_V02"
     assert phase4c._b_select_status_builder("2026-10-05").STRATEGY_ID == "PATTERN_B_SELECT_CORE_V02"
-    assert phase4c._b_select_status_builder("2026-10-02", v2_promotion_seed=True).STRATEGY_ID == "PATTERN_B_SELECT_CORE_V02"
-    with pytest.raises(phase4c.Phase4CError, match="PHASE4C_V2_PROMOTION_SEED_REFERENCE_INVALID"):
-        phase4c._b_select_status_builder("2026-10-01", v2_promotion_seed=True)
 
 
 def _write_scanner_summary(

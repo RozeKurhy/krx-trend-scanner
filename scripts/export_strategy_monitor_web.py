@@ -42,10 +42,6 @@ STRATEGY_LABEL = "A FAST Core V2"
 B_SELECT_ID = "PATTERN_B_SELECT_CORE_V02"
 B_SELECT_LABEL = "B Select Core V2"
 LEGACY_B_SELECT_ID = "PATTERN_B_SELECT_CORE_V01"
-V2_PROMOTION_SEED_REPLAY_MODE = "V1_SAME_REFERENCE_PROMOTION_SEED_NO_RETROACTIVE_SIGNALS"
-V2_PROMOTION_SEED_SOURCE = Path(
-    "artifacts/strategies/b_select_core_v1/production/20261003/status.json"
-)
 JULIA_ID = "JULIA_ETF_STRATEGY_V01"
 JULIA_LABEL = "Julia V1"
 DEFAULT_STRATEGY_ID = STRATEGY_ID
@@ -154,83 +150,6 @@ def _read_catchup_entry_stage_authority(
             )
         authority[key] = row
 
-    # The one-time 2026-10-03 promotion carries 26 V1 OPEN positions across
-    # the same 2026-10-02 reference date. Their entry-stage context is sealed
-    # in the exact V1 production status, not in the V2 catch-up authority file.
-    # Read that immutable source directly so monitor validation preserves the
-    # original V1 entry lineage without pretending it was a V2 signal.
-    migration = b_select_status.get("promotion_migration") or {}
-    if audit.get("replay_mode") == V2_PROMOTION_SEED_REPLAY_MODE:
-        if repo_root is None:
-            raise ValueError("B Select V1 promotion entry authority repository root is missing")
-        source_path = str(migration.get("source_artifact_path") or "")
-        if (
-            migration.get("source_strategy_id") != LEGACY_B_SELECT_ID
-            or source_path != str(V2_PROMOTION_SEED_SOURCE)
-            or migration.get("baseline_requested_as_of") != "2026-10-03"
-            or migration.get("baseline_reference_market_date") != "2026-10-02"
-            or b_select_status.get("requested_as_of") != "2026-10-03"
-            or b_select_status.get("reference_market_date") != "2026-10-02"
-        ):
-            raise ValueError("B Select V1 promotion entry authority source is invalid")
-        source_status = _read_json(repo_root / V2_PROMOTION_SEED_SOURCE)
-        if (
-            source_status.get("status") != "PASS"
-            or source_status.get("strategy_id") != LEGACY_B_SELECT_ID
-            or source_status.get("requested_as_of") != "2026-10-03"
-            or source_status.get("reference_market_date") != "2026-10-02"
-        ):
-            raise ValueError("B Select sealed V1 promotion status is invalid")
-        migrated_rows = {
-            (str(row.get("ticker", "")).zfill(6), str(row.get("isu_cd", "")).upper()): row
-            for row in migration.get("migrated_open_positions", [])
-            if isinstance(row, dict)
-        }
-        source_open_count = 0
-        for item in source_status.get("items", []):
-            if not isinstance(item, dict) or item.get("canonical_position") != "OPEN":
-                continue
-            source_open_count += 1
-            ticker = str(item.get("ticker", "")).zfill(6)
-            isu_cd = str(item.get("isu_cd", "")).upper()
-            component_id = str(item.get("component_id", ""))
-            trade = item.get("current_trade") or {}
-            signal_date = str(trade.get("entry_signal_date", ""))[:10]
-            pair = (ticker, isu_cd)
-            migrated = migrated_rows.get(pair)
-            if (
-                migrated is None
-                or str(migrated.get("entry_signal_date", ""))[:10] != signal_date
-                or int(migrated.get("trade_sequence") or 0) != int(trade.get("trade_sequence") or 0)
-                or not component_id
-            ):
-                raise ValueError(f"B Select V1 promotion entry inventory mismatch: {ticker}")
-            row = {
-                "ticker": ticker,
-                "isu_cd": isu_cd,
-                "component_id": component_id,
-                "entry_signal_date": signal_date,
-                "entry_pattern_a_stage_recomputed": str(item.get("entry_pattern_a_stage") or "").upper(),
-                "previous_pattern_a_stage": str(item.get("entry_previous_pattern_a_stage") or "").upper(),
-                "previous_pattern_a_stage_date": str(item.get("entry_previous_pattern_a_stage_date") or "")[:10],
-                "source": "V1_PROMOTION_BASELINE_STATUS",
-            }
-            key = (ticker, isu_cd, component_id, signal_date)
-            if (
-                row["entry_pattern_a_stage_recomputed"] != "PROGRESSED"
-                or row["previous_pattern_a_stage"] not in ALLOWED_ENTRY_PREVIOUS_STAGES
-                or not row["previous_pattern_a_stage_date"]
-                or row["previous_pattern_a_stage_date"] > signal_date
-                or key in authority
-            ):
-                raise ValueError(f"B Select V1 promotion entry context is invalid: {ticker} {signal_date}")
-            authority[key] = row
-        if (
-            source_open_count != 26
-            or len(migrated_rows) != source_open_count
-            or migration.get("migrated_open_position_count") != source_open_count
-        ):
-            raise ValueError("B Select V1 promotion entry inventory count mismatch")
     return authority
 
 
@@ -607,9 +526,11 @@ def build_strategy_monitor(
         else "B Select Core V1" if b_select_strategy_id == LEGACY_B_SELECT_ID
         else ""
     )
+    expected_strategy_id = B_SELECT_ID if resolved_reference >= "2026-10-02" else LEGACY_B_SELECT_ID
+    expected_source_ids = {expected_strategy_id}
     if (
         b_select_status.get("status") != "PASS"
-        or b_select_strategy_id not in {B_SELECT_ID, LEGACY_B_SELECT_ID}
+        or b_select_strategy_id != expected_strategy_id
         or b_select_status.get("requested_as_of") != resolved_as_of
         or b_select_status.get("reference_market_date") != resolved_reference
         or (b_select_status.get("scope") or {}).get("type") != "PUBLISHED_COMMON_REPORTS"
@@ -656,7 +577,31 @@ def build_strategy_monitor(
     # trade/position, requested_as_of for an item without a signal). One value
     # per key is shared by the list, its filter, the trade history and the stock
     # report card; it never changes B Select Core V2 signals or buckets.
-    fundamental = resolve_statuses(status_keys(b_items, resolved_as_of), repo_root)
+    b_history_source = b_select_status.get("canonical_trade_history")
+    if b_history_source is None:
+        b_history_source = [
+            {**trade, "ticker": item.get("ticker"), "isu_cd": item.get("isu_cd"),
+             "name": item.get("name"), "market": item.get("market")}
+            for item in b_items
+            for trade in item.get("trade_history", [])
+        ]
+    if not isinstance(b_history_source, list):
+        raise ValueError("B Select canonical trade history is invalid")
+    index_names = {
+        str(item.get("ticker", "")).zfill(6): str(item.get("name") or item.get("ticker") or "")
+        for item in index.get("items", [])
+        if isinstance(item, dict)
+    }
+    fundamental_keys = status_keys(b_items, resolved_as_of)
+    for trade in b_history_source:
+        if not isinstance(trade, dict):
+            raise ValueError("invalid B Select canonical trade history row")
+        if trade.get("entry_signal_date"):
+            fundamental_keys.setdefault(
+                status_key(trade.get("ticker"), trade.get("isu_cd"), trade["entry_signal_date"]),
+                "ENTRY_SIGNAL_DATE",
+            )
+    fundamental = resolve_statuses(fundamental_keys, repo_root)
 
     def fundamental_for(ticker: Any, isu_cd: Any, asof: Any) -> str:
         status = fundamental[status_key(ticker, isu_cd, asof)]["fundamental_status"]
@@ -665,28 +610,29 @@ def build_strategy_monitor(
         return status
 
     b_history: list[dict[str, Any]] = []
-    for item in b_items:
-        source_history = item.get("trade_history")
-        if not isinstance(source_history, list):
-            raise ValueError(f"B Select trade history is missing: {item.get('ticker')}")
-        for trade in source_history:
-            if not isinstance(trade, dict):
-                raise ValueError(f"invalid B Select trade history row: {item.get('ticker')}")
-            normalized = _normalize_trade(
-                b_select_strategy_id,
-                trade,
-                ticker=str(item.get("ticker") or "").zfill(6),
-                name=str(item.get("name") or item.get("ticker") or ""),
-                market=str(item.get("market") or ""),
-                asset_type="COMMON",
-            )
-            normalized["fundamental_status"] = fundamental_for(item.get("ticker"), item.get("isu_cd"), trade.get("entry_signal_date"))
-            b_history.append(normalized)
+    for trade in b_history_source:
+        normalized = _normalize_trade(
+            b_select_strategy_id,
+            trade,
+            ticker=str(trade.get("ticker") or "").zfill(6),
+            name=(
+                index_names.get(str(trade.get("ticker", "")).zfill(6), str(trade.get("ticker") or ""))
+                if not trade.get("name") or str(trade.get("name")) == str(trade.get("ticker"))
+                else str(trade.get("name"))
+            ),
+            market=str(trade.get("market") or ""),
+            asset_type="COMMON",
+        )
+        normalized["fundamental_status"] = fundamental_for(
+            trade.get("ticker"), trade.get("isu_cd"), trade.get("entry_signal_date")
+        )
+        normalized["isu_cd"] = str(trade.get("isu_cd") or "").upper()
+        b_history.append(normalized)
     _validate_history_identities(STRATEGY_ID, fast_history)
     _validate_history_identities(
         b_select_strategy_id,
         b_history,
-        allowed_source_ids={LEGACY_B_SELECT_ID, B_SELECT_ID},
+        allowed_source_ids=expected_source_ids,
     )
     _validate_history_identities(JULIA_ID, julia_history)
     b_current_items = [
@@ -705,6 +651,16 @@ def build_strategy_monitor(
                 raise ValueError(f"unknown strategy item bucket: {bucket!r}")
             counts[bucket] += 1
         return counts
+
+    b_canonical_open_positions = [
+        trade for trade in b_history
+        if trade.get("trade_status") == "OPEN_AT_REFERENCE"
+    ]
+    if (
+        b_select_status.get("canonical_current_open_position_count") is not None
+        and b_select_status.get("canonical_current_open_position_count") != len(b_canonical_open_positions)
+    ):
+        raise ValueError("B Select canonical current OPEN count mismatch")
 
     strategies = [
         {
@@ -732,6 +688,8 @@ def build_strategy_monitor(
             "counts": dict(b_select_status.get("counts") or {}),
             "items": b_current_items,
             "trade_history": b_history,
+            "canonical_current_open_positions": b_canonical_open_positions,
+            "canonical_current_open_position_count": len(b_canonical_open_positions),
         },
         {
             "id": JULIA_ID,
