@@ -324,6 +324,60 @@ def _interval_map(intervals: Sequence[Mapping[str, Any]]) -> dict[tuple[str, str
     return result
 
 
+def _index_raw_partition(frame: pd.DataFrame) -> dict[str, dict[str, Any]]:
+    """Cache all rows in one complete market/date partition by normalized ticker.
+
+    Carry authorization separately checks exact `(ticker, ISU_CD)` PIT activity
+    on both the mark date and the adjusted-price anchor date.
+    """
+    if "ticker" not in frame.columns:
+        raise ValueError("KRX raw partition is missing ticker")
+    tickers = frame["ticker"].astype(str).str.strip().str.zfill(6)
+    if tickers.duplicated().any():
+        duplicates = sorted(tickers[tickers.duplicated(keep=False)].unique().tolist())
+        raise ValueError(f"KRX raw partition has duplicate ticker rows: {duplicates[:5]}")
+    normalized = frame.assign(ticker=tickers)
+    return {
+        str(row["ticker"]).strip().zfill(6): row
+        for row in normalized.to_dict(orient="records")
+    }
+
+
+def _make_raw_store_reader(
+    raw_store: KrxRawStockStore,
+    raw_cache: dict[tuple[str, str], dict[str, dict[str, Any]]],
+    raw_manifests: dict[tuple[str, str], dict[str, Any]],
+    intervals_by_identity: Mapping[tuple[str, str], Sequence[Mapping[str, Any]]],
+):
+    """Build an exact-identity, query-order-independent raw-date reader."""
+    def get(market: str, day: str, ticker: str, isu_cd: str) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+        key = (market.upper(), day[:10])
+        if key not in raw_cache:
+            manifest = raw_store.get_manifest(*key)
+            if manifest is None or manifest.get("status") != "COMPLETE":
+                raw_cache[key] = {}
+                raw_manifests[key] = {
+                    "status": "MISSING_OR_INCOMPLETE" if manifest is None else manifest.get("status")
+                }
+            else:
+                raw_cache[key] = _index_raw_partition(raw_store.load_snapshot(*key))
+                raw_manifests[key] = dict(manifest)
+        normalized_ticker = str(ticker).strip().zfill(6)
+        normalized_isu = str(isu_cd).strip().upper()
+        active = any(
+            str(row.get("state", "")).upper() == "COMMON"
+            and str(row.get("market", "")).upper() == key[0]
+            and str(row.get("effective_from", ""))[:10] <= key[1]
+            and str(row.get("effective_to", ""))[:10] >= key[1]
+            for row in intervals_by_identity.get((normalized_ticker, normalized_isu), ())
+        )
+        if not active:
+            return None, {**raw_manifests[key], "identity_status": "EXACT_COMMON_IDENTITY_NOT_ACTIVE"}
+        return raw_cache[key].get(normalized_ticker), raw_manifests[key]
+
+    return get
+
+
 def _raw_row_cache(raw_store: KrxRawStockStore) -> tuple[dict[tuple[str, str], dict[str, dict[str, Any]]], dict[tuple[str, str], dict[str, Any]]]:
     rows_by_partition: dict[tuple[str, str], dict[str, dict[str, Any]]] = {}
     manifests: dict[tuple[str, str], dict[str, Any]] = {}
@@ -338,11 +392,7 @@ def _raw_row_cache(raw_store: KrxRawStockStore) -> tuple[dict[tuple[str, str], d
                 return None, manifests[key]
             frame = raw_store.load_snapshot(*key)
             rows = frame.loc[:, ["ticker", "date", "open", "high", "low", "close", "volume", "trading_value", "listed_shares"]]
-            rows_by_partition[key] = {
-                str(row["ticker"]).zfill(6): row
-                for row in rows.to_dict(orient="records")
-                if str(row["ticker"]).zfill(6) == ticker.zfill(6)
-            }
+            rows_by_partition[key] = _index_raw_partition(rows)
             manifests[key] = dict(manifest)
         return rows_by_partition[key].get(ticker.zfill(6)), manifests[key]
 
@@ -407,7 +457,7 @@ def _replay_with_official_carry(
         elif not coverage_audit._pit_active(intervals_by_identity, ticker, isu_cd, day_text):
             reason = "PIT_COMMON_IDENTITY_NOT_ACTIVE_ON_MARK_DATE"
         else:
-            raw_row, manifest = raw_store_reader(market, day_text, ticker)
+            raw_row, manifest = raw_store_reader(market, day_text, ticker, isu_cd)
             if raw_row is None or not coverage_audit.raw_nontrading_placeholder(raw_row):
                 reason = "EXACT_KRX_RAW_NONTRADING_PLACEHOLDER_NOT_CONFIRMED"
             else:
@@ -426,7 +476,7 @@ def _replay_with_official_carry(
                         candidate_text = pd.Timestamp(candidate_day).strftime("%Y-%m-%d")
                         if not coverage_audit._pit_active(intervals_by_identity, ticker, isu_cd, candidate_text):
                             continue
-                        raw_ref, raw_ref_manifest = raw_store_reader(market, candidate_text, ticker)
+                        raw_ref, raw_ref_manifest = raw_store_reader(market, candidate_text, ticker, isu_cd)
                         shares = coverage_audit.number(raw_ref.get("listed_shares")) if raw_ref else None
                         if (
                             not coverage_audit._raw_valid_trade(raw_ref)
@@ -469,23 +519,9 @@ def _replay_with_official_carry(
         carry_audit.append(audit)
         return None, None
 
-    def raw_store_reader(market: str, day: str, ticker: str) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
-        key = (market.upper(), day[:10])
-        if key not in raw_cache:
-            manifest = raw_store.get_manifest(*key)
-            if manifest is None or manifest.get("status") != "COMPLETE":
-                raw_cache[key] = {}
-                raw_manifests[key] = {"status": "MISSING_OR_INCOMPLETE" if manifest is None else manifest.get("status")}
-            else:
-                frame = raw_store.load_snapshot(*key)
-                tickers = frame["ticker"].astype(str).str.zfill(6)
-                selected = frame.loc[tickers.eq(ticker.zfill(6))]
-                raw_cache[key] = {
-                    str(row["ticker"]).zfill(6): row
-                    for row in selected.to_dict(orient="records")
-                }
-                raw_manifests[key] = dict(manifest)
-        return raw_cache[key].get(ticker.zfill(6)), raw_manifests[key]
+    raw_store_reader = _make_raw_store_reader(
+        raw_store, raw_cache, raw_manifests, intervals_by_identity,
+    )
 
     engine.SELL_TAX_SCHEDULE = ZERO_TAX_SCHEDULE
     engine.INITIAL_CAPITAL = INITIAL_CAPITAL

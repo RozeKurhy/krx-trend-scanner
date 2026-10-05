@@ -52,6 +52,7 @@ def test_compact_report_preserves_authority_values_without_raw_markdown(payload,
 
     assert item["report_available"] is True
     assert report["identity"]["ticker"] == "005930"
+    assert item["isu_cd"] == report["identity"]["isu_cd"] == "KR7005930003"
     assert report["identity"]["name"] == item["name"]
     assert report["decision"]["action"] in {"HOLD", "WAIT", "ENTER_NEXT_OPEN", "NONE", "WATCH", "ENTRY", "EXIT"}
     report_dir, _requested_as_of = exporter._resolve_report_directory()

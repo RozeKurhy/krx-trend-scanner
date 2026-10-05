@@ -3,6 +3,7 @@
 
   const INDEX_URL = "./data/stock-index.json";
   const STOCKS_PATH = "./data/stocks/";
+  const IDENTITY_ROUTES_URL = "./data/identity-report-routes.json";
   const STRATEGY_MONITOR_URL = "./data/strategy-monitor.json";
   const DART_SEARCH_URL = "https://dart.fss.or.kr/html/search/SearchCompanyIR3_M.html";
   const THEME_STORAGE_KEY = "krx-theme";
@@ -134,6 +135,7 @@
   let activeDetailKey = null;
   let fundamentalTrendMode = "quarterly";
   let strategyMonitorPromise = null;
+  let identityRoutesPromise = null;
   let strategyMonitorData = null;
   let activeCommonStrategyId = "PATTERN_A_FAST_FINAL_STRATEGY_V02";
 
@@ -382,9 +384,10 @@
     return Boolean(value && typeof value === "object" && Array.isArray(value.items) && Number.isInteger(value.count));
   }
 
-  function validateReport(value, ticker) {
+  function validateReport(value, ticker, isuCd = null) {
     return Boolean(
       value && typeof value === "object" && value.identity && value.identity.ticker === ticker &&
+      (!isuCd || value.identity.isu_cd === isuCd) &&
       value.decision && value.summary && value.price_trend && value.pattern && value.market_strength &&
       value.flow && value.fundamentals && typeof value.fundamentals.status === "string" &&
       Array.isArray(value.fundamentals.quarterly) && Array.isArray(value.fundamentals.annual) &&
@@ -421,10 +424,10 @@
     return "PATTERN_B_SELECT_CORE_V02";
   }
 
-  function monitorStrategyItem(monitor, strategyId, ticker) {
+  function monitorStrategyItem(monitor, strategyId, ticker, isuCd = null) {
     const strategy = monitorStrategy(monitor, strategyId);
     if (!strategy || !Array.isArray(strategy.items)) return null;
-    return strategy.items.find((item) => item && item.asset_type === "COMMON" && item.ticker === ticker) || null;
+    return strategy.items.find((item) => item && item.asset_type === "COMMON" && item.ticker === ticker && (!isuCd || item.isu_cd === isuCd)) || null;
   }
 
   function strategyActionLabel(action, state, position) {
@@ -514,15 +517,67 @@
     return new URL(window.location.href).searchParams.get("ticker");
   }
 
+  function currentIsuCd() {
+    const value = new URL(window.location.href).searchParams.get("isu_cd");
+    return value ? value.trim().toUpperCase() : null;
+  }
+
   function dartSearchUrl(ticker) {
     return `${DART_SEARCH_URL}?textCrpNM=${encodeURIComponent(ticker)}`;
   }
 
-  function updateUrl(ticker) {
+  function updateUrl(ticker, isuCd = null) {
     const url = new URL(window.location.href);
     if (ticker) url.searchParams.set("ticker", ticker);
     else url.searchParams.delete("ticker");
+    if (isuCd) url.searchParams.set("isu_cd", isuCd);
+    else url.searchParams.delete("isu_cd");
     window.history.pushState({}, "", url);
+  }
+
+  function loadIdentityRoutesOnce() {
+    if (!identityRoutesPromise) {
+      identityRoutesPromise = fetch(IDENTITY_ROUTES_URL, { cache: "no-store" })
+        .then((response) => {
+          if (!response.ok) throw new Error("exact identity routes request failed");
+          return response.json();
+        })
+        .then((value) => {
+          if (value?.schema_version !== 1 || !Array.isArray(value.items)) throw new Error("exact identity routes schema is incomplete");
+          const routes = new Map();
+          value.items.forEach((item) => {
+            if (!item || !/^[0-9]{6}$/.test(item.ticker || "") || !/^[0-9A-Z]+$/.test(item.isu_cd || "") ||
+                typeof item.url !== "string" || !item.url.startsWith("./data/") || routes.has(`${item.ticker}|${item.isu_cd}`)) {
+              throw new Error("exact identity route entry is invalid");
+            }
+            routes.set(`${item.ticker}|${item.isu_cd}`, item);
+          });
+          return routes;
+        })
+        .catch((error) => {
+          identityRoutesPromise = null;
+          throw error;
+        });
+    }
+    return identityRoutesPromise;
+  }
+
+  async function loadExactIdentityReport(ticker, isuCd) {
+    closeDetail();
+    try {
+      const routes = await loadIdentityRoutesOnce();
+      const route = routes.get(`${ticker}|${isuCd}`);
+      if (!route) throw new Error("exact identity route missing");
+      const response = await fetch(route.url, { cache: "no-store" });
+      if (!response.ok) throw new Error("exact identity report request failed");
+      const report = await response.json();
+      if (!validateReport(report, ticker, isuCd)) throw new Error("exact identity report mismatch");
+      const input = byId("stock-search");
+      if (input) input.value = report.identity.name || ticker;
+      renderReport(report);
+    } catch (error) {
+      showError("해당 종목 코드와 ISU 식별자에 맞는 리포트를 확인해 주세요.");
+    }
   }
 
   function createResultItem(item) {
@@ -1418,7 +1473,7 @@
   function monitorTradeHistory(monitor, strategyId, ticker, isuCd) {
     const strategy = monitorStrategy(monitor, strategyId);
     if (!strategy || !Array.isArray(strategy.trade_history)) return [];
-    return strategy.trade_history.filter((trade) => trade && trade.ticker === ticker && (!isuCd || !trade.isu_cd || trade.isu_cd === isuCd));
+    return strategy.trade_history.filter((trade) => trade && trade.ticker === ticker && (!isuCd || trade.isu_cd === isuCd));
   }
 
   function renderCommonStrategyDetail(report, container) {
@@ -1618,6 +1673,14 @@
     const identityParts = [identity.ticker, market, assetLabel(identity.asset_type)];
     if (sector && sector !== "UNKNOWN" && sector !== "None") identityParts.push(sector);
     setText("report-identity", identityParts.join(" · "));
+    const availability = report.availability || {};
+    const availabilityMessage = availability.identity_status === "HISTORICAL / NOT_CURRENT_COMMON"
+      ? "HISTORICAL / NOT_CURRENT_COMMON · 과거 거래 이력용 보관 리포트"
+      : availability.identity_status === "CURRENT_COMMON_OUTSIDE_PUBLISHED_REPORT_SCOPE"
+        ? "현재 COMMON 종목 · 상세 Stock Report 범위 밖 · exact identity 및 거래 이력 제공"
+        : "";
+    setText("report-availability", availabilityMessage);
+    setHidden("report-availability", !availabilityMessage);
     activeCommonStrategyId = "PATTERN_A_FAST_FINAL_STRATEGY_V02";
     renderStrategySummary(report);
     setText("decision-summary", buildSummary(report));
@@ -1625,7 +1688,7 @@
       loadStrategyMonitorOnce().then((monitor) => {
         if (currentReport !== report) return;
         const bSelectId = monitorBSelectId(monitor);
-        renderStrategySummary(report, monitorStrategyItem(monitor, bSelectId, identity.ticker), bSelectId);
+        renderStrategySummary(report, monitorStrategyItem(monitor, bSelectId, identity.ticker, identity.isu_cd), bSelectId);
         if (activeDetailKey === "strategy") renderDetail("strategy", report);
       });
     }
@@ -1725,6 +1788,11 @@
       showEmpty();
       return;
     }
+    const isuCd = currentIsuCd();
+    if (isuCd) {
+      await loadExactIdentityReport(ticker.trim().padStart(6, "0"), isuCd);
+      return;
+    }
     const item = value.items.find((candidate) => candidate.ticker === ticker);
     if (!item) {
       showError("종목 정보를 찾을 수 없습니다.");
@@ -1756,6 +1824,11 @@
     if (!ticker) {
       if (input) input.value = "";
       showEmpty();
+      return;
+    }
+    const isuCd = currentIsuCd();
+    if (isuCd) {
+      loadExactIdentityReport(ticker.trim().padStart(6, "0"), isuCd);
       return;
     }
     const item = indexData && indexData.items.find((candidate) => candidate.ticker === ticker);

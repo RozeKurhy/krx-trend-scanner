@@ -23,6 +23,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 SUPPORTED_STOCK_REPORT_VERSIONS = {"0.5", "0.6", "0.7"}
 METADATA_PATH = ROOT / "data/reference/krx_instrument_metadata.csv"
+PIT_PATH = ROOT / "data/market/rolling_authority/merged_pit_intervals.json"
 STOCK_REPORTS_ROOT = ROOT / "artifacts/reporting/stock_reports"
 ETF_STOCK_REPORTS_ROOT = ROOT / "artifacts/reporting/etf_stock_reports"
 ADJUSTED_STOCK_ROOT = ROOT / "data/market/adjusted/stocks"
@@ -78,7 +79,7 @@ def _validate_report_contract(report: dict[str, Any], source_path: Path) -> None
 
 def _write_json(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    encoded = json.dumps(value, ensure_ascii=False, separators=(",", ":")) + "\n"
+    encoded = json.dumps(value, ensure_ascii=False, indent=2) + "\n"
     with tempfile.NamedTemporaryFile(
         mode="w",
         encoding="utf-8",
@@ -122,10 +123,22 @@ def _resolve_exact_report_directory(target_as_of: str) -> tuple[Path, str]:
     return directory, target_as_of
 
 
-def _load_universe(requested_as_of: str) -> tuple[list[dict[str, str]], str]:
+def _default_identity_reference_date(requested_as_of: str) -> str:
+    pit_frontier = str(_read_json(PIT_PATH).get("pit_frontier") or requested_as_of)[:10]
+    return min(requested_as_of[:10], pit_frontier)
+
+
+def _load_universe(
+    requested_as_of: str,
+    *,
+    identity_as_of: str | None = None,
+) -> tuple[list[dict[str, str]], str]:
     from trend_scanner.universe.instrument_metadata import load_target_production_universe
 
     rows, snapshot_date = load_target_production_universe(ROOT, requested_as_of)
+    current_common_isu = _current_common_isu_by_ticker(
+        identity_as_of or _default_identity_reference_date(requested_as_of)
+    )
     current = [
         {
             "ticker": str(row["ticker"]),
@@ -133,13 +146,48 @@ def _load_universe(requested_as_of: str) -> tuple[list[dict[str, str]], str]:
             "market": str(row.get("market") or "UNKNOWN").strip().upper(),
             "asset_type": str(row.get("asset_type") or "UNKNOWN").strip().upper(),
             "effective_date": str(row.get("effective_date") or snapshot_date)[:10],
+            **(
+                {"isu_cd": current_common_isu[str(row["ticker"]).zfill(6)]}
+                if str(row.get("asset_type") or "UNKNOWN").strip().upper() == "COMMON"
+                and str(row["ticker"]).zfill(6) in current_common_isu
+                else {}
+            ),
         }
         for row in rows
     ]
+    missing_common_identities = [
+        row["ticker"] for row in current
+        if row["asset_type"] == "COMMON" and not row.get("isu_cd")
+    ]
+    if missing_common_identities:
+        raise ValueError(
+            "target production COMMON universe lacks one exact active PIT identity: "
+            f"{missing_common_identities[:5]}"
+        )
     tickers = [row["ticker"] for row in current]
     if len(tickers) != len(set(tickers)):
         raise ValueError("target production universe contains duplicate tickers")
     return current, snapshot_date
+
+
+@lru_cache(maxsize=8)
+def _current_common_isu_by_ticker(reference_market_date: str) -> dict[str, str]:
+    """Return the single exact COMMON identity active at the requested date."""
+    payload = _read_json(PIT_PATH)
+    by_ticker: dict[str, set[str]] = {}
+    for row in payload.get("intervals", []):
+        ticker = str(row.get("ticker", "")).strip().zfill(6)
+        isu_cd = str(row.get("isu_cd", "")).strip().upper()
+        if (
+            ticker and isu_cd and str(row.get("state", "")).upper() == "COMMON"
+            and str(row.get("effective_from", ""))[:10] <= reference_market_date
+            and str(row.get("effective_to", ""))[:10] >= reference_market_date
+        ):
+            by_ticker.setdefault(ticker, set()).add(isu_cd)
+    ambiguous = {ticker: sorted(values) for ticker, values in by_ticker.items() if len(values) != 1}
+    if ambiguous:
+        raise ValueError(f"multiple exact COMMON identities active for ticker: {list(ambiguous.items())[:5]}")
+    return {ticker: next(iter(values)) for ticker, values in by_ticker.items()}
 
 
 @lru_cache(maxsize=None)
@@ -304,7 +352,12 @@ def _compact_fundamentals(source: Any) -> dict[str, Any]:
     }
 
 
-def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]:
+def _compact_report(
+    report: dict[str, Any],
+    source_path: Path,
+    *,
+    isu_cd: str | None = None,
+) -> dict[str, Any]:
     header = report.get("header") or {}
     snapshot = report.get("current_snapshot") or {}
     monthly = report.get("monthly_history") or {}
@@ -371,6 +424,7 @@ def _compact_report(report: dict[str, Any], source_path: Path) -> dict[str, Any]
             "name": str(report.get("name") or header.get("name") or ""),
             "market": str(report.get("market") or header.get("market") or "").upper(),
             "asset_type": asset_type,
+            **({"isu_cd": isu_cd} if isu_cd else {}),
         },
         "availability": {
             "report_available": True,
@@ -494,7 +548,7 @@ def build_web_payload(
 ) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, Any]]:
     """``target_as_of``(선택, PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01)를 명시하면
     최신 디렉터리 자동 선택 대신 그 날짜의 exact 디렉터리만 사용하고,
-    ``reference_market_date``(생략 시 target_as_of와 동일)와의 불일치도 fail-closed로
+    ``reference_market_date``(생략 시 local PIT frontier와 target_as_of 중 이른 날짜)와의 불일치도 fail-closed로
     검증한다. 둘 다 생략하면 기존과 완전히 동일한 latest-directory 자동 선택
     경로를 그대로 쓴다(하위 호환)."""
     if repo_root != ROOT:
@@ -504,9 +558,14 @@ def build_web_payload(
     else:
         report_dir, requested_as_of = _resolve_report_directory()
     effective_reference_market_date = (
-        reference_market_date if reference_market_date is not None else requested_as_of
+        reference_market_date if reference_market_date is not None
+        else _default_identity_reference_date(requested_as_of)
     )
-    universe, snapshot_date = _load_universe(requested_as_of)
+    universe, snapshot_date = _load_universe(
+        requested_as_of,
+        identity_as_of=effective_reference_market_date,
+    )
+    universe_by_ticker = {row["ticker"].upper(): row for row in universe}
     source_json_dir = report_dir / "json"
     source_json_paths = sorted(source_json_dir.glob("*.json"))
     if not source_json_paths:
@@ -530,6 +589,8 @@ def build_web_payload(
         ticker = str(report.get("ticker") or "").strip().upper()
         if not ticker or ticker in reports:
             raise ValueError(f"invalid or duplicate Stock Report ticker: {path}")
+        if ticker not in universe_by_ticker:
+            raise ValueError(f"Stock Report ticker is outside the target universe: {path}")
         if str(report.get("requested_as_of") or "")[:10] != requested_as_of:
             raise ValueError(f"Stock Report date mismatch: {path}")
         if str(report.get("reference_market_date") or "")[:10] != effective_reference_market_date:
@@ -538,7 +599,11 @@ def build_web_payload(
         fundamentals_source = report.get("fundamentals")
         if not isinstance(fundamentals_source, dict) or fundamentals_source.get("requested_as_of") != requested_as_of:
             raise ValueError(f"Stock Report fundamentals date mismatch: {path}")
-        reports[ticker] = _compact_report(report, path)
+        reports[ticker] = _compact_report(
+            report,
+            path,
+            isu_cd=universe_by_ticker[ticker].get("isu_cd"),
+        )
         status = reports[ticker]["fundamentals"]["status"]
         fundamentals_status_counts[status] = fundamentals_status_counts.get(status, 0) + 1
 
@@ -569,6 +634,7 @@ def build_web_payload(
             "name": row["name"],
             "market": row["market"],
             "asset_type": row["asset_type"],
+            **({"isu_cd": row["isu_cd"]} if row.get("isu_cd") else {}),
             "report_available": row["ticker"] in report_tickers,
         }
         for row in universe

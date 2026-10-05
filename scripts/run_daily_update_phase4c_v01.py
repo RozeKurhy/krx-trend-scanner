@@ -69,6 +69,26 @@ def resolve_sector_membership_for_target(target_as_of: str, *, root: Path) -> tu
     return effective_date, Path(path)
 
 
+def require_payload_date(payload: dict[str, Any], field: str, expected: str, error_code: str) -> None:
+    actual = payload.get(field)
+    if actual != expected:
+        raise Phase4CError(f"{error_code}: {actual!r}")
+
+
+def require_web_data_unchanged(
+    before: dict[str, tuple[float, int]],
+    after: dict[str, tuple[float, int]],
+) -> int:
+    changed_paths = set(before) ^ set(after)
+    changed_paths |= {key for key in before.keys() & after.keys() if before[key] != after[key]}
+    if changed_paths:
+        raise Phase4CError(
+            f"PHASE4C_WEB_DATA_WRITE_DETECTED: {len(changed_paths)} path(s) changed under web/data/: "
+            f"{sorted(changed_paths)[:5]}"
+        )
+    return 0
+
+
 # --------------------------------------------------------------------------
 # 1. 4A scanner summary exact target 로드
 # --------------------------------------------------------------------------
@@ -234,12 +254,15 @@ def run_phase4c(
         # 6. Strategy monitor
         if b_select_status_override is not None:
             b_select_status = b_select_status_override
+            expected_strategy_id = _b_select_status_builder(reference_market_date).STRATEGY_ID
             if (
-                b_select_status.get("strategy_id") != "PATTERN_B_SELECT_CORE_V02"
+                b_select_status.get("strategy_id") != expected_strategy_id
                 or b_select_status.get("requested_as_of") != target_as_of
                 or b_select_status.get("reference_market_date") != reference_market_date
             ):
-                raise Phase4CError("PHASE4C_B_SELECT_OVERRIDE_DATE_OR_STRATEGY_MISMATCH")
+                raise Phase4CError(
+                    f"PHASE4C_B_SELECT_OVERRIDE_DATE_OR_STRATEGY_MISMATCH: expected {expected_strategy_id}"
+                )
         else:
             b_select_builder = _b_select_status_builder(reference_market_date)
             b_select_status = b_select_builder.build_b_select_status(
@@ -389,17 +412,9 @@ def run_phase4c(
 
     # staging_dir는 with 블록 종료와 함께 삭제됨 (검증 후 삭제)
     web_data_after = snapshot_web_data(root)
-    changed_paths = set(web_data_before) ^ set(web_data_after)
-    changed_paths |= {k for k in web_data_before.keys() & web_data_after.keys() if web_data_before[k] != web_data_after[k]}
-    web_data_writes = len(changed_paths)
-
     # MINOR 1 (PHASE4C_FINAL_FIX_V01): web/data가 하나라도 바뀌면 PASS를 허용하지
     # 않는다 -- 4C는 read-only여야 하고, 실제 투영은 Phase 4D 책임이다.
-    if web_data_writes != 0:
-        raise Phase4CError(
-            f"PHASE4C_WEB_DATA_WRITE_DETECTED: {web_data_writes} path(s) changed under web/data/: "
-            f"{sorted(changed_paths)[:5]}"
-        )
+    web_data_writes = require_web_data_unchanged(web_data_before, web_data_after)
 
     result = {
         "target_as_of": target_as_of,

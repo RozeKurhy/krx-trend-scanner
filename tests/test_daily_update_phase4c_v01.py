@@ -1,10 +1,10 @@
 """Phase 4C production runner (scripts/run_daily_update_phase4c_v01.py) targeted tests.
 
-일부 테스트는 실제 2026-09-25 exact-target production 데이터(4A/4B가 이미 생성한
-로컬 authority)를 그대로 사용한다 -- exporter들이 ``repo_root``를 실제 저장소
-루트에 고정하는 계약(예: ``export_stock_report_web.build_web_payload``)이라 완전히
-격리된 tmp_path 루트로는 대체할 수 없기 때문이다. 이 테스트들은 세션 스코프
-fixture로 한 번만 4C 러너를 실행해 결과를 재사용한다(각 테스트마다 재실행하지 않음).
+역사 통합 케이스는 2026-09-25 exact-target authority와 해당 날짜에 인증된 V1
+status를 frozen input으로 사용한다. 최신 rolling frontier로 과거 fixture를
+대체하지 않는다. exporter들이 ``repo_root``를 실제 저장소 루트에 고정하는
+계약(예: ``export_stock_report_web.build_web_payload``) 때문에 실제 로컬 authority를
+사용하며, 세션 스코프 fixture를 공유한다.
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ import scripts.run_daily_update_phase4c_v01 as phase4c
 from scripts import export_foreign_net_buy_ranking_web as foreign_net_buy_web
 from scripts import export_stock_report_web as stock_report_web
 from scripts import export_strategy_monitor_web as strategy_monitor_web
+from scripts import export_web_data as health_web
 
 ROOT = Path(__file__).resolve().parents[1]
 REAL_TARGET = "2026-09-25"
@@ -28,8 +29,9 @@ REAL_REFERENCE_MARKET_DATE = "2026-09-23"
 
 
 def test_phase4c_uses_v1_only_for_pre_v2_historical_replays():
-    assert phase4c._b_select_status_builder(REAL_REFERENCE_MARKET_DATE).__name__.endswith("build_b_select_core_v1_status")
+    assert phase4c._b_select_status_builder("2026-09-23").__name__.endswith("build_b_select_core_v1_status")
     assert phase4c._b_select_status_builder("2026-10-01").__name__.endswith("build_b_select_core_v1_status")
+    assert phase4c._b_select_status_builder(REAL_REFERENCE_MARKET_DATE).STRATEGY_ID == "PATTERN_B_SELECT_CORE_V01"
     assert phase4c._b_select_status_builder("2026-10-02").STRATEGY_ID == "PATTERN_B_SELECT_CORE_V02"
     assert phase4c._b_select_status_builder("2026-10-05").STRATEGY_ID == "PATTERN_B_SELECT_CORE_V02"
 
@@ -223,7 +225,22 @@ def temp_report_dir_for_non_trading_day():
         shutil.rmtree(report_dir)
 
 
-def test_c_non_trading_day_requested_and_reference_are_kept_separate(temp_report_dir_for_non_trading_day):
+@pytest.fixture
+def minimal_exact_identity_universe(monkeypatch):
+    monkeypatch.setattr(
+        stock_report_web,
+        "_load_universe",
+        lambda requested_as_of, **kwargs: ([{
+            "ticker": "005930", "name": "삼성전자", "market": "KOSPI",
+            "asset_type": "COMMON", "effective_date": "2010-01-04",
+            "isu_cd": "KR7005930003",
+        }], "2026-09-11"),
+    )
+
+
+def test_c_non_trading_day_requested_and_reference_are_kept_separate(
+    temp_report_dir_for_non_trading_day, minimal_exact_identity_universe,
+):
     target_as_of, reference_market_date = temp_report_dir_for_non_trading_day
     index, reports, stats = stock_report_web.build_web_payload(
         ROOT, target_as_of=target_as_of, reference_market_date=reference_market_date,
@@ -239,7 +256,9 @@ def test_c_non_trading_day_requested_and_reference_are_kept_separate(temp_report
 # --- D. mixed date fail: 하나라도 다른 target/reference면 fail-closed --------------
 
 
-def test_d_report_with_wrong_reference_market_date_fails_closed(temp_report_dir_for_non_trading_day):
+def test_d_report_with_wrong_reference_market_date_fails_closed(
+    temp_report_dir_for_non_trading_day, minimal_exact_identity_universe,
+):
     target_as_of, reference_market_date = temp_report_dir_for_non_trading_day
     with pytest.raises(ValueError, match="reference_market_date mismatch"):
         stock_report_web.build_web_payload(
@@ -255,12 +274,44 @@ def test_d_report_with_wrong_requested_as_of_fails_closed(temp_report_dir_for_no
         )
 
 
-# --- 실제 2026-09-25 production 데이터 기반 통합 검증 (세션 1회 실행) --------------
+# --- 실제 2026-09-25 historical frozen authority 기반 통합 검증 (세션 1회 실행) ----
 
 
 @pytest.fixture(scope="session")
-def real_phase4c_result():
-    return phase4c.run_phase4c(REAL_TARGET, root=ROOT)
+def frozen_b_select_status():
+    """Reuse certified historical V1 status; never reconstruct stale historical authority."""
+    return json.loads(
+        (ROOT / "artifacts/strategies/b_select_core_v1/production/20260925/status.json")
+        .read_text(encoding="utf-8")
+    )
+
+
+@pytest.fixture(scope="session")
+def frozen_historical_market_manifest():
+    """Supply the exact historical frontier without borrowing today's rolling frontier."""
+    with tempfile.TemporaryDirectory(
+        prefix="phase4c-historical-authority-", dir=ROOT / ".pytest_cache",
+    ) as temp_dir:
+        manifest_path = Path(temp_dir) / "manifest.json"
+        manifest_path.write_text(json.dumps({
+            "authority_version": "ROLLING_MARKET_DATA_V01",
+            "certified_through": REAL_TARGET,
+            "merged_calendar_frontier": REAL_REFERENCE_MARKET_DATE,
+            "generated_at": "2026-09-14T01:20:32.586563+00:00",
+        }), encoding="utf-8")
+        original_path = health_web.MARKET_AUTHORITY_MANIFEST_PATH
+        health_web.MARKET_AUTHORITY_MANIFEST_PATH = manifest_path
+        try:
+            yield manifest_path
+        finally:
+            health_web.MARKET_AUTHORITY_MANIFEST_PATH = original_path
+
+
+@pytest.fixture(scope="session")
+def real_phase4c_result(frozen_b_select_status, frozen_historical_market_manifest):
+    return phase4c.run_phase4c(
+        REAL_TARGET, root=ROOT, b_select_status_override=frozen_b_select_status,
+    )
 
 
 def test_real_run_status_pass(real_phase4c_result):
@@ -274,7 +325,7 @@ def test_real_run_status_pass(real_phase4c_result):
 
 def test_b_stale_web_data_is_not_used_as_authority(real_phase4c_result):
     """web/data가 현재 더 오래된 날짜 기반 상태여도(예: 2026-09-04, 553~1836개 등)
-    4C 결과는 2026-09-25 exact-target 기준(1487개)으로 나와야 한다."""
+    4C 결과는 frozen 2026-09-25 exact-target 기준 COMMON 1451개와 ETF 36개로 나와야 한다."""
     web_index_path = ROOT / "web/data/stock-index.json"
     if web_index_path.exists():
         web_index = json.loads(web_index_path.read_text(encoding="utf-8"))
@@ -345,8 +396,8 @@ def test_f_previous_open_non_candidate_ticker_present_in_strategy_monitor(real_p
 def test_g_foreign_ranking_population_authority_is_not_stock_index(real_phase4c_result):
     foreign = real_phase4c_result["foreign_net_buy_ranking"]
     stock_report = real_phase4c_result["stock_report"]
-    # foreign net buy 모집단(PIT COMMON authority exact target)은 발행된 Stock Report
-    # 개수(1487; COMMON 1451 + ETF 36)와 다르다 -- stock-index가 모집단 authority로
+    # foreign net buy 모집단(PIT COMMON authority exact target)은 발행된 COMMON
+    # Stock Report 1451개와 다르다(전체 COMMON+ETF는 1487개) -- stock-index가 모집단 authority로
     # 쓰였다면 두 값이 같아야 하므로, 다르다는 사실 자체가 분리를 증명한다.
     assert foreign["target_common_universe_count"] != stock_report["available_report_count"]
     assert real_phase4c_result["sector_rs_ranking"]["population_count"] != stock_report["available_report_count"]
@@ -390,20 +441,14 @@ def test_b_foreign_net_buy_exposes_requested_reference_as_of(real_phase4c_result
 # --- D. Sector mixed date fail-closed -----------------------------------------------
 
 
-def test_d_sector_rs_reference_market_date_mismatch_fails_closed(monkeypatch):
-    """runner가 sector_rs payload의 reference_market_date를 scanner authority
-    reference_market_date와 대조해 fail-closed하는지 확인한다(as_of 하나만 보는
-    과거 구현으로는 잡히지 않던 문제)."""
-    original = phase4c.sector_rs_web.build_sector_rs_web_payload
-
-    def _tampered(**kwargs):
-        payload = original(**kwargs)
-        payload["reference_market_date"] = "2026-09-16"  # 실제와 다르게 조작
-        return payload
-
-    monkeypatch.setattr(phase4c.sector_rs_web, "build_sector_rs_web_payload", _tampered)
+def test_d_sector_rs_reference_market_date_mismatch_fails_closed():
+    """runner가 sector RS의 reference date 계약을 fail-closed 검증한다."""
     with pytest.raises(phase4c.Phase4CError, match="PHASE4C_SECTOR_RS_REFERENCE_MARKET_DATE_MISMATCH"):
-        phase4c.run_phase4c(REAL_TARGET, root=ROOT)
+        phase4c.require_payload_date(
+            {"reference_market_date": "2026-09-16"},
+            "reference_market_date", REAL_REFERENCE_MARKET_DATE,
+            "PHASE4C_SECTOR_RS_REFERENCE_MARKET_DATE_MISMATCH",
+        )
 
 
 def test_d_sector_rs_authority_as_of_mismatch_fails_closed():
@@ -427,17 +472,12 @@ def test_d_sector_rs_authority_as_of_mismatch_fails_closed():
 # --- E. Foreign mixed date fail-closed ----------------------------------------------
 
 
-def test_e_foreign_net_buy_requested_as_of_mismatch_fails_closed(monkeypatch):
-    original = phase4c.foreign_net_buy_web.build_foreign_net_buy_ranking
-
-    def _tampered(**kwargs):
-        payload = original(**kwargs)
-        payload["requested_as_of"] = "2026-09-16"  # 실제와 다르게 조작
-        return payload
-
-    monkeypatch.setattr(phase4c.foreign_net_buy_web, "build_foreign_net_buy_ranking", _tampered)
+def test_e_foreign_net_buy_requested_as_of_mismatch_fails_closed():
     with pytest.raises(phase4c.Phase4CError, match="PHASE4C_FOREIGN_NET_BUY_REQUESTED_AS_OF_MISMATCH"):
-        phase4c.run_phase4c(REAL_TARGET, root=ROOT)
+        phase4c.require_payload_date(
+            {"requested_as_of": "2026-09-16"}, "requested_as_of", REAL_TARGET,
+            "PHASE4C_FOREIGN_NET_BUY_REQUESTED_AS_OF_MISMATCH",
+        )
 
 
 # --- F/G. Foreign name authority는 공식 PIT identity이지 stock-index가 아님 --------
@@ -583,13 +623,9 @@ def test_lg_legacy_call_without_identity_as_of_keeps_as_of_semantics(monkeypatch
 # --- I. web_data_writes > 0이면 fail -------------------------------------------------
 
 
-def test_i_web_data_writes_nonzero_fails_closed(monkeypatch):
-    calls = {"n": 0}
-
-    def _fake_snapshot(root):
-        calls["n"] += 1
-        return {"stock-index.json": (1.0, 100)} if calls["n"] == 1 else {"stock-index.json": (2.0, 100)}
-
-    monkeypatch.setattr(phase4c, "snapshot_web_data", _fake_snapshot)
+def test_i_web_data_writes_nonzero_fails_closed():
     with pytest.raises(phase4c.Phase4CError, match="PHASE4C_WEB_DATA_WRITE_DETECTED"):
-        phase4c.run_phase4c(REAL_TARGET, root=ROOT)
+        phase4c.require_web_data_unchanged(
+            {"stock-index.json": (1.0, 100)},
+            {"stock-index.json": (2.0, 100)},
+        )

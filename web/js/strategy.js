@@ -180,6 +180,12 @@
     return element;
   }
 
+  function reportHref(ticker, isuCd) {
+    const params = new URLSearchParams({ ticker: String(ticker || "") });
+    if (isuCd) params.set("isu_cd", String(isuCd).toUpperCase());
+    return `./report.html?${params.toString()}`;
+  }
+
   function fundamentalStatus(item) {
     return FUNDAMENTAL_STATUSES.includes(item && item.fundamental_status) ? item.fundamental_status : "미상";
   }
@@ -308,7 +314,7 @@
         ? "strategy-item-julia"
         : "strategy-item-a-fast";
     const link = createElement("a", `strategy-item ${layoutClass}`);
-    link.href = `./report.html?ticker=${encodeURIComponent(item.ticker)}`;
+    link.href = reportHref(item.ticker, item.isu_cd);
     link.setAttribute("aria-label", `${item.name} ${item.ticker} 리포트 보기`);
 
     const identity = createElement("span", "strategy-item-identity");
@@ -399,7 +405,7 @@
   function createTradeHistoryRow(trade) {
     const bSelect = isBSelectLineageId(activeStrategyId);
     const row = createElement("a", `strategy-trade-row${bSelect ? " strategy-trade-row-b-select" : ""}`);
-    row.href = `./report.html?ticker=${encodeURIComponent(trade.ticker)}`;
+    row.href = reportHref(trade.ticker, trade.isu_cd);
     row.setAttribute("aria-label", `${trade.name || trade.ticker} ${trade.ticker} 거래 이력, 리포트 보기`);
     const identity = createElement("span", "strategy-trade-identity");
     identity.appendChild(createElement("strong", "strategy-trade-name", trade.name || trade.ticker));
@@ -434,6 +440,7 @@
           trade_return_pct: trade.return_pct,
           type: "buy",
           ticker: trade.ticker,
+          isu_cd: trade.isu_cd,
           name: trade.name,
           market: trade.market,
           price: trade.entry_price,
@@ -447,6 +454,7 @@
           trade_return_pct: trade.return_pct,
           type: "sell",
           ticker: trade.ticker,
+          isu_cd: trade.isu_cd,
           name: trade.name,
           market: trade.market,
           price: trade.exit_price,
@@ -514,7 +522,7 @@
         row.appendChild(createElement("time", "strategy-month-date", day));
         row.appendChild(createElement("span", `strategy-month-type strategy-month-type-${event.type}`, event.type === "buy" ? "매수" : "매도"));
         const identity = createElement("a", "strategy-month-identity", event.name || event.ticker);
-        identity.href = `./report.html?ticker=${encodeURIComponent(event.ticker)}`;
+        identity.href = reportHref(event.ticker, event.isu_cd);
         identity.title = `${event.ticker} · ${marketLabel(event.market)} 리포트 보기`;
         row.appendChild(identity);
         row.appendChild(createElement("strong", "strategy-month-price", formatPrice(event.price)));
