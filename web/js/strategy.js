@@ -413,7 +413,7 @@
     const arrow = createElement("span", "row-chevron strategy-item-link", ">");
     arrow.setAttribute("aria-hidden", "true");
 
-    link.append(identity, position, ...detailFields, price, entry, returnField);
+    link.append(identity, position, ...detailFields, entry, price, returnField);
     if (isOpenHolding) link.append(holdingAge, peakDrawdown);
     link.append(arrow);
     return link;
@@ -528,9 +528,21 @@
       createField("매도 체결일", isOpenTrade(trade) ? "—" : formatDate(trade.exit_execution_date)),
       createField("매도가", isOpenTrade(trade) ? "—" : formatPrice(trade.exit_price)),
       createField("수익률", formatReturn(trade.return_pct), returnClass),
-      createField("상태", status),
-      createField("청산 사유", displayedExitReason, "strategy-item-exit-reason"),
     ];
+    if (bSelect) {
+      fields.push(
+        createField(
+          "보유일",
+          Number.isInteger(Number(trade.holding_age_sessions)) && Number(trade.holding_age_sessions) >= 1
+            ? `${formatNumber(trade.holding_age_sessions)}일`
+            : "미상",
+          "strategy-item-holding-age",
+        ),
+        createField("고점대비", formatPeakDrawdown(trade.peak_drawdown_pct), "strategy-item-peak-drawdown"),
+      );
+    }
+    fields.push(createField("상태", status));
+    fields.push(createField("청산 사유", displayedExitReason, "strategy-item-exit-reason"));
     if (bSelect) fields.push(createField("펀더멘탈", fundamentalStatus(trade), "strategy-item-fundamental"));
     const arrow = createElement("span", "row-chevron strategy-trade-link", ">");
     arrow.setAttribute("aria-hidden", "true");

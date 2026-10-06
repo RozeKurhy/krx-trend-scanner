@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Project published Stock Report strategy authority into a static monitor JSON.
+"""Project published strategy authority into the static monitor JSON.
 
-This exporter only consumes the existing compact web Stock Report payloads. It
-does not run a strategy, calculate indicators, perform a backtest, or call any
-external provider.
+The exporter does not run a strategy, calculate signals or indicators, perform
+a backtest, or call an external provider. It derives display-only Select Core
+holding age and causal peak drawdown from Repository V2 prices plus the exact
+rolling KRX calendar and PIT identity authority.
 """
 
 from __future__ import annotations
@@ -68,22 +69,23 @@ def _date_set(values: Any) -> set[str]:
     return {str(value)[:10] for value in values if value is not None}
 
 
-def _current_holding_path_metrics(
+def _select_core_history_path_metrics(
     repo_root: Path,
-    positions: list[dict[str, Any]],
+    trades: list[dict[str, Any]],
     items: list[dict[str, Any]],
     reference_market_date: str,
 ) -> list[dict[str, Any]]:
-    """Add display-only exact-session age and peak drawdown to open positions.
+    """Add display-only exact-session age and causal peak drawdown to B history.
 
-    Position age follows the Candidate B AGE120 contract: the execution session
-    is age 1, so age is ``reference_index - execution_index + 1``. Price rows
-    come from Repository V2 and are accepted only when the rolling KRX calendar,
-    PIT identity, and session-projection audit cover the complete interval.
+    REALIZED drawdown is evaluated on its exit signal session; OPEN_AT_REFERENCE
+    drawdown is evaluated on the reference session. The evaluation session's
+    HIGH is never included in the prior peak. Price rows come from Repository V2
+    and are accepted only when the rolling KRX calendar, PIT identity, and
+    session-projection audit cover the complete interval.
     """
     result = [
-        {**position, "holding_age_sessions": None, "peak_drawdown_pct": None}
-        for position in positions
+        {**trade, "holding_age_sessions": None, "peak_drawdown_pct": None}
+        for trade in trades
     ]
     if not result:
         return result
@@ -119,7 +121,7 @@ def _current_holding_path_metrics(
         or pit_payload.get("pit_frontier", "") < reference_market_date
         or manifest.merged_calendar_frontier < reference_market_date
     ):
-        raise ValueError("B Select holding display authority does not cover the reference market date")
+        raise ValueError("B Select history display authority does not cover the reference market date")
     calendar_positions = {day: index for index, day in enumerate(calendar_dates)}
     if reference_market_date not in calendar_positions:
         return result
@@ -147,25 +149,17 @@ def _current_holding_path_metrics(
         repository = build_production_repository_v2(repo_root, end=reference_market_date)
     except (FileNotFoundError, OSError):
         repository = None
-    frames: dict[tuple[str, str, str], Any] = {}
+    blocking_projection_keys = (
+        "unexplained_adjusted_only_dates",
+        "rejected_raw_only_dates",
+        "known_adjusted_gap_dates",
+        "outside_identity_lifecycle_dates",
+        "adjusted_source_nonusable_dates",
+        "adjusted_analytic_invalid_dates",
+        "shared_placeholder_conflict_dates",
+    )
 
-    for position in result:
-        ticker = str(position.get("ticker", "")).strip().zfill(6)
-        isu_cd = str(position.get("isu_cd", "")).strip().upper()
-        entry_date = str(position.get("entry_execution_date", ""))[:10]
-        entry_price = _finite_positive(position.get("entry_price", position.get("entry_open")))
-        if not isu_cd or entry_date not in calendar_positions or entry_date > reference_market_date:
-            continue
-
-        start_index = calendar_positions[entry_date]
-        end_index = calendar_positions[reference_market_date]
-        sessions = calendar_dates[start_index : end_index + 1]
-        if not sessions or sessions[0] != entry_date or sessions[-1] != reference_market_date:
-            continue
-
-        # Repository V2 stores prices by ticker. Prove that every calendar
-        # session belongs to the exact (ticker, ISU_CD) before using that path.
-        identity_is_exact = True
+    def exact_identity_sessions(ticker: str, isu_cd: str, sessions: list[str]) -> bool:
         for day in sessions:
             active = [
                 interval
@@ -173,84 +167,136 @@ def _current_holding_path_metrics(
                 if interval["effective_from"] <= day <= interval["effective_to"]
             ]
             if len(active) != 1 or active[0]["isu_cd"] != isu_cd:
-                identity_is_exact = False
-                break
-        if not identity_is_exact:
-            continue
-        position["holding_age_sessions"] = len(sessions)
+                return False
+        return bool(sessions)
 
-        if repository is None or entry_price is None:
-            continue
-        frame_key = (ticker, entry_date, reference_market_date)
-        if frame_key not in frames:
-            try:
-                frames[frame_key] = repository.get_daily(ticker, entry_date, reference_market_date)
-            except (FileNotFoundError, MarketDataError, OSError):
-                frames[frame_key] = None
-        frame = frames[frame_key]
-        if frame is None or frame.empty or "high" not in frame.columns or "close" not in frame.columns:
-            continue
+    def query_frame(ticker: str, start: str, end: str) -> Any:
+        if repository is None:
+            return None
+        try:
+            return repository.get_daily(ticker, start, end)
+        except (FileNotFoundError, MarketDataError, OSError):
+            return None
 
+    def frame_covers(frame: Any, required_sessions: list[str], requested_sessions: list[str]) -> bool:
+        if frame is None or frame.empty or "high" not in frame.columns or "low" not in frame.columns:
+            return False
         projection = frame.attrs.get("session_projection_audit", {})
-        frame_rows = {
-            value.strftime("%Y-%m-%d"): frame.loc[value]
-            for value in frame.index
-        }
+        frame_rows = {value.strftime("%Y-%m-%d"): frame.loc[value] for value in frame.index}
         frame_dates = set(frame_rows)
-        missing_dates = set(sessions) - frame_dates
-        confirmed_nontrading = _date_set(projection.get("confirmed_nontrading_shared_dates"))
-        expected_adjusted = _date_set(projection.get("adjusted_dates"))
-        expected_raw = _date_set(projection.get("raw_dates"))
-        blocking_projection_keys = (
-            "unexplained_adjusted_only_dates",
-            "rejected_raw_only_dates",
-            "known_adjusted_gap_dates",
-            "outside_identity_lifecycle_dates",
-            "adjusted_source_nonusable_dates",
-            "adjusted_analytic_invalid_dates",
-            "shared_placeholder_conflict_dates",
-        )
+        required = set(required_sessions)
         if (
-            projection.get("projected_date_set_exact_match") is not True
+            not required.issubset(frame_dates)
+            or not frame_dates.issubset(set(requested_sessions))
+            or projection.get("projected_date_set_exact_match") is not True
             or int(projection.get("silent_inner_drop_count", 0) or 0) != 0
-            or not set(sessions).issubset(expected_adjusted)
-            or not set(sessions).issubset(expected_raw)
-            or not missing_dates.issubset(confirmed_nontrading)
-            or any(_date_set(projection.get(key)) for key in blocking_projection_keys)
-            or int(projection.get("adjusted_analytic_invalid_count", 0) or 0) != 0
-            or reference_market_date not in frame_dates
-            or not set(frame_dates).issubset(set(sessions))
+            or not required.issubset(_date_set(projection.get("adjusted_dates")))
+            or not required.issubset(_date_set(projection.get("raw_dates")))
+            or any(required & _date_set(projection.get(key)) for key in blocking_projection_keys)
+        ):
+            return False
+        return all(
+            _finite_positive(frame_rows[day].get("high")) is not None
+            and _finite_positive(frame_rows[day].get("low")) is not None
+            for day in required_sessions
+        )
+
+    # Session age is based only on the exact rolling KRX calendar and PIT
+    # identity. Price availability is independently required for drawdown.
+    eligible_for_prices: list[tuple[int, str, str, str, str, float | None]] = []
+    for index, trade in enumerate(result):
+        ticker = str(trade.get("ticker", "")).strip().zfill(6)
+        isu_cd = str(trade.get("isu_cd", "")).strip().upper()
+        entry_date = str(trade.get("entry_execution_date", ""))[:10]
+        realized = trade.get("trade_status") == "REALIZED"
+        age_end = str(trade.get("exit_execution_date", ""))[:10] if realized else reference_market_date
+        evaluation_date = str(trade.get("exit_signal_date", ""))[:10] if realized else reference_market_date
+        entry_price = _finite_positive(trade.get("entry_price"))
+        if (
+            not isu_cd or entry_date not in calendar_positions or age_end not in calendar_positions
+            or evaluation_date not in calendar_positions or entry_date > age_end
+            or entry_date > evaluation_date or evaluation_date > reference_market_date
         ):
             continue
 
-        highs = [_finite_positive(row.get("high")) for row in frame_rows.values()]
-        if any(value is None for value in highs):
-            continue
-        entry_row = frame_rows.get(entry_date)
-        entry_open = _finite_positive(None if entry_row is None else entry_row.get("open"))
-        if entry_open is None or not math.isclose(entry_open, entry_price, rel_tol=1e-10, abs_tol=1e-7):
-            continue
-        reference_row = frame_rows[reference_market_date]
-        current_reference_price = _finite_positive(reference_row.get("close"))
-        peak_high = max((value for value in highs if value is not None), default=None)
-        if current_reference_price is None or peak_high is None:
-            continue
+        age_sessions = calendar_dates[calendar_positions[entry_date] : calendar_positions[age_end] + 1]
+        if (
+            age_sessions
+            and age_sessions[0] == entry_date
+            and age_sessions[-1] == age_end
+            and exact_identity_sessions(ticker, isu_cd, age_sessions)
+        ):
+            trade["holding_age_sessions"] = len(age_sessions)
 
-        published_items = items_by_identity.get((ticker, isu_cd), [])
-        if len(published_items) > 1:
-            raise ValueError(f"B Select holding display item identity is ambiguous: {ticker} {isu_cd}")
-        if published_items:
-            source_item = published_items[0]
-            source_close = _finite_positive(source_item.get("latest_close"))
-            source_date = str(source_item.get("latest_close_as_of", ""))[:10]
-            if source_close is not None and source_date == reference_market_date:
-                if not math.isclose(source_close, current_reference_price, rel_tol=1e-10, abs_tol=1e-7):
-                    raise ValueError(f"B Select holding reference close parity mismatch: {ticker} {isu_cd}")
+        price_sessions = calendar_dates[
+            calendar_positions[entry_date] : calendar_positions[evaluation_date] + 1
+        ]
+        if (
+            price_sessions
+            and price_sessions[0] == entry_date
+            and price_sessions[-1] == evaluation_date
+            and exact_identity_sessions(ticker, isu_cd, price_sessions)
+        ):
+            eligible_for_prices.append((index, ticker, isu_cd, entry_date, evaluation_date, entry_price))
 
-        drawdown_pct = (current_reference_price / peak_high - 1.0) * 100.0
-        if drawdown_pct > 1e-8:
-            raise ValueError(f"B Select holding peak drawdown is unexpectedly positive: {ticker} {isu_cd}")
-        position["peak_drawdown_pct"] = 0.0 if abs(drawdown_pct) <= 1e-10 else drawdown_pct
+    # One Repository V2 read per exact ticker range covers repeated trades;
+    # if a broad ticker range has an unrelated projection anomaly, retry only
+    # each requested trade interval, never substituting a neighboring session.
+    by_ticker: dict[str, list[tuple[int, str, str, str, str, float | None]]] = {}
+    for entry in eligible_for_prices:
+        by_ticker.setdefault(entry[1], []).append(entry)
+
+    for ticker, rows in by_ticker.items():
+        broad_start = min(row[3] for row in rows)
+        broad_end = max(row[4] for row in rows)
+        broad_sessions = calendar_dates[
+            calendar_positions[broad_start] : calendar_positions[broad_end] + 1
+        ]
+        shared_frame = query_frame(ticker, broad_start, broad_end)
+        for index, row_ticker, isu_cd, entry_date, evaluation_date, entry_price in rows:
+            start_index = calendar_positions[entry_date]
+            end_index = calendar_positions[evaluation_date]
+            sessions = calendar_dates[start_index : end_index + 1]
+            frame = shared_frame
+            if not frame_covers(frame, sessions, broad_sessions):
+                frame = query_frame(ticker, entry_date, evaluation_date)
+                frame_sessions = calendar_dates[start_index : end_index + 1]
+                if not frame_covers(frame, sessions, frame_sessions):
+                    continue
+            frame_rows = {value.strftime("%Y-%m-%d"): frame.loc[value] for value in frame.index}
+            entry_open = _finite_positive(frame_rows[entry_date].get("open"))
+            if (
+                entry_price is None or entry_open is None
+                or not math.isclose(entry_open, entry_price, rel_tol=1e-10, abs_tol=1e-7)
+            ):
+                continue
+            if evaluation_date == entry_date:
+                # Same-session price ordering is unknowable without lookahead.
+                continue
+            prior_sessions = sessions[:-1]
+            highs = [_finite_positive(frame_rows[day].get("high")) for day in prior_sessions]
+            evaluation_low = _finite_positive(frame_rows[evaluation_date].get("low"))
+            if evaluation_low is None or not highs or any(value is None for value in highs):
+                continue
+            peak_high = max(value for value in highs if value is not None)
+            drawdown_pct = (evaluation_low / peak_high - 1.0) * 100.0
+            result[index]["peak_drawdown_pct"] = 0.0 if abs(drawdown_pct) <= 1e-10 else drawdown_pct
+
+            if result[index].get("trade_status") == "OPEN_AT_REFERENCE":
+                published_items = items_by_identity.get((row_ticker, isu_cd), [])
+                if len(published_items) > 1:
+                    raise ValueError(f"B Select holding display item identity is ambiguous: {row_ticker} {isu_cd}")
+                if published_items:
+                    source_item = published_items[0]
+                    source_close = _finite_positive(source_item.get("latest_close"))
+                    source_date = str(source_item.get("latest_close_as_of", ""))[:10]
+                    reference_close = _finite_positive(frame_rows[evaluation_date].get("close"))
+                    if (
+                        source_close is not None and source_date == reference_market_date
+                        and reference_close is not None
+                        and not math.isclose(source_close, reference_close, rel_tol=1e-10, abs_tol=1e-7)
+                    ):
+                        raise ValueError(f"B Select holding reference close parity mismatch: {row_ticker} {isu_cd}")
 
     return result
 
@@ -853,6 +899,12 @@ def build_strategy_monitor(
             counts[bucket] += 1
         return counts
 
+    b_history = _select_core_history_path_metrics(
+        repo_root,
+        b_history,
+        b_current_items,
+        resolved_reference,
+    )
     b_canonical_open_positions = [
         trade for trade in b_history
         if trade.get("trade_status") == "OPEN_AT_REFERENCE"
@@ -862,13 +914,6 @@ def build_strategy_monitor(
         and b_select_status.get("canonical_current_open_position_count") != len(b_canonical_open_positions)
     ):
         raise ValueError("B Select canonical current OPEN count mismatch")
-    b_canonical_open_positions = _current_holding_path_metrics(
-        repo_root,
-        b_canonical_open_positions,
-        b_current_items,
-        resolved_reference,
-    )
-
     strategies = [
         {
             "id": STRATEGY_ID,

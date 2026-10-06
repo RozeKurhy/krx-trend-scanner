@@ -6,7 +6,7 @@
 .strategy-history-panel { margin-bottom: 16px; }
 .strategy-trade-list { display: grid; gap: 7px; }
 .strategy-trade-row { display: grid; grid-template-columns: minmax(135px, 1.45fr) repeat(7, minmax(68px, .72fr)) auto; align-items: center; gap: 10px; min-width: 0; }
-.strategy-trade-row-b-select { grid-template-columns: minmax(135px, 1.45fr) repeat(7, minmax(68px, .72fr)) minmax(44px, .5fr) auto; }
+.strategy-trade-row-b-select { grid-template-columns: minmax(135px, 1.45fr) repeat(9, minmax(52px, .62fr)) minmax(44px, .5fr) auto; gap: 7px; }
 .strategy-trade-row { min-height: 68px; border: 1px solid var(--line); padding: 11px 13px; color: var(--ink); background: var(--surface); border-radius: 8px; text-decoration: none; }
 .strategy-trade-row:hover { border-color: var(--line-strong); background: var(--surface-muted); }
 .strategy-trade-row:focus-visible, .strategy-month-identity:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
@@ -17,7 +17,6 @@
 .strategy-trade-row .strategy-item-label { font-size: 9px; line-height: 1.2; }
 .strategy-trade-row .strategy-item-value { min-height: 0; font-size: 11px; line-height: 1.2; }
 .strategy-trade-row .strategy-item-exit-reason .strategy-item-value { display: -webkit-box; overflow: hidden; text-overflow: clip; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
-.strategy-trade-row-b-select .strategy-item-exit-reason { margin-inline-end: 20px; }
 .strategy-trade-link { color: var(--brand-red-dark); }
 .strategy-month-list { display: grid; gap: 12px; }
 .strategy-month-card { border: 1px solid var(--line); padding: 16px; background: var(--surface); border-radius: 9px; }
@@ -35,6 +34,7 @@
 
 @media (max-width: 960px) {
   .strategy-trade-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 11px; padding: 14px; }
+  .strategy-trade-row-b-select { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .strategy-trade-identity { grid-column: 1 / -1; grid-row: 1; align-self: start; }
   .strategy-trade-name { padding-inline-end: 44px; }
   .strategy-trade-link {
@@ -53,6 +53,7 @@
 @media (max-width: 560px) {
   .strategy-view-tabs { padding: 6px 10px; }
   .strategy-trade-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .strategy-trade-row-b-select { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .strategy-month-event { grid-template-columns: 42px 38px minmax(70px, 1fr) auto; gap: 6px; font-size: 11px; }
   .strategy-month-price { font-size: 10px; }
   .strategy-month-return { grid-column: 4; }
