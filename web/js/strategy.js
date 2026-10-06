@@ -64,7 +64,7 @@
     strategyId === B_SELECT_STRATEGY_ID || strategyId === LEGACY_B_SELECT_STRATEGY_ID
   );
   const FUNDAMENTAL_STATUSES = ["우수", "양호", "보통", "주의", "미상"];
-  const FUNDAMENTAL_FILTERS = new Set(["all", ...FUNDAMENTAL_STATUSES]);
+  const MARKET_FILTERS = new Set(["all", "KOSPI", "KOSDAQ"]);
   const SORT_OPTIONS = new Set(["entry-date", "return", "name"]);
 
   const byId = (id) => document.getElementById(id);
@@ -78,8 +78,10 @@
   let historySearchQuery = "";
   let holdSort = "entry-date";
   let historySort = "entry-date";
-  let fundamentalFilter = "all";
-  let historyFundamentalFilter = "all";
+  const fundamentalFilters = new Set();
+  const historyFundamentalFilters = new Set();
+  let marketFilter = "all";
+  let historyMarketFilter = "all";
 
   function setText(id, value) {
     const element = byId(id);
@@ -197,15 +199,27 @@
   }
 
   function fundamentalFilterActive() {
-    return isBSelectLineageId(activeStrategyId) && fundamentalFilter !== "all";
+    return isBSelectLineageId(activeStrategyId) && fundamentalFilters.size > 0;
   }
 
   function fundamentalMatches(item) {
-    return !fundamentalFilterActive() || fundamentalStatus(item) === fundamentalFilter;
+    return !fundamentalFilterActive() || fundamentalFilters.has(fundamentalStatus(item));
+  }
+
+  function marketFilterActive() {
+    return isBSelectLineageId(activeStrategyId) && marketFilter !== "all";
+  }
+
+  function marketMatches(item, selectedMarket, active) {
+    return !active || item.market === selectedMarket;
+  }
+
+  function currentFiltersActive() {
+    return Boolean(searchQuery.trim()) || fundamentalFilterActive() || marketFilterActive();
   }
 
   function itemMatches(item) {
-    if (!fundamentalMatches(item)) return false;
+    if (!fundamentalMatches(item) || !marketMatches(item, marketFilter, marketFilterActive())) return false;
     const normalized = searchQuery.trim().toLocaleLowerCase("ko-KR");
     if (!normalized) return true;
     return [
@@ -432,7 +446,11 @@
   }
 
   function historyFundamentalFilterActive() {
-    return isBSelectLineageId(activeStrategyId) && historyFundamentalFilter !== "all";
+    return isBSelectLineageId(activeStrategyId) && historyFundamentalFilters.size > 0;
+  }
+
+  function historyMarketFilterActive() {
+    return isBSelectLineageId(activeStrategyId) && historyMarketFilter !== "all";
   }
 
   function historyTrades() {
@@ -440,7 +458,8 @@
     const trades = (selected && selected.trade_history) || [];
     return trades.filter((trade) => {
       if (!historyMatches(trade)) return false;
-      if (historyFundamentalFilterActive() && fundamentalStatus(trade) !== historyFundamentalFilter) return false;
+      if (historyFundamentalFilterActive() && !historyFundamentalFilters.has(fundamentalStatus(trade))) return false;
+      if (!marketMatches(trade, historyMarketFilter, historyMarketFilterActive())) return false;
       if (historySubView !== "trades") return true;
       if (historyFilter === "completed") return trade.trade_status === "REALIZED";
       if (historyFilter === "open") return isOpenTrade(trade);
@@ -588,6 +607,7 @@
   }
 
   function setView(view) {
+    closeOpenFundamentalFilters();
     activeView = view === "history" ? "history" : "current";
     const current = activeView === "current";
     const currentPanel = byId("current-state-view");
@@ -644,8 +664,33 @@
   function syncFundamentalFilterVisibility() {
     const visible = isBSelectLineageId(activeStrategyId);
     [
-      ["strategy-fundamental-filter-row", "strategy-fundamental-filter", fundamentalFilter],
-      ["history-fundamental-filter-row", "history-fundamental-filter", historyFundamentalFilter],
+      ["strategy-fundamental-filter-row", "strategy-fundamental-filter", fundamentalFilters],
+      ["history-fundamental-filter-row", "history-fundamental-filter", historyFundamentalFilters],
+    ].forEach(([rowId, selectId, value]) => {
+      const row = byId(rowId);
+      const details = byId(selectId);
+      if (row) row.hidden = !visible;
+      if (details) {
+        details.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+          checkbox.disabled = !visible;
+          checkbox.checked = value.has(checkbox.value);
+        });
+        const clear = details.querySelector("[data-fundamental-clear]");
+        if (clear) clear.disabled = !visible;
+        const summary = details.querySelector("summary");
+        if (summary) {
+          const selected = FUNDAMENTAL_STATUSES.filter((status) => value.has(status));
+          summary.textContent = selected.length === 0
+            ? "전체"
+            : selected.length <= 2
+              ? selected.join(", ")
+              : `${selected.length}개 선택`;
+        }
+      }
+    });
+    [
+      ["strategy-market-filter-row", "strategy-market-filter", marketFilter],
+      ["history-market-filter-row", "history-market-filter", historyMarketFilter],
     ].forEach(([rowId, selectId, value]) => {
       const row = byId(rowId);
       const select = byId(selectId);
@@ -684,7 +729,7 @@
     if (!selected) return;
     const displayItems = displayItemsForStrategy(selected);
     const counts = { all: 0, hold: 0, entry: 0, exit: 0, watch: 0, unavailable: 0 };
-    if (searchQuery.trim() || fundamentalFilterActive()) {
+    if (currentFiltersActive()) {
       const matched = displayItems.filter(itemMatches);
       counts.all = matched.length;
       matched.forEach((item) => {
@@ -712,7 +757,7 @@
       if (!enabled) return;
       const items = filteredItems(category);
       if (!items.length) {
-        const message = searchQuery.trim() || fundamentalFilterActive()
+        const message = currentFiltersActive()
           ? "검색 조건에 맞는 종목이 없습니다."
           : category === "entry"
             ? "현재 진입 조건을 충족한 종목이 없습니다."
@@ -891,12 +936,39 @@
 
   function setStrategy(strategyId) {
     if (!monitor || !(monitor.strategies || []).some((strategy) => strategy.id === strategyId)) return;
+    closeOpenFundamentalFilters();
     activeStrategyId = strategyId;
     syncFundamentalFilterVisibility();
     syncHistorySortVisibility();
     renderScope();
     renderSections();
     if (activeView === "history") renderTradeHistory();
+  }
+
+  function closeOpenFundamentalFilters() {
+    document.querySelectorAll(".strategy-multi-select[open]").forEach((details) => {
+      details.open = false;
+    });
+  }
+
+  function bindFundamentalFilter(controlId, selectedValues, render) {
+    const details = byId(controlId);
+    if (!details) return;
+    details.addEventListener("change", (event) => {
+      const checkbox = event.target;
+      if (!checkbox.matches || !checkbox.matches('input[type="checkbox"]')) return;
+      if (!FUNDAMENTAL_STATUSES.includes(checkbox.value)) return;
+      if (checkbox.checked) selectedValues.add(checkbox.value);
+      else selectedValues.delete(checkbox.value);
+      syncFundamentalFilterVisibility();
+      render();
+    });
+    const clear = details.querySelector("[data-fundamental-clear]");
+    if (clear) clear.addEventListener("click", () => {
+      selectedValues.clear();
+      syncFundamentalFilterVisibility();
+      render();
+    });
   }
 
   function initInteractions() {
@@ -938,16 +1010,32 @@
       renderTradeHistory();
     });
     const fundamentalSelect = byId("strategy-fundamental-filter");
-    if (fundamentalSelect) fundamentalSelect.addEventListener("change", () => {
-      fundamentalFilter = FUNDAMENTAL_FILTERS.has(fundamentalSelect.value) ? fundamentalSelect.value : "all";
+    if (fundamentalSelect) bindFundamentalFilter("strategy-fundamental-filter", fundamentalFilters, renderSections);
+    const historyFundamentalSelect = byId("history-fundamental-filter");
+    if (historyFundamentalSelect) bindFundamentalFilter("history-fundamental-filter", historyFundamentalFilters, renderTradeHistory);
+    const strategyMarketSelect = byId("strategy-market-filter");
+    if (strategyMarketSelect) strategyMarketSelect.addEventListener("change", () => {
+      marketFilter = MARKET_FILTERS.has(strategyMarketSelect.value) ? strategyMarketSelect.value : "all";
       syncFundamentalFilterVisibility();
       renderSections();
     });
-    const historyFundamentalSelect = byId("history-fundamental-filter");
-    if (historyFundamentalSelect) historyFundamentalSelect.addEventListener("change", () => {
-      historyFundamentalFilter = FUNDAMENTAL_FILTERS.has(historyFundamentalSelect.value) ? historyFundamentalSelect.value : "all";
+    const historyMarketSelect = byId("history-market-filter");
+    if (historyMarketSelect) historyMarketSelect.addEventListener("change", () => {
+      historyMarketFilter = MARKET_FILTERS.has(historyMarketSelect.value) ? historyMarketSelect.value : "all";
       syncFundamentalFilterVisibility();
       renderTradeHistory();
+    });
+    document.addEventListener("click", (event) => {
+      document.querySelectorAll(".strategy-multi-select[open]").forEach((details) => {
+        if (!details.contains(event.target)) details.open = false;
+      });
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      const details = document.querySelector(".strategy-multi-select[open]");
+      if (!details) return;
+      details.open = false;
+      details.querySelector("summary").focus();
     });
     syncHoldSortVisibility();
     syncFundamentalFilterVisibility();

@@ -20,7 +20,7 @@
       })();
     </script>
     <link rel="icon" href="./favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="./css/app.css?v=web-strategy-layout-v05">
+    <link rel="stylesheet" href="./css/app.css?v=web-strategy-layout-v06">
     <link rel="stylesheet" href="./css/strategy-history.css?v=web-strategy-layout-v05">
   </head>
   <body>
@@ -96,14 +96,25 @@
             <button class="strategy-filter" type="button" data-filter="unavailable" aria-pressed="false">기타 <span id="strategy-filter-count-unavailable" class="strategy-filter-count">—</span></button>
           </div>
           <div id="strategy-fundamental-filter-row" class="strategy-sort-row strategy-fundamental-row" hidden>
-            <label for="strategy-fundamental-filter">진입 펀더멘탈</label>
-            <select id="strategy-fundamental-filter" class="strategy-sort-select">
+            <label id="strategy-fundamental-filter-label">진입 펀더멘탈</label>
+            <details id="strategy-fundamental-filter" class="strategy-multi-select" aria-labelledby="strategy-fundamental-filter-label">
+              <summary class="strategy-sort-select">전체</summary>
+              <div class="strategy-multi-select-options" role="group" aria-label="진입 펀더멘탈 선택">
+                <button class="strategy-multi-select-clear" type="button" data-fundamental-clear aria-label="펀더멘탈 필터 전체 해제">전체 보기</button>
+                <label><input type="checkbox" value="우수" aria-label="우수"> 우수</label>
+                <label><input type="checkbox" value="양호" aria-label="양호"> 양호</label>
+                <label><input type="checkbox" value="보통" aria-label="보통"> 보통</label>
+                <label><input type="checkbox" value="주의" aria-label="주의"> 주의</label>
+                <label><input type="checkbox" value="미상" aria-label="미상"> 미상</label>
+              </div>
+            </details>
+          </div>
+          <div id="strategy-market-filter-row" class="strategy-sort-row strategy-market-row" hidden>
+            <label for="strategy-market-filter">마켓</label>
+            <select id="strategy-market-filter" class="strategy-sort-select">
               <option value="all" selected>전체</option>
-              <option value="우수">우수</option>
-              <option value="양호">양호</option>
-              <option value="보통">보통</option>
-              <option value="주의">주의</option>
-              <option value="미상">미상</option>
+              <option value="KOSPI">코스피</option>
+              <option value="KOSDAQ">코스닥</option>
             </select>
           </div>
           <div id="strategy-hold-sort-row" class="strategy-sort-row" hidden>
@@ -151,14 +162,25 @@
               <button class="strategy-filter" type="button" data-history-filter="open" aria-pressed="false">보유</button>
             </div>
             <div id="history-fundamental-filter-row" class="strategy-sort-row strategy-fundamental-row" hidden>
-              <label for="history-fundamental-filter">진입 펀더멘탈</label>
-              <select id="history-fundamental-filter" class="strategy-sort-select">
+              <label id="history-fundamental-filter-label">진입 펀더멘탈</label>
+              <details id="history-fundamental-filter" class="strategy-multi-select" aria-labelledby="history-fundamental-filter-label">
+                <summary class="strategy-sort-select">전체</summary>
+                <div class="strategy-multi-select-options" role="group" aria-label="진입 펀더멘탈 선택">
+                  <button class="strategy-multi-select-clear" type="button" data-fundamental-clear aria-label="펀더멘탈 필터 전체 해제">전체 보기</button>
+                  <label><input type="checkbox" value="우수" aria-label="우수"> 우수</label>
+                  <label><input type="checkbox" value="양호" aria-label="양호"> 양호</label>
+                  <label><input type="checkbox" value="보통" aria-label="보통"> 보통</label>
+                  <label><input type="checkbox" value="주의" aria-label="주의"> 주의</label>
+                  <label><input type="checkbox" value="미상" aria-label="미상"> 미상</label>
+                </div>
+              </details>
+            </div>
+            <div id="history-market-filter-row" class="strategy-sort-row strategy-market-row" hidden>
+              <label for="history-market-filter">마켓</label>
+              <select id="history-market-filter" class="strategy-sort-select">
                 <option value="all" selected>전체</option>
-                <option value="우수">우수</option>
-                <option value="양호">양호</option>
-                <option value="보통">보통</option>
-                <option value="주의">주의</option>
-                <option value="미상">미상</option>
+                <option value="KOSPI">코스피</option>
+                <option value="KOSDAQ">코스닥</option>
               </select>
             </div>
             <div id="history-sort-row" class="strategy-sort-row" hidden>
@@ -186,6 +208,6 @@
       </section>
     </main>
 
-    <script src="./js/strategy.js?v=web-strategy-open-37-v01" defer></script>
+    <script src="./js/strategy.js?v=web-strategy-filter-v01" defer></script>
   </body>
 </html>
