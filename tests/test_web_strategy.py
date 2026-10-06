@@ -124,6 +124,20 @@ def test_b_select_open_display_uses_canonical_identities_and_exact_report_routes
     assert len(report_item_pairs) == 20
     assert len(missing_from_published_items) == 17
     assert len(canonical) == b_select["canonical_current_open_position_count"]
+    assert all(
+        isinstance(row.get("latest_close"), (int, float))
+        and row["latest_close"] > 0
+        and row.get("latest_close_as_of") == monitor["reference_market_date"]
+        and isinstance(row.get("current_return_pct"), (int, float))
+        and isinstance(row.get("holding_age_sessions"), int)
+        and row["holding_age_sessions"] >= 1
+        for row in canonical
+    )
+    assert len(b_select["trade_history"]) == 488
+    assert all(
+        "latest_close" not in trade and "current_return_pct" not in trade
+        for trade in b_select["trade_history"]
+    )
     for identity in canonical_pairs:
         route = routes_by_identity[identity]
         report_path = ROOT / "web" / route["url"][2:]
@@ -141,6 +155,9 @@ def test_b_select_open_display_uses_canonical_identities_and_exact_report_routes
     assert "const openPositions = strategy.canonical_current_open_positions;" in strategy_js
     assert "const openIdentityKeys = new Set(openPositions.map(exactIdentityKey));" in strategy_js
     assert "const otherItems = items.filter((item) => !openIdentityKeys.has(exactIdentityKey(item)))" in strategy_js
+    assert "latest_close: position.latest_close," in strategy_js
+    assert "latest_close_as_of: position.latest_close_as_of," in strategy_js
+    assert "return_pct: position.current_return_pct," in strategy_js
     assert "displayItemsForStrategy(selected).filter((item) => item.bucket === category && itemMatches(item))" in strategy_js
 
 

@@ -298,6 +298,85 @@ def _select_core_history_path_metrics(
                     ):
                         raise ValueError(f"B Select holding reference close parity mismatch: {row_ticker} {isu_cd}")
 
+    # Current open positions are canonical strategy rows, including identities
+    # that no longer have a published stock report. Resolve their display-only
+    # current price from the same exact-session Repository V2 authority rather
+    # than relying on a report file to exist. Keep these fields off trade_history
+    # below: this is a current-position projection, not a ledger rewrite.
+    if repository is not None:
+        for index, trade in enumerate(result):
+            if trade.get("trade_status") != "OPEN_AT_REFERENCE":
+                continue
+            ticker = str(trade.get("ticker", "")).strip().zfill(6)
+            isu_cd = str(trade.get("isu_cd", "")).strip().upper()
+            entry_date = str(trade.get("entry_execution_date", ""))[:10]
+            if not exact_identity_sessions(ticker, isu_cd, [entry_date, reference_market_date]):
+                continue
+
+            entry_frame = query_frame(ticker, entry_date, entry_date)
+            current_frame = query_frame(
+                ticker, reference_market_date, reference_market_date
+            )
+            if (
+                not frame_covers(entry_frame, [entry_date], [entry_date])
+                or not frame_covers(
+                    current_frame,
+                    [reference_market_date],
+                    [reference_market_date],
+                )
+            ):
+                continue
+
+            entry_rows = {
+                value.strftime("%Y-%m-%d"): entry_frame.loc[value]
+                for value in entry_frame.index
+            }
+            current_rows = {
+                value.strftime("%Y-%m-%d"): current_frame.loc[value]
+                for value in current_frame.index
+            }
+            entry_open = _finite_positive(entry_rows[entry_date].get("open"))
+            reference_close = _finite_positive(
+                current_rows[reference_market_date].get("close")
+            )
+            entry_price = _finite_positive(trade.get("entry_price"))
+            if reference_close is None:
+                continue
+            if (
+                entry_price is None
+                or entry_open is None
+                or not math.isclose(
+                    entry_open, entry_price, rel_tol=1e-10, abs_tol=1e-7
+                )
+            ):
+                continue
+
+            published_items = items_by_identity.get((ticker, isu_cd), [])
+            if len(published_items) > 1:
+                raise ValueError(
+                    f"B Select holding display item identity is ambiguous: {ticker} {isu_cd}"
+                )
+            if published_items:
+                source_item = published_items[0]
+                source_close = _finite_positive(source_item.get("latest_close"))
+                source_date = str(source_item.get("latest_close_as_of", ""))[:10]
+                if (
+                    source_close is not None
+                    and source_date == reference_market_date
+                    and not math.isclose(
+                        source_close, reference_close, rel_tol=1e-10, abs_tol=1e-7
+                    )
+                ):
+                    raise ValueError(
+                        f"B Select holding reference close parity mismatch: {ticker} {isu_cd}"
+                    )
+
+            trade["latest_close"] = reference_close
+            trade["latest_close_as_of"] = reference_market_date
+            trade["current_return_pct"] = (
+                reference_close / entry_price - 1.0
+            ) * 100.0
+
     return result
 
 
@@ -909,6 +988,36 @@ def build_strategy_monitor(
         trade for trade in b_history
         if trade.get("trade_status") == "OPEN_AT_REFERENCE"
     ]
+    incomplete_open_prices = [
+        (trade.get("ticker"), trade.get("isu_cd"))
+        for trade in b_canonical_open_positions
+        if (
+            _finite_positive(trade.get("latest_close")) is None
+            or str(trade.get("latest_close_as_of", ""))[:10] != resolved_reference
+            or trade.get("current_return_pct") is None
+            or not math.isfinite(float(trade.get("current_return_pct")))
+            or not isinstance(trade.get("holding_age_sessions"), int)
+            or trade.get("holding_age_sessions", 0) < 1
+        )
+    ]
+    if incomplete_open_prices:
+        raise ValueError(
+            "B Select canonical OPEN current Repository V2 price is incomplete: "
+            f"{incomplete_open_prices[:10]}"
+        )
+    open_position_display_fields = {
+        "latest_close",
+        "latest_close_as_of",
+        "current_return_pct",
+    }
+    b_history_payload = [
+        {
+            key: value
+            for key, value in trade.items()
+            if key not in open_position_display_fields
+        }
+        for trade in b_history
+    ]
     if (
         b_select_status.get("canonical_current_open_position_count") is not None
         and b_select_status.get("canonical_current_open_position_count") != len(b_canonical_open_positions)
@@ -939,7 +1048,7 @@ def build_strategy_monitor(
             },
             "counts": dict(b_select_status.get("counts") or {}),
             "items": b_current_items,
-            "trade_history": b_history,
+            "trade_history": b_history_payload,
             "canonical_current_open_positions": b_canonical_open_positions,
             "canonical_current_open_position_count": len(b_canonical_open_positions),
         },
