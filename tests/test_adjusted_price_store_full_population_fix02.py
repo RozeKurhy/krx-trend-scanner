@@ -43,6 +43,7 @@ class _Session:
 
     def __init__(self, payload: str) -> None:
         self.text = payload
+        self.content = payload.encode("utf-8")
 
     def get(self, *args, **kwargs):
         return self
@@ -199,6 +200,10 @@ def test_store_date_set_has_no_authority_intersection(tmp_path: Path, monkeypatc
     result = runner.process_single_ticker(rec, provider=provider)
     stored_dates = set(runner.store.load_daily_source("005930").index.strftime("%Y-%m-%d"))
     assert stored_dates == {"2024-01-01"}
+    metadata = runner.store.load_metadata("005930")
+    fetch_record = metadata["naver_adjusted_fetch_provenance"]["records"][-1]
+    assert fetch_record["parsed_row_count"] == 2
+    assert fetch_record["saved_store_content_sha256"] == metadata["content_sha256"]
     assert not stored_dates.intersection({"2024-01-02"})
     assert not stored_dates.intersection(set(result.authority_suppressed_source_dates))
     assert result.unexpected_source_date_count == 0

@@ -120,6 +120,7 @@ def test_previously_captured_naver_response_is_offline_and_no_fallback() -> None
 
         def __init__(self, text: str):
             self.text = text
+            self.content = text.encode("euc-kr")
 
     class _Session:
         def get(self, *args, **kwargs):

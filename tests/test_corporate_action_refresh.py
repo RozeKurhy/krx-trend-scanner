@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from trend_scanner.data.adjusted_price_provider import NaverDirectAdjustedPriceDataProvider
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.corporate_action_detector import CorporateActionDetector, CorporateActionSnapshot
 from trend_scanner.data.corporate_action_refresh import CorporateActionRefreshService
@@ -60,6 +61,40 @@ def test_refresh_success_requires_full_history_and_marks_clean(tmp_path):
     assert len(adjusted.load_daily("005930")) == 6
     assert result.before_content_sha256 != result.after_content_sha256
     assert set(old.index).issubset(set(adjusted.load_daily("005930").index))
+
+
+def test_naver_dirty_refresh_persists_fetch_and_post_write_provenance(tmp_path):
+    adjusted, state, _ = _seed(tmp_path)
+    refreshed = _frame((110, 111, 112, 113, 114, 115))
+    items = []
+    for day, row in refreshed.iterrows():
+        items.append(
+            f'<item data="{day:%Y%m%d}|{int(row.open)}|{int(row.high)}|{int(row.low)}|{int(row.close)}|10"/>'
+        )
+    payload = "<protocol><chartdata>" + "".join(items) + "</chartdata></protocol>"
+
+    class _Response:
+        status_code = 200
+
+        def __init__(self):
+            self.text = payload
+            self.content = payload.encode("utf-8")
+
+    class _Session:
+        def get(self, *args, **kwargs):
+            return _Response()
+
+    provider = NaverDirectAdjustedPriceDataProvider(session=_Session())
+    result = CorporateActionRefreshService(state, provider, adjusted).refresh_dirty("005930", "2024-01-07")
+
+    assert result.status == "CLEAN"
+    metadata = adjusted.load_metadata("005930")
+    record = metadata["naver_adjusted_fetch_provenance"]["records"][-1]
+    assert record["request_start"] == "2024-01-02"
+    assert record["request_end"] == "2024-01-07"
+    assert record["parsed_row_count"] == 6
+    assert record["http_status"] == 200
+    assert record["saved_store_content_sha256"] == metadata["content_sha256"]
 
 
 def test_source_native_relation_anomaly_is_preserved_and_marks_clean(tmp_path):

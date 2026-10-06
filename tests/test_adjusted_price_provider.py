@@ -144,6 +144,7 @@ def test_naver_provider_phantom_normalization_is_distinct_from_pykrx():
     class Response:
         status_code = 200
         text = '<protocol><chartdata><item data="20180430|0|0|0|53000|0"/></chartdata></protocol>'
+        content = text.encode("utf-8")
 
     class Session:
         def get(self, *args, **kwargs):

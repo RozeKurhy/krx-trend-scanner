@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import uuid
 from typing import Any, Mapping
@@ -15,6 +16,9 @@ import pandas as pd
 
 from trend_scanner.data.adjusted_price_provider import (
     ADJUSTED_OHLC_COLUMNS,
+    NAVER_DIRECT_PROVIDER_VERSION,
+    NAVER_FETCH_PROVENANCE_ATTR,
+    NAVER_FETCH_PROVENANCE_SCHEMA_VERSION,
     normalize_ticker,
     validate_adjusted_ohlc,
     validate_source_integrity,
@@ -42,6 +46,23 @@ SOURCE_ENDPOINT = CURRENT_SOURCE_DESCRIPTOR.source_endpoint
 SOURCE_REQUEST_TYPE = CURRENT_SOURCE_DESCRIPTOR.source_request_type
 SOURCE_SEMANTICS = "ADJUSTED_OHLC_ONLY"
 AUTHORITY_TYPE = "AUTHORITATIVE"
+NAVER_FETCH_PROVENANCE_FIELD = "naver_adjusted_fetch_provenance"
+_SHA256_HEX_RE = re.compile(r"^[0-9a-f]{64}$")
+_FETCH_PROVENANCE_FIELDS = frozenset(
+    {
+        "ticker",
+        "request_start",
+        "request_end",
+        "fetch_utc_timestamp",
+        "http_status",
+        "raw_payload_sha256",
+        "parsed_row_count",
+        "parsed_ohlc_sha256",
+        "source_descriptor",
+        "provider_version",
+    }
+)
+_STORED_FETCH_PROVENANCE_FIELDS = _FETCH_PROVENANCE_FIELDS | {"saved_store_content_sha256"}
 _SECRET_MARKERS = ("KRX_OPEN_API_AUTH_KEY", "KRX_ID", "KRX_PW")
 _CALLER_METADATA_FIELDS = frozenset(("requested_start", "requested_end"))
 _RESERVED_METADATA_FIELDS = frozenset(
@@ -70,6 +91,7 @@ _RESERVED_METADATA_FIELDS = frozenset(
         "analytic_invalid_ohlc_count",
         "phantom_row_count",
         "source_nonusable_row_count",
+        NAVER_FETCH_PROVENANCE_FIELD,
     }
 )
 _METADATA_FIELDS = (
@@ -128,6 +150,7 @@ def _normalise_frame(frame: pd.DataFrame) -> tuple[pd.DataFrame, str | None]:
 
     if not isinstance(frame, pd.DataFrame):
         raise MarketDataError("AdjustedPriceStore 입력은 pandas DataFrame이어야 합니다.")
+    source_attrs = dict(frame.attrs)
     columns = set(frame.columns)
     ticker_value: str | None = None
     if "ticker" in columns:
@@ -161,7 +184,9 @@ def _normalise_frame(frame: pd.DataFrame) -> tuple[pd.DataFrame, str | None]:
             raise MarketDataError("source-native adjusted store에는 non-positive OHLC를 저장할 수 없습니다.")
     else:
         validate_adjusted_ohlc(result)
-    return result[list(ADJUSTED_OHLC_COLUMNS)], ticker_value
+    normalized = result[list(ADJUSTED_OHLC_COLUMNS)].copy()
+    normalized.attrs.update(source_attrs)
+    return normalized, ticker_value
 
 
 def _physical_to_frame(
@@ -201,6 +226,70 @@ def _assert_no_secret_metadata(metadata: Mapping[str, Any]) -> None:
     serialized = json.dumps(dict(metadata), ensure_ascii=False)
     if any(marker in serialized for marker in _SECRET_MARKERS):
         raise MarketDataError("metadata에 credential marker를 기록할 수 없습니다.")
+
+
+def _validate_fetch_provenance_event(
+    event: Mapping[str, Any],
+    ticker: str,
+    *,
+    require_store_hash: bool,
+) -> None:
+    expected_fields = _STORED_FETCH_PROVENANCE_FIELDS if require_store_hash else _FETCH_PROVENANCE_FIELDS
+    if set(event) != expected_fields:
+        raise MarketDataError("adjusted fetch provenance 필드가 계약과 다릅니다.")
+    if normalize_ticker(event.get("ticker", "")) != ticker:
+        raise MarketDataError("adjusted fetch provenance ticker가 저장 ticker와 다릅니다.")
+    for field in ("request_start", "request_end"):
+        value = event.get(field)
+        normalized = _normalise_requested_date(value, f"fetch_provenance.{field}")
+        if value != normalized:
+            raise MarketDataError(f"adjusted fetch provenance {field} 형식이 canonical하지 않습니다.")
+    if event["request_start"] > event["request_end"]:
+        raise MarketDataError("adjusted fetch provenance 요청 구간이 역전되었습니다.")
+    try:
+        timestamp = pd.Timestamp(event.get("fetch_utc_timestamp"))
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise MarketDataError("adjusted fetch provenance timestamp가 유효하지 않습니다.") from exc
+    if timestamp.tzinfo is None or timestamp.utcoffset() != timedelta(0):
+        raise MarketDataError("adjusted fetch provenance timestamp는 UTC timezone-aware여야 합니다.")
+    http_status = event.get("http_status")
+    if isinstance(http_status, bool) or not isinstance(http_status, int) or not 200 <= http_status < 400:
+        raise MarketDataError("adjusted fetch provenance HTTP status가 성공 범위가 아닙니다.")
+    row_count = event.get("parsed_row_count")
+    if isinstance(row_count, bool) or not isinstance(row_count, int) or row_count < 0:
+        raise MarketDataError("adjusted fetch provenance parsed row count가 유효하지 않습니다.")
+    for field in ("raw_payload_sha256", "parsed_ohlc_sha256"):
+        if not isinstance(event.get(field), str) or not _SHA256_HEX_RE.fullmatch(event[field]):
+            raise MarketDataError(f"adjusted fetch provenance {field}가 SHA-256 형식이 아닙니다.")
+    if require_store_hash and (
+        not isinstance(event.get("saved_store_content_sha256"), str)
+        or not _SHA256_HEX_RE.fullmatch(event["saved_store_content_sha256"])
+    ):
+        raise MarketDataError("adjusted fetch provenance saved store hash가 SHA-256 형식이 아닙니다.")
+    try:
+        descriptor = descriptor_from(event.get("source_descriptor"))
+        assert_current_descriptor(descriptor)
+    except (KeyError, TypeError, MarketDataError) as exc:
+        raise MarketDataError("adjusted fetch provenance source descriptor가 유효하지 않습니다.") from exc
+    if event.get("provider_version") != NAVER_DIRECT_PROVIDER_VERSION:
+        raise MarketDataError("adjusted fetch provenance provider version이 지원 버전과 다릅니다.")
+
+
+def _validate_fetch_provenance_bundle(bundle: Any, ticker: str) -> list[dict[str, Any]]:
+    if not isinstance(bundle, Mapping) or set(bundle) != {"schema_version", "records"}:
+        raise MarketDataError("adjusted fetch provenance sidecar 구조가 유효하지 않습니다.")
+    if bundle.get("schema_version") != NAVER_FETCH_PROVENANCE_SCHEMA_VERSION:
+        raise MarketDataError("adjusted fetch provenance schema version이 지원 버전과 다릅니다.")
+    records = bundle.get("records")
+    if not isinstance(records, list) or not records:
+        raise MarketDataError("adjusted fetch provenance records가 비어 있거나 배열이 아닙니다.")
+    normalized_records: list[dict[str, Any]] = []
+    for event in records:
+        if not isinstance(event, Mapping):
+            raise MarketDataError("adjusted fetch provenance event가 JSON object가 아닙니다.")
+        _validate_fetch_provenance_event(event, ticker, require_store_hash=True)
+        normalized_records.append(dict(event))
+    return normalized_records
 
 
 def _descriptor_from_metadata(metadata: Mapping[str, Any]) -> AdjustedPriceSourceDescriptor:
@@ -250,6 +339,8 @@ def _validate_metadata(metadata: Mapping[str, Any], ticker: str, frame: pd.DataF
             raise MarketDataError("metadata date bounds가 parquet와 일치하지 않습니다.")
     if metadata["content_sha256"] != digest:
         raise MarketDataError("metadata content_sha256와 parquet hash가 일치하지 않습니다.")
+    if NAVER_FETCH_PROVENANCE_FIELD in metadata:
+        _validate_fetch_provenance_bundle(metadata[NAVER_FETCH_PROVENANCE_FIELD], ticker)
     requested_start = _normalise_requested_date(metadata["requested_start"], "requested_start")
     requested_end = _normalise_requested_date(metadata["requested_end"], "requested_end")
     if requested_start > requested_end:
@@ -395,6 +486,23 @@ class AdjustedPriceStore:
             raise MarketDataError("requested_start가 requested_end보다 늦습니다.")
         if _iso_date(adjusted.index.min()) < requested_start or _iso_date(adjusted.index.max()) > requested_end:
             raise MarketDataError("requested bounds가 입력 frame 범위를 포함하지 않습니다.")
+        previous_fetch_records: list[dict[str, Any]] = []
+        if final_metadata.exists():
+            previous_metadata = self.load_metadata(normalized)
+            previous_bundle = previous_metadata.get(NAVER_FETCH_PROVENANCE_FIELD)
+            if previous_bundle is not None:
+                previous_fetch_records = _validate_fetch_provenance_bundle(previous_bundle, normalized)
+        source_fetch_records = adjusted.attrs.get(NAVER_FETCH_PROVENANCE_ATTR, ())
+        if source_fetch_records is None:
+            source_fetch_records = ()
+        if not isinstance(source_fetch_records, (list, tuple)):
+            raise MarketDataError("DataFrame adjusted fetch provenance는 배열이어야 합니다.")
+        normalized_fetch_records: list[dict[str, Any]] = []
+        for event in source_fetch_records:
+            if not isinstance(event, Mapping):
+                raise MarketDataError("DataFrame adjusted fetch provenance event가 JSON object가 아닙니다.")
+            _validate_fetch_provenance_event(event, normalized, require_store_hash=False)
+            normalized_fetch_records.append(dict(event))
         # New writes are V02 and always carry Store-owned authority fields.
         # Callers may provide the producing descriptor explicitly; omission
         # uses the only production descriptor and cannot inject metadata.
@@ -460,17 +568,35 @@ class AdjustedPriceStore:
             if len(roundtrip) != len(adjusted):
                 raise MarketDataError("Parquet read-back 행 수가 입력과 다릅니다.")
             digest = _sha256(temp_parquet)
-            metadata["content_sha256"] = digest
-            _validate_metadata(metadata, normalized, roundtrip, digest)
-            temp_metadata.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-            _validate_metadata(json.loads(temp_metadata.read_text(encoding="utf-8")), normalized, roundtrip, digest)
-
             if final_parquet.exists():
                 shutil.copy2(final_parquet, old_parquet_backup)
             if final_metadata.exists():
                 shutil.copy2(final_metadata, old_metadata_backup)
             os.replace(temp_parquet, final_parquet)
             parquet_replaced = True
+            saved_digest = _sha256(final_parquet)
+            if saved_digest != digest:
+                raise MarketDataError("parquet 저장 후 content hash가 staging hash와 다릅니다.")
+            metadata["content_sha256"] = saved_digest
+            all_fetch_records = list(previous_fetch_records)
+            all_fetch_records.extend(
+                {**event, "saved_store_content_sha256": saved_digest}
+                for event in normalized_fetch_records
+            )
+            if all_fetch_records:
+                metadata[NAVER_FETCH_PROVENANCE_FIELD] = {
+                    "schema_version": NAVER_FETCH_PROVENANCE_SCHEMA_VERSION,
+                    "records": all_fetch_records,
+                }
+            _assert_no_secret_metadata(metadata)
+            _validate_metadata(metadata, normalized, roundtrip, saved_digest)
+            temp_metadata.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            _validate_metadata(
+                json.loads(temp_metadata.read_text(encoding="utf-8")),
+                normalized,
+                roundtrip,
+                saved_digest,
+            )
             os.replace(temp_metadata, final_metadata)
             metadata_replaced = True
         except Exception:
@@ -513,6 +639,7 @@ class AdjustedPriceStore:
 __all__ = [
     "AUTHORITY_TYPE",
     "DEFAULT_ADJUSTED_PRICE_STORE_DIR",
+    "NAVER_FETCH_PROVENANCE_FIELD",
     "PHYSICAL_COLUMNS",
     "SCHEMA_VERSION",
     "SOURCE_ENDPOINT",

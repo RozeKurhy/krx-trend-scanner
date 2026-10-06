@@ -7,7 +7,10 @@ PyKRX for the unadjusted response used by the legacy composite provider.
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
+from decimal import Decimal, InvalidOperation
+import hashlib
+import json
 import math
 import re
 import xml.etree.ElementTree as ET
@@ -39,6 +42,49 @@ _FORBIDDEN_OUTPUT_COLUMNS = {"volume", "trading_value", "market_cap", "listed_sh
 
 _TICKER_RE = re.compile(r"^[0-9A-Z]{6}$")
 _NAVER_DATE_RE = re.compile(r"^\d{8}$")
+NAVER_DIRECT_PROVIDER_VERSION = "NaverDirectAdjustedPriceDataProvider_v02"
+NAVER_FETCH_PROVENANCE_SCHEMA_VERSION = "NAVER_ADJUSTED_FETCH_PROVENANCE_V01"
+NAVER_FETCH_PROVENANCE_ATTR = "naver_adjusted_fetch_provenance"
+
+
+def canonical_parsed_content_sha256(ticker: str | int, frame: pd.DataFrame) -> str:
+    """Hash parsed OHLC rows using stable ticker/date/column/number serialization."""
+
+    normalized_ticker = normalize_ticker(ticker)
+    if tuple(frame.columns) != ADJUSTED_OHLC_COLUMNS:
+        raise MarketDataError("canonical parsed hash 입력 schema가 정확히 OHLC가 아닙니다.")
+    try:
+        index = pd.DatetimeIndex(pd.to_datetime(frame.index, errors="raise"))
+    except (TypeError, ValueError) as exc:
+        raise MarketDataError("canonical parsed hash index가 유효한 날짜가 아닙니다.") from exc
+    if index.tz is not None:
+        index = index.tz_localize(None)
+    index = index.normalize()
+    if index.has_duplicates:
+        raise MarketDataError("canonical parsed hash 입력에 중복 날짜가 있습니다.")
+
+    ordered = frame.copy()
+    ordered.index = index
+    ordered = ordered.sort_index(kind="mergesort")
+    rows: list[dict[str, str]] = []
+    ordered_values = ordered.loc[:, list(ADJUSTED_OHLC_COLUMNS)]
+    for day, values in zip(ordered.index, ordered_values.itertuples(index=False, name=None)):
+        row: dict[str, str] = {
+            "ticker": normalized_ticker,
+            "date": pd.Timestamp(day).strftime("%Y-%m-%d"),
+        }
+        for column, value in zip(ADJUSTED_OHLC_COLUMNS, values):
+            try:
+                number = Decimal(str(value))
+            except (InvalidOperation, TypeError, ValueError) as exc:
+                raise MarketDataError(f"canonical parsed hash {column} 값이 숫자가 아닙니다.") from exc
+            if not number.is_finite():
+                raise MarketDataError(f"canonical parsed hash {column} 값이 finite하지 않습니다.")
+            row[column] = format(number.normalize(), "f")
+        rows.append(row)
+
+    canonical = json.dumps(rows, ensure_ascii=True, separators=(",", ":"), allow_nan=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def normalize_ticker(ticker: str | int) -> str:
@@ -228,6 +274,7 @@ class NaverDirectAdjustedPriceDataProvider:
     """
 
     endpoint = CURRENT_SOURCE_DESCRIPTOR.source_endpoint
+    provider_version = NAVER_DIRECT_PROVIDER_VERSION
 
     def __init__(
         self,
@@ -479,12 +526,32 @@ class NaverDirectAdjustedPriceDataProvider:
         retry_attempted = False
         try:
             response, retry_attempted = self._request_with_read_timeout_retry(params)
-            if getattr(response, "status_code", 200) >= 400:
-                raise MarketDataError(f"Naver HTTP failure: {response.status_code}")
+            http_status = int(getattr(response, "status_code", 200))
+            if http_status >= 400:
+                raise MarketDataError(f"Naver HTTP failure: {http_status}")
+            raw_payload = getattr(response, "content", None)
+            if not isinstance(raw_payload, bytes):
+                raise MarketDataError("Naver response body is not available as raw bytes")
+            fetch_utc_timestamp = datetime.now(timezone.utc).isoformat()
+            raw_payload_sha256 = hashlib.sha256(raw_payload).hexdigest()
             frame = self._parse_response(getattr(response, "text", ""), start_ts, end_ts)
             frame.attrs["source_row_audit"] = tuple(
                 {**entry, "ticker": normalized_ticker}
                 for entry in frame.attrs.get("source_row_audit", ())
+            )
+            frame.attrs[NAVER_FETCH_PROVENANCE_ATTR] = (
+                {
+                    "ticker": normalized_ticker,
+                    "request_start": start_ts.date().isoformat(),
+                    "request_end": end_ts.date().isoformat(),
+                    "fetch_utc_timestamp": fetch_utc_timestamp,
+                    "http_status": http_status,
+                    "raw_payload_sha256": raw_payload_sha256,
+                    "parsed_row_count": int(len(frame)),
+                    "parsed_ohlc_sha256": canonical_parsed_content_sha256(normalized_ticker, frame),
+                    "source_descriptor": self.source_descriptor.as_dict(),
+                    "provider_version": self.provider_version,
+                },
             )
         except MarketDataError:
             if retry_attempted:
@@ -508,7 +575,11 @@ class NaverDirectAdjustedPriceDataProvider:
 __all__ = [
     "ADJUSTED_OHLC_COLUMNS",
     "AdjustedPriceDataProvider",
+    "NAVER_DIRECT_PROVIDER_VERSION",
+    "NAVER_FETCH_PROVENANCE_ATTR",
+    "NAVER_FETCH_PROVENANCE_SCHEMA_VERSION",
     "NaverDirectAdjustedPriceDataProvider",
+    "canonical_parsed_content_sha256",
     "normalize_ticker",
     "validate_adjusted_ohlc",
     "validate_source_integrity",

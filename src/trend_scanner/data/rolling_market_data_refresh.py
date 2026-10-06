@@ -75,6 +75,7 @@ from trend_scanner.data.adjusted_price_pilot import (
     resolve_expected_coverage,
 )
 from trend_scanner.data.adjusted_price_provider import (
+    NAVER_FETCH_PROVENANCE_ATTR,
     NaverDirectAdjustedPriceDataProvider,
 )
 from trend_scanner.data.adjusted_price_semantics import (
@@ -286,6 +287,13 @@ def _merge_adjusted_frames(existing: pd.DataFrame | None, fetched: Sequence[pd.D
     if any(bool(frame.attrs.get("source_native_adjusted", False)) for frame in frames):
         merged.attrs["source_native_adjusted"] = True
         merged.attrs["analytic_invalid_ohlc_count"] = int((~analytic_candle_is_valid(merged)).sum())
+    fetch_provenance = [
+        event
+        for frame in fetched
+        for event in frame.attrs.get(NAVER_FETCH_PROVENANCE_ATTR, ())
+    ]
+    if fetch_provenance:
+        merged.attrs[NAVER_FETCH_PROVENANCE_ATTR] = tuple(fetch_provenance)
     return merged
 
 

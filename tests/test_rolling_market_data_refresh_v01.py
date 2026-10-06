@@ -305,6 +305,52 @@ def test_common_adjusted_updater_succeeds_when_frontier_sufficient(tmp_path) -> 
     assert result["failures"] == []
 
 
+def test_common_adjusted_naver_fetch_provenance_survives_rolling_merge(tmp_path) -> None:
+    from trend_scanner.data.adjusted_price_provider import NaverDirectAdjustedPriceDataProvider
+    from trend_scanner.data.adjusted_price_store import NAVER_FETCH_PROVENANCE_FIELD
+    from trend_scanner.data.rolling_market_data_refresh import RollingAdjustedPriceUpdater
+
+    calendar_path = tmp_path / "calendar.json"
+    calendar_path.write_text(json.dumps({"trading_dates": ["2026-08-20", "2026-08-21", "2026-08-24"]}))
+    pit_path = tmp_path / "pit.json"
+    pit_path.write_text(json.dumps({"intervals": [{"ticker": "005930", "state": "COMMON", "effective_from": "2010-01-04", "effective_to": "2026-08-24"}]}))
+    stocks_dir = tmp_path / "legacy_raw_stocks_dir_that_does_not_exist"
+    store = _seed_adjusted_store(
+        tmp_path / "adjusted",
+        ["005930"],
+        start="2010-01-04",
+        end="2026-08-21",
+    )
+    payload = '<protocol><chartdata><item data="20260824|100|110|90|105|10"/></chartdata></protocol>'
+
+    class _Response:
+        status_code = 200
+        text = payload
+        content = payload.encode("utf-8")
+
+    class _Session:
+        def get(self, *args, **kwargs):
+            return _Response()
+
+    provider = NaverDirectAdjustedPriceDataProvider(session=_Session())
+    updater = RollingAdjustedPriceUpdater(
+        provider,
+        store,
+        pit_path=pit_path,
+        historical_calendar_path=calendar_path,
+        stocks_dir=stocks_dir,
+    )
+
+    result = updater.refresh(["005930"], "2026-08-21", "2026-08-24")
+
+    assert result["updated"] == ["005930"]
+    metadata = store.load_metadata("005930")
+    record = metadata[NAVER_FETCH_PROVENANCE_FIELD]["records"][-1]
+    assert record["request_start"] == record["request_end"] == "2026-08-24"
+    assert record["parsed_row_count"] == 1
+    assert record["saved_store_content_sha256"] == metadata["content_sha256"]
+
+
 # ---------------------------------------------------------------------------
 # Coordinator: boundary advance / coherence / failure-preserves-boundary / idempotency
 # ---------------------------------------------------------------------------

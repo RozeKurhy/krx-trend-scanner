@@ -31,6 +31,7 @@ class Response:
 
     def __init__(self, text: str):
         self.text = text
+        self.content = text.encode("utf-8")
 
 
 class Session:
@@ -108,7 +109,8 @@ def test_naver_read_timeout_retries_once_and_then_succeeds():
     class RetrySession:
         def __init__(self):
             self.calls: list[tuple[str, dict]] = []
-            self.outcomes = [requests.exceptions.ReadTimeout("first timeout"), Response(_xml("20240102|100|110|90|105|1"))]
+            self.success_response = Response(_xml("20240102|100|110|90|105|1"))
+            self.outcomes = [requests.exceptions.ReadTimeout("first timeout"), self.success_response]
 
         def get(self, url: str, **kwargs):
             self.calls.append((url, kwargs))
@@ -125,6 +127,9 @@ def test_naver_read_timeout_retries_once_and_then_succeeds():
     assert len(frame) == 1
     assert len(session.calls) == 2
     assert session.calls[0] == session.calls[1]
+    provenance = frame.attrs["naver_adjusted_fetch_provenance"][0]
+    assert provenance["raw_payload_sha256"] == hashlib.sha256(session.success_response.content).hexdigest()
+    assert provenance["http_status"] == 200
     assert provider.call_audit()["retry_attempted_count"] == 1
     assert provider.call_audit()["retry_success_count"] == 1
     assert provider.call_audit()["retry_final_failure_count"] == 0

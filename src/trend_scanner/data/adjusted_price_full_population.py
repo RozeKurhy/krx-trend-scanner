@@ -46,6 +46,8 @@ from trend_scanner.data.adjusted_price_pilot import (
 )
 from trend_scanner.data.adjusted_price_provider import (
     ADJUSTED_OHLC_COLUMNS,
+    NAVER_DIRECT_PROVIDER_VERSION,
+    NAVER_FETCH_PROVENANCE_ATTR,
     NaverDirectAdjustedPriceDataProvider,
     normalize_ticker,
     validate_adjusted_ohlc,
@@ -75,7 +77,7 @@ DEFAULT_FULL_POPULATION_DIR = Path(
     "artifacts/data/end_to_end_data_parity/v01/adjusted_price_store_full_population/v01"
 )
 CHECKPOINT_SCHEMA_VERSION = "full_population_checkpoint_v02"
-SOURCE_PROVIDER_VERSION = "NaverDirectAdjustedPriceDataProvider_v02"
+SOURCE_PROVIDER_VERSION = NAVER_DIRECT_PROVIDER_VERSION
 
 
 def resolve_active_adjusted_price_authority():
@@ -1111,6 +1113,9 @@ class FullPopulationRunner:
                     "STORE_WRITE_AUTHORITY_INTERSECTION: " + ",".join(sorted(forbidden_dates))
                 )
             try:
+                frame.attrs[NAVER_FETCH_PROVENANCE_ATTR] = tuple(
+                    raw_frame.attrs.get(NAVER_FETCH_PROVENANCE_ATTR, ())
+                )
                 self.store.save_full(
                     ticker,
                     frame,

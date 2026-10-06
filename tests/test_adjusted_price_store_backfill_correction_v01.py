@@ -83,6 +83,7 @@ def test_corrected_provider_contract_remains_naver_only_without_fallback():
 
         def __init__(self, text: str):
             self.text = text
+            self.content = text.encode("utf-8")
 
     class _Session:
         def get(self, *args, **kwargs):
