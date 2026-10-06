@@ -54,6 +54,207 @@ def _read_json(path: Path) -> dict[str, Any]:
     return value
 
 
+def _finite_positive(value: Any) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) and number > 0 else None
+
+
+def _date_set(values: Any) -> set[str]:
+    if not isinstance(values, (list, tuple, set)):
+        return set()
+    return {str(value)[:10] for value in values if value is not None}
+
+
+def _current_holding_path_metrics(
+    repo_root: Path,
+    positions: list[dict[str, Any]],
+    items: list[dict[str, Any]],
+    reference_market_date: str,
+) -> list[dict[str, Any]]:
+    """Add display-only exact-session age and peak drawdown to open positions.
+
+    Position age follows the Candidate B AGE120 contract: the execution session
+    is age 1, so age is ``reference_index - execution_index + 1``. Price rows
+    come from Repository V2 and are accepted only when the rolling KRX calendar,
+    PIT identity, and session-projection audit cover the complete interval.
+    """
+    result = [
+        {**position, "holding_age_sessions": None, "peak_drawdown_pct": None}
+        for position in positions
+    ]
+    if not result:
+        return result
+
+    rolling_dir = repo_root / "data/market/rolling_authority"
+    required_authority = (
+        rolling_dir / "manifest.json",
+        rolling_dir / "merged_pit_intervals.json",
+        rolling_dir / "merged_trading_calendar.json",
+    )
+    if not all(path.is_file() for path in required_authority):
+        return result
+
+    from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
+    from trend_scanner.data.errors import MarketDataError
+    from trend_scanner.data.repository_v2_loader import build_production_repository_v2
+    from trend_scanner.data.rolling_market_data_refresh import (
+        load_rolling_authority,
+        validate_merged_authority_coherence,
+    )
+
+    manifest = load_rolling_authority(rolling_dir)
+    pit_payload, calendar_payload = validate_merged_authority_coherence(manifest, rolling_dir)
+    calendar = load_rolling_production_market_calendar(repo_root)
+    if calendar is None:
+        return result
+
+    calendar_dates = [value.strftime("%Y-%m-%d") for value in calendar.trading_dates]
+    if (
+        calendar_dates != calendar_payload.get("trading_dates")
+        or not calendar_dates
+        or calendar_dates[-1] != manifest.merged_calendar_frontier
+        or pit_payload.get("pit_frontier", "") < reference_market_date
+        or manifest.merged_calendar_frontier < reference_market_date
+    ):
+        raise ValueError("B Select holding display authority does not cover the reference market date")
+    calendar_positions = {day: index for index, day in enumerate(calendar_dates)}
+    if reference_market_date not in calendar_positions:
+        return result
+
+    intervals_by_ticker: dict[str, list[dict[str, Any]]] = {}
+    for raw in pit_payload.get("intervals", []):
+        if str(raw.get("state", "")).upper() != "COMMON":
+            continue
+        ticker = str(raw.get("ticker", "")).strip().zfill(6)
+        interval = {
+            **raw,
+            "ticker": ticker,
+            "isu_cd": str(raw.get("isu_cd", "")).strip().upper(),
+            "effective_from": str(raw.get("effective_from", ""))[:10],
+            "effective_to": str(raw.get("effective_to", ""))[:10],
+        }
+        intervals_by_ticker.setdefault(ticker, []).append(interval)
+
+    items_by_identity: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for item in items:
+        key = (str(item.get("ticker", "")).strip().zfill(6), str(item.get("isu_cd", "")).strip().upper())
+        items_by_identity.setdefault(key, []).append(item)
+
+    try:
+        repository = build_production_repository_v2(repo_root, end=reference_market_date)
+    except (FileNotFoundError, OSError):
+        repository = None
+    frames: dict[tuple[str, str, str], Any] = {}
+
+    for position in result:
+        ticker = str(position.get("ticker", "")).strip().zfill(6)
+        isu_cd = str(position.get("isu_cd", "")).strip().upper()
+        entry_date = str(position.get("entry_execution_date", ""))[:10]
+        entry_price = _finite_positive(position.get("entry_price", position.get("entry_open")))
+        if not isu_cd or entry_date not in calendar_positions or entry_date > reference_market_date:
+            continue
+
+        start_index = calendar_positions[entry_date]
+        end_index = calendar_positions[reference_market_date]
+        sessions = calendar_dates[start_index : end_index + 1]
+        if not sessions or sessions[0] != entry_date or sessions[-1] != reference_market_date:
+            continue
+
+        # Repository V2 stores prices by ticker. Prove that every calendar
+        # session belongs to the exact (ticker, ISU_CD) before using that path.
+        identity_is_exact = True
+        for day in sessions:
+            active = [
+                interval
+                for interval in intervals_by_ticker.get(ticker, [])
+                if interval["effective_from"] <= day <= interval["effective_to"]
+            ]
+            if len(active) != 1 or active[0]["isu_cd"] != isu_cd:
+                identity_is_exact = False
+                break
+        if not identity_is_exact:
+            continue
+        position["holding_age_sessions"] = len(sessions)
+
+        if repository is None or entry_price is None:
+            continue
+        frame_key = (ticker, entry_date, reference_market_date)
+        if frame_key not in frames:
+            try:
+                frames[frame_key] = repository.get_daily(ticker, entry_date, reference_market_date)
+            except (FileNotFoundError, MarketDataError, OSError):
+                frames[frame_key] = None
+        frame = frames[frame_key]
+        if frame is None or frame.empty or "high" not in frame.columns or "close" not in frame.columns:
+            continue
+
+        projection = frame.attrs.get("session_projection_audit", {})
+        frame_rows = {
+            value.strftime("%Y-%m-%d"): frame.loc[value]
+            for value in frame.index
+        }
+        frame_dates = set(frame_rows)
+        missing_dates = set(sessions) - frame_dates
+        confirmed_nontrading = _date_set(projection.get("confirmed_nontrading_shared_dates"))
+        expected_adjusted = _date_set(projection.get("adjusted_dates"))
+        expected_raw = _date_set(projection.get("raw_dates"))
+        blocking_projection_keys = (
+            "unexplained_adjusted_only_dates",
+            "rejected_raw_only_dates",
+            "known_adjusted_gap_dates",
+            "outside_identity_lifecycle_dates",
+            "adjusted_source_nonusable_dates",
+            "adjusted_analytic_invalid_dates",
+            "shared_placeholder_conflict_dates",
+        )
+        if (
+            projection.get("projected_date_set_exact_match") is not True
+            or int(projection.get("silent_inner_drop_count", 0) or 0) != 0
+            or not set(sessions).issubset(expected_adjusted)
+            or not set(sessions).issubset(expected_raw)
+            or not missing_dates.issubset(confirmed_nontrading)
+            or any(_date_set(projection.get(key)) for key in blocking_projection_keys)
+            or int(projection.get("adjusted_analytic_invalid_count", 0) or 0) != 0
+            or reference_market_date not in frame_dates
+            or not set(frame_dates).issubset(set(sessions))
+        ):
+            continue
+
+        highs = [_finite_positive(row.get("high")) for row in frame_rows.values()]
+        if any(value is None for value in highs):
+            continue
+        entry_row = frame_rows.get(entry_date)
+        entry_open = _finite_positive(None if entry_row is None else entry_row.get("open"))
+        if entry_open is None or not math.isclose(entry_open, entry_price, rel_tol=1e-10, abs_tol=1e-7):
+            continue
+        reference_row = frame_rows[reference_market_date]
+        current_reference_price = _finite_positive(reference_row.get("close"))
+        peak_high = max((value for value in highs if value is not None), default=None)
+        if current_reference_price is None or peak_high is None:
+            continue
+
+        published_items = items_by_identity.get((ticker, isu_cd), [])
+        if len(published_items) > 1:
+            raise ValueError(f"B Select holding display item identity is ambiguous: {ticker} {isu_cd}")
+        if published_items:
+            source_item = published_items[0]
+            source_close = _finite_positive(source_item.get("latest_close"))
+            source_date = str(source_item.get("latest_close_as_of", ""))[:10]
+            if source_close is not None and source_date == reference_market_date:
+                if not math.isclose(source_close, current_reference_price, rel_tol=1e-10, abs_tol=1e-7):
+                    raise ValueError(f"B Select holding reference close parity mismatch: {ticker} {isu_cd}")
+
+        drawdown_pct = (current_reference_price / peak_high - 1.0) * 100.0
+        if drawdown_pct > 1e-8:
+            raise ValueError(f"B Select holding peak drawdown is unexpectedly positive: {ticker} {isu_cd}")
+        position["peak_drawdown_pct"] = 0.0 if abs(drawdown_pct) <= 1e-10 else drawdown_pct
+
+    return result
+
+
 def _read_entry_stage_authority(repo_root: Path) -> dict[tuple[str, str, str, str], list[dict[str, str]]]:
     path = repo_root / ENTRY_STAGE_HISTORY_REL
     metadata_path = repo_root / ENTRY_STAGE_HISTORY_METADATA_REL
@@ -661,6 +862,12 @@ def build_strategy_monitor(
         and b_select_status.get("canonical_current_open_position_count") != len(b_canonical_open_positions)
     ):
         raise ValueError("B Select canonical current OPEN count mismatch")
+    b_canonical_open_positions = _current_holding_path_metrics(
+        repo_root,
+        b_canonical_open_positions,
+        b_current_items,
+        resolved_reference,
+    )
 
     strategies = [
         {

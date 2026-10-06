@@ -616,6 +616,7 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
 .strategy-item { display: grid; align-items: center; gap: 12px; min-width: 0; min-height: 108px; border: 1px solid var(--line); padding: 16px; color: var(--ink); background: var(--surface); border-radius: 9px; text-decoration: none; }
 .strategy-item-a-fast { grid-template-columns: minmax(190px, 1.55fr) repeat(5, minmax(80px, 1fr)) auto; }
 .strategy-item-b-select { grid-template-columns: minmax(170px, 1.55fr) minmax(80px, 1fr) minmax(100px, 0.7fr) repeat(2, minmax(80px, 1fr)) repeat(3, minmax(80px, 1fr)) auto; column-gap: 10px; }
+.strategy-item-b-select-hold { grid-template-columns: minmax(170px, 1.55fr) minmax(80px, 1fr) minmax(100px, 0.7fr) repeat(2, minmax(80px, 1fr)) repeat(5, minmax(80px, 1fr)) auto; column-gap: 10px; }
 .strategy-item-julia { grid-template-columns: minmax(190px, 1.55fr) repeat(4, minmax(80px, 1fr)) auto; }
 .strategy-item:hover { border-color: var(--line-strong); background: var(--surface-muted); }
 .strategy-item:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
@@ -836,9 +837,25 @@ h2 { margin-bottom: 0; font-size: 18px; letter-spacing: -0.035em; line-height: 1
   .strategy-item { row-gap: 8px; }
   .strategy-item-a-fast { grid-template-columns: minmax(108px, 1.35fr) repeat(5, minmax(72px, 1fr)) minmax(92px, 92px); }
   .strategy-item-b-select { grid-template-columns: minmax(108px, 1.3fr) minmax(70px, .9fr) minmax(65px, .8fr) minmax(145px, 1.8fr) minmax(65px, .8fr) minmax(72px, .9fr) minmax(72px, .9fr) minmax(68px, .8fr) minmax(92px, 92px); }
+  .strategy-item-b-select-hold { grid-template-columns: minmax(108px, 1.3fr) minmax(70px, .9fr) minmax(65px, .8fr) minmax(145px, 1.8fr) minmax(65px, .8fr) repeat(5, minmax(68px, .9fr)) minmax(92px, 92px); }
   .strategy-item-julia { grid-template-columns: minmax(130px, 1.45fr) repeat(4, minmax(80px, 1fr)) minmax(92px, 92px); }
   .strategy-item-identity, .strategy-item-link { grid-column: auto; grid-row: auto; }
   .strategy-item-link { justify-self: end; }
+}
+
+@media (min-width: 561px) and (max-width: 820px) {
+  .strategy-item-b-select-hold { grid-template-columns: repeat(5, minmax(0, 1fr)) 24px; column-gap: 8px; row-gap: 10px; }
+  .strategy-item-b-select-hold .strategy-item-identity { grid-column: 1 / 6; grid-row: 1; }
+  .strategy-item-b-select-hold .strategy-item-link { grid-column: 6; grid-row: 1; }
+  .strategy-item-b-select-hold .strategy-item-position { grid-column: 1; grid-row: 2; }
+  .strategy-item-b-select-hold .strategy-item-fundamental { grid-column: 2; grid-row: 2; }
+  .strategy-item-b-select-hold .strategy-item-pattern-a { grid-column: 3; grid-row: 2; margin-inline-end: 0; }
+  .strategy-item-b-select-hold .strategy-item-pattern-b { grid-column: 4; grid-row: 2; }
+  .strategy-item-b-select-hold .strategy-item-current-price { grid-column: 5; grid-row: 2; }
+  .strategy-item-b-select-hold .strategy-item-entry-price { grid-column: 1; grid-row: 3; }
+  .strategy-item-b-select-hold .strategy-item-return { grid-column: 2; grid-row: 3; }
+  .strategy-item-b-select-hold .strategy-item-holding-age { grid-column: 3; grid-row: 3; }
+  .strategy-item-b-select-hold .strategy-item-peak-drawdown { grid-column: 4; grid-row: 3; }
 }
 
 @media (max-width: 560px) {

@@ -121,6 +121,21 @@
     return `${sign}${formatNumber(Math.abs(number), 2)}%`;
   }
 
+  function formatOneDecimal(value) {
+    if (value == null || value === "" || !Number.isFinite(Number(value))) return "미상";
+    return new Intl.NumberFormat("ko-KR", {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }).format(Number(value));
+  }
+
+  function formatPeakDrawdown(value) {
+    if (value == null || value === "" || !Number.isFinite(Number(value))) return "미상";
+    const number = Number(value);
+    const sign = number > 0 ? "+" : number < 0 ? "−" : "";
+    return `${sign}${formatOneDecimal(Math.abs(number))}%`;
+  }
+
   function readStoredTheme() {
     try {
       const value = localStorage.getItem(THEME_STORAGE_KEY);
@@ -333,7 +348,11 @@
       : strategyId === "JULIA_ETF_STRATEGY_V01"
         ? "strategy-item-julia"
         : "strategy-item-a-fast";
-    const link = createElement("a", `strategy-item ${layoutClass}`);
+    const isOpenHolding = isBSelectLineageId(strategyId)
+      && item.bucket === "hold"
+      && item.canonical_position === "OPEN";
+    const holdingLayoutClass = isOpenHolding ? " strategy-item-b-select-hold" : "";
+    const link = createElement("a", `strategy-item ${layoutClass}${holdingLayoutClass}`);
     link.href = reportHref(item.ticker, item.isu_cd);
     link.setAttribute("aria-label", `${item.name} ${item.ticker} 리포트 보기`);
 
@@ -358,7 +377,7 @@
       detailFields = [
         createField("펀더멘탈", fundamentalStatus(item), "strategy-item-fundamental"),
         createMultilineField("Pattern A", [stageLabel(previousPatternAStage), `→ ${stageLabel(currentPatternAStage)}`], "strategy-item-pattern-a"),
-        createField("Pattern B", patternBLabel(item.pattern_b_state)),
+        createField("Pattern B", patternBLabel(item.pattern_b_state), "strategy-item-pattern-b"),
       ];
     } else if (strategyId === "JULIA_ETF_STRATEGY_V01") {
       detailFields = [];
@@ -368,17 +387,35 @@
         : createField("패턴", `${stageLabel(item.pattern_stage)} · ${formatNumber(item.pattern_score, 2)}점`);
       detailFields = [pattern];
     }
-    const price = createPriceDateField("현재가", formatPrice(item.latest_close), formatDate(item.latest_close_as_of));
+    const price = createPriceDateField("현재가", formatPrice(item.latest_close), formatDate(item.latest_close_as_of), "strategy-item-current-price");
     const trade = item.current_trade;
     const entry = trade
-      ? createPriceDateField("진입가", formatPrice(trade.entry_open), formatDate(trade.entry_execution_date))
-      : createField("진입가", "—");
+      ? createPriceDateField("진입가", formatPrice(trade.entry_open), formatDate(trade.entry_execution_date), "strategy-item-entry-price")
+      : createField("진입가", "—", "strategy-item-entry-price");
     const returnClass = trade && Number(trade.return_pct) > 0 ? "detail-value-positive" : trade && Number(trade.return_pct) < 0 ? "detail-value-negative" : "";
-    const returnField = createField("수익률", trade ? formatReturn(trade.return_pct) : "—", returnClass);
+    const returnField = createField(
+      "수익률",
+      trade ? formatReturn(trade.return_pct) : "—",
+      [returnClass, "strategy-item-return"].filter(Boolean).join(" "),
+    );
+    const holdingAge = isOpenHolding
+      ? createField(
+        "보유일",
+        Number.isInteger(Number(item.holding_age_sessions)) && Number(item.holding_age_sessions) >= 1
+          ? `${formatNumber(item.holding_age_sessions)}일`
+          : "미상",
+        "strategy-item-holding-age",
+      )
+      : null;
+    const peakDrawdown = isOpenHolding
+      ? createField("고점대비", formatPeakDrawdown(item.peak_drawdown_pct), "strategy-item-peak-drawdown")
+      : null;
     const arrow = createElement("span", "row-chevron strategy-item-link", ">");
     arrow.setAttribute("aria-hidden", "true");
 
-    link.append(identity, position, ...detailFields, price, entry, returnField, arrow);
+    link.append(identity, position, ...detailFields, price, entry, returnField);
+    if (isOpenHolding) link.append(holdingAge, peakDrawdown);
+    link.append(arrow);
     return link;
   }
 
@@ -419,6 +456,8 @@
           entry_open: position.entry_price ?? sourceTrade.entry_open,
           return_pct: sourceTrade.return_pct ?? position.return_pct,
         },
+        holding_age_sessions: position.holding_age_sessions,
+        peak_drawdown_pct: position.peak_drawdown_pct,
         fundamental_status: position.fundamental_status || source.fundamental_status,
         bucket: "hold",
       };
