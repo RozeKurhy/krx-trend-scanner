@@ -1,0 +1,82 @@
+{
+  "elapsed_seconds": 6.511177917011082,
+  "first_entries": [
+    {
+      "entry_execution_date": "2023-06-05",
+      "entry_open": 4665.0,
+      "entry_signal_date": "2023-06-02",
+      "ticker": "001740"
+    },
+    {
+      "entry_execution_date": "2025-11-03",
+      "entry_open": 244000.0,
+      "entry_signal_date": "2025-10-31",
+      "ticker": "011070"
+    },
+    {
+      "entry_execution_date": "2023-07-17",
+      "entry_open": 124700.0,
+      "entry_signal_date": "2023-07-14",
+      "ticker": "066570"
+    },
+    {
+      "entry_execution_date": "2023-09-04",
+      "entry_open": 50900.0,
+      "entry_signal_date": "2023-09-01",
+      "ticker": "140410"
+    }
+  ],
+  "hwm_audit": {
+    "applied_exit_count": 5,
+    "status": "PASS",
+    "trigger_rows": 5,
+    "validation_errors": []
+  },
+  "hwm_exit_types": {
+    "EXIT_120D_CLOSE_HWM_DRAWDOWN_LE_NEG20": 5,
+    "LOSS_GUARD_CLOSE_LE_NEG_15": 2
+  },
+  "isolation_checks": {
+    "actual_entry_set_changes_without_prior_hwm_count": 0,
+    "all_hwm_exit_rows_are_post_120_session_by_audit": true,
+    "all_later_or_missing_signals_trace_to_prior_hwm_reentry": true,
+    "candidate_only_without_prior_hwm_count": 0,
+    "common_trade_entry_and_existing_lifecycle_fields_match_CONTROL": {
+      "actual_rows": 6,
+      "expected_rows": 6,
+      "first_mismatches": [],
+      "mismatch_count": 0,
+      "pass": true
+    },
+    "control_only_without_prior_hwm_count": 0,
+    "first_entry_signal_and_execution_match_CONTROL": {
+      "actual_rows": 4,
+      "expected_rows": 4,
+      "first_mismatches": [],
+      "mismatch_count": 0,
+      "pass": true
+    },
+    "hwm_exit_label_and_audit_count_match": true,
+    "status": "PASS",
+    "unaffected_common_trade_outcomes_match_CONTROL": {
+      "actual_rows": 2,
+      "expected_rows": 2,
+      "first_mismatches": [],
+      "mismatch_count": 0,
+      "pass": true
+    },
+    "unexplained_actual_entry_keys": [],
+    "unexplained_candidate_only_keys": [],
+    "unexplained_control_only_keys": []
+  },
+  "mode": "smoke",
+  "selected_tickers": [
+    "011070",
+    "140410",
+    "066570",
+    "001740"
+  ],
+  "status": "PASS",
+  "strategy_rows": 7,
+  "worker_errors": []
+}
