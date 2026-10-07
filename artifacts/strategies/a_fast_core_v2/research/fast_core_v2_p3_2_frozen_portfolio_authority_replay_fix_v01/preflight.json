@@ -1,0 +1,68 @@
+{
+  "frozen_authority": {
+    "authority_note": "The original 2026-09-21 merged PIT bytes are absent; replay inputs reconstruct the consumed historical interval authority plus the exact saved active-identity projection. Exact control parity is the acceptance gate.",
+    "calendar_as_of": "2026-09-01",
+    "calendar_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/p2_2_identity_authority_extension_v01/merged_trading_calendar.json",
+    "calendar_sha256": "cf9560da17674c866c57906b4b8e21ce956a0e7a0a9a3ccd1779d1a83a7111c2",
+    "historical_pit_path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/p2_2_identity_authority_extension_v01/merged_pit_intervals.json",
+    "historical_pit_sha256": "6747f26368369bc2ff5d20d695daed702c577bab34dd79640d41fbc862950bd1",
+    "new_prices_or_network_calls": 0,
+    "saved_survivor_as_of": "2026-09-21",
+    "saved_survivor_audit_sha256": "313bca3d5dbc28672cb505c18b61af40a9b4b827c11af56b30f45160cdba1506",
+    "source_latest_rolling_authority_read": false,
+    "status": "PASS",
+    "survivor_identity_count": 2539
+  },
+  "latest_authority_dependency_in_frozen_mode": false,
+  "mode": "evaluate-saved-candidates",
+  "provenance": {
+    "effective_pit_sha256": "6747f26368369bc2ff5d20d695daed702c577bab34dd79640d41fbc862950bd1",
+    "head_at_finish": "342d41d1662cf00d33ee1304c75035e04d1301e9",
+    "head_at_start": "e15033925177977c026098039c3c29f245c6bf88",
+    "network_calls": 0,
+    "official_runner_sha256": "a48f49d61284b9b558e1172ea907feaa3bc35f6c2a5aaeb735c6db9739a56431",
+    "original_merged_pit_bytes_present": false,
+    "original_p3_survivor_and_trade_projections_present": true,
+    "original_rolling_manifest_bytes_present": false,
+    "saved_control_equity_rows": 1140,
+    "saved_control_event_rows": 774,
+    "saved_control_strategy_rows": 405,
+    "saved_p3_merged_pit_sha256": "ff783168c56a4772a681e34b97b17d8855f28d1c13df25094bd65cedbc80cd26",
+    "saved_p3_rolling_manifest_sha256": "25e2b2487af724439ce27959c514391e2a45f3fbacf412859efbc52d2ef760f1",
+    "saved_p3_status": "P3_2_REALISTIC_PORTFOLIO_BACKTEST_CERTIFIED",
+    "status": "PASS",
+    "strategy_source_sha256": "a6e70b7bda6507f0913b7553fb8004cb9b2d96460eb4f4dabfc0ab82488351c8"
+  },
+  "scope_reconciliation": {
+    "all_65_exact_market_cap_passed_at_their_signal_date": true,
+    "classification_csv": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_frozen_portfolio_authority_replay_fix_v01/scope_reconciliation.csv",
+    "classification_is_disjoint_and_exhaustive": true,
+    "common_keys": 340,
+    "evidence": [
+      "35 identities appear in the P3-2 study's later permanent-exclusion registry snapshot and are absent from that study's signal ledger.",
+      "4 identities are explicitly marked REPOSITORY_V2_DATA_UNAVAILABLE in the study data-availability audit.",
+      "For the remaining 26, the unfiltered study consumes the ticker re-entry state on an earlier signal whose exact P3-2 MKTCAP is below 1T; the later P3-2 qualified signal then enters the portfolio ledger."
+    ],
+    "portfolio_only": 65,
+    "portfolio_only_classification": {
+      "later_permanent_exclusion_authority": 35,
+      "mcap_rejected_prior_signal_did_not_consume_reentry": 26,
+      "study_repository_v2_data_unavailable": 4
+    },
+    "portfolio_strategy_rows": 405,
+    "status": "PASS",
+    "study_control_ledger_sha256": "ace616a3cda4fa52f44df145c270d98686a1da6698ad0469e920e848bfa9c6c8",
+    "study_control_rows": 1644,
+    "study_only": 1304,
+    "study_snapshot_commit": "6612a3fe3c3586826edc44974451d8ccd0f78d34"
+  },
+  "source_files": {
+    "effective_pit_sha256": "6747f26368369bc2ff5d20d695daed702c577bab34dd79640d41fbc862950bd1",
+    "p3_runner_sha256": "a48f49d61284b9b558e1172ea907feaa3bc35f6c2a5aaeb735c6db9739a56431",
+    "strategy_sha256": "a6e70b7bda6507f0913b7553fb8004cb9b2d96460eb4f4dabfc0ab82488351c8",
+    "survivor_audit_sha256": "313bca3d5dbc28672cb505c18b61af40a9b4b827c11af56b30f45160cdba1506"
+  },
+  "status": "PASS",
+  "survivor_ticker_count": 2539,
+  "worker_count": 10
+}
