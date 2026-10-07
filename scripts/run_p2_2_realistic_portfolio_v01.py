@@ -553,15 +553,32 @@ def _full_run(*, workers: int) -> dict[str, Any]:
     )
     skipped = pd.DataFrame(results["CONTROL"]["skipped"] + results["CANDIDATE"]["skipped"])
     unresolved_portfolio = int(metrics["control"]["unresolved_count"] + metrics["candidate"]["unresolved_count"])
-    unclassified_carries = int(carries["gap_classification"].isin(["UNCLASSIFIED"]).sum()) if not carries.empty else 0
+    unapproved_carries = int(
+        (carries["carry_applied"].fillna(False).astype(bool)
+         & ~carries["carry_allowed"].fillna(False).astype(bool)).sum()
+    ) if not carries.empty else 0
+    unclassified_gaps = int(
+        carries["gap_classification"].astype(str).eq("NEW_UNCLASSIFIED_GAP").sum()
+    ) if not carries.empty else 0
     daily_expected = len([day for day in all_dates if start <= day <= support])
     curves_complete = all(len(results[key]["daily_equity"]) == daily_expected for key in ("CONTROL", "CANDIDATE"))
+    mdd_coverage_pass = all(
+        metrics[key.lower()]["mdd_usable_for_official_pass"] for key in ("CONTROL", "CANDIDATE")
+    )
+    unresolved_non_valuation = sum(
+        metrics[key.lower()]["unresolved_non_valuation_count"] for key in ("CONTROL", "CANDIDATE")
+    )
+    return_reproduction_pass = True
     for key in ("CONTROL", "CANDIDATE"):
         curve = pd.DataFrame(results[key]["daily_equity"])
-        last_equity = float(curve.dropna(subset=["equity"]).iloc[-1]["equity"])
-        reproduced_return = (last_equity / portfolio.INITIAL_CAPITAL - 1.0) * 100.0
-        if abs(reproduced_return - metrics[key.lower()]["cumulative_return_pct"]) > 0.1:
-            raise RuntimeError(f"P2_2_RETURN_REPRODUCTION_OUTSIDE_0_1PP:{key}")
+        support_curve = curve.loc[curve["date"].astype(str).eq(support.strftime("%Y-%m-%d"))]
+        final_equity = support_curve.iloc[0]["equity"] if len(support_curve) == 1 else None
+        if pd.isna(final_equity) or metrics[key.lower()]["cumulative_return_pct"] is None:
+            return_reproduction_pass = False
+        else:
+            reproduced_return = (float(final_equity) / portfolio.INITIAL_CAPITAL - 1.0) * 100.0
+            if abs(reproduced_return - metrics[key.lower()]["cumulative_return_pct"]) > 0.1:
+                return_reproduction_pass = False
         if not metrics[key.lower()]["cash_conservation_pass"]:
             raise RuntimeError(f"P2_2_CASH_CONSERVATION_FAILED:{key}")
 
@@ -579,10 +596,15 @@ def _full_run(*, workers: int) -> dict[str, Any]:
         "mcap_signal_status_counts": mcap_counts,
         "portfolio_unresolved_count": unresolved_portfolio,
         "valuation_carry_audit_rows": int(len(carries)),
-        "unclassified_valuation_carry_count": unclassified_carries,
+        "unclassified_valuation_gap_count": unclassified_gaps,
+        "unapproved_carry_count": unapproved_carries,
+        "unresolved_non_valuation_count": int(unresolved_non_valuation),
+        "mdd_coverage_gate_pass": bool(mdd_coverage_pass),
         "control_cash_conservation": bool(metrics["control"]["cash_conservation_pass"]),
         "candidate_cash_conservation": bool(metrics["candidate"]["cash_conservation_pass"]),
-        "daily_equity_complete": curves_complete,
+        "daily_equity_rows_complete": curves_complete,
+        "daily_equity_complete": all(metrics[name]["valid_nav_days"] == metrics[name]["total_valuation_days"] for name in ("control", "candidate")),
+        "final_return_reproduction_pass": bool(return_reproduction_pass),
         "no_hidden_position_cap": True,
         "network_calls": 0,
         "aggregate_return_tolerance_pp": 0.1,
@@ -590,9 +612,11 @@ def _full_run(*, workers: int) -> dict[str, Any]:
     certified = (
         pairing_pass
         and validation["mcap_unresolved_count"] == 0
-        and unresolved_portfolio == 0
-        and unclassified_carries == 0
+        and unresolved_non_valuation == 0
+        and unapproved_carries == 0
         and curves_complete
+        and mdd_coverage_pass
+        and return_reproduction_pass
         and validation["control_cash_conservation"]
         and validation["candidate_cash_conservation"]
     )

@@ -47,6 +47,7 @@ POSITION_BUDGET = 5_000_000.0
 MARKET_CAP_THRESHOLD = 1_000_000_000_000
 COMMISSION_RATE = 0.00015
 SLIPPAGE_RATE = 0.001
+CARRY_APPROVED_GAP_CLASSIFICATIONS = frozenset({"NON_TRADING_PLACEHOLDER"})
 SELL_TAX_SCHEDULE = (
     ("2021-01-01", "2022-12-31", 0.0023),
     ("2023-01-01", "2023-12-31", 0.0020),
@@ -430,27 +431,44 @@ def _valuation_close_with_carry(
     strategy_id: str,
     pair_id: str,
 ) -> tuple[float | None, dict[str, Any] | None]:
-    """Use exact valid adjusted close, or prior close only for daily portfolio MTM."""
+    """Use exact close, carrying a prior close only with explicit non-trading proof."""
     valuation_day = pd.Timestamp(day).normalize()
     exact = _price(record, frames, valuation_day, "close")
     if exact is not None:
         return exact, None
 
     frame = _frame_for_record(record, frames)
-    if frame is None or "close" not in frame.columns:
-        return None, None
-    prior = pd.to_numeric(frame.loc[frame.index < valuation_day, "close"], errors="coerce")
-    prior = prior[prior.map(lambda value: pd.notna(value) and math.isfinite(float(value)) and float(value) > 0)]
-    if prior.empty:
-        return None, None
-
-    last_valid_date = pd.Timestamp(prior.index[-1]).normalize()
-    if last_valid_date >= valuation_day:
-        raise RuntimeError("P2_1_VALUATION_CARRY_NOT_STRICTLY_PRIOR")
-    if valuation_day not in trading_session_positions or last_valid_date not in trading_session_positions:
-        return None, None
     ticker = str(record.get("ticker", "")).zfill(6)
-    close = float(prior.iloc[-1])
+    valuation_date = valuation_day.strftime("%Y-%m-%d")
+    classification = str(gap_classifications.get((ticker, valuation_date), "NEW_UNCLASSIFIED_GAP"))
+    carry_allowed = classification in CARRY_APPROVED_GAP_CLASSIFICATIONS
+    prior = pd.Series(dtype=float)
+    if frame is not None and "close" in frame.columns:
+        prior = pd.to_numeric(frame.loc[frame.index < valuation_day, "close"], errors="coerce")
+        prior = prior[prior.map(lambda value: pd.notna(value) and math.isfinite(float(value)) and float(value) > 0)]
+        prior = prior.sort_index()
+    last_valid_date = pd.Timestamp(prior.index[-1]).normalize() if not prior.empty else None
+    prior_close = float(prior.iloc[-1]) if not prior.empty else None
+    if last_valid_date is not None and last_valid_date >= valuation_day:
+        raise RuntimeError("P2_1_VALUATION_CARRY_NOT_STRICTLY_PRIOR")
+    calendar_proves_mark_age = (
+        last_valid_date is not None
+        and valuation_day in trading_session_positions
+        and last_valid_date in trading_session_positions
+    )
+    carry_applied = bool(carry_allowed and calendar_proves_mark_age)
+    if carry_applied:
+        carry_status = "CARRIED_WITH_EXPLICIT_REPOSITORY_NON_TRADING_EVIDENCE"
+        carry_reason = "NON_TRADING_PLACEHOLDER_V01"
+    elif not carry_allowed:
+        carry_status = "UNOBSERVABLE_NO_APPROVED_NON_TRADING_EVIDENCE"
+        carry_reason = "GAP_CLASSIFICATION_NOT_CARRY_APPROVED"
+    elif last_valid_date is None:
+        carry_status = "UNOBSERVABLE_NO_PRIOR_VALID_CLOSE"
+        carry_reason = "NO_PRIOR_VALID_ADJUSTED_CLOSE"
+    else:
+        carry_status = "UNOBSERVABLE_PRIOR_MARK_OUTSIDE_TRADING_CALENDAR"
+        carry_reason = "PRIOR_MARK_AGE_NOT_VERIFIABLE_ON_FROZEN_CALENDAR"
     audit = {
         "strategy_id": strategy_id,
         "pair_id": pair_id,
@@ -458,18 +476,27 @@ def _valuation_close_with_carry(
         "ticker": ticker,
         "identity": record.get("isu_cd"),
         "market": record.get("market"),
-        "valuation_date": valuation_day.strftime("%Y-%m-%d"),
-        "last_valid_adjusted_close_date": last_valid_date.strftime("%Y-%m-%d"),
-        "carried_adjusted_close": close,
-        "stale_age_trading_days": trading_session_positions[valuation_day] - trading_session_positions[last_valid_date],
-        "stale_age_calendar_days": int((valuation_day - last_valid_date).days),
-        "gap_classification": gap_classifications.get((ticker, valuation_day.strftime("%Y-%m-%d")), "NEW_UNCLASSIFIED_GAP"),
+        "valuation_date": valuation_date,
+        "last_valid_adjusted_close_date": last_valid_date.strftime("%Y-%m-%d") if last_valid_date is not None else None,
+        "last_valid_adjusted_close": prior_close,
+        "carried_adjusted_close": prior_close if carry_applied else None,
+        "stale_age_trading_days": (
+            trading_session_positions[valuation_day] - trading_session_positions[last_valid_date]
+            if calendar_proves_mark_age else None
+        ),
+        "stale_age_calendar_days": int((valuation_day - last_valid_date).days) if last_valid_date is not None else None,
+        "gap_classification": classification,
+        "carry_allowed": carry_allowed,
+        "carry_applied": carry_applied,
+        "carry_status": carry_status,
+        "carry_reason": carry_reason,
+        "carry_evidence": "MARKET_DATA_REPOSITORY_V2_NON_TRADING_PLACEHOLDER_V01" if carry_allowed else None,
         "valuation_only": True,
         "used_for_execution": False,
         "used_for_strategy_or_features": False,
-        "carry_rule": "MOST_RECENT_EARLIER_VALID_ADJUSTED_CLOSE",
+        "carry_rule": "MOST_RECENT_EARLIER_VALID_ADJUSTED_CLOSE_ONLY_WITH_EXPLICIT_NON_TRADING_EVIDENCE",
     }
-    return close, audit
+    return (prior_close if carry_applied else None), audit
 
 
 def _tax_rate(day: pd.Timestamp, market: str) -> float:
@@ -486,32 +513,100 @@ def _mdd(curve: pd.DataFrame) -> dict[str, Any]:
     valid = curve.dropna(subset=["equity"]).copy()
     if valid.empty:
         return {"mdd_pct": None, "peak_date": None, "trough_date": None, "recovery_date": None, "recovered": False}
-    peak_value = float(valid.iloc[0]["equity"])
-    peak_date = pd.Timestamp(valid.iloc[0]["date"])
-    worst = 0.0
-    worst_peak = peak_date
-    worst_trough = peak_date
-    recovery_date: str | None = None
-    for row in valid.itertuples(index=False):
-        day = pd.Timestamp(row.date)
-        equity = float(row.equity)
-        if equity >= peak_value:
-            peak_value = equity
-            peak_date = day
-        drawdown = equity / peak_value - 1.0 if peak_value else 0.0
-        if drawdown < worst:
-            worst = drawdown
-            worst_peak = peak_date
-            worst_trough = day
-            recovery_date = None
-        elif worst < 0 and day > worst_trough and equity >= peak_value and recovery_date is None:
-            recovery_date = day.strftime("%Y-%m-%d")
+    valid = valid.copy()
+    valid["date"] = pd.to_datetime(valid["date"], errors="raise")
+    valid["equity"] = pd.to_numeric(valid["equity"], errors="raise")
+    valid = valid.sort_values("date", kind="mergesort").reset_index(drop=True)
+    running_peak = valid["equity"].cummax()
+    drawdowns = valid["equity"] / running_peak - 1.0
+    trough_index = int(drawdowns.idxmin())
+    worst = float(drawdowns.iloc[trough_index])
+    trough_date = pd.Timestamp(valid.iloc[trough_index]["date"])
+    peak_value = float(running_peak.iloc[trough_index])
+    peak_candidates = valid.loc[:trough_index].index[valid.loc[:trough_index, "equity"].eq(peak_value)]
+    peak_index = int(peak_candidates[-1]) if len(peak_candidates) else 0
+    peak_date = pd.Timestamp(valid.iloc[peak_index]["date"])
+    recovery_rows = valid.loc[(valid.index > trough_index) & valid["equity"].ge(peak_value)]
+    recovery_date = (
+        pd.Timestamp(recovery_rows.iloc[0]["date"]).strftime("%Y-%m-%d")
+        if worst < 0 and not recovery_rows.empty else None
+    )
     return {
         "mdd_pct": round(worst * 100.0, 6),
-        "peak_date": worst_peak.strftime("%Y-%m-%d"),
-        "trough_date": worst_trough.strftime("%Y-%m-%d"),
+        "peak_date": peak_date.strftime("%Y-%m-%d"),
+        "trough_date": trough_date.strftime("%Y-%m-%d"),
         "recovery_date": recovery_date,
         "recovered": recovery_date is not None,
+    }
+
+
+def _valuation_coverage_metrics(
+    curve: pd.DataFrame,
+    *,
+    effective_start: pd.Timestamp,
+    effective_end: pd.Timestamp,
+) -> dict[str, Any]:
+    """Calculate coverage and MDD using only observable official session NAVs."""
+    if curve.empty:
+        window = curve.copy()
+    else:
+        window = curve.copy()
+        window["date"] = pd.to_datetime(window["date"], errors="raise").dt.normalize()
+        start = pd.Timestamp(effective_start).normalize()
+        end = pd.Timestamp(effective_end).normalize()
+        window = window.loc[window["date"].between(start, end)].sort_values("date", kind="mergesort")
+    if not window.empty and window["date"].duplicated().any():
+        raise RuntimeError("P2_1_DUPLICATE_DAILY_NAV_DATE")
+    total_days = int(len(window))
+    numeric_equity = pd.to_numeric(window.get("equity", pd.Series(index=window.index, dtype=float)), errors="coerce")
+    observable = numeric_equity.map(lambda value: pd.notna(value) and math.isfinite(float(value)))
+    valid_days = int(observable.sum())
+    unobservable_days = total_days - valid_days
+    coverage_ratio = valid_days / total_days if total_days else 0.0
+    is_exact = total_days > 0 and valid_days == total_days
+    # Integer comparison avoids a rounded percentage changing the 90% gate.
+    meets_observed_floor = total_days > 0 and valid_days * 10 >= total_days * 9
+    mdd_type = "EXACT" if is_exact else "OBSERVED" if meets_observed_floor else "INSUFFICIENT"
+    mdd_curve = window.loc[observable, ["date"]].copy()
+    mdd_curve["equity"] = numeric_equity.loc[observable].astype(float)
+
+    gap_intervals: list[dict[str, Any]] = []
+    current_start: pd.Timestamp | None = None
+    current_end: pd.Timestamp | None = None
+    current_length = 0
+    for raw_date, is_observable in zip(window["date"], observable, strict=True):
+        date = pd.Timestamp(raw_date).normalize()
+        if not bool(is_observable):
+            if current_start is None:
+                current_start = date
+            current_end = date
+            current_length += 1
+        elif current_start is not None:
+            gap_intervals.append({
+                "start_date": current_start.strftime("%Y-%m-%d"),
+                "end_date": current_end.strftime("%Y-%m-%d"),
+                "trading_days": current_length,
+            })
+            current_start = current_end = None
+            current_length = 0
+    if current_start is not None:
+        gap_intervals.append({
+            "start_date": current_start.strftime("%Y-%m-%d"),
+            "end_date": current_end.strftime("%Y-%m-%d"),
+            "trading_days": current_length,
+        })
+    return {
+        "total_valuation_days": total_days,
+        "valid_nav_days": valid_days,
+        "unobservable_nav_days": unobservable_days,
+        "coverage_ratio": coverage_ratio,
+        "coverage_pct": round(coverage_ratio * 100.0, 6),
+        "mdd_type": mdd_type,
+        "mdd_usable_for_official_pass": mdd_type in {"EXACT", "OBSERVED"},
+        "unresolved_gap_interval_count": len(gap_intervals),
+        "maximum_consecutive_unobservable_days": max((item["trading_days"] for item in gap_intervals), default=0),
+        "unobservable_gap_intervals": gap_intervals,
+        **_mdd(mdd_curve),
     }
 
 
@@ -825,7 +920,7 @@ def _portfolio_replay(
                 valuation_day = min(last_date, effective_end)
             else:
                 valuation_day = mark_date
-            close, stale_audit = _valuation_close_with_carry(
+            close, gap_audit = _valuation_close_with_carry(
                 record,
                 frames,
                 valuation_day,
@@ -834,15 +929,22 @@ def _portfolio_replay(
                 strategy_id=strategy_id,
                 pair_id=str(record.get("pair_id", "")),
             )
+            if gap_audit is not None:
+                gap_audit["mark_observed_on"] = day.strftime("%Y-%m-%d")
+                valuation_gap_audit.append(gap_audit)
             if close is None:
                 valuation_missing = True
                 unresolved_count += 1
-                skipped.append({"strategy_id": strategy_id, "pair_id": record.get("pair_id"), "ticker": record.get("ticker"), "date": valuation_day.strftime("%Y-%m-%d"), "skip_reason": "MISSING_EXACT_DAILY_MARK"})
+                skipped.append({
+                    "strategy_id": strategy_id,
+                    "pair_id": record.get("pair_id"),
+                    "ticker": record.get("ticker"),
+                    "date": valuation_day.strftime("%Y-%m-%d"),
+                    "skip_reason": "MISSING_EXACT_DAILY_MARK",
+                    "gap_classification": gap_audit.get("gap_classification") if gap_audit else "NEW_UNCLASSIFIED_GAP",
+                })
             else:
                 invested_value += int(position["shares"]) * close
-                if stale_audit is not None:
-                    stale_audit["mark_observed_on"] = day.strftime("%Y-%m-%d")
-                    valuation_gap_audit.append(stale_audit)
         pending_total = sum(pending_by_date.values()) + terminal_pending
         equity = None if valuation_missing else cash + pending_total + invested_value
         if equity is not None:
@@ -879,8 +981,11 @@ def _portfolio_replay(
     curve = pd.DataFrame(equity_rows)
     if curve.empty or cutoff_snapshot is None:
         raise RuntimeError("P2_1_PORTFOLIO_CURVE_OR_CUTOFF_SNAPSHOT_EMPTY")
-    valid_equity = curve.dropna(subset=["equity"])
-    final_equity = float(valid_equity.iloc[-1]["equity"]) if not valid_equity.empty else None
+    support_rows = curve.loc[curve["date"].eq(execution_support.strftime("%Y-%m-%d"))]
+    if len(support_rows) != 1:
+        raise RuntimeError("P2_1_EXECUTION_SUPPORT_NAV_ROW_NOT_UNIQUE")
+    support_equity = support_rows.iloc[0]["equity"]
+    final_equity = float(support_equity) if pd.notna(support_equity) else None
     if final_equity is None:
         unresolved_count += 1
     total_return = final_equity / INITIAL_CAPITAL - 1.0 if final_equity is not None else None
@@ -890,16 +995,27 @@ def _portfolio_replay(
         if final_equity is not None and final_equity > 0
         else None
     )
-    drawdown_metrics = _mdd(curve[curve["date"] <= effective_end.strftime("%Y-%m-%d")])
+    valuation_metrics = _valuation_coverage_metrics(
+        curve,
+        effective_start=effective_start,
+        effective_end=effective_end,
+    )
+    unresolved_valuation_marks = [item for item in valuation_gap_audit if not item.get("carry_applied")]
+    unauthorized_carry_marks = [
+        item for item in valuation_gap_audit
+        if item.get("carry_applied") and not item.get("carry_allowed")
+    ]
+    valuation_tickers = {str(item.get("ticker", "")).zfill(6) for item in unresolved_valuation_marks}
     exposure_values = pd.to_numeric(curve.loc[curve["date"] <= effective_end.strftime("%Y-%m-%d"), "exposure"], errors="coerce").dropna()
     cash_values = pd.to_numeric(curve.loc[curve["date"] <= effective_end.strftime("%Y-%m-%d"), "cash_ratio"], errors="coerce").dropna()
     closed_net_pct = [value * 100.0 for value in closed_returns]
     metrics = {
         "final_equity": final_equity,
         "final_equity_at_effective_close": cutoff_snapshot["equity_at_effective_close"],
+        "final_equity_at_effective_close_observable": cutoff_snapshot["equity_at_effective_close"] is not None,
         "cumulative_return_pct": total_return * 100.0 if total_return is not None else None,
         "CAGR_pct": cagr * 100.0 if cagr is not None else None,
-        **drawdown_metrics,
+        **valuation_metrics,
         "trade_count": len([event for event in events if event["event_type"] == "ENTRY" and event["event_status"] == "EXECUTED"]),
         "realized_trade_count": realized_trade_count,
         "win_rate_pct": 100.0 * sum(value > 0 for value in closed_returns) / len(closed_returns) if closed_returns else None,
@@ -931,6 +1047,14 @@ def _portfolio_replay(
         "open_at_effective_cutoff_market_value_krw": cutoff_snapshot["invested_value_at_effective_close"],
         "pending_sale_proceeds_at_support_krw": terminal_pending,
         "unresolved_count": unresolved_count,
+        "unresolved_valuation_mark_count": len(unresolved_valuation_marks),
+        "unresolved_valuation_ticker_count": len(valuation_tickers),
+        "unresolved_non_valuation_count": max(
+            0,
+            unresolved_count - len(unresolved_valuation_marks) - int(final_equity is None),
+        ),
+        "unapproved_carry_count": len(unauthorized_carry_marks),
+        "approved_carry_count": sum(bool(item.get("carry_applied")) for item in valuation_gap_audit),
         "cash_conservation_pass": cash_conservation_pass,
         "position_cap": None,
     }
@@ -1100,6 +1224,18 @@ def _full_run(workers: int) -> dict[str, Any]:
         **entry_parity,
         "mcap_unresolved_count": int(len(unresolved_mcap)),
         "portfolio_unresolved_count": int(control_result["metrics"]["unresolved_count"] + candidate_result["metrics"]["unresolved_count"]),
+        "unresolved_non_valuation_count": int(
+            control_result["metrics"]["unresolved_non_valuation_count"]
+            + candidate_result["metrics"]["unresolved_non_valuation_count"]
+        ),
+        "unapproved_carry_count": int(
+            control_result["metrics"]["unapproved_carry_count"]
+            + candidate_result["metrics"]["unapproved_carry_count"]
+        ),
+        "mdd_coverage_gate_pass": bool(
+            control_result["metrics"]["mdd_usable_for_official_pass"]
+            and candidate_result["metrics"]["mdd_usable_for_official_pass"]
+        ),
         "control_cash_conservation": bool(control_result["metrics"]["cash_conservation_pass"]),
         "candidate_cash_conservation": bool(candidate_result["metrics"]["cash_conservation_pass"]),
         "position_cap_applied": False,
@@ -1107,7 +1243,9 @@ def _full_run(workers: int) -> dict[str, Any]:
     }
     status = "COMPLETE_PASS" if (
         validation["mcap_unresolved_count"] == 0
-        and validation["portfolio_unresolved_count"] == 0
+        and validation["unresolved_non_valuation_count"] == 0
+        and validation["unapproved_carry_count"] == 0
+        and validation["mdd_coverage_gate_pass"]
         and validation["control_cash_conservation"]
         and validation["candidate_cash_conservation"]
     ) else "INCOMPLETE_REQUIRES_REVIEW"
@@ -1672,8 +1810,24 @@ def _portfolio_only_replay() -> dict[str, Any]:
         pd.DataFrame(results[name]["daily_equity"])["equity"].notna().all()
         for name in ("CONTROL", "CANDIDATE")
     )
+    daily_equity_rows_complete = all(
+        len(results[name]["daily_equity"]) == len(trading_dates)
+        for name in ("CONTROL", "CANDIDATE")
+    )
     cash_conservation = all(
         results[name]["metrics"]["cash_conservation_pass"]
+        for name in ("CONTROL", "CANDIDATE")
+    )
+    mdd_coverage_pass = all(
+        results[name]["metrics"]["mdd_usable_for_official_pass"]
+        for name in ("CONTROL", "CANDIDATE")
+    )
+    unresolved_non_valuation_count = sum(
+        results[name]["metrics"]["unresolved_non_valuation_count"]
+        for name in ("CONTROL", "CANDIDATE")
+    )
+    unapproved_carry_count = sum(
+        results[name]["metrics"]["unapproved_carry_count"]
         for name in ("CONTROL", "CANDIDATE")
     )
     mcap_reason_counts = reason_audit.loc[~reason_audit["ledger_materialized"], "reason"].value_counts().to_dict()
@@ -1693,6 +1847,9 @@ def _portfolio_only_replay() -> dict[str, Any]:
         **entry_parity,
         "mcap_unresolved_count": int(pit_audit["status"].astype(str).eq("UNRESOLVED").sum()),
         "portfolio_unresolved_count": unresolved_count,
+        "unresolved_non_valuation_count": int(unresolved_non_valuation_count),
+        "unapproved_carry_count": int(unapproved_carry_count),
+        "mdd_coverage_gate_pass": bool(mdd_coverage_pass),
         "control_cash_conservation": bool(results["CONTROL"]["metrics"]["cash_conservation_pass"]),
         "candidate_cash_conservation": bool(results["CANDIDATE"]["metrics"]["cash_conservation_pass"]),
         "position_cap_applied": False,
@@ -1704,17 +1861,19 @@ def _portfolio_only_replay() -> dict[str, Any]:
         "stale_mark_audit_rows": int(len(all_valuation_audit)),
         "new_unclassified_stale_mark_count": new_gap_count,
         "daily_equity_complete": bool(daily_equity_complete),
+        "daily_equity_rows_complete": bool(daily_equity_rows_complete),
         "cash_conservation_pass": bool(cash_conservation),
         "network_calls": 0,
     }
     certified = (
         validation["mcap_unresolved_count"] == 0
-        and unresolved_count == 0
+        and unresolved_non_valuation_count == 0
+        and unapproved_carry_count == 0
         and total_slot_skips == 0
         and mcap_closure_pass
         and gap_baseline_pass
-        and new_gap_count == 0
-        and daily_equity_complete
+        and mdd_coverage_pass
+        and daily_equity_rows_complete
         and cash_conservation
     )
     summary.update(

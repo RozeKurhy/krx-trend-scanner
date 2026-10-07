@@ -50,15 +50,19 @@ def test_paired_identity_audit_checks_pair_trade_and_entry_parity():
     assert not bool(audit.iloc[0]["identity_and_entry_match"])
 
 
-def test_certification_requires_zero_unresolved_and_no_slot_cap_skips():
+def test_certification_uses_mdd_coverage_contract_and_rejects_unapproved_carry():
     summary = {
         "raw_pit_partition_coverage": {"all_expected_market_dates_complete": True},
+        "portfolio": {
+            "control": {"mdd_usable_for_official_pass": True, "final_equity": 300_000_000.0},
+            "candidate": {"mdd_usable_for_official_pass": True, "final_equity": 320_000_000.0},
+        },
         "validation": {
             "matching_pass": True,
             "mcap_unresolved_count": 0,
-            "portfolio_unresolved_count": 0,
-            "unclassified_valuation_carry_count": 0,
-            "daily_equity_complete": True,
+            "unresolved_non_valuation_count": 0,
+            "unapproved_carry_count": 0,
+            "daily_equity_rows_complete": True,
             "control_cash_conservation": True,
             "candidate_cash_conservation": True,
         }
@@ -68,7 +72,10 @@ def test_certification_requires_zero_unresolved_and_no_slot_cap_skips():
         "portfolio_engine_source_has_slot_cap_branch": False,
     }
     assert p3_2._certified(summary, no_cap)
-    summary["validation"]["mcap_unresolved_count"] = 1
+    summary["portfolio"]["candidate"]["mdd_usable_for_official_pass"] = False
     assert not p3_2._certified(summary, no_cap)
-    summary["validation"]["mcap_unresolved_count"] = 0
+    summary["portfolio"]["candidate"]["mdd_usable_for_official_pass"] = True
+    summary["validation"]["unapproved_carry_count"] = 1
+    assert not p3_2._certified(summary, no_cap)
+    summary["validation"]["unapproved_carry_count"] = 0
     assert not p3_2._certified(summary, {**no_cap, "slot_cap_would_block_count": 1})

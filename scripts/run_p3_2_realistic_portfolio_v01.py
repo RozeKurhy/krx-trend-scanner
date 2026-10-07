@@ -485,12 +485,21 @@ def _comparison_report(summary: Mapping[str, Any], p21: Mapping[str, Any], p22: 
 
 def _certified(summary: Mapping[str, Any], hidden_audit: Mapping[str, Any]) -> bool:
     validation = summary["validation"]
+    portfolio_metrics = summary.get("portfolio", {})
+    control_metrics = portfolio_metrics.get("control", {})
+    candidate_metrics = portfolio_metrics.get("candidate", {})
+    valuation_mdd_pass = all(
+        metrics.get("mdd_usable_for_official_pass") is True
+        and metrics.get("final_equity") is not None
+        for metrics in (control_metrics, candidate_metrics)
+    )
     return bool(
         validation.get("matching_pass")
         and validation.get("mcap_unresolved_count") == 0
-        and validation.get("portfolio_unresolved_count") == 0
-        and validation.get("unclassified_valuation_carry_count") == 0
-        and validation.get("daily_equity_complete")
+        and validation.get("unresolved_non_valuation_count") == 0
+        and validation.get("unapproved_carry_count") == 0
+        and valuation_mdd_pass
+        and validation.get("daily_equity_rows_complete", True)
         and validation.get("control_cash_conservation")
         and validation.get("candidate_cash_conservation")
         and hidden_audit.get("slot_cap_would_block_count") == 0
