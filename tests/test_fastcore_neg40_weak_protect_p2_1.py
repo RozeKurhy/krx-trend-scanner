@@ -31,6 +31,15 @@ P2_1_GLOBAL_LIFECYCLE_EXCLUSIONS = {
     ("282690", "KR7282690007"),
 }
 BATTLE_C_UNRESOLVED_LIQUIDATION_EXCLUSION = ("096300", "KR7096300009")
+B_SELECT_7_IDENTITY_PERMANENT_EXCLUSIONS = {
+    ("007720", "KR7007720006"),
+    ("011080", "KR7011080009"),
+    ("019490", "KR7019490002"),
+    ("019570", "KR7019570001"),
+    ("066790", "KR7066790007"),
+    ("073570", "KR7073570004"),
+    ("083660", "KR7083660001"),
+}
 PATTERN_B_V02_STRUCTURAL_DIAGNOSTIC = (
     Path(__file__).resolve().parents[1]
     / "artifacts/patterns/pattern_b/"
@@ -369,6 +378,7 @@ def test_p1_final_closure_v02_permanent_exclusions_are_exact_pairs_and_preserve_
         | V2_MDD_RAW_DATA_GAP_CLOSURE_IDENTITIES
         | P2_1_GLOBAL_LIFECYCLE_EXCLUSIONS
         | {BATTLE_C_UNRESOLVED_LIQUIDATION_EXCLUSION}
+        | B_SELECT_7_IDENTITY_PERMANENT_EXCLUSIONS
         | set(_pattern_b_v02_structural_authority())
     )
 
@@ -413,8 +423,18 @@ def test_v2_mdd_raw_data_gap_permanent_exclusions_are_exact_pairs_and_preserve_t
         for identity, metadata in policy.items()
         if metadata.get("approval_scope") == PATTERN_B_V02_STRUCTURAL_EXCLUSION_SCOPE
     }
-    assert len(set(policy) - new_structural) == 117
-    assert len(policy) == 174
+    expected_non_structural = (
+        PREEXISTING_PERMANENT_IDENTITY_EXCLUSIONS
+        | P1_UNAVAILABLE_12_IDENTITIES
+        | P1_FINAL_CLOSURE_V02_IDENTITIES
+        | V2_MDD_RAW_DATA_GAP_CLOSURE_IDENTITIES
+        | P2_1_GLOBAL_LIFECYCLE_EXCLUSIONS
+        | {BATTLE_C_UNRESOLVED_LIQUIDATION_EXCLUSION}
+        | B_SELECT_7_IDENTITY_PERMANENT_EXCLUSIONS
+    )
+    assert set(policy) - new_structural == expected_non_structural
+    assert len(expected_non_structural) == 124
+    assert len(policy) == 181
     assert len(policy) == len(set(policy))
     assert all(
         isinstance(identity, tuple)
@@ -474,6 +494,7 @@ def test_pattern_b_v02_structural_exclusions_match_diagnostic_exact_pairs():
         (row["ticker"].zfill(6), row["isu_cd"].upper())
         for row in all_diagnostic_rows
     }
+    # Keep the historical base count separate from the seven approved pairs below.
     legacy = (
         PREEXISTING_PERMANENT_IDENTITY_EXCLUSIONS
         | P1_UNAVAILABLE_12_IDENTITIES
@@ -491,9 +512,10 @@ def test_pattern_b_v02_structural_exclusions_match_diagnostic_exact_pairs():
     }
     assert registered == set(authority)
     assert set(authority).isdisjoint(legacy)
-    assert set(policy) == legacy | set(authority)
+    assert set(policy) == legacy | B_SELECT_7_IDENTITY_PERMANENT_EXCLUSIONS | set(authority)
     assert len(legacy) == 117
-    assert len(policy) == 174
+    assert len(legacy | B_SELECT_7_IDENTITY_PERMANENT_EXCLUSIONS) == 124
+    assert len(policy) == 181
     assert len(policy) == len(set(policy))
 
     policy_path = (
@@ -507,7 +529,7 @@ def test_pattern_b_v02_structural_exclusions_match_diagnostic_exact_pairs():
         and getattr(node.target, "id", "") == "PERMANENT_IDENTITY_EXCLUSIONS"
     )
     literal_keys = [ast.literal_eval(key) for key in assignment.value.keys]
-    assert len(literal_keys) == len(set(literal_keys)) == 174
+    assert len(literal_keys) == len(set(literal_keys)) == 181
 
     for identity in P2_1_GLOBAL_LIFECYCLE_EXCLUSIONS:
         metadata = policy[identity]
