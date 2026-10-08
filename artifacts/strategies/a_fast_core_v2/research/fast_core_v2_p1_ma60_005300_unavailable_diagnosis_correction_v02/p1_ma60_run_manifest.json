@@ -1,0 +1,26 @@
+{
+  "lifecycle_semantics_changed": false,
+  "lifecycle_source": "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py",
+  "official_base_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "p1_ticker_count": 2539,
+  "partial_rows_reused": false,
+  "run_mode": "official_v2_only",
+  "saved_outputs": [
+    "p1_ma60_trades.csv",
+    "p1_ma60_signal_audit.csv.gz",
+    "p1_ma60_pit_mcap_audit.csv.gz",
+    "p1_ma60_price_store_audit.csv.gz",
+    "p1_ma60_execution_audit.json"
+  ],
+  "strategy_difference": "prior completed month MA60 available and signal_day_close > MA60; unavailable blocks entry",
+  "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_MA60_ENTRY_FILTER",
+  "trade_count": 615,
+  "work_id": "FAST_CORE_V2_P1_MA60_005300_UNAVAILABLE_DIAGNOSIS_CORRECTION_V02",
+  "workers": 10,
+  "output_sha256": {
+    "p1_ma60_trades.csv": "152f2e9b81faada6e902846b845a585916f2131a5780e9ad3d578a535c06f07c",
+    "p1_ma60_signal_audit.csv.gz": "b05d1be7f495ffb62e322976eecd0e67427bcb5c442504b45789000441ed81c7",
+    "p1_ma60_pit_mcap_audit.csv.gz": "46aa9f923f3778444a682e4f837af6cf6cae35157044bbc6401475de4d95705b",
+    "p1_ma60_price_store_audit.csv.gz": "4a07749e26bf697c972dcb7ad54bac9df32e43af7857d65a0131c76b52524879"
+  }
+}

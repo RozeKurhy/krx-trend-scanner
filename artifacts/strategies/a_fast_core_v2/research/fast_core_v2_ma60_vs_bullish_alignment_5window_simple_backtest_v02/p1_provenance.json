@@ -1,0 +1,235 @@
+{
+  "work_id": "FAST_CORE_V2_MA60_VS_BULLISH_ALIGNMENT_P1_SIMPLE_BACKTEST",
+  "status": "P1_ONLY_REPORT_COMPLETE_P2_1_STOPPED",
+  "scope": {
+    "window": "P1",
+    "start": "2014-01-02",
+    "end": "2026-08-31",
+    "support_date": "2026-09-01",
+    "common_pit_segment_count": 2541,
+    "survivor_identity_count": 2539,
+    "strategies": {
+      "CONTROL": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+      "MA60": "PATTERN_A_FAST_FINAL_STRATEGY_V02_MA60_ENTRY_FILTER",
+      "ALIGNMENT": "PATTERN_A_FAST_FINAL_STRATEGY_V02_MONTHLY_MA20_MA60_BULLISH_ALIGNMENT"
+    },
+    "terminal_return_basis": "net_terminal_return_pct",
+    "cost_contract": {
+      "buy_slippage_rate": 0.001,
+      "sell_slippage_rate": 0.001,
+      "buy_commission_rate": 0.00015,
+      "sell_commission_rate": 0.00015,
+      "transaction_tax_in_official_returns": false
+    },
+    "worker_count": 10
+  },
+  "preflight": {
+    "status": "PASS",
+    "branch": "main",
+    "head": "2c615b2f1db8ebdd7e416d3a467f16faaac8369b",
+    "origin_main": "2c615b2f1db8ebdd7e416d3a467f16faaac8369b",
+    "head_equals_origin_main": true,
+    "ahead_behind": "0\t0",
+    "worker_count": 10,
+    "latest_authority_reads": 0,
+    "network_calls": 0
+  },
+  "execution": {
+    "CONTROL": {
+      "strategy_trade_count": 826,
+      "ticker_count": 2539,
+      "worker_count": 10,
+      "worker_errors": [],
+      "reused_saved_completed_ledger": true,
+      "source_artifact": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_ma60_vs_bullish_alignment_5window_simple_backtest_v01/p1_control_trades.csv",
+      "source_sha256": "b3706958d058a8993a2a514a09b0633d6a9552aecfe2fadd4d2c3d941737a463"
+    },
+    "MA60": {
+      "strategy_trade_count": 615,
+      "ticker_count": 2539,
+      "worker_count": 10,
+      "worker_errors": [],
+      "reused_corrected_full_replay": true,
+      "source_run_id": "FAST_CORE_V2_P1_MA60_005300_UNAVAILABLE_DIAGNOSIS_CORRECTION_V02",
+      "source_artifact": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p1_ma60_005300_unavailable_diagnosis_correction_v02/p1_ma60_trades.csv",
+      "source_sha256": "152f2e9b81faada6e902846b845a585916f2131a5780e9ad3d578a535c06f07c",
+      "source_manifest": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p1_ma60_005300_unavailable_diagnosis_correction_v02/p1_ma60_run_manifest.json",
+      "source_manifest_sha256": "4447e621f9f90483e5b05c8ba87bfb6673d32633a8405b0cb26259cac515211e"
+    },
+    "ALIGNMENT": {
+      "strategy_trade_count": 344,
+      "ticker_count": 2539,
+      "worker_count": 10,
+      "worker_errors": [],
+      "raw_signal_audit_count": 22709,
+      "elapsed_seconds": 7360.64884537505,
+      "reused_corrected_full_replay": false
+    }
+  },
+  "progressed_reconciliation": {
+    "scope": "entry_execution_date <= event <= exit_signal_date; cutoff-open trades through 2026-08-31",
+    "per_trade_counts": {
+      "CONTROL": 287,
+      "MA60": 234,
+      "ALIGNMENT": 124
+    },
+    "raw_nonempty_field_counts": {
+      "CONTROL": 681,
+      "MA60": 518,
+      "ALIGNMENT": 287
+    },
+    "post_exit_field_counts_excluded": {
+      "CONTROL": 394,
+      "MA60": 284,
+      "ALIGNMENT": 163
+    }
+  },
+  "source_artifacts": {
+    "base_trade_runner": "scripts/run_fastcore_neg40_weak_protect_p2_1.py",
+    "official_v2_strategy": "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py",
+    "p1_result_runner": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_ma60_vs_bullish_alignment_5window_simple_backtest_v01/run_5window_simple_backtest.py",
+    "ma60_candidate_replay": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_monthly_ma20_ma60_entry_filter_backtest_v01/run_monthly_ma_entry_filter_backtest.py",
+    "alignment_candidate_replay": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_monthly_ma20_ma60_bullish_alignment_backtest_v01/run_bullish_alignment_backtest.py",
+    "reconciled_metrics_script": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_ma60_vs_bullish_alignment_5window_simple_backtest_v02/reconcile_p1_metrics.py",
+    "frozen_calendar": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/p2_2_identity_authority_extension_v01/merged_trading_calendar.json",
+    "frozen_pit": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/p2_2_identity_authority_extension_v01/merged_pit_intervals.json",
+    "identity_authority_audit": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_ma60_vs_bullish_alignment_5window_simple_backtest_v01/identity_authority_audit.csv",
+    "control_saved_source_ledger": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_ma60_vs_bullish_alignment_5window_simple_backtest_v01/p1_control_trades.csv",
+    "ma60_corrected_source_ledger": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p1_ma60_005300_unavailable_diagnosis_correction_v02/p1_ma60_trades.csv",
+    "ma60_correction_manifest": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p1_ma60_005300_unavailable_diagnosis_correction_v02/p1_ma60_run_manifest.json"
+  },
+  "source_sha256": {
+    "base_trade_runner": "9c95e482f5ca7d216c4f608d98dfaeb11b54d4abc9445b432f99fcc1df91a4f0",
+    "official_v2_strategy": "a6e70b7bda6507f0913b7553fb8004cb9b2d96460eb4f4dabfc0ab82488351c8",
+    "p1_result_runner": "35ff86c42aa5c1aac7c34408bbaa4fac2a0d2e8408ed6e6af578065f04be754c",
+    "ma60_candidate_replay": "1017c6e880f5f627c9cfe86eae8fad94d239a89b6747e691559262eeab598544",
+    "alignment_candidate_replay": "e349bbe5584a75f7a7844dc2ab3da208a0d1d34790e027ce41b97c98d26bc14c",
+    "frozen_calendar": "cf9560da17674c866c57906b4b8e21ce956a0e7a0a9a3ccd1779d1a83a7111c2",
+    "frozen_pit": "6747f26368369bc2ff5d20d695daed702c577bab34dd79640d41fbc862950bd1",
+    "identity_authority_audit": "313bca3d5dbc28672cb505c18b61af40a9b4b827c11af56b30f45160cdba1506",
+    "control_saved_source_ledger": "b3706958d058a8993a2a514a09b0633d6a9552aecfe2fadd4d2c3d941737a463",
+    "ma60_corrected_source_ledger": "152f2e9b81faada6e902846b845a585916f2131a5780e9ad3d578a535c06f07c",
+    "ma60_correction_manifest": "4447e621f9f90483e5b05c8ba87bfb6673d32633a8405b0cb26259cac515211e"
+  },
+  "code_sha256": {
+    "p1_result_runner": "35ff86c42aa5c1aac7c34408bbaa4fac2a0d2e8408ed6e6af578065f04be754c",
+    "ma60_candidate_replay": "1017c6e880f5f627c9cfe86eae8fad94d239a89b6747e691559262eeab598544",
+    "alignment_candidate_replay": "e349bbe5584a75f7a7844dc2ab3da208a0d1d34790e027ce41b97c98d26bc14c",
+    "base_trade_runner": "9c95e482f5ca7d216c4f608d98dfaeb11b54d4abc9445b432f99fcc1df91a4f0",
+    "reconciled_metrics_script": "55a583e5de369ac0df120d47d36cf509f9c67cf261b292e838dee0cc0634e4d7"
+  },
+  "output_sha256": {
+    "report.md": {
+      "bytes": 9969,
+      "sha256": "78b42d669e68e31dc08dedb3f066bc30d8f7399d49339c402ef8d98ee12a41ce"
+    },
+    "p1_strategy_metrics_reconciled.csv": {
+      "bytes": 4338,
+      "sha256": "a7e377076d8cd7afafbabe23a8f377a48b0b7bd9da2c258b0db709ef04b2894d"
+    },
+    "p1_strategy_metrics.csv": {
+      "bytes": 3979,
+      "sha256": "4a86067e46a19c5ba1c3669d7076137137e78be68a0a883f10657311b63c866c"
+    },
+    "p1_execution_audit.json": {
+      "bytes": 2022,
+      "sha256": "1605b1eda2f70ef3772b924a65fb4fbff20a618afa0b2dddd82554d7b8ce1c39"
+    },
+    "p1_control_trades.csv": {
+      "bytes": 472529,
+      "sha256": "f055678989023b08a4ab751cf1ab30a25be61544fc2a5b030169df25d5b064b6"
+    },
+    "p1_ma60_trades.csv": {
+      "bytes": 386846,
+      "sha256": "bb8fe8c07b417abce8eb256d144c41d4ff7c2019b3cf0249b8253c17cf305c3f"
+    },
+    "p1_alignment_trades.csv": {
+      "bytes": 227958,
+      "sha256": "2440ee68a854321d2a468548f52eac1af25813efdaf9b20da539082849054d8d"
+    },
+    "p1_ma60_signal_audit.csv.gz": {
+      "bytes": 3207664,
+      "sha256": "b05d1be7f495ffb62e322976eecd0e67427bcb5c442504b45789000441ed81c7"
+    },
+    "p1_alignment_signal_audit.csv.gz": {
+      "bytes": 3800794,
+      "sha256": "fcd72e2bb8edfc4f0e09ca281eeab58b7601daec74845eae68d06bb38523bd5f"
+    }
+  },
+  "compressed_audit_validation": {
+    "p1_ma60_signal_audit.csv.gz": {
+      "gzip_integrity": "PASS",
+      "decompressed_bytes": 75839303,
+      "decompressed_sha256": "32c1a605218250eb500c5ba5e1bd0bca0a274ed729f3d758ba85f806fac28a82"
+    },
+    "p1_alignment_signal_audit.csv.gz": {
+      "gzip_integrity": "PASS",
+      "decompressed_bytes": 107298221,
+      "decompressed_sha256": "1efded4eb0efd7a4bffead150125564197738d17d9bd9b9c29ccef0c3446ba9d"
+    }
+  },
+  "validation": {
+    "accepted_signal_trade_key_parity": {
+      "MA60": true,
+      "ALIGNMENT": true
+    },
+    "accepted_executable_signal_counts": {
+      "MA60": 615,
+      "ALIGNMENT": 344
+    },
+    "all_ma60_trades_pass_filter": true,
+    "all_alignment_trades_pass_exact_rule": true,
+    "duplicate_trade_keys": {
+      "CONTROL": 0,
+      "MA60": 0,
+      "ALIGNMENT": 0
+    },
+    "net_terminal_return_formula_mismatches": {
+      "CONTROL": 0,
+      "MA60": 0,
+      "ALIGNMENT": 0
+    },
+    "source_hashes_match_saved_commitments": true,
+    "p2_1_partial_outputs_included": false,
+    "commit_checks": {
+      "saved_ledger_counts": {
+        "CONTROL": 826,
+        "MA60": 615,
+        "ALIGNMENT": 344
+      },
+      "worker_errors": 0,
+      "duplicate_trade_keys": 0,
+      "accepted_signal_trade_key_parity": {
+        "MA60": true,
+        "ALIGNMENT": true
+      },
+      "candidate_filter_failures": {
+        "MA60": 0,
+        "ALIGNMENT": 0
+      },
+      "net_terminal_return_formula_mismatches": 0,
+      "related_tests": "PASS: 36 passed",
+      "python_compilation": "PASS",
+      "git_diff_check": "PASS",
+      "p2_1_executed_during_commit_work": false
+    }
+  },
+  "p2_1": {
+    "status": "INTERRUPTED_BEFORE_COMPLETION",
+    "included_in_report_metrics": false,
+    "partial_outputs_included": false
+  },
+  "result_package": [
+    "report.md",
+    "p1_strategy_metrics_reconciled.csv",
+    "p1_strategy_metrics.csv",
+    "p1_execution_audit.json",
+    "p1_control_trades.csv",
+    "p1_ma60_trades.csv",
+    "p1_alignment_trades.csv",
+    "p1_ma60_signal_audit.csv.gz",
+    "p1_alignment_signal_audit.csv.gz",
+    "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p1_ma60_005300_unavailable_diagnosis_correction_v02/p1_ma60_trades.csv",
+    "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p1_ma60_005300_unavailable_diagnosis_correction_v02/p1_ma60_run_manifest.json"
+  ]
+}

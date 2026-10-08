@@ -1814,7 +1814,12 @@ def _successor_identity_is_authoritative(
     )
 
 
-def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
+def _process_ticker(
+    ticker: str,
+    run: RunContext,
+    *,
+    official_v2_only: bool = False,
+) -> dict[str, Any]:
     started = time.perf_counter()
     control_rows: list[dict[str, Any]] = []
     candidate_rows: list[dict[str, Any]] = []
@@ -1919,12 +1924,12 @@ def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
             entry_signal_cutoff_date=entry_eligibility_cutoff,
             entry_signal_filter=entry_signal_filter,
         )
-        if base_records:
+        if base_records and not official_v2_only:
             market_data_by_identity[segment.key] = strategy_daily.loc[
                 :, ["open", "high", "low", "close"]
             ].copy()
         stage_timeline: dict[pd.Timestamp, str] = {}
-        if any(record.first_progressed_effective_trading_date for record in base_records):
+        if not official_v2_only and any(record.first_progressed_effective_trading_date for record in base_records):
             stage_timeline = _stage_timeline(
                 strategy_daily,
                 ticker_context,
@@ -1999,6 +2004,37 @@ def _process_ticker(ticker: str, run: RunContext) -> dict[str, Any]:
                         ) if valuation_date is not None else False,
                     }
                 )
+            if official_v2_only:
+                settlement_cutoff = window_effective_end
+                legacy_evidence = tuple(
+                    item
+                    for item in lifecycle_evidence
+                    if item.get("settlement_type") == "CASH_PER_SHARE"
+                    and str(item.get("isu_cd", "")).strip().upper() == segment.stable_security_id
+                )
+                if legacy_evidence:
+                    base_row, _ = _apply_lifecycle_settlement(
+                        base_row,
+                        segment=segment,
+                        evidence=legacy_evidence,
+                        cutoff_date=settlement_cutoff,
+                        daily=daily,
+                    )
+                elif typed_event is not None:
+                    base_row, _ = _apply_lifecycle_event(
+                        base_row,
+                        segment=segment,
+                        event=typed_event,
+                        cutoff_date=settlement_cutoff,
+                        source_daily=daily,
+                        calendar=run.calendar,
+                        successor_daily=successor_daily,
+                        successor_identity_validated=successor_identity_validated,
+                        source_identity_validated=True,
+                    )
+                control_rows.append(base_row)
+                continue
+
             candidate_row, diag = _candidate_trade(
                 base,
                 pair_id=pair_id,

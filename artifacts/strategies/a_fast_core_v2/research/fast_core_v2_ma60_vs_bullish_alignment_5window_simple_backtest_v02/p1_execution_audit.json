@@ -1,0 +1,52 @@
+{
+  "common_pit_segment_count": 2541,
+  "effective_end": "2026-08-31",
+  "effective_start": "2014-01-02",
+  "execution": {
+    "ALIGNMENT": {
+      "elapsed_seconds": 7360.64884537505,
+      "raw_signal_audit_count": 22709,
+      "reused_corrected_full_replay": false,
+      "strategy_trade_count": 344,
+      "ticker_count": 2539,
+      "worker_count": 10,
+      "worker_errors": []
+    },
+    "CONTROL": {
+      "prior_status": "COMPLETE_CONTROL_ONLY",
+      "prior_worker_errors": 0,
+      "reused_saved_completed_ledger": true,
+      "source_artifact": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_ma60_vs_bullish_alignment_5window_simple_backtest_v01/p1_control_trades.csv",
+      "source_sha256": "b3706958d058a8993a2a514a09b0633d6a9552aecfe2fadd4d2c3d941737a463",
+      "strategy_trade_count": 826,
+      "ticker_count": 2539,
+      "worker_count": 10,
+      "worker_errors": []
+    },
+    "MA60": {
+      "elapsed_seconds": 7273.63,
+      "pit_mcap_audit_count": 21359,
+      "price_store_audit_count": 1704,
+      "raw_signal_audit_count": 21359,
+      "reused_corrected_full_replay": true,
+      "source_artifact": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p1_ma60_005300_unavailable_diagnosis_correction_v02/p1_ma60_trades.csv",
+      "source_run_id": "FAST_CORE_V2_P1_MA60_005300_UNAVAILABLE_DIAGNOSIS_CORRECTION_V02",
+      "source_sha256": "152f2e9b81faada6e902846b845a585916f2131a5780e9ad3d578a535c06f07c",
+      "strategy_trade_count": 615,
+      "ticker_count": 2539,
+      "worker_count": 10,
+      "worker_errors": []
+    }
+  },
+  "execution_support": "2026-09-01",
+  "identity_scope": "saved P3-2 exact survivor roster applied to frozen merged COMMON PIT intervals",
+  "p1_alignment_replayed_official_v2_only": true,
+  "p1_control_reused": true,
+  "p1_ma60_reused_from_corrected_full_replay": true,
+  "reused_saved_trade_ledgers": false,
+  "survivor_identity_count": 2539,
+  "unique_ticker_count": 2539,
+  "window_id": "P1",
+  "worker_count": 10,
+  "worker_errors": []
+}

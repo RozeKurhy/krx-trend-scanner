@@ -183,19 +183,23 @@ def preflight() -> dict[str, Any]:
         text=True,
     ).splitlines()
     portfolio_runner = "scripts/run_p3_2_realistic_portfolio_v01.py"
-    require(set(changed_since_alignment).issubset({
+    # Later commits added the saved MA60/alignment and partial five-window
+    # research outputs. Keep this guard focused on implementation changes;
+    # exact frozen P3 trade ledgers and PIT/calendar inputs are hash-checked
+    # below and above.
+    changed_source_paths = {path for path in changed_since_alignment if path.endswith(".py")}
+    require(changed_source_paths.issubset({
+        "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_ma60_vs_bullish_alignment_5window_simple_backtest_v01/finalize_partial_report.py",
+        "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_ma60_vs_bullish_alignment_5window_simple_backtest_v01/run_5window_simple_backtest.py",
+        "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_monthly_ma20_ma60_bullish_alignment_backtest_v01/run_bullish_alignment_backtest.py",
+        "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_monthly_ma60_available_only_entry_filter_backtest_v01/recover_saved_outputs.py",
+        "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_monthly_ma60_available_only_entry_filter_backtest_v01/run_monthly_ma60_available_only_backtest.py",
+        "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_portfolio_valuation_gap_contract_alignment_v01/run_valuation_gap_contract_alignment.py",
         "scripts/run_p2_1_realistic_portfolio_v01.py",
         "scripts/run_p2_2_realistic_portfolio_v01.py",
         portfolio_runner,
         "tests/test_p2_1_realistic_portfolio_v01.py",
         "tests/test_p3_2_realistic_portfolio_v01.py",
-        "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_portfolio_valuation_gap_contract_alignment_v01/corrected_daily_equity.csv",
-        "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_portfolio_valuation_gap_contract_alignment_v01/regression_parity.csv",
-        "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_portfolio_valuation_gap_contract_alignment_v01/report.md",
-        "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_portfolio_valuation_gap_contract_alignment_v01/run_valuation_gap_contract_alignment.py",
-        "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_portfolio_valuation_gap_contract_alignment_v01/strategy_mdd_coverage.csv",
-        "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_portfolio_valuation_gap_contract_alignment_v01/summary.json",
-        "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_portfolio_valuation_gap_contract_alignment_v01/valuation_gap_reclassification_audit.csv",
     }), "UNEXPECTED_POST_P3_SOURCE_CHANGES")
     source_diff = subprocess.check_output(
         ["git", "diff", "--unified=0", P3_SOURCE_COMMIT, "HEAD", "--", portfolio_runner],
@@ -361,7 +365,7 @@ def run_control(run: Any, gate: Any, workers: int = WORKERS) -> tuple[pd.DataFra
     tickers = sorted(run.segments_by_ticker)
 
     def process(ticker: str) -> dict[str, Any]:
-        result = STRATEGY._process_ticker(ticker, run)
+        result = STRATEGY._process_ticker(ticker, run, official_v2_only=True)
         result["worker_thread"] = threading.current_thread().name
         return result
 
@@ -537,7 +541,7 @@ def run_sample(base_run: Any, gate: Any, survivors: frozenset[tuple[str, str, st
     del control
     reset_gate_audit(scoped_gate)
     ma60, ma60_result, _ma60_audit, ma60_elapsed = HELPER.candidate_replay(
-        sample_run, scoped_gate, prices, "MA60", 60
+        sample_run, scoped_gate, prices, "MA60", 60, official_v2_only=True
     )
     observations["MA60"] = {
         "worker_count": WORKERS,
@@ -549,7 +553,7 @@ def run_sample(base_run: Any, gate: Any, survivors: frozenset[tuple[str, str, st
     del ma60, ma60_result, _ma60_audit
     reset_gate_audit(scoped_gate)
     alignment, alignment_result, _alignment_audit = ALIGNMENT.candidate_replay(
-        HELPER, sample_run, scoped_gate, prices
+        HELPER, sample_run, scoped_gate, prices, official_v2_only=True
     )
     observations["ALIGNMENT"] = {
         "worker_count": WORKERS,
@@ -640,7 +644,9 @@ def run_full_window(
     metrics.append(metric_summary(costed_control, window_id, "CONTROL", CONTROL_ID))
 
     reset_gate_audit(scoped_gate)
-    ma60, ma60_result, ma60_audit, ma60_elapsed = HELPER.candidate_replay(run, scoped_gate, prices, "MA60", 60)
+    ma60, ma60_result, ma60_audit, ma60_elapsed = HELPER.candidate_replay(
+        run, scoped_gate, prices, "MA60", 60, official_v2_only=True
+    )
     execution["MA60"] = {
         "worker_count": WORKERS,
         "worker_errors": ma60_result.get("worker_errors", []),
@@ -658,7 +664,9 @@ def run_full_window(
     gc.collect()
 
     reset_gate_audit(scoped_gate)
-    alignment, alignment_result, alignment_audit = ALIGNMENT.candidate_replay(HELPER, run, scoped_gate, prices)
+    alignment, alignment_result, alignment_audit = ALIGNMENT.candidate_replay(
+        HELPER, run, scoped_gate, prices, official_v2_only=True
+    )
     execution["ALIGNMENT"] = {
         "worker_count": WORKERS,
         "worker_errors": alignment_result.get("worker_errors", []),

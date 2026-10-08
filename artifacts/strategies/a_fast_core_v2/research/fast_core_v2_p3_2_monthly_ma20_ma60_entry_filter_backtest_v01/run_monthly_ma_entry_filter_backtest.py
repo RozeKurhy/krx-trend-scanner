@@ -356,7 +356,15 @@ def frozen_control_signal_parity(run: Any, trades: pd.DataFrame, prices: PriceCa
     return parity, summary
 
 
-def candidate_replay(run: Any, gate: Any, prices: PriceCache, period_name: str, size: int) -> tuple[pd.DataFrame, dict[str, Any], pd.DataFrame, float]:
+def candidate_replay(
+    run: Any,
+    gate: Any,
+    prices: PriceCache,
+    period_name: str,
+    size: int,
+    *,
+    official_v2_only: bool = False,
+) -> tuple[pd.DataFrame, dict[str, Any], pd.DataFrame, float]:
     from trend_scanner.validation import pattern_a_fast_core_v02_reentry as v2
     import scripts.run_fastcore_neg40_weak_protect_p2_1 as strategy
 
@@ -426,7 +434,11 @@ def candidate_replay(run: Any, gate: Any, prices: PriceCache, period_name: str, 
     tickers = sorted(run.segments_by_ticker)
     try:
         def process(ticker: str):
-            outcome = strategy._process_ticker(ticker, run)
+            outcome = strategy._process_ticker(
+                ticker,
+                run,
+                official_v2_only=official_v2_only,
+            )
             outcome["worker_thread"] = threading.current_thread().name
             return outcome
 

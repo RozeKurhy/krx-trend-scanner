@@ -258,7 +258,14 @@ def prior_signal_features(helper: Any, run: Any, prices: Any, trades: pd.DataFra
     return out
 
 
-def candidate_replay(helper: Any, run: Any, gate: Any, prices: Any):
+def candidate_replay(
+    helper: Any,
+    run: Any,
+    gate: Any,
+    prices: Any,
+    *,
+    official_v2_only: bool = False,
+):
     from trend_scanner.validation import pattern_a_fast_core_v02_reentry as v2
     import scripts.run_fastcore_neg40_weak_protect_p2_1 as strategy
 
@@ -320,7 +327,11 @@ def candidate_replay(helper: Any, run: Any, gate: Any, prices: Any):
     tickers = sorted(run.segments_by_ticker)
     try:
         def process(ticker: str):
-            outcome = strategy._process_ticker(ticker, run)
+            outcome = strategy._process_ticker(
+                ticker,
+                run,
+                official_v2_only=official_v2_only,
+            )
             outcome["worker_thread"] = threading.current_thread().name
             return outcome
         with ThreadPoolExecutor(max_workers=WORKERS, thread_name_prefix="alignment") as pool:
