@@ -1,0 +1,159 @@
+{
+  "audit_compression_hash_checks": {
+    "p2_1_alignment_signal_audit.csv.gz": {
+      "decompressed_sha256": "94f518c693b3bbb36a52e7b2b174098aec024c8792c84c98646a9af82f14fb89",
+      "gzip_bytes": 1037936,
+      "gzip_sha256": "17ff1f6d4491578dcdbb79ce6ee2233a5d6e318c9790b111610d33ef0bba851e",
+      "roundtrip_verified": true,
+      "source_bytes": 32429788,
+      "source_sha256": "94f518c693b3bbb36a52e7b2b174098aec024c8792c84c98646a9af82f14fb89"
+    },
+    "p2_1_control_pit_mcap_audit.csv.gz": {
+      "decompressed_sha256": "618a057c49f2926a2356a4b9354b48a7803b29730332180033dc32382e03ef8b",
+      "gzip_bytes": 409539,
+      "gzip_sha256": "59ea9c944955732d1d60b88336c4c216ba12f5076c00f7eb49cf7c163476909f",
+      "roundtrip_verified": true,
+      "source_bytes": 2100365,
+      "source_sha256": "618a057c49f2926a2356a4b9354b48a7803b29730332180033dc32382e03ef8b"
+    },
+    "p2_1_ma60_signal_audit.csv.gz": {
+      "decompressed_sha256": "82cd262feffa8fc472b51afd8896a4093401bc429c769687bc34c04371f94e8d",
+      "gzip_bytes": 853983,
+      "gzip_sha256": "d5314048d183c70c4f5a5d70daf9fb1ef3fe71714a1033c44d98726680e2853d",
+      "roundtrip_verified": true,
+      "source_bytes": 22194163,
+      "source_sha256": "82cd262feffa8fc472b51afd8896a4093401bc429c769687bc34c04371f94e8d"
+    },
+    "p2_1_price_store_audit.csv.gz": {
+      "decompressed_sha256": "0c4cc85bf82c9221d0eed873bf64617e64f78b8f082acb1eeb29653339728f26",
+      "gzip_bytes": 109207,
+      "gzip_sha256": "7c9997e26f56058952f37573116decc3df45a9414f80d055afe52bceb7fd2ae5",
+      "roundtrip_verified": true,
+      "source_bytes": 453378,
+      "source_sha256": "0c4cc85bf82c9221d0eed873bf64617e64f78b8f082acb1eeb29653339728f26"
+    }
+  },
+  "candidate_signal_audit_rows": {
+    "ALIGNMENT": 6794,
+    "MA60": 6170
+  },
+  "compressed_verified_audits": [
+    "p2_1_alignment_signal_audit.csv.gz",
+    "p2_1_control_pit_mcap_audit.csv.gz",
+    "p2_1_ma60_signal_audit.csv.gz",
+    "p2_1_price_store_audit.csv.gz"
+  ],
+  "control_exact_mcap_audit": {
+    "row_count": 5735,
+    "status_counts": {
+      "PASS": 365,
+      "REJECT_BELOW_THRESHOLD": 5370
+    }
+  },
+  "effective_end": "2025-05-30",
+  "effective_start": "2021-01-04",
+  "execution_support": "2025-06-02",
+  "final_token": "FAST_CORE_V2_P2_1_MA60_VS_BULLISH_ALIGNMENT_SIMPLE_BACKTEST_V01_PASS",
+  "integrity_checks": {
+    "adjusted_price_file_and_metadata_hashes": "PASS",
+    "alignment_formula_and_fail_closed": true,
+    "all_three_full_worker_loops_completed": true,
+    "candidate_accepted_signal_trade_parity": true,
+    "candidate_audits": {
+      "ALIGNMENT": {
+        "accepted_executable_signals": 146,
+        "accepted_signal_trade_parity": true,
+        "audit_rows": 6794,
+        "filter_formula_and_fail_closed": true,
+        "network_calls": 0,
+        "prior_completed_month_only": true,
+        "trade_count": 146
+      },
+      "MA60": {
+        "accepted_executable_signals": 291,
+        "accepted_signal_trade_parity": true,
+        "audit_rows": 6170,
+        "filter_formula_and_fail_closed": true,
+        "network_calls": 0,
+        "prior_completed_month_only": true,
+        "trade_count": 291
+      }
+    },
+    "cleanup_exception_recovered_from_complete_saved_outputs_without_replay": true,
+    "control_mcap_unresolved_count": 0,
+    "control_trade_exact_mcap_pass": true,
+    "current_month_or_future_month_used": false,
+    "frozen_pit_calendar_identity_source_hashes": "PASS",
+    "ma60_formula_and_fail_closed": true,
+    "net_terminal_return_recompute_mismatch_count": 0,
+    "network_calls": 0,
+    "post_replay_cleanup_exception": "cannot access local variable 'ma60_result' where it is not associated with a value",
+    "processed_identity_key_count": 2451,
+    "processed_identity_segment_count": 2451,
+    "processed_ticker_count_each_strategy": 2451,
+    "trade_key_duplicate_count": 0,
+    "worker_count": 10,
+    "worker_error_count": 0
+  },
+  "metrics_authority": {
+    "p2_1_strategy_metrics.csv": "raw PROGRESSED non-null count only; non-authoritative",
+    "p2_1_strategy_metrics_reconciled.csv": "authoritative date-bounded PROGRESSED count"
+  },
+  "progressed_counts_authoritative": {
+    "ALIGNMENT": 44,
+    "CONTROL": 118,
+    "MA60": 100
+  },
+  "progressed_raw_nonnull_counts_non_authoritative": {
+    "ALIGNMENT": 63,
+    "CONTROL": 167,
+    "MA60": 145
+  },
+  "replay_was_rerun": false,
+  "runner_cleanup_exception": {
+    "message": "cannot access local variable 'ma60_result' where it is not associated with a value",
+    "original_failure_json_sha256": "57ebc2f5e59bb2d21b94747fcdadfabf3feb2c32997cb0eb557b2a7ce8994ffc",
+    "recovery": "all three worker loops reached 2451/2451 with errors=0; ledgers and candidate audits were fully written before shared-runner cleanup failed; all saved outputs were revalidated; replay was not repeated",
+    "shared_runner_source_path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_ma60_vs_bullish_alignment_5window_simple_backtest_v01/run_5window_simple_backtest.py",
+    "shared_runner_source_sha256": "35ff86c42aa5c1aac7c34408bbaa4fac2a0d2e8408ed6e6af578065f04be754c",
+    "type": "UnboundLocalError"
+  },
+  "status": "PASS_RECOVERED_FROM_COMPLETE_REPLAY_OUTPUTS",
+  "strategy_execution": {
+    "ALIGNMENT": {
+      "processed_identity_key_count": 2451,
+      "strategy_trade_count": 146,
+      "ticker_count": 2451,
+      "worker_completion_confirmed": true,
+      "worker_completion_log": "NEW_ALIGNMENT progress 2451/2451 errors=0 elapsed=3088.6s",
+      "worker_count": 10,
+      "worker_errors": []
+    },
+    "CONTROL": {
+      "processed_identity_key_count": 2451,
+      "strategy_trade_count": 355,
+      "ticker_count": 2451,
+      "worker_completion_confirmed": true,
+      "worker_completion_log": "CONTROL progress 2451/2451 trades=355 mcap_audits=5735 errors=0 elapsed=3105.8s",
+      "worker_count": 10,
+      "worker_errors": []
+    },
+    "MA60": {
+      "processed_identity_key_count": 2451,
+      "strategy_trade_count": 291,
+      "ticker_count": 2451,
+      "worker_completion_confirmed": true,
+      "worker_completion_log": "MA60 progress 2451/2451 trades=291 mcap_audits=6170 errors=0 elapsed=3046.0s",
+      "worker_count": 10,
+      "worker_errors": []
+    }
+  },
+  "strategy_trade_counts": {
+    "ALIGNMENT": 146,
+    "CONTROL": 355,
+    "MA60": 291
+  },
+  "window_id": "P2-1",
+  "worker_count": 10,
+  "worker_errors": []
+}

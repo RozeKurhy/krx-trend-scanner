@@ -1,0 +1,129 @@
+{
+  "ahead_behind": "0\t0",
+  "branch": "main",
+  "common_pit_segment_count": 2451,
+  "cost_contract": {
+    "buy_commission_rate": 0.00015,
+    "buy_slippage_rate": 0.001,
+    "sell_commission_rate": 0.00015,
+    "sell_slippage_rate": 0.001,
+    "transaction_tax_in_returns": false
+  },
+  "effective_end": "2025-05-30",
+  "effective_start": "2021-01-04",
+  "execution_support": "2025-06-02",
+  "frozen_authority": {
+    "authority_note": "The original 2026-09-21 merged PIT bytes are absent; replay inputs reconstruct the consumed historical interval authority plus the exact saved active-identity projection. Exact control parity is the acceptance gate.",
+    "calendar_as_of": "2026-09-01",
+    "calendar_path": "/Users/june/Documents/projects/krx-trend-scanner/artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/p2_2_identity_authority_extension_v01/merged_trading_calendar.json",
+    "calendar_sha256": "cf9560da17674c866c57906b4b8e21ce956a0e7a0a9a3ccd1779d1a83a7111c2",
+    "historical_pit_path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/p2_2_identity_authority_extension_v01/merged_pit_intervals.json",
+    "historical_pit_sha256": "6747f26368369bc2ff5d20d695daed702c577bab34dd79640d41fbc862950bd1",
+    "new_prices_or_network_calls": 0,
+    "saved_survivor_as_of": "2026-09-21",
+    "saved_survivor_audit_sha256": "313bca3d5dbc28672cb505c18b61af40a9b4b827c11af56b30f45160cdba1506",
+    "source_latest_rolling_authority_read": false,
+    "status": "PASS",
+    "survivor_identity_count": 2539
+  },
+  "frozen_calendar_sha256": "cf9560da17674c866c57906b4b8e21ce956a0e7a0a9a3ccd1779d1a83a7111c2",
+  "frozen_manifest_sha256": "ec04c4af2652fadeae32268dd87bdee2fc375edbb2ac1fc4348c0788eea63157",
+  "frozen_pit_sha256": "6747f26368369bc2ff5d20d695daed702c577bab34dd79640d41fbc862950bd1",
+  "head_equals_origin_main": true,
+  "identity_scope": "saved P3-2 exact survivor roster applied to frozen merged COMMON PIT intervals",
+  "input_source_hashes": {
+    "alignment_helper": {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_monthly_ma20_ma60_bullish_alignment_backtest_v01/run_bullish_alignment_backtest.py",
+      "sha256": "e349bbe5584a75f7a7844dc2ab3da208a0d1d34790e027ce41b97c98d26bc14c"
+    },
+    "canonical_strategy": {
+      "path": "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py",
+      "sha256": "a6e70b7bda6507f0913b7553fb8004cb9b2d96460eb4f4dabfc0ab82488351c8"
+    },
+    "exact_mcap_gate": {
+      "path": "scripts/run_p2_1_realistic_portfolio_v01.py",
+      "sha256": "62eebeef68999d368e6e98162d2a46f9e957a0d6e54dd9b4fa3399f87efbad02"
+    },
+    "frozen_authority_loader": {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_frozen_portfolio_authority_replay_fix_v01/run_frozen_replay.py",
+      "sha256": "73f3dedf0672c6fee3f696466e61a7c3a596ce6f91c930866777b6ddad5bc9d8"
+    },
+    "frozen_merged_calendar": {
+      "path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/p2_2_identity_authority_extension_v01/merged_trading_calendar.json",
+      "sha256": "cf9560da17674c866c57906b4b8e21ce956a0e7a0a9a3ccd1779d1a83a7111c2"
+    },
+    "frozen_merged_pit": {
+      "path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/p2_2_identity_authority_extension_v01/merged_pit_intervals.json",
+      "sha256": "6747f26368369bc2ff5d20d695daed702c577bab34dd79640d41fbc862950bd1"
+    },
+    "lifecycle_event_evidence_v02": {
+      "path": "docs/strategies/lifecycle_event_evidence_v02.json",
+      "sha256": "514975fe45b841d1b2803d2ff4be39b8f463b100ac92ca7430deb8b89d3ea123"
+    },
+    "lifecycle_settlement_evidence": {
+      "path": "docs/strategies/p2_2_lifecycle_settlement_evidence_v01.json",
+      "sha256": "980ca61914ceb8ff454efeb1fc6a37105503edc34840ab84455e1e9c0b6732eb"
+    },
+    "ma60_helper": {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_monthly_ma20_ma60_entry_filter_backtest_v01/run_monthly_ma_entry_filter_backtest.py",
+      "sha256": "1017c6e880f5f627c9cfe86eae8fad94d239a89b6747e691559262eeab598544"
+    },
+    "p2_1_execution_script": {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p2_1_ma60_vs_bullish_alignment_simple_backtest_v01/run_p2_1_simple_backtest.py",
+      "sha256": "1ff96cd7c3efd7355e8fb7bff8d0cc2469794d496ed1a1fd5131e86bb4ca1e3e",
+      "tracked_at_start": false
+    },
+    "p2_1_runner": {
+      "path": "scripts/run_fastcore_neg40_weak_protect_p2_1.py",
+      "sha256": "9c95e482f5ca7d216c4f608d98dfaeb11b54d4abc9445b432f99fcc1df91a4f0"
+    },
+    "p2_2_authority_manifest": {
+      "path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/p2_2_identity_authority_extension_v01/p2_2_identity_authority_extension_manifest.json",
+      "sha256": "ec04c4af2652fadeae32268dd87bdee2fc375edbb2ac1fc4348c0788eea63157"
+    },
+    "repository_v2_loader": {
+      "path": "src/trend_scanner/data/repository_v2_loader.py",
+      "sha256": "d5c2333022acf5b777f38bfd024c7540aaae8bc16f455c1a7e779c60c510a97d"
+    },
+    "shared_replay_helper": {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_ma60_vs_bullish_alignment_5window_simple_backtest_v01/run_5window_simple_backtest.py",
+      "sha256": "35ff86c42aa5c1aac7c34408bbaa4fac2a0d2e8408ed6e6af578065f04be754c"
+    },
+    "standard_window_resolver": {
+      "path": "src/trend_scanner/backtest/standard_windows.py",
+      "sha256": "2c55dcc7324f73a47c26cfb1cb744f040c0880b79ba75b55f38cd29d6d5fec00"
+    },
+    "survivor_identity_roster_authority": {
+      "path": "artifacts/backtests/p3_2_neg40_weak_protect_v01/run_20260926_realistic_mcap1t_worker10_v01/survivor_universe_audit.csv",
+      "sha256": "313bca3d5dbc28672cb505c18b61af40a9b4b827c11af56b30f45160cdba1506"
+    }
+  },
+  "market_cap_source": "local exact-date KRX raw Stock Daily MKTCAP snapshots; each snapshot validated against its manifest and hashes",
+  "network_calls": 0,
+  "p2_1_identity_key_count": 2451,
+  "p2_1_identity_segment_count": 2451,
+  "price_source": "local Repository V2 adjusted/raw stores; MA inputs from locally hash-verified adjusted stock partitions",
+  "result_reuse": {
+    "frozen_pit_calendar_reused_as_authority": true,
+    "frozen_survivor_identity_roster_reused_as_authority": true,
+    "p1_performance": false,
+    "p3_2_performance": false,
+    "previous_p2_1_performance": false
+  },
+  "start_head": "1a8f6a0454d44e5c199a34137cc7237f3bd79ea1",
+  "start_origin_main": "1a8f6a0454d44e5c199a34137cc7237f3bd79ea1",
+  "status": "PASS",
+  "strategy_ids": {
+    "ALIGNMENT": "PATTERN_A_FAST_FINAL_STRATEGY_V02_MONTHLY_MA20_MA60_BULLISH_ALIGNMENT",
+    "CONTROL": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "MA60": "PATTERN_A_FAST_FINAL_STRATEGY_V02_MA60_ENTRY_FILTER"
+  },
+  "survivor_identity_count": 2539,
+  "survivor_identity_roster_count": 2539,
+  "survivor_identity_roster_sha256": "313bca3d5dbc28672cb505c18b61af40a9b4b827c11af56b30f45160cdba1506",
+  "tracked_worktree_clean": true,
+  "unique_ticker_count": 2451,
+  "window_id": "P2-1",
+  "work_id": "FAST_CORE_V2_P2_1_MA60_VS_BULLISH_ALIGNMENT_SIMPLE_BACKTEST_V01",
+  "workers": 10
+}
