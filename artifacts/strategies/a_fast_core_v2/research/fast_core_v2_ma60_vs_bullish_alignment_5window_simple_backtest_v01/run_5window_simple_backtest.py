@@ -682,7 +682,7 @@ def run_full_window(
     require(not execution["ALIGNMENT"]["worker_errors"], f"{window_id}_ALIGNMENT_WORKER_ERRORS")
     require(not control.empty, f"{window_id}_CONTROL_EMPTY")
     require(control["pair_id"].astype(str).is_unique, f"{window_id}_CONTROL_PAIR_ID_NOT_UNIQUE")
-    del control, costed_control, ma60_result, ma60_audit, alignment, alignment_result, alignment_audit, costed_alignment
+    del control, costed_control, alignment, alignment_result, alignment_audit, costed_alignment
     gc.collect()
 
     result = {
