@@ -1,0 +1,56 @@
+{
+  "population": {
+    "common_pit_segment_count": 2541,
+    "effective_end": "2026-08-31",
+    "effective_start": "2014-01-02",
+    "execution_support": "2026-09-01",
+    "identity_scope": "saved P3-2 exact survivor roster applied to frozen merged COMMON PIT intervals",
+    "survivor_identity_count": 2539,
+    "unique_ticker_count": 2539,
+    "window_id": "P1"
+  },
+  "rough_full_window_estimate": {
+    "ALIGNMENT": {
+      "estimated_full_hours": 1.767409058087772,
+      "estimated_full_seconds": 6362.672609115979
+    },
+    "CONTROL": {
+      "estimated_full_hours": 1.8345748989337358,
+      "estimated_full_seconds": 6604.469636161449
+    },
+    "MA60": {
+      "estimated_full_hours": 1.773957315981163,
+      "estimated_full_seconds": 6386.246337532187
+    }
+  },
+  "sample_runs": {
+    "ALIGNMENT": {
+      "elapsed_seconds": 125.29879104206339,
+      "strategy_trade_count": 9,
+      "ticker_count": 50,
+      "worker_count": 10,
+      "worker_errors": []
+    },
+    "CONTROL": {
+      "elapsed_seconds": 130.06044970778748,
+      "strategy_trade_count": 17,
+      "ticker_count": 50,
+      "worker_count": 10,
+      "worker_errors": []
+    },
+    "MA60": {
+      "elapsed_seconds": 125.7630235827528,
+      "strategy_trade_count": 9,
+      "ticker_count": 50,
+      "worker_count": 10,
+      "worker_errors": []
+    }
+  },
+  "sample_ticker_selection": "evenly spaced over sorted frozen survivor ticker list",
+  "sampled_tickers": 50,
+  "status": "PASS",
+  "target_tickers": 2539,
+  "warning": "Linear estimate only; P1 runtime varies by ticker history and signal count.",
+  "window_id": "P1",
+  "worker_count": 10
+}

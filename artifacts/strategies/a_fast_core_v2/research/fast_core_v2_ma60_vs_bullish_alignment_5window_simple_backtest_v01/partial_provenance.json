@@ -1,0 +1,43 @@
+{
+  "cost_contract": {
+    "buy_commission_rate": 0.00015,
+    "buy_slippage_rate": 0.001,
+    "sell_commission_rate": 0.00015,
+    "sell_slippage_rate": 0.001,
+    "source": "scripts/run_p2_1_realistic_portfolio_v01.py and scripts/run_pattern_b_pure_simple_backtest_v01.py",
+    "transaction_tax_in_official_returns": false
+  },
+  "failure": {
+    "automatic_retry": false,
+    "candidate_replay_started": true,
+    "error": "MA60_WORKER_ERRORS:[\"005300: RuntimeError: Pattern A stage unavailable at eligible NEG40 date 2017-11-02 for 005300|KR7005300009|KOSPI|2010-01-04|2026-09-01|005300_01\"]",
+    "error_type": "BacktestCheckRequired",
+    "stage": "P1_FULL_REPLAY",
+    "status": "FAIL"
+  },
+  "file_sha256": {
+    "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_ma60_vs_bullish_alignment_5window_simple_backtest_v01/failure.json": "5f215d5915b8fc6237c78c5cdf959425eb562fb0228780ee8f77d063c4c99887",
+    "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_ma60_vs_bullish_alignment_5window_simple_backtest_v01/identity_authority_audit.csv": "313bca3d5dbc28672cb505c18b61af40a9b4b827c11af56b30f45160cdba1506",
+    "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_ma60_vs_bullish_alignment_5window_simple_backtest_v01/p1_control_pit_mcap_audit.csv": "d5bb6f4625df663791b73bec599bfc1d52ba78a1c8544d21671ec554174add0d",
+    "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_ma60_vs_bullish_alignment_5window_simple_backtest_v01/p1_control_trades.csv": "b3706958d058a8993a2a514a09b0633d6a9552aecfe2fadd4d2c3d941737a463",
+    "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_ma60_vs_bullish_alignment_5window_simple_backtest_v01/run_5window_simple_backtest.py": "d59443e22452444a1d4f51306e42c113a6c769b9f4a43d5dd6d2a903dacd6dbe",
+    "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_frozen_portfolio_authority_replay_fix_v01/control_strategy_trades.csv": "03ddd78ba1b2eb969e8b776979941f783f8890fa9babd2f91a23b947f8a8c1bd",
+    "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_monthly_ma20_ma60_bullish_alignment_backtest_v01/alignment_strategy_trades.csv": "90cb4275b7c8f4eff532dd574de790913fcd12c77e3043d9b21cbb811d3fefa7",
+    "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_monthly_ma20_ma60_entry_filter_backtest_v01/ma60_strategy_trades.csv": "929d686ed85387416ce5dfc88f1e73778617cdc5b51ce8d12171c775ccc4226f",
+    "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_monthly_ma20_ma60_entry_filter_backtest_v01/run_monthly_ma_entry_filter_backtest.py": "c9f921452bc953eeafe74071472f4a16030629bdd705e31d72be5f6592b89c7a"
+  },
+  "final_token": "FAST_CORE_V2_MA60_VS_BULLISH_ALIGNMENT_5WINDOW_SIMPLE_BACKTEST_V01_CHECK_REQUIRED",
+  "frozen_calendar_sha256": "cf9560da17674c866c57906b4b8e21ce956a0e7a0a9a3ccd1779d1a83a7111c2",
+  "frozen_pit_sha256": "6747f26368369bc2ff5d20d695daed702c577bab34dd79640d41fbc862950bd1",
+  "mdd_contract": "NOT_AVAILABLE_IN_EXISTING_SIMPLE_TRADE_LEVEL_REPLAY",
+  "network_calls": 0,
+  "p3_saved_results_reused": true,
+  "p3_trade_artifacts_match_head": true,
+  "post_p3_change_scope": "portfolio valuation gap / portfolio MDD governance only; no simple trade, identity, PIT or price generation changes",
+  "start_head": "cc9be856df9aeb5caccd98e834b648ec5ea06bed",
+  "start_origin_main": "cc9be856df9aeb5caccd98e834b648ec5ea06bed",
+  "status": "CHECK_REQUIRED",
+  "survivor_identity_count": 2539,
+  "work_id": "FAST_CORE_V2_MA60_VS_BULLISH_ALIGNMENT_5WINDOW_SIMPLE_BACKTEST_V01",
+  "worker_count": 10
+}

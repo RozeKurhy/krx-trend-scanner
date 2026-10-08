@@ -1,0 +1,8 @@
+window_id,strategy,status,worker_count,ticker_count,trade_rows,worker_errors,notes
+P1,CONTROL,COMPLETE_CONTROL_ONLY,10,2539,826,0.0,standalone completed ledger; not a three-way comparison
+P1,MA60,FAILED_CHECK_REQUIRED,10,2539,,1.0,614 successful-worker trade rows observed before fail-closed validation; not a complete ledger or metric
+P1,ALIGNMENT,NOT_STARTED_AFTER_MA60_FAILURE,10,0,,,runner stopped at MA60 stage
+P2-1,ALL,NOT_STARTED,10,0,,,runner stopped during P1
+P2-2,ALL,NOT_STARTED,10,0,,,runner stopped during P1
+P3-1,ALL,NOT_STARTED,10,0,,,runner stopped during P1
+P3-2,CONTROL/MA60/ALIGNMENT,REUSED_VALIDATED_SAVED_RESULT,10,2539,405/337/179,0.0,saved ledgers reused after exact provenance and strategy checks
