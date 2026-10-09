@@ -1,0 +1,127 @@
+{
+  "checks": {
+    "alignment_filter_check": true,
+    "candidate_audits": {
+      "ALIGNMENT": {
+        "accepted_executable_signals": 177,
+        "accepted_signal_trade_parity": true,
+        "audit_rows": 9121,
+        "filter_formula_and_fail_closed": true,
+        "network_calls": 0,
+        "prior_completed_month_only": true,
+        "trade_count": 177
+      },
+      "MA60": {
+        "accepted_executable_signals": 363,
+        "accepted_signal_trade_parity": true,
+        "audit_rows": 8337,
+        "filter_formula_and_fail_closed": true,
+        "network_calls": 0,
+        "prior_completed_month_only": true,
+        "trade_count": 363
+      }
+    },
+    "candidate_signal_parity": true,
+    "control_mcap_permanent_exclusion_leakage_count": 0,
+    "control_mcap_trade_entry_pass": true,
+    "control_mcap_unresolved_count": 0,
+    "duplicate_trade_key_count": 0,
+    "identity_key_count": 2424,
+    "identity_segment_count": 2424,
+    "ma60_filter_check": true,
+    "net_terminal_recompute_mismatch_count": 0,
+    "network_calls": 0,
+    "permanent_exclusion_leakage_count": 0,
+    "post_cutoff_entry_count": 0,
+    "price_partition_count": 1247,
+    "price_partition_hash_metadata_checks_pass": true,
+    "processed_ticker_count_each_strategy": 2424,
+    "strategy_worker_counts": {
+      "ALIGNMENT": 10,
+      "CONTROL": 10,
+      "MA60": 10
+    },
+    "strategy_worker_error_counts": {
+      "ALIGNMENT": 0,
+      "CONTROL": 0,
+      "MA60": 0
+    },
+    "trade_file_hashes": [
+      {
+        "sha256": "52ab09936d5edd1a3482780dccdee6c94d8bd12dc46e73251a726556f4705b41",
+        "strategy": "CONTROL",
+        "trade_file": "p2_2_control_trades.csv"
+      },
+      {
+        "sha256": "020a17676df6203403f7bfb914d43df4118369b16155f7621db8f1c042fbc361",
+        "strategy": "MA60",
+        "trade_file": "p2_2_ma60_trades.csv"
+      },
+      {
+        "sha256": "a56767916edd58678ef015c7536deb967d6b50a060a9a6e1cd04fbdaed96e2f8",
+        "strategy": "ALIGNMENT",
+        "trade_file": "p2_2_alignment_trades.csv"
+      }
+    ],
+    "worker_error_count": 0,
+    "workers": 10
+  },
+  "common_pit_segment_count": 2424,
+  "compressed_verified_audits": [
+    "p2_2_control_pit_mcap_audit.csv.gz",
+    "p2_2_ma60_signal_audit.csv.gz",
+    "p2_2_alignment_signal_audit.csv.gz",
+    "p2_2_price_store_audit.csv.gz"
+  ],
+  "effective_end": "2026-08-31",
+  "effective_start": "2021-01-04",
+  "elapsed_seconds": 11568.267947125249,
+  "execution": {
+    "ALIGNMENT": {
+      "elapsed_seconds": 3812.0750187919475,
+      "raw_signal_audit_count": 9121,
+      "strategy_trade_count": 177,
+      "ticker_count": 2424,
+      "worker_count": 10,
+      "worker_errors": []
+    },
+    "CONTROL": {
+      "elapsed_seconds": 3861.583512125071,
+      "strategy_trade_count": 440,
+      "ticker_count": 2424,
+      "worker_count": 10,
+      "worker_errors": []
+    },
+    "MA60": {
+      "elapsed_seconds": 3767.172423374839,
+      "raw_signal_audit_count": 8337,
+      "strategy_trade_count": 363,
+      "ticker_count": 2424,
+      "worker_count": 10,
+      "worker_errors": []
+    }
+  },
+  "execution_support": "2026-09-01",
+  "final_token": "FAST_CORE_V2_P2_2_MA60_VS_BULLISH_ALIGNMENT_SIMPLE_BACKTEST_V01_PASS",
+  "identity_key_count": 2424,
+  "identity_scope": "saved P3-2 exact survivor roster applied to frozen merged COMMON PIT intervals",
+  "identity_segment_count": 2424,
+  "processed_ticker_count_each_strategy": 2424,
+  "progressed_counts_authoritative": {
+    "ALIGNMENT": 84,
+    "CONTROL": 188,
+    "MA60": 161
+  },
+  "reused_saved_trade_ledgers": false,
+  "status": "PASS",
+  "strategy_trade_counts": {
+    "ALIGNMENT": 177,
+    "CONTROL": 440,
+    "MA60": 363
+  },
+  "survivor_identity_count": 2424,
+  "unique_ticker_count": 2424,
+  "window_id": "P2-2",
+  "worker_count": 10,
+  "worker_errors": []
+}
