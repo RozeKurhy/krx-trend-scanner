@@ -6,7 +6,7 @@
 | MAJOR | 0 | 결과 범위 안에서 확인된 중대 이슈 없음 |
 | MINOR | 0 | simple trade-level 범위 밖인 포트폴리오 MDD는 미평가 항목으로 분류하지 않음 |
 
-- 최종 판정: FAST_CORE_V2_SIMPLE_BACKTEST_UNIVERSE_MCAP_CONTRACT_FIX_V01_P3_1_PASS
+- 최종 판정: FAST_CORE_V2_SIMPLE_BACKTEST_UNIVERSE_MCAP_CONTRACT_FIX_V01_PASS
 - 실제 거래 기간: 2022-01-03~2025-05-30. Execution support: 2025-06-02. Cutoff 이후 신규 진입은 허용하지 않았어.
 - 수정 전 계약은 승인되지 않은 MKTCAP ≥ 1조 진입 게이트와 2026-09-21 current survivor 교집합을 historical P3-1 eligibility에 적용했어. 이전 결과는 `UNAUTHORIZED_MCAP1T_AND_CURRENT_SURVIVOR_FILTERED_RESULT`로 분류했어.
 - 수정 후 계약은 `MARKET_CAP_FILTER=NONE`이야. Frozen historical PIT의 P3-1 COMMON 2,626 identity key에서 current permanent exclusion registry의 exact (ticker, ISU) 181쌍만 적용해 2,467 key를 만들었어.
@@ -111,4 +111,4 @@ PROGRESSED는 raw 날짜 존재만으로 세지 않았어. 실현 거래는 entr
 ## 산출물
 
 - artifacts/strategies/a_fast_core_v2/research/fast_core_v2_simple_backtest_universe_mcap_contract_fix_v01/p3_1/에 preflight, identity authority audit, 세 trade ledger, signal/no-cap contract/price audit, execution audit, PROGRESSED reconciliation, metrics, CONTROL delta, previous-result comparison, provenance, artifact manifest가 있어.
-- 결과 토큰: FAST_CORE_V2_SIMPLE_BACKTEST_UNIVERSE_MCAP_CONTRACT_FIX_V01_P3_1_PASS
+- 결과 토큰: FAST_CORE_V2_SIMPLE_BACKTEST_UNIVERSE_MCAP_CONTRACT_FIX_V01_PASS
