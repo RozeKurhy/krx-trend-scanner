@@ -38,6 +38,12 @@ logger = logging.getLogger(__name__)
 DATA_CUTOFF = pd.Timestamp("2026-08-14")
 
 
+def _last_trading_date_on_or_before(index: pd.DatetimeIndex, date: pd.Timestamp) -> pd.Timestamp | None:
+    """Return the last index date no later than ``date`` using a binary search."""
+    position = index.searchsorted(pd.Timestamp(date).normalize(), side="right") - 1
+    return index[position].normalize() if position >= 0 else None
+
+
 @dataclass
 class V02TradeRecord:
     ticker: str
@@ -85,6 +91,129 @@ class V02TradeRecord:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
+
+def _simulate_causal_lifecycle(
+    monthly_snapshots: list[dict[str, Any]],
+    entry_stage: str,
+    stop_date: pd.Timestamp | None = None,
+) -> dict[str, Any]:
+    """Advance lifecycle and exit state in date order, without horizon lookahead.
+
+    A later direct EARLY_TREND -> PROGRESSED handoff can change how future
+    observations are handled, but cannot replace an exit already reached in an
+    earlier no-handoff progression sequence.
+    """
+    first_early_trend_d: pd.Timestamp | None = (
+        pd.Timestamp(monthly_snapshots[0]["date"]).normalize()
+        if entry_stage == "EARLY_TREND" and monthly_snapshots
+        else None
+    )
+    direct_handoff_observed = False
+    early_trend_to_prog_d: pd.Timestamp | None = None
+    first_progressed_d: pd.Timestamp | None = None
+    first_prog_score: float | None = None
+    skipped_handoff = False
+    progressed_observed = False
+    prev_valid_stage = entry_stage
+    had_early_trend = entry_stage == "EARLY_TREND"
+    fallback_started = False
+    fallback_monitoring = False
+    fallback_hwm: float | None = None
+    normal_hwm: float | None = None
+    e2_sig_d: pd.Timestamp | None = None
+    e2_exit_type: str | None = None
+
+    for row in monthly_snapshots:
+        m = pd.Timestamp(row["date"]).normalize()
+        effective_date = pd.Timestamp(row.get("effective_trading_date", m)).normalize()
+        if stop_date is not None and effective_date > pd.Timestamp(stop_date).normalize():
+            break
+        st = str(row.get("stage") or "UNAVAILABLE").upper()
+        sc = row.get("score")
+        sc = float(sc) if sc is not None and not pd.isna(sc) else None
+
+        if st == "UNAVAILABLE":
+            continue
+
+        if st == "EARLY_TREND":
+            had_early_trend = True
+            if first_early_trend_d is None:
+                first_early_trend_d = m
+
+        direct_started_this_month = False
+        if st == "PROGRESSED":
+            progressed_observed = True
+            if first_progressed_d is None:
+                first_progressed_d = m
+                first_prog_score = sc
+
+            if prev_valid_stage == "EARLY_TREND" and not direct_handoff_observed:
+                direct_handoff_observed = True
+                early_trend_to_prog_d = m
+                direct_started_this_month = True
+                normal_hwm = sc if sc is not None else 0.0
+            elif (
+                prev_valid_stage == "TRANSITION"
+                and not had_early_trend
+                and not direct_handoff_observed
+                and not skipped_handoff
+            ):
+                skipped_handoff = True
+
+            if direct_handoff_observed:
+                if not direct_started_this_month and sc is not None and normal_hwm is not None:
+                    normal_hwm = max(normal_hwm, sc)
+                    if normal_hwm - sc >= 15.0:
+                        e2_sig_d = m
+                        e2_exit_type = "EXIT4_SCORE_DRAWDOWN_GE_15"
+            elif not fallback_started:
+                fallback_started = True
+                fallback_monitoring = True
+                fallback_hwm = sc if sc is not None else 0.0
+            elif fallback_monitoring and sc is not None and fallback_hwm is not None:
+                fallback_hwm = max(fallback_hwm, sc)
+                if fallback_hwm - sc >= 15.0:
+                    e2_sig_d = m
+                    e2_exit_type = "EXIT4_SCORE_DRAWDOWN_GE_15"
+
+        elif direct_handoff_observed:
+            if st in {"WEAK", "BASE", "TRANSITION", "EARLY_TREND"}:
+                e2_sig_d = m
+                e2_exit_type = f"EXIT3_PROGRESSED_TO_{st}"
+        elif fallback_monitoring:
+            # Preserve the existing coverage rule: a no-handoff Exit 4 tracks
+            # only the initial continuous PROGRESSED run.
+            fallback_monitoring = False
+
+        prev_valid_stage = st
+        if e2_sig_d is not None:
+            break
+
+    if direct_handoff_observed and early_trend_to_prog_d is not None:
+        coverage_path = "NORMAL_EARLY_TREND_HANDOFF"
+    elif skipped_handoff:
+        coverage_path = "SKIPPED_EARLY_TREND_HANDOFF"
+    elif progressed_observed:
+        coverage_path = "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
+    else:
+        coverage_path = "NEVER_PROGRESSED"
+
+    if e2_exit_type is None:
+        e2_exit_type = "NO_EXIT_BEFORE_CUTOFF" if progressed_observed else "NO_PROGRESSED_BEFORE_CUTOFF"
+
+    return {
+        "first_early_trend_date": first_early_trend_d,
+        "direct_handoff_observed": direct_handoff_observed,
+        "early_trend_to_progressed_date": early_trend_to_prog_d,
+        "first_progressed_date": first_progressed_d,
+        "first_progressed_score": first_prog_score,
+        "skipped_handoff": skipped_handoff,
+        "progressed_observed": progressed_observed,
+        "coverage_path": coverage_path,
+        "exit_signal_date": e2_sig_d,
+        "exit_type": e2_exit_type,
+    }
 
 
 def simulate_ticker_core_v02_reentry(
@@ -299,71 +428,35 @@ def simulate_ticker_core_v02_reentry(
                 eval_res = evaluate_pattern_a(snap)
                 st = eval_res.stage.value.upper() if eval_res.stage else "UNAVAILABLE"
                 sc = float(round(eval_res.score, 2)) if eval_res.score is not None else None
-                monthly_snapshots.append({"date": m, "stage": st, "score": sc})
+                effective_date = _last_trading_date_on_or_before(daily.index, m)
+                if effective_date is None:
+                    effective_date = m
+                monthly_snapshots.append({"date": m, "effective_trading_date": effective_date, "stage": st, "score": sc})
             except Exception:
                 if strict_errors:
                     raise
                 monthly_snapshots.append({"date": m, "stage": "UNAVAILABLE", "score": None})
 
-        first_early_trend_d: pd.Timestamp | None = found_signal_w if pa_stage_at_entry == "EARLY_TREND" else None
-        direct_handoff_observed = False
-        early_trend_to_prog_d: pd.Timestamp | None = None
-        first_progressed_d: pd.Timestamp | None = None
-        first_prog_score: float | None = None
-        skipped_handoff = False
-        progressed_observed = False
-
-        prev_valid_stage = pa_stage_at_entry
-        had_early_trend = (pa_stage_at_entry == "EARLY_TREND")
-
-        for row in monthly_snapshots:
-            m = row["date"]
-            st = row["stage"]
-            sc = row["score"]
-
-            if st == "UNAVAILABLE":
-                continue
-
-            if st == "EARLY_TREND":
-                had_early_trend = True
-                if first_early_trend_d is None:
-                    first_early_trend_d = m
-
-            if st == "PROGRESSED":
-                progressed_observed = True
-                if first_progressed_d is None:
-                    first_progressed_d = m
-                    first_prog_score = sc
-
-                if prev_valid_stage == "EARLY_TREND" and not direct_handoff_observed:
-                    direct_handoff_observed = True
-                    early_trend_to_prog_d = m
-                elif (
-                    prev_valid_stage == "TRANSITION"
-                    and not had_early_trend
-                    and not direct_handoff_observed
-                    and not skipped_handoff
-                ):
-                    skipped_handoff = True
-
-            prev_valid_stage = st
-
-        if direct_handoff_observed and early_trend_to_prog_d is not None:
-            coverage_path = "NORMAL_EARLY_TREND_HANDOFF"
-        elif skipped_handoff:
-            coverage_path = "SKIPPED_EARLY_TREND_HANDOFF"
-        elif progressed_observed:
-            coverage_path = "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
-        else:
-            coverage_path = "NEVER_PROGRESSED"
-
-        # Pre-PROGRESSED Loss Guard Check (HOLD_B)
-        first_prog_eff_trading_d: pd.Timestamp | None = None
-        if first_progressed_d is not None:
-            month_daily = daily[daily.index <= first_progressed_d]
-            if not month_daily.empty:
-                first_prog_eff_trading_d = month_daily.index.max()
-            pre_prog_daily = daily[(daily.index >= entry_exec_date) & (daily.index < first_prog_eff_trading_d)]
+        # Loss Guard remains limited to the daily interval before the first
+        # PROGRESSED observation.  This boundary is used only to locate the
+        # eligible daily Loss Guard interval; lifecycle class and exits below
+        # are advanced separately in chronological order.
+        horizon_first_progressed_d = next(
+            (pd.Timestamp(row["date"]).normalize() for row in monthly_snapshots if row["stage"] == "PROGRESSED"),
+            None,
+        )
+        horizon_first_prog_eff_trading_d: pd.Timestamp | None = None
+        if horizon_first_progressed_d is not None:
+            horizon_first_prog_eff_trading_d = _last_trading_date_on_or_before(
+                daily.index, horizon_first_progressed_d
+            )
+            if horizon_first_prog_eff_trading_d is not None:
+                pre_prog_daily = daily[
+                    (daily.index >= entry_exec_date)
+                    & (daily.index < horizon_first_prog_eff_trading_d)
+                ]
+            else:
+                pre_prog_daily = daily[(daily.index >= entry_exec_date) & (daily.index <= valuation_cutoff)]
         else:
             pre_prog_daily = daily[(daily.index >= entry_exec_date) & (daily.index <= valuation_cutoff)]
 
@@ -383,65 +476,23 @@ def simulate_ticker_core_v02_reentry(
                     loss_guard_exec_price = float(fut_after_stop.iloc[0]["open"])
                 break
 
-        # Simulate PROGRESSED Exits (E2: Exit 3 + Exit 4 + Coverage)
-        e2_sig_d: pd.Timestamp | None = None
-        e2_exit_type: str | None = None
-
-        if coverage_path == "NORMAL_EARLY_TREND_HANDOFF":
-            in_p = False
-            hwm_1 = None
-            for row in monthly_snapshots:
-                m = row["date"]
-                st = row["stage"]
-                sc = row["score"]
-                if m < early_trend_to_prog_d:
-                    continue
-                if m == early_trend_to_prog_d:
-                    in_p = True
-                    hwm_1 = sc if sc is not None else 0.0
-                    continue
-                if in_p:
-                    if st == "PROGRESSED":
-                        if sc is not None and hwm_1 is not None:
-                            hwm_1 = max(hwm_1, sc)
-                            if hwm_1 - sc >= 15.0:
-                                e2_sig_d = m
-                                e2_exit_type = "EXIT4_SCORE_DRAWDOWN_GE_15"
-                                break
-                    elif st in {"WEAK", "BASE", "TRANSITION", "EARLY_TREND"}:
-                        e2_sig_d = m
-                        e2_exit_type = f"EXIT3_PROGRESSED_TO_{st}"
-                        break
-            if e2_sig_d is None:
-                e2_exit_type = "NO_EXIT_BEFORE_CUTOFF"
-
-        elif coverage_path in {"SKIPPED_EARLY_TREND_HANDOFF", "PROGRESSED_WITHOUT_DIRECT_HANDOFF"}:
-            if first_progressed_d is not None:
-                hwm_2 = first_prog_score if first_prog_score is not None else 0.0
-                in_p = True
-                for row in monthly_snapshots:
-                    m = row["date"]
-                    st = row["stage"]
-                    sc = row["score"]
-                    if m <= first_progressed_d:
-                        continue
-                    if in_p:
-                        if st == "PROGRESSED":
-                            if sc is not None:
-                                hwm_2 = max(hwm_2, sc)
-                                if hwm_2 - sc >= 15.0:
-                                    e2_sig_d = m
-                                    e2_exit_type = "EXIT4_SCORE_DRAWDOWN_GE_15"
-                                    break
-                        else:
-                            in_p = False
-                            break
-                if e2_sig_d is None:
-                    e2_exit_type = "NO_EXIT_BEFORE_CUTOFF"
-            else:
-                e2_exit_type = "NO_PROGRESSED_BEFORE_CUTOFF"
-        else:
-            e2_exit_type = "NO_PROGRESSED_BEFORE_CUTOFF"
+        # A Loss Guard closes the lifecycle at its own signal date.  Otherwise
+        # process each available monthly observation until the first E2 exit or
+        # the valuation cutoff.  No later snapshot can revise an earlier exit.
+        lifecycle = _simulate_causal_lifecycle(
+            monthly_snapshots,
+            pa_stage_at_entry,
+            stop_date=loss_guard_sig_d,
+        )
+        coverage_path = lifecycle["coverage_path"]
+        first_progressed_d: pd.Timestamp | None = lifecycle["first_progressed_date"]
+        first_prog_eff_trading_d: pd.Timestamp | None = (
+            _last_trading_date_on_or_before(daily.index, first_progressed_d)
+            if first_progressed_d is not None
+            else None
+        )
+        e2_sig_d: pd.Timestamp | None = lifecycle["exit_signal_date"]
+        e2_exit_type: str = str(lifecycle["exit_type"])
 
         # Final trade outcome determination (HOLD_B + E2)
         if loss_guard_triggered and loss_guard_sig_d is not None:

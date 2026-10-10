@@ -1,0 +1,143 @@
+{
+  "checks": {
+    "alignment_filter_check": true,
+    "candidate_audits": {
+      "ALIGNMENT": {
+        "accepted_executable_signals": 119,
+        "accepted_signal_trade_parity": true,
+        "audit_rows": 4156,
+        "filter_formula_and_fail_closed": true,
+        "network_calls": 0,
+        "prior_completed_month_only": true,
+        "trade_count": 119
+      },
+      "MA60": {
+        "accepted_executable_signals": 207,
+        "accepted_signal_trade_parity": true,
+        "audit_rows": 3747,
+        "filter_formula_and_fail_closed": true,
+        "network_calls": 0,
+        "prior_completed_month_only": true,
+        "trade_count": 207
+      }
+    },
+    "candidate_signal_parity": true,
+    "control_mcap_trade_entry_pass": true,
+    "control_mcap_unresolved_count": 0,
+    "duplicate_trade_key_count": 0,
+    "identity_key_count": 2336,
+    "identity_segment_count": 2336,
+    "ma60_filter_check": true,
+    "net_terminal_recompute_mismatch_count": 0,
+    "network_calls": 0,
+    "permanent_exclusion_mcap_audit_leakage_count": 0,
+    "permanent_exclusion_signal_audit_leakage_by_strategy": {
+      "ALIGNMENT": 0,
+      "MA60": 0
+    },
+    "permanent_exclusion_signal_audit_leakage_count": 0,
+    "permanent_exclusion_trade_leakage_by_strategy": {
+      "ALIGNMENT": 0,
+      "CONTROL": 0,
+      "MA60": 0
+    },
+    "permanent_exclusion_trade_leakage_count": 0,
+    "post_cutoff_entry_count": 0,
+    "post_cutoff_entry_execution_count": 0,
+    "price_partition_count": 781,
+    "price_partition_hash_metadata_checks_pass": true,
+    "processed_ticker_count_each_strategy": 2336,
+    "processed_ticker_counts": {
+      "ALIGNMENT": 2336,
+      "CONTROL": 2336,
+      "MA60": 2336
+    },
+    "strategy_worker_counts": {
+      "ALIGNMENT": 10,
+      "CONTROL": 10,
+      "MA60": 10
+    },
+    "strategy_worker_error_counts": {
+      "ALIGNMENT": 0,
+      "CONTROL": 0,
+      "MA60": 0
+    },
+    "trade_file_hashes": [
+      {
+        "sha256": "b42f4c932c23c8a7c5fad43bb9c6510aaf0264f0da26614a3df51414f4c4876a",
+        "strategy": "CONTROL",
+        "trade_file": "p3_1_control_trades.csv"
+      },
+      {
+        "sha256": "1a29c5d3caabbe4cb05a15ecf29fc2a737b33a114ba0819e8f17f36af99c6eec",
+        "strategy": "MA60",
+        "trade_file": "p3_1_ma60_trades.csv"
+      },
+      {
+        "sha256": "3b6e7f9724e23dd885a1a0e404a401390ba27bc55c8bbfa89a76298091e5310d",
+        "strategy": "ALIGNMENT",
+        "trade_file": "p3_1_alignment_trades.csv"
+      }
+    ],
+    "worker_error_count": 0
+  },
+  "common_pit_segment_count": 2336,
+  "compressed_verified_audits": [
+    "p3_1_control_pit_mcap_audit.csv.gz",
+    "p3_1_ma60_signal_audit.csv.gz",
+    "p3_1_alignment_signal_audit.csv.gz",
+    "p3_1_price_store_audit.csv.gz"
+  ],
+  "effective_end": "2025-05-30",
+  "effective_start": "2022-01-03",
+  "elapsed_seconds": 7212.987784957979,
+  "eligible_survivor_identity_count": 2424,
+  "execution": {
+    "ALIGNMENT": {
+      "elapsed_seconds": 2370.1145210829563,
+      "raw_signal_audit_count": 4156,
+      "strategy_trade_count": 119,
+      "ticker_count": 2336,
+      "worker_count": 10,
+      "worker_errors": []
+    },
+    "CONTROL": {
+      "elapsed_seconds": 2395.8229765002616,
+      "strategy_trade_count": 247,
+      "ticker_count": 2336,
+      "worker_count": 10,
+      "worker_errors": []
+    },
+    "MA60": {
+      "elapsed_seconds": 2315.954674374778,
+      "raw_signal_audit_count": 3747,
+      "strategy_trade_count": 207,
+      "ticker_count": 2336,
+      "worker_count": 10,
+      "worker_errors": []
+    }
+  },
+  "execution_support": "2025-06-02",
+  "final_token": "FAST_CORE_V2_LIFECYCLE_PREFIX_INVARIANCE_FIX_V01_P3_1_PASS",
+  "identity_key_count": 2336,
+  "identity_scope": "saved P3-2 exact survivor roster applied to frozen merged COMMON PIT intervals",
+  "identity_segment_count": 2336,
+  "processed_ticker_count_each_strategy": 2336,
+  "progressed_counts_authoritative": {
+    "ALIGNMENT": 39,
+    "CONTROL": 67,
+    "MA60": 61
+  },
+  "reused_saved_trade_ledgers": false,
+  "status": "PASS",
+  "strategy_trade_counts": {
+    "ALIGNMENT": 119,
+    "CONTROL": 247,
+    "MA60": 207
+  },
+  "survivor_identity_count": 2424,
+  "unique_ticker_count": 2336,
+  "window_id": "P3-1",
+  "worker_count": 10,
+  "worker_errors": []
+}

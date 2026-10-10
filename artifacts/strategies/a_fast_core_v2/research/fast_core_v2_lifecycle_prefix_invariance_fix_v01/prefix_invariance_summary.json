@@ -1,0 +1,192 @@
+{
+  "267270_2025_01_24_control_reentry_in_fixed_p3_2": true,
+  "all_loss_guard_exit_return_stable": true,
+  "all_prefix_invariance_pass": true,
+  "all_replays_pass": true,
+  "final_gate": "PASS",
+  "final_token": "FAST_CORE_V2_LIFECYCLE_PREFIX_INVARIANCE_FIX_V01_PASS",
+  "loss_guard_stability_by_window_strategy": [
+    {
+      "exit_mismatch_count": 0,
+      "loss_guard_exit_return_stable": true,
+      "missing_loss_guard_trade_count": 0,
+      "net_realized_return_mismatch_count": 0,
+      "new_loss_guard_trade_count": 140,
+      "old_loss_guard_trade_count": 140,
+      "strategy": "CONTROL",
+      "window": "P3-1"
+    },
+    {
+      "exit_mismatch_count": 0,
+      "loss_guard_exit_return_stable": true,
+      "missing_loss_guard_trade_count": 0,
+      "net_realized_return_mismatch_count": 0,
+      "new_loss_guard_trade_count": 115,
+      "old_loss_guard_trade_count": 115,
+      "strategy": "MA60",
+      "window": "P3-1"
+    },
+    {
+      "exit_mismatch_count": 0,
+      "loss_guard_exit_return_stable": true,
+      "missing_loss_guard_trade_count": 0,
+      "net_realized_return_mismatch_count": 0,
+      "new_loss_guard_trade_count": 61,
+      "old_loss_guard_trade_count": 61,
+      "strategy": "ALIGNMENT",
+      "window": "P3-1"
+    },
+    {
+      "exit_mismatch_count": 0,
+      "loss_guard_exit_return_stable": true,
+      "missing_loss_guard_trade_count": 0,
+      "net_realized_return_mismatch_count": 0,
+      "new_loss_guard_trade_count": 207,
+      "old_loss_guard_trade_count": 206,
+      "strategy": "CONTROL",
+      "window": "P3-2"
+    },
+    {
+      "exit_mismatch_count": 0,
+      "loss_guard_exit_return_stable": true,
+      "missing_loss_guard_trade_count": 0,
+      "net_realized_return_mismatch_count": 0,
+      "new_loss_guard_trade_count": 164,
+      "old_loss_guard_trade_count": 163,
+      "strategy": "MA60",
+      "window": "P3-2"
+    },
+    {
+      "exit_mismatch_count": 0,
+      "loss_guard_exit_return_stable": true,
+      "missing_loss_guard_trade_count": 0,
+      "net_realized_return_mismatch_count": 0,
+      "new_loss_guard_trade_count": 78,
+      "old_loss_guard_trade_count": 78,
+      "strategy": "ALIGNMENT",
+      "window": "P3-2"
+    },
+    {
+      "exit_mismatch_count": 0,
+      "loss_guard_exit_return_stable": true,
+      "missing_loss_guard_trade_count": 0,
+      "net_realized_return_mismatch_count": 0,
+      "new_loss_guard_trade_count": 242,
+      "old_loss_guard_trade_count": 238,
+      "strategy": "CONTROL",
+      "window": "P2-2"
+    },
+    {
+      "exit_mismatch_count": 0,
+      "loss_guard_exit_return_stable": true,
+      "missing_loss_guard_trade_count": 0,
+      "net_realized_return_mismatch_count": 0,
+      "new_loss_guard_trade_count": 195,
+      "old_loss_guard_trade_count": 191,
+      "strategy": "MA60",
+      "window": "P2-2"
+    },
+    {
+      "exit_mismatch_count": 0,
+      "loss_guard_exit_return_stable": true,
+      "missing_loss_guard_trade_count": 0,
+      "net_realized_return_mismatch_count": 0,
+      "new_loss_guard_trade_count": 87,
+      "old_loss_guard_trade_count": 87,
+      "strategy": "ALIGNMENT",
+      "window": "P2-2"
+    }
+  ],
+  "p2_2_additional_entry_count": 20,
+  "p2_2_impact_comparison": [
+    {
+      "loss_guard_exit_return_stable": true,
+      "new_realized_count": 413,
+      "new_trade_count": 450,
+      "old_realized_count": 403,
+      "old_realized_exit_mismatch_count": 8,
+      "old_realized_missing_in_new_count": 0,
+      "old_realized_return_mismatch_count": 8,
+      "old_trade_count": 440,
+      "strategy": "CONTROL",
+      "trade_count_delta": 10,
+      "window": "P2-2"
+    },
+    {
+      "loss_guard_exit_return_stable": true,
+      "new_realized_count": 343,
+      "new_trade_count": 373,
+      "old_realized_count": 333,
+      "old_realized_exit_mismatch_count": 8,
+      "old_realized_missing_in_new_count": 0,
+      "old_realized_return_mismatch_count": 8,
+      "old_trade_count": 363,
+      "strategy": "MA60",
+      "trade_count_delta": 10,
+      "window": "P2-2"
+    },
+    {
+      "loss_guard_exit_return_stable": true,
+      "new_realized_count": 162,
+      "new_trade_count": 177,
+      "old_realized_count": 162,
+      "old_realized_exit_mismatch_count": 2,
+      "old_realized_missing_in_new_count": 0,
+      "old_realized_return_mismatch_count": 2,
+      "old_trade_count": 177,
+      "strategy": "ALIGNMENT",
+      "trade_count_delta": 0,
+      "window": "P2-2"
+    }
+  ],
+  "p2_2_old_realized_entries_all_present": true,
+  "p2_2_realized_exit_or_return_mismatch_rows": 18,
+  "p2_2_realized_lifecycle_field_change_rows": 344,
+  "p2_2_was_replayed": true,
+  "prefix_invariance_by_strategy": [
+    {
+      "duplicate_long_entry_key_count": 0,
+      "exit_mismatch_count": 0,
+      "lifecycle_event_mismatch_count": 0,
+      "long_trade_count": 374,
+      "missing_in_long_count": 0,
+      "net_realized_return_mismatch_count": 0,
+      "prefix_invariance_pass": true,
+      "short_open_at_cutoff_count": 56,
+      "short_realized_count": 191,
+      "status_mismatch_count": 0,
+      "strategy": "CONTROL"
+    },
+    {
+      "duplicate_long_entry_key_count": 0,
+      "exit_mismatch_count": 0,
+      "lifecycle_event_mismatch_count": 0,
+      "long_trade_count": 312,
+      "missing_in_long_count": 0,
+      "net_realized_return_mismatch_count": 0,
+      "prefix_invariance_pass": true,
+      "short_open_at_cutoff_count": 46,
+      "short_realized_count": 161,
+      "status_mismatch_count": 0,
+      "strategy": "MA60"
+    },
+    {
+      "duplicate_long_entry_key_count": 0,
+      "exit_mismatch_count": 0,
+      "lifecycle_event_mismatch_count": 0,
+      "long_trade_count": 166,
+      "missing_in_long_count": 0,
+      "net_realized_return_mismatch_count": 0,
+      "prefix_invariance_pass": true,
+      "short_open_at_cutoff_count": 26,
+      "short_realized_count": 93,
+      "status_mismatch_count": 0,
+      "strategy": "ALIGNMENT"
+    }
+  ],
+  "replay_status_by_window": {
+    "P2-2": "PASS",
+    "P3-1": "PASS",
+    "P3-2": "PASS"
+  }
+}
