@@ -79,16 +79,21 @@ STRATEGY = load_module(
     "five_window_fastcore_strategy",
     ROOT / "scripts/run_fastcore_neg40_weak_protect_p2_1.py",
 )
-PORTFOLIO = load_module(
-    "five_window_exact_mcap_gate",
-    ROOT / "scripts/run_p2_1_realistic_portfolio_v01.py",
-)
 from trend_scanner.backtest.standard_windows import resolve_standard_backtest_window
 from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader
+from trend_scanner.universe.permanent_identity_exclusions import PERMANENT_IDENTITY_EXCLUSIONS
 from trend_scanner.validation import pattern_a_fast_core_v02_reentry as v2
 
-COMM_RATE = float(PORTFOLIO.COMMISSION_RATE)
-SLIP_RATE = float(PORTFOLIO.SLIPPAGE_RATE)
+COMM_RATE = 0.00015
+SLIP_RATE = 0.001
+
+
+class _EmptyGateAudit:
+    """Progress-log compatibility only; never attached to a strategy RunContext."""
+
+    @staticmethod
+    def audit_frame() -> pd.DataFrame:
+        return pd.DataFrame()
 
 
 def sha256(path: Path) -> str:
@@ -292,35 +297,129 @@ def load_frozen_context():
     return frozen, run, gate, universe, authority, survivors
 
 
-def context_for_window(base_run: Any, gate: Any, survivors: frozenset[tuple[str, str, str]], window_id: str):
+def load_historical_frozen_context():
+    """Load the frozen PIT/calendar authority without loading a current-survivor projection."""
+    frozen = HELPER.load_frozen_runner()
+    calendar = frozen._calendar_from_frozen_artifact()
+    original_calendar_loader = STRATEGY.load_rolling_production_market_calendar
+    original_exclusion_filter = STRATEGY.apply_permanent_identity_exclusions
+    try:
+        STRATEGY.load_rolling_production_market_calendar = lambda _root: calendar
+        STRATEGY.apply_permanent_identity_exclusions = lambda segments: (list(segments), [])
+        base_run = STRATEGY._load_context("P3-2")
+    finally:
+        STRATEGY.load_rolling_production_market_calendar = original_calendar_loader
+        STRATEGY.apply_permanent_identity_exclusions = original_exclusion_filter
+
+    require(
+        sha256(base_run.authority.pit_path)
+        == "6747f26368369bc2ff5d20d695daed702c577bab34dd79640d41fbc862950bd1",
+        "FROZEN_PIT_HASH_MISMATCH",
+    )
+    require(base_run.entry_signal_gate is None, "HISTORICAL_SIMPLE_CONTEXT_HAS_ENTRY_GATE")
+    authority = {
+        "status": "PASS",
+        "historical_pit_path": base_run.authority.pit_path.relative_to(ROOT).as_posix(),
+        "historical_pit_sha256": sha256(base_run.authority.pit_path),
+        "calendar_sha256": calendar.metadata.get("calendar_sha256"),
+        "calendar_as_of": calendar.metadata.get("calendar_frontier"),
+        "latest_survivor_projection_loaded": False,
+    }
+    historical_keys = frozenset(
+        (row["ticker"], row["isu_cd"], row["market"])
+        for row in historical_common_rows(
+            base_run.authority.pit_intervals,
+            "2022-01-03",
+            "2025-05-30",
+        )
+    )
+    return frozen, base_run, None, pd.DataFrame(), authority, historical_keys
+
+
+def historical_common_rows(
+    pit_intervals: Any,
+    effective_start: str | pd.Timestamp,
+    effective_end: str | pd.Timestamp,
+) -> list[dict[str, Any]]:
+    """Return every COMMON PIT identity interval overlapping the requested history."""
+    start_bound = pd.Timestamp(effective_start).normalize()
+    end_bound = pd.Timestamp(effective_end).normalize()
+    require(start_bound <= end_bound, "INVALID_HISTORICAL_PIT_WINDOW")
+    rows: list[dict[str, Any]] = []
+    seen: set[tuple[str, str, str, pd.Timestamp, pd.Timestamp]] = set()
+    for row in pit_intervals:
+        if str(row.get("state", "")).strip().upper() != "COMMON":
+            continue
+        key = (
+            str(row.get("ticker", "")).zfill(6),
+            str(row.get("isu_cd", "")).strip().upper(),
+            str(row.get("market", "")).strip().upper(),
+        )
+        interval_start = pd.Timestamp(row["effective_from"]).normalize()
+        interval_end = pd.Timestamp(row["effective_to"]).normalize()
+        if interval_start > interval_end:
+            raise RuntimeError(f"INVALID_PIT_INTERVAL:{key}:{interval_start}:{interval_end}")
+        if interval_start > end_bound or interval_end < start_bound:
+            continue
+        identity = (*key, interval_start, interval_end)
+        require(identity not in seen, f"DUPLICATE_PIT_INTERVAL:{identity}")
+        seen.add(identity)
+        rows.append({
+            "ticker": key[0],
+            "isu_cd": key[1],
+            "market": key[2],
+            "effective_from": interval_start,
+            "effective_to": interval_end,
+        })
+    rows.sort(key=lambda item: (item["ticker"], item["effective_from"], item["effective_to"], item["isu_cd"], item["market"]))
+    return rows
+
+
+def exact_permanent_exclusion_pairs(
+    exclusions: Mapping[tuple[str, str], Any] = PERMANENT_IDENTITY_EXCLUSIONS,
+) -> frozenset[tuple[str, str]]:
+    pairs = frozenset(
+        (str(ticker).zfill(6), str(isu_cd).strip().upper())
+        for ticker, isu_cd in exclusions
+    )
+    require(len(pairs) == len(exclusions), "PERMANENT_EXCLUSION_PAIR_NORMALIZATION_COLLISION")
+    return pairs
+
+
+def apply_exact_permanent_exclusions(
+    rows: list[dict[str, Any]],
+    exclusion_pairs: frozenset[tuple[str, str]],
+) -> list[dict[str, Any]]:
+    return [
+        row for row in rows
+        if (row["ticker"], row["isu_cd"]) not in exclusion_pairs
+    ]
+
+
+def context_for_window(base_run: Any, _legacy_gate: Any, _legacy_survivors: Any, window_id: str):
     window = resolve_standard_backtest_window(window_id, base_run.calendar)
     actual = tuple(
         value.strftime("%Y-%m-%d")
         for value in (window.effective_start, window.effective_end, window.execution_support)
     )
     require(actual == EXPECTED_WINDOWS[window_id], f"{window_id}_WINDOW_BOUNDARY_MISMATCH:{actual}")
-    segments = []
-    for row in base_run.authority.pit_intervals:
-        key = (
-            str(row.get("ticker", "")).zfill(6),
-            str(row.get("isu_cd", "")).strip().upper(),
-            str(row.get("market", "")).strip().upper(),
+    common_rows = historical_common_rows(
+        base_run.authority.pit_intervals,
+        window.effective_start,
+        window.effective_end,
+    )
+    policy_pairs = exact_permanent_exclusion_pairs()
+    eligible_rows = apply_exact_permanent_exclusions(common_rows, policy_pairs)
+    segments = [
+        STRATEGY.IdentitySegment(
+            ticker=row["ticker"],
+            isu_cd=row["isu_cd"],
+            market=row["market"],
+            effective_from=row["effective_from"],
+            effective_to=row["effective_to"],
         )
-        if row.get("state") != "COMMON" or key not in survivors:
-            continue
-        start, end = pd.Timestamp(row["effective_from"]).normalize(), pd.Timestamp(row["effective_to"]).normalize()
-        if start > window.effective_end or end < window.effective_start:
-            continue
-        require(start <= end, f"{window_id}_INVALID_PIT_INTERVAL:{key}")
-        segments.append(
-            STRATEGY.IdentitySegment(
-                ticker=key[0],
-                isu_cd=key[1],
-                market=key[2],
-                effective_from=start,
-                effective_to=end,
-            )
-        )
+        for row in eligible_rows
+    ]
     segments.sort(key=lambda item: (item.ticker, item.effective_from, item.effective_to, item.isu_cd))
     by_ticker: dict[str, list[Any]] = {}
     prior: dict[str, Any] = {}
@@ -332,33 +431,40 @@ def context_for_window(base_run: Any, gate: Any, survivors: frozenset[tuple[str,
         )
         prior[segment.ticker] = segment
         by_ticker.setdefault(segment.ticker, []).append(segment)
-    require(by_ticker, f"{window_id}_EMPTY_SURVIVOR_PIT_POPULATION")
+    require(by_ticker, f"{window_id}_EMPTY_HISTORICAL_COMMON_PIT_POPULATION")
     repo_loader = RepositoryV2DailyLoader(
         base_run.loader.repository,
         end=window.execution_support,
     )
-    scoped_gate = PORTFOLIO.ExactRawMcapGate(ROOT, json.loads(base_run.authority.pit_path.read_text(encoding="utf-8")))
-    scoped_gate.active_identity_keys = survivors
     scoped_run = replace(
         base_run,
         window=window,
         segments_by_ticker={ticker: tuple(rows) for ticker, rows in sorted(by_ticker.items())},
         loader=repo_loader,
-        entry_signal_gate=scoped_gate,
+        entry_signal_gate=None,
     )
-    return scoped_run, scoped_gate, {
+    return scoped_run, None, {
         "window_id": window_id,
         "effective_start": actual[0],
         "effective_end": actual[1],
         "execution_support": actual[2],
-        "survivor_identity_count": len(survivors),
+        "historical_common_identity_key_count": len({(row["ticker"], row["isu_cd"], row["market"]) for row in common_rows}),
+        "eligible_historical_identity_key_count": len({(row["ticker"], row["isu_cd"], row["market"]) for row in eligible_rows}),
+        "permanent_exclusion_removed_segment_count": len(common_rows) - len(eligible_rows),
+        "permanent_exclusion_removed_identity_key_count": len({(row["ticker"], row["isu_cd"], row["market"]) for row in common_rows})
+        - len({(row["ticker"], row["isu_cd"], row["market"]) for row in eligible_rows}),
         "common_pit_segment_count": len(segments),
         "unique_ticker_count": len(by_ticker),
-        "identity_scope": "saved P3-2 exact survivor roster applied to frozen merged COMMON PIT intervals",
+        "identity_scope": "historical frozen COMMON PIT then exact (ticker, ISU) permanent exclusions",
+        "market_cap_filter": "NONE",
+        "market_cap_gate_injected": False,
+        "market_cap_based_reject_count": 0,
+        "current_survivor_membership_used": False,
     }
 
 
 def run_control(run: Any, gate: Any, workers: int = WORKERS) -> tuple[pd.DataFrame, dict[str, Any], pd.DataFrame]:
+    require(gate is None and getattr(run, "entry_signal_gate", None) is None, "SIMPLE_RUNNER_MUST_NOT_INJECT_MARKET_CAP_GATE")
     outcomes: list[dict[str, Any]] = []
     errors: list[str] = []
     started = time.perf_counter()
@@ -381,7 +487,7 @@ def run_control(run: Any, gate: Any, workers: int = WORKERS) -> tuple[pd.DataFra
                 trades = sum(len(item.get("control_rows", ())) for item in outcomes)
                 print(
                     f"CONTROL progress {index}/{len(futures)} trades={trades} "
-                    f"mcap_audits={len(gate.audit_frame())} errors={len(errors)} "
+                    f"market_cap_filter=NONE errors={len(errors)} "
                     f"elapsed={time.perf_counter()-started:.1f}s",
                     flush=True,
                 )
@@ -398,16 +504,22 @@ def run_control(run: Any, gate: Any, workers: int = WORKERS) -> tuple[pd.DataFra
         "ticker_count": len(tickers),
         "strategy_trade_count": int(len(records)),
         "elapsed_seconds": time.perf_counter() - started,
+        "market_cap_filter_applied": False,
+        "market_cap_based_reject_count": 0,
     }
-    mcap = gate.audit_frame().copy()
+    mcap = pd.DataFrame([{
+        "market_cap_filter_applied": False,
+        "market_cap_threshold": None,
+        "market_cap_based_reject_count": 0,
+        "reason": "entry_signal_gate=None",
+    }])
     del outcomes
     gc.collect()
     return records, timing, mcap
 
 
 def reset_gate_audit(gate: Any) -> None:
-    with gate._lock:
-        gate._audit.clear()
+    require(gate is None, "SIMPLE_RUNNER_MUST_NOT_INJECT_MARKET_CAP_GATE")
 
 
 def net_terminal_return(row: Mapping[str, Any]) -> float | None:
@@ -525,7 +637,7 @@ def write_frame(path: Path, frame: pd.DataFrame) -> None:
 
 
 def run_sample(base_run: Any, gate: Any, survivors: frozenset[tuple[str, str, str]], prices: Any) -> dict[str, Any]:
-    run, scoped_gate, context = context_for_window(base_run, gate, survivors, "P1")
+    run, scoped_gate, context = context_for_window(base_run, None, frozenset(), "P1")
     tickers = sorted(run.segments_by_ticker)
     sample_count = min(50, len(tickers))
     indices = sorted(set(np.linspace(0, len(tickers) - 1, sample_count, dtype=int).tolist()))
@@ -578,7 +690,7 @@ def run_sample(base_run: Any, gate: Any, survivors: frozenset[tuple[str, str, st
         "worker_count": WORKERS,
         "sampled_tickers": sample_count,
         "target_tickers": len(tickers),
-        "sample_ticker_selection": "evenly spaced over sorted frozen survivor ticker list",
+        "sample_ticker_selection": "evenly spaced over sorted historical COMMON PIT ticker list",
         "sample_runs": observations,
         "rough_full_window_estimate": estimates,
         "warning": "Linear estimate only; P1 runtime varies by ticker history and signal count.",
@@ -632,12 +744,13 @@ def run_full_window(
     prices: Any,
     metrics: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    run, scoped_gate, context = context_for_window(base_run, gate, survivors, window_id)
+    run, scoped_gate, context = context_for_window(base_run, None, frozenset(), window_id)
+    audit_only = _EmptyGateAudit()
     execution = {}
     reset_gate_audit(scoped_gate)
     control, control_timing, mcap_audit = run_control(run, scoped_gate)
     execution["CONTROL"] = control_timing
-    write_frame(OUT / f"{window_id.lower().replace('-', '_')}_control_pit_mcap_audit.csv", mcap_audit)
+    write_frame(OUT / f"{window_id.lower().replace('-', '_')}_market_cap_filter_audit.csv", mcap_audit)
     del mcap_audit
     costed_control = add_costed_returns(control)
     write_frame(OUT / f"{window_id.lower().replace('-', '_')}_control_trades.csv", costed_control)
@@ -645,7 +758,7 @@ def run_full_window(
 
     reset_gate_audit(scoped_gate)
     ma60, ma60_result, ma60_audit, ma60_elapsed = HELPER.candidate_replay(
-        run, scoped_gate, prices, "MA60", 60, official_v2_only=True
+        run, audit_only, prices, "MA60", 60, official_v2_only=True
     )
     execution["MA60"] = {
         "worker_count": WORKERS,
@@ -655,6 +768,8 @@ def run_full_window(
         "raw_signal_audit_count": int(len(ma60_audit)),
         "elapsed_seconds": ma60_elapsed,
     }
+    ma60_audit["market_cap_filter_applied"] = False
+    ma60_audit["current_survivor_membership_used"] = False
     write_frame(OUT / f"{window_id.lower().replace('-', '_')}_ma60_signal_audit.csv", ma60_audit)
     costed_ma60 = add_costed_returns(ma60)
     write_frame(OUT / f"{window_id.lower().replace('-', '_')}_ma60_trades.csv", costed_ma60)
@@ -665,7 +780,7 @@ def run_full_window(
 
     reset_gate_audit(scoped_gate)
     alignment, alignment_result, alignment_audit = ALIGNMENT.candidate_replay(
-        HELPER, run, scoped_gate, prices, official_v2_only=True
+        HELPER, run, None, prices, official_v2_only=True
     )
     execution["ALIGNMENT"] = {
         "worker_count": WORKERS,
@@ -675,6 +790,8 @@ def run_full_window(
         "raw_signal_audit_count": int(len(alignment_audit)),
         "elapsed_seconds": float(alignment_result.get("elapsed_seconds", 0.0)),
     }
+    alignment_audit["market_cap_filter_applied"] = False
+    alignment_audit["current_survivor_membership_used"] = False
     write_frame(OUT / f"{window_id.lower().replace('-', '_')}_alignment_signal_audit.csv", alignment_audit)
     costed_alignment = add_costed_returns(alignment)
     write_frame(OUT / f"{window_id.lower().replace('-', '_')}_alignment_trades.csv", costed_alignment)
@@ -881,7 +998,7 @@ def render_report(summary: Mapping[str, Any], provenance: Mapping[str, Any]) -> 
         "",
         "- CONTROL, MA60 fail-closed, Bullish Alignment을 P1, P2-1, P2-2, P3-1, P3-2에서 거래 단위로 비교했어.",
         "- 포트폴리오 자본·포지션·현금 제약은 적용하지 않았고, 공식 전략 채택 여부도 판단하지 않았어.",
-        "- 같은 frozen survivor roster, merged COMMON PIT, KRX 시총 gate, Repository V2 가격, lifecycle을 사용했어.",
+        "- 각 기간의 historical frozen COMMON PIT에 current exact (ticker, ISU) permanent exclusions만 적용했어. current survivor projection과 시총 eligibility gate는 사용하지 않았어.",
         "",
         "## 비용과 MDD",
         "",
