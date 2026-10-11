@@ -1,0 +1,236 @@
+{
+  "authorities": {
+    "2026-10-09_in_calendar": false,
+    "2026-10-10_in_calendar": false,
+    "2026-10-11_in_calendar": false,
+    "calendar_content_digest": "c370d6b19e6007b66ad03bebc6585f327ad605ad53766816f6e3981a1e5e568a",
+    "calendar_frontier": "2026-10-08",
+    "exact_sessions_confirmed": {
+      "2026-10-06": true,
+      "2026-10-07": true,
+      "2026-10-08": true
+    },
+    "first_calendar_session_after_reference": null,
+    "future_prices_queried": false,
+    "manifest_certified_through": "2026-10-11",
+    "manifest_sha256": "980881df0d9ec88937740b62a2f24ec19473282ef3ee8f19f0c1a5c789205773",
+    "pit_content_digest": "9fd0a2a508c961f66c85489954e80decaae6deafd779289da0e4f44785f77bf9",
+    "pit_frontier": "2026-10-08",
+    "sessions": [
+      "2026-10-06",
+      "2026-10-07",
+      "2026-10-08"
+    ]
+  },
+  "canonical_history": {
+    "canonical_open_projection_rows": 37,
+    "canonical_pending_events": 0,
+    "current_open_rows": 37,
+    "current_realized_rows": 451,
+    "current_rows": 488,
+    "exact_key_set_equal": true,
+    "historical_only_identity_count": 148,
+    "open_exclusion_leakage": 0,
+    "open_keys_1_to_1_equal": true,
+    "permanent_identity_exclusion_pairs": 181,
+    "prior_open_rows": 37,
+    "prior_realized_rows": 451,
+    "prior_rows": 488,
+    "realized_mutations": 0,
+    "unique_current_identities": 399
+  },
+  "diagnostic_examples": {
+    "active_identity_errors": [],
+    "entry_price_mismatches": [],
+    "excluded_open_keys": [],
+    "exit_issues": [],
+    "item_monitor_mismatches": [],
+    "monitor_trade_mismatches": [],
+    "open_evaluation_errors": [],
+    "realized_mutations": [],
+    "reference_close_missing": [],
+    "report_eval_mismatches": [],
+    "report_identity_mismatches": [],
+    "report_market_mismatches": [],
+    "report_price_mismatches": [],
+    "return_mismatches": []
+  },
+  "head": "6bbfd8b77a0246f1d76258b47902eb78d88f99ec",
+  "monitor_trade_parity": {
+    "current_trade_history_rows": 488,
+    "field_mismatches": 0,
+    "monitor_trade_history_rows": 488,
+    "monitor_trade_key_count": 488
+  },
+  "network_requests": 0,
+  "open_exit_audit": {
+    "active_identity_errors": 0,
+    "current_open_visibility": {
+      "historical_only": 17,
+      "public": 20
+    },
+    "entry_price_mismatches": 0,
+    "evaluation_errors": 0,
+    "exit_signal_or_pending_issues": 0,
+    "first_normal_signals": 0,
+    "next_session_after_reference_known_in_certified_calendar": null,
+    "open_key_coverage_in_prior_full_audit": "37/37",
+    "pending_exit_events": 0,
+    "positions_evaluated": 37,
+    "positions_expected": 37,
+    "prior_full_audit_missed_exits_through_2026_10_02": 0,
+    "reference_close_missing": 0,
+    "return_mismatches": 0,
+    "session_evaluations_completed": 111,
+    "session_evaluations_expected": 111,
+    "state_counts_by_date": {
+      "2026-10-06": {
+        "DEEP_DEPRESSED": 8,
+        "DEPRESSED": 29,
+        "EXTREME_OVERHEATED": 0,
+        "NORMAL": 0,
+        "OVERHEATED": 0,
+        "UNAVAILABLE": 0
+      },
+      "2026-10-07": {
+        "DEEP_DEPRESSED": 8,
+        "DEPRESSED": 29,
+        "EXTREME_OVERHEATED": 0,
+        "NORMAL": 0,
+        "OVERHEATED": 0,
+        "UNAVAILABLE": 0
+      },
+      "2026-10-08": {
+        "DEEP_DEPRESSED": 8,
+        "DEPRESSED": 29,
+        "EXTREME_OVERHEATED": 0,
+        "NORMAL": 0,
+        "OVERHEATED": 0,
+        "UNAVAILABLE": 0
+      }
+    }
+  },
+  "origin_main": "6bbfd8b77a0246f1d76258b47902eb78d88f99ec",
+  "prior_sealed_full_audit": {
+    "current_open_executable_normal_exit_missing": 0,
+    "current_open_latest_valuation_mismatch": 0,
+    "current_open_latest_valuation_missing": 0,
+    "open_key_coverage": "37/37",
+    "pending_exit_events": 0,
+    "sha256": {
+      "report.md": "38b6e6751a978a3e5224d1a92a40a98841037f31be46f6ccdaa59cf75e30d28d",
+      "summary.json": "035377c2700cc73fd20648a16be3e4616a3f2f8824c594ef7c4551fe41b4e866",
+      "trade_lifecycle_audit.csv": "8e4e805dfd721567821268e755d40d68d65620ee59fe5868a8674e1085a8f931"
+    },
+    "status": "B_SELECT_CORE_V02_TRADE_HISTORY_AUDIT_PASS"
+  },
+  "production_or_data_mutations": 0,
+  "public_universe": {
+    "action_counts": {
+      "HOLD": 20,
+      "NONE": 75,
+      "NOT_APPLICABLE": 75,
+      "WAIT": 1289
+    },
+    "bucket_denominator_sum": 1459,
+    "data_status_counts": {
+      "NOT_APPLICABLE": 75,
+      "READY": 1309,
+      "UNAVAILABLE": 75
+    },
+    "monitor_count_mismatches": {},
+    "monitor_counts": {
+      "entry": 0,
+      "exit": 0,
+      "hold": 20,
+      "unavailable": 150,
+      "watch": 1289
+    },
+    "monitor_item_count": 1459,
+    "monitor_item_mismatches": 0,
+    "open_in_unavailable_bucket": 0,
+    "pattern_b_report_evaluation_status_counts": {
+      "READY": 1384,
+      "UNAVAILABLE": 75
+    },
+    "pattern_b_unavailable_reason_counts": {
+      "36M_RANGE_POSITION:INSUFFICIENT_BARS": 75,
+      "52W_RANGE_POSITION:INSUFFICIENT_BARS": 14,
+      "MONTHLY_MA24_DISTANCE:INSUFFICIENT_BARS": 44
+    },
+    "permanent_exclusion_count": 75,
+    "report_evaluation_mismatches": 0,
+    "report_identity_mismatches": 0,
+    "report_market_mismatches": 0,
+    "report_price_mismatches": 0,
+    "status_count": 1459,
+    "status_count_mismatches": {},
+    "status_declared_counts": {
+      "entry": 0,
+      "exit": 0,
+      "hold": 20,
+      "unavailable": 150,
+      "watch": 1289
+    },
+    "status_index_key_delta": {
+      "extra_in_index": 0,
+      "missing_in_index": 0
+    },
+    "status_item_count": 1459,
+    "status_monitor_key_delta": {
+      "extra_in_monitor": 0,
+      "missing_in_monitor": 0
+    },
+    "status_recomputed_counts": {
+      "entry": 0,
+      "exit": 0,
+      "hold": 20,
+      "unavailable": 150,
+      "watch": 1289
+    },
+    "stock_index_current_common_count": 1459,
+    "stock_report_availability_counts": {
+      "DATA_UNAVAILABLE": 90,
+      "PARTIAL": 1369
+    },
+    "stock_reports_hashed": 1459,
+    "unavailable_reason_counts": {
+      "PATTERN_B_UNAVAILABLE": 75,
+      "PERMANENT_IDENTITY_EXCLUSION": 75
+    }
+  },
+  "reference_market_date": "2026-10-08",
+  "requested_as_of": "2026-10-11",
+  "severity_counts": {
+    "CRITICAL": 0,
+    "MAJOR": 0,
+    "MINOR": 0
+  },
+  "source_hashes": {
+    "artifacts/strategies/b_select_core_v2/production/20261003/status.json": "de19d19c48d3d2388fd6ecb3968429d4e4a33fac5ddcf8f4ac46645f8618e03e",
+    "artifacts/strategies/b_select_core_v2/production/20261011/status.json": "6e033e40f50dca47840c084191b5be505871ddc090ee332aec7b0697d94db06f",
+    "artifacts/strategies/b_select_core_v2/validation/20261003_trade_history_full_audit_v01/report.md": "38b6e6751a978a3e5224d1a92a40a98841037f31be46f6ccdaa59cf75e30d28d",
+    "artifacts/strategies/b_select_core_v2/validation/20261003_trade_history_full_audit_v01/summary.json": "035377c2700cc73fd20648a16be3e4616a3f2f8824c594ef7c4551fe41b4e866",
+    "artifacts/strategies/b_select_core_v2/validation/20261003_trade_history_full_audit_v01/trade_lifecycle_audit.csv": "8e4e805dfd721567821268e755d40d68d65620ee59fe5868a8674e1085a8f931",
+    "data/market/rolling_authority/manifest.json": "5c4a9e346d7460c4a28b30a3cd9ab19c9c17527f1c4409282206e8ec2a731570",
+    "data/market/rolling_authority/merged_pit_intervals.json": "d93a958d7bbae9142ef1fa5aded36080d1d107739e777eb4ec3b6566fea90654",
+    "data/market/rolling_authority/merged_trading_calendar.json": "ab7635de160e06d538d9d0dc7225c8e1b307f191f54f2584d4c79e47a94a7480",
+    "docs/patterns/pattern_b/strategy/PATTERN_B_SELECT_CORE_V02.md": "d81444c363031130ab2699cb9abc92182879f1f2007877410d58c6e5a8cb2d64",
+    "docs/validation/backtest_common_rules.md": "e8783958064ddfc54f57bef3500ad41de6d3b6bc853fce2464845f9c4cc4d06b",
+    "scripts/audit_b_select_core_v2_trade_history_v01.py": "353786af635775b01a305003eb6f47e194a4ef88011c26396e0fe7b922e2d4a6",
+    "scripts/build_b_select_core_v2_status.py": "77410c63579a783ec75fddf29c1544067b603825a138a335620de37e20667c8a",
+    "scripts/export_strategy_monitor_web.py": "353b0cf69b9ea0ff065a910b66bb3fa022c9817d20da516ba44fcee0c330dfe6",
+    "scripts/run_pattern_b_pure_simple_backtest_v01.py": "51ae1c565f019996d4b8e21c3bbc82b013f8f8d31dfdba6964cf44a6a6a9dd14",
+    "src/trend_scanner/data/market_calendar.py": "1bade7125bd6c503f0a0f0ccafc1a82a931e867edbfd2ffbc9f16cf1ade72b7e",
+    "src/trend_scanner/data/repository_v2.py": "c252835604b0fd8f2e839d438052670d9700e773f1c34cb83582c5c29a198215",
+    "src/trend_scanner/data/repository_v2_loader.py": "d5c2333022acf5b777f38bfd024c7540aaae8bc16f455c1a7e779c60c510a97d",
+    "src/trend_scanner/patterns/pattern_b_evaluator.py": "07471f62074b87bd00f8281aec1bbcfd6370d0bad41abedb8c867cd9d6c58b72",
+    "src/trend_scanner/patterns/pattern_b_features_v01.py": "2480497c2cdc85289f30ea215f67dc0a6d715a1d81a8045a4c0c97c8c3da00db",
+    "src/trend_scanner/patterns/pattern_b_operational.py": "2f4478300a389b50f6cd2fb582615ae031f06d7da1664b1b8546bf30e2b0c810",
+    "src/trend_scanner/patterns/pattern_b_state_v02.py": "72adacfacde1529bde7ffc1cd748cee3b6e934565873a9f8d9c998e9aa03b37e",
+    "web/data/stock-index.json": "4c29f7085f1f85975c71de8acc68b4deace4d1493a8f1d40b409282d69e4061f",
+    "web/data/strategy-monitor.json": "48f50300cd985c5d583aaccf9744bf3a154b162ea2fed59ea773991cd8d2c406"
+  },
+  "status": "PASS",
+  "work_id": "B_SELECT_CORE_V2_20261011_EXIT_AND_CURRENT_STATUS_AUDIT_V01"
+}
