@@ -1,0 +1,134 @@
+{
+  "checks": {
+    "accepted_signal_trade_parity_pass": true,
+    "all_required_pass": true,
+    "all_strategies_present": true,
+    "candidate_audits": {
+      "ALIGNMENT": {
+        "accepted_executable_signals": 591,
+        "accepted_signal_trade_parity": true,
+        "audit_rows": 5328,
+        "filter_formula_and_fail_closed": true,
+        "network_calls": 0,
+        "prior_completed_month_only": true,
+        "trade_count": 591
+      },
+      "MA60": {
+        "accepted_executable_signals": 1344,
+        "accepted_signal_trade_parity": true,
+        "audit_rows": 3194,
+        "filter_formula_and_fail_closed": true,
+        "network_calls": 0,
+        "prior_completed_month_only": true,
+        "trade_count": 1344
+      }
+    },
+    "candidate_formula_and_fail_closed_pass": true,
+    "control_direct_signal_trade_count_parity_pass": true,
+    "control_emitted_signal_trade_count": 1705,
+    "control_trade_ledger_count": 1705,
+    "current_survivor_based_exclusion_count": 0,
+    "current_survivor_membership_used": false,
+    "duplicate_trade_key_count": 0,
+    "exact_permanent_exclusion_registry_181": true,
+    "hidden_market_cap_gate_count": 0,
+    "historical_pit_causality_pass": true,
+    "market_cap_based_reject_count": 0,
+    "market_cap_contract_pass": true,
+    "market_cap_filter_applied": false,
+    "market_cap_threshold_present": false,
+    "net_terminal_recompute_mismatch_count": 0,
+    "network_calls": 0,
+    "permanent_exclusion_leakage_count": 0,
+    "permanent_exclusion_signal_audit_leakage_by_strategy": {
+      "ALIGNMENT": 0,
+      "MA60": 0
+    },
+    "permanent_exclusion_trade_leakage_by_strategy": {
+      "ALIGNMENT": 0,
+      "CONTROL": 0,
+      "MA60": 0
+    },
+    "pit_entry_causality_failure_count": 0,
+    "post_cutoff_entry_execution_count": 0,
+    "post_cutoff_entry_signal_count": 0,
+    "price_partition_hash_metadata_checks_pass": true,
+    "processed_ticker_counts": {
+      "ALIGNMENT": 2482,
+      "CONTROL": 2482,
+      "MA60": 2482
+    },
+    "same_starting_universe_processed": true,
+    "validation_errors": [],
+    "worker_count_is_10_each": true,
+    "worker_counts": {
+      "ALIGNMENT": 10,
+      "CONTROL": 10,
+      "MA60": 10
+    },
+    "worker_error_count": 0,
+    "worker_errors_by_strategy": {
+      "ALIGNMENT": 0,
+      "CONTROL": 0,
+      "MA60": 0
+    }
+  },
+  "elapsed_seconds": 8973.27080237493,
+  "execution": {
+    "common_pit_segment_count": 2491,
+    "current_survivor_membership_used": false,
+    "effective_end": "2025-05-30",
+    "effective_start": "2021-01-04",
+    "eligible_historical_identity_key_count": 2491,
+    "execution": {
+      "ALIGNMENT": {
+        "elapsed_seconds": 2985.643057334237,
+        "raw_signal_audit_count": 5328,
+        "strategy_trade_count": 591,
+        "ticker_count": 2482,
+        "worker_count": 10,
+        "worker_errors": []
+      },
+      "CONTROL": {
+        "elapsed_seconds": 2911.711333999876,
+        "market_cap_based_reject_count": 0,
+        "market_cap_filter_applied": false,
+        "strategy_trade_count": 1705,
+        "ticker_count": 2482,
+        "worker_count": 10,
+        "worker_errors": []
+      },
+      "MA60": {
+        "elapsed_seconds": 2939.743236791808,
+        "raw_signal_audit_count": 3194,
+        "strategy_trade_count": 1344,
+        "ticker_count": 2482,
+        "worker_count": 10,
+        "worker_errors": []
+      }
+    },
+    "execution_support": "2025-06-02",
+    "historical_common_identity_key_count": 2657,
+    "identity_scope": "historical frozen COMMON PIT then exact (ticker, ISU) permanent exclusions",
+    "market_cap_based_reject_count": 0,
+    "market_cap_filter": "NONE",
+    "market_cap_gate_injected": false,
+    "permanent_exclusion_removed_identity_key_count": 166,
+    "permanent_exclusion_removed_segment_count": 166,
+    "reused_saved_trade_ledgers": false,
+    "unique_ticker_count": 2482,
+    "window_id": "P2-1",
+    "worker_count": 10,
+    "worker_errors": []
+  },
+  "final_token": "FAST_CORE_V2_P2_1_CORRECTED_SIMPLE_BACKTEST_V01_PASS",
+  "status": "PASS",
+  "window": {
+    "effective_end": "2025-05-30",
+    "effective_start": "2021-01-04",
+    "execution_support": "2025-06-02"
+  },
+  "window_id": "P2-1",
+  "work_id": "FAST_CORE_V2_P2_1_CORRECTED_SIMPLE_BACKTEST_V01",
+  "worker_count": 10
+}
