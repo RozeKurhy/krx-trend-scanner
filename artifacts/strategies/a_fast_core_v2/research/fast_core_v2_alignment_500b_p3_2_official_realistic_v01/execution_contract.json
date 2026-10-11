@@ -1,0 +1,70 @@
+{
+  "schema": "fast_core_v2_alignment_500b_p3_2_official_realistic_v01",
+  "status": "PLAN_SEALED_SAMPLE_PENDING",
+  "task_id": "FAST_CORE_V2_ALIGNMENT_500B_P3_2_OFFICIAL_REALISTIC_PORTFOLIO_V01",
+  "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "window": {
+    "name": "P3-2",
+    "evaluation_start": "2022-01-03",
+    "signal_cutoff": "2026-08-31",
+    "execution_support_end": "2026-09-01",
+    "post_cutoff_new_entries": false
+  },
+  "groups": [
+    {"name": "CONTROL", "entry_filter": "none beyond frozen V2 contract and common PIT/exclusions"},
+    {"name": "ALIGNMENT_MCAP_500B", "entry_filter": "signal adjusted close > prior completed monthly MA20 > prior completed monthly MA60 AND exact signal-date KRX MKTCAP >= 500000000000 KRW"}
+  ],
+  "monthly_ma": {
+    "price": "RepositoryV2 adjusted close",
+    "month_completeness": "only fully completed months before signal month",
+    "periods": [20, 60],
+    "window_gap_policy": "reject candidate signal as MA_UNAVAILABLE",
+    "comparison": "strict signal close > MA20 > MA60"
+  },
+  "market_cap": {
+    "authority": "local immutable KRX raw date-market partition; normalized MKTCAP field",
+    "threshold_krw": 500000000000,
+    "date": "exact V2 signal date",
+    "identity": "exact ticker + standard ISU_CD + market + PIT interval",
+    "missing_duplicate_or_invalid": "reject candidate and record reason; never substitute another date"
+  },
+  "universe": {
+    "authority": "validated rolling merged PIT intervals",
+    "eligible_interval": "COMMON and signal date within interval",
+    "common_permanent_identity_exclusions": "current approved exact (ticker, ISU_CD) registry only",
+    "current_survivor_filter": false
+  },
+  "portfolio": {
+    "initial_capital_krw": 200000000,
+    "per_entry_total_buy_budget_krw": 5000000,
+    "share_quantity": "floor(total budget / (signal next-session open * (1 + buy slippage) * (1 + buy commission)))",
+    "buy_slippage_rate": 0.001,
+    "sell_slippage_rate": 0.001,
+    "buy_commission_rate": 0.00015,
+    "sell_commission_rate": 0.00015,
+    "sell_tax_rate": 0,
+    "max_positions": null,
+    "partial_fills": false,
+    "cash_shortage": "SKIP_FULL_ORDER; do not regenerate signals",
+    "sale_proceeds_available": "next KRX trading session after sale execution",
+    "same_ticker_overlap": false,
+    "pyramiding": false,
+    "same_open_exit_reentry": false,
+    "entry_order": ["ticker", "standard_isu_cd", "entry_signal_date", "entry_execution_date", "trade_id"],
+    "portfolio_replay": "single deterministic sequential event loop"
+  },
+  "valuation": {
+    "daily_nav": "cash + pending sale proceeds + shares * exact adjusted close",
+    "carry": "only exact RepositoryV2/KRX raw placeholder-authorized previous valid adjusted close for NAV/MDD; otherwise whole-day NAV unresolved",
+    "cutoff_positions": "mark to last valid adjusted close, no hypothetical exit or sell costs"
+  },
+  "official_preliminary_gates": {
+    "A_integrity": "zero material PIT/future/identity/lifecycle/cash/overlap/hidden-cap errors",
+    "B_costs": "all filled sides include 0.015% commission and 0.1% adverse slippage; tax excluded",
+    "C_profitability": "total return > 0 and CAGR > 0",
+    "D_mdd": "P3-2 MDD >= -40%; CONTROL MDD - candidate MDD < 5.0 percentage points",
+    "E_validity": "100% NAV coverage EXACT; >=90% and <100% OBSERVED; <90% CHECK_REQUIRED",
+    "cash_shortage_is_official_gate": false
+  },
+  "adoption_status": "NOT_EVALUATED until remaining four official windows are evaluated"
+}

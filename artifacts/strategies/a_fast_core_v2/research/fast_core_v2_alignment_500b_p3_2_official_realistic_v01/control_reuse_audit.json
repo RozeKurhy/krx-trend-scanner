@@ -1,0 +1,28 @@
+{
+  "schema": "fast_core_v2_control_reuse_audit_v01",
+  "status": "FAIL",
+  "decision": "REGENERATE_P3_2_CONTROL_UNDER_CURRENT_SHARED_CONTRACT",
+  "historical_artifact": "artifacts/patterns/pattern_a_fast/strategy/v2_official_adoption_readjudication_v03/",
+  "preserve_historical_official_verdict": true,
+  "current_run_reuses_historical_control_metrics": false,
+  "evidence": {
+    "historical_execution_contract": "artifacts/patterns/pattern_a_fast/strategy/v2_official_adoption_revalidation_mdd_closure_v02/execution_contract.json",
+    "historical_permanent_exclusion_policy_modified": true,
+    "historical_permanent_exclusion_policy_total_count": 109,
+    "historical_permanent_exclusion_delta_count": 66,
+    "historical_fallback_filter_identity_count": 138,
+    "historical_survivorship_bias_fallback_used": true,
+    "current_approved_permanent_identity_exclusion_count": 181
+  },
+  "incompatibilities": [
+    "Historical CONTROL universe used a modified permanent exclusion policy and fallback exclusions, unlike the exact currently approved 181-pair policy required by this task.",
+    "A current/survivor status fallback was used historically; that future-status roster filter is prohibited for this historical PIT comparison.",
+    "Historical CONTROL signal population and current candidate must be regenerated on the same validated current PIT, identity, Repository V2 and portfolio event contract to establish a fair paired comparison."
+  ],
+  "prohibited_references": [
+    "Historical readjudication P3-2 summary metrics as this run's CONTROL",
+    "Any market-cap 1T portfolio as unrestricted CONTROL",
+    "Prior simple-backtest trades as portfolio outputs"
+  ],
+  "replay_scope": "P3-2 CONTROL only; no other period"
+}
