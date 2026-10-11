@@ -1,0 +1,1063 @@
+{
+  "schema": "fast_core_v2_p3_2_data_nav_closure_source_manifest_v01",
+  "work_id": "FAST_CORE_V2_ALIGNMENT_500B_P3_2_DATA_NAV_CLOSURE_V01",
+  "baseline_head": "cbef18c7eed1d7002b16751b1000df2ce9851061",
+  "baseline_origin_main": "cbef18c7eed1d7002b16751b1000df2ce9851061",
+  "output_scope": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01",
+  "existing_v01_immutable": true,
+  "existing_v01_artifact_hash_match_count": 52,
+  "existing_v01_artifact_hash_mismatch_count": 0,
+  "strategy_signal_run": {
+    "scope": "123 previously unavailable identities only",
+    "workers": 10,
+    "full_universe_rerun": false,
+    "execution_support": "2026-09-01",
+    "signal_evaluation_wall_seconds": 159.428,
+    "worker_error_count": 0
+  },
+  "portfolio_replay": {
+    "scope": "CONTROL and ALIGNMENT_MCAP_500B using saved V01 signals plus 123-identity signal additions",
+    "session_count": 1140,
+    "first_new_control_signal": "2022-01-07",
+    "workers": 1,
+    "worker_error_count": 0,
+    "scope_issue_count": 0
+  },
+  "permanent_exclusions": {
+    "pair_count": 181,
+    "canonical_pair_hash": "3420a34f41ffa9029fe1869ad80a98f0096b13e74139b413e50a0ad661187f57",
+    "source_file_sha256": "858ec93e656bea5aa9ad036f7bd8e129253b4f682d062e7fb9350ad5eea1cffa",
+    "preflight_source_file_sha256": "858ec93e656bea5aa9ad036f7bd8e129253b4f682d062e7fb9350ad5eea1cffa",
+    "current_equals_preflight": true
+  },
+  "v01_krx_cap_partition_reuse": {
+    "complete_partition_rows": 461,
+    "independently_verified_partitions": 461,
+    "mismatch_partitions": [],
+    "market_cap_value_mismatches": []
+  },
+  "price_source_diagnostics": {
+    "source_json_sha256": "e32f9c28b4cc6423b33cd161fa0d9789924825cc8155ca4a0cc3043a784eaab9",
+    "bounded_adjusted_files": 123,
+    "hash_matches": 123,
+    "in_pit_mismatch_dates": 0,
+    "adjusted_missing_ticker": [
+      "380440"
+    ],
+    "adjusted_missing_source_effect": "unknown"
+  },
+  "adjusted_price_files": [
+    {
+      "ticker": "182360",
+      "path": "data/market/adjusted/stocks/182360.parquet",
+      "expected_sha256": "b2f806ddb35a1dec869271573275d7b38adacd6a7996eee520f5ba25ccb2667f",
+      "current_sha256": "b2f806ddb35a1dec869271573275d7b38adacd6a7996eee520f5ba25ccb2667f",
+      "matches": true
+    },
+    {
+      "ticker": "184230",
+      "path": "data/market/adjusted/stocks/184230.parquet",
+      "expected_sha256": "23bba2800bb9e9cfe63a77786922c610e71c425ff53af6e6fe106f3979db1047",
+      "current_sha256": "23bba2800bb9e9cfe63a77786922c610e71c425ff53af6e6fe106f3979db1047",
+      "matches": true
+    },
+    {
+      "ticker": "187790",
+      "path": "data/market/adjusted/stocks/187790.parquet",
+      "expected_sha256": "9c88607e65d5950012deca4668dbef4ecd4ece771f131ce7743c0f7268909fed",
+      "current_sha256": "9c88607e65d5950012deca4668dbef4ecd4ece771f131ce7743c0f7268909fed",
+      "matches": true
+    },
+    {
+      "ticker": "192250",
+      "path": "data/market/adjusted/stocks/192250.parquet",
+      "expected_sha256": "9c440b4393e8c3d9a8444cd97a3485ac709cdd984f9ebf6f399575583c5c55b8",
+      "current_sha256": "9c440b4393e8c3d9a8444cd97a3485ac709cdd984f9ebf6f399575583c5c55b8",
+      "matches": true
+    },
+    {
+      "ticker": "198440",
+      "path": "data/market/adjusted/stocks/198440.parquet",
+      "expected_sha256": "0a2825481edbee69671c154cd020d5bb1d06b483b1197fac2904779447566204",
+      "current_sha256": "0a2825481edbee69671c154cd020d5bb1d06b483b1197fac2904779447566204",
+      "matches": true
+    },
+    {
+      "ticker": "200130",
+      "path": "data/market/adjusted/stocks/200130.parquet",
+      "expected_sha256": "c16848408052eb1af4acf10ad0737bae9df83d49a433eb7e9dd14175c08e1b92",
+      "current_sha256": "c16848408052eb1af4acf10ad0737bae9df83d49a433eb7e9dd14175c08e1b92",
+      "matches": true
+    },
+    {
+      "ticker": "203650",
+      "path": "data/market/adjusted/stocks/203650.parquet",
+      "expected_sha256": "77b58aba37d5edc460fd31f4b749368d954d31f56a3db81e8bf4ca15d38f28b3",
+      "current_sha256": "77b58aba37d5edc460fd31f4b749368d954d31f56a3db81e8bf4ca15d38f28b3",
+      "matches": true
+    },
+    {
+      "ticker": "203690",
+      "path": "data/market/adjusted/stocks/203690.parquet",
+      "expected_sha256": "1d8dd682e3d60bf7f3b2fd1f0451415c12e29ff440a70ad5c146fe54cd7d197f",
+      "current_sha256": "1d8dd682e3d60bf7f3b2fd1f0451415c12e29ff440a70ad5c146fe54cd7d197f",
+      "matches": true
+    },
+    {
+      "ticker": "204620",
+      "path": "data/market/adjusted/stocks/204620.parquet",
+      "expected_sha256": "529ec6ee6c5237bc4fab4dc61c1f6caabe18e2d9b6c29bbce106a478a8520af0",
+      "current_sha256": "529ec6ee6c5237bc4fab4dc61c1f6caabe18e2d9b6c29bbce106a478a8520af0",
+      "matches": true
+    },
+    {
+      "ticker": "204630",
+      "path": "data/market/adjusted/stocks/204630.parquet",
+      "expected_sha256": "7f627d0112caca2cf496df92a78de930bd27f400b1696e59eb06b8ef814f33da",
+      "current_sha256": "7f627d0112caca2cf496df92a78de930bd27f400b1696e59eb06b8ef814f33da",
+      "matches": true
+    },
+    {
+      "ticker": "204840",
+      "path": "data/market/adjusted/stocks/204840.parquet",
+      "expected_sha256": "d3ebf8eeeb2f9a3a9e9ba457e5e24158d862db27de4302acb266b33dbf1b2973",
+      "current_sha256": "d3ebf8eeeb2f9a3a9e9ba457e5e24158d862db27de4302acb266b33dbf1b2973",
+      "matches": true
+    },
+    {
+      "ticker": "205100",
+      "path": "data/market/adjusted/stocks/205100.parquet",
+      "expected_sha256": "bf5c984d1e50895bdf6c2d8c2423ceaa4a30850c1b2cd63a47ee34f37c59484d",
+      "current_sha256": "bf5c984d1e50895bdf6c2d8c2423ceaa4a30850c1b2cd63a47ee34f37c59484d",
+      "matches": true
+    },
+    {
+      "ticker": "205470",
+      "path": "data/market/adjusted/stocks/205470.parquet",
+      "expected_sha256": "91b9f0efd3cb480267bb5f74d82d58379092c9cfed306017f01f435c4c6c78d6",
+      "current_sha256": "91b9f0efd3cb480267bb5f74d82d58379092c9cfed306017f01f435c4c6c78d6",
+      "matches": true
+    },
+    {
+      "ticker": "205500",
+      "path": "data/market/adjusted/stocks/205500.parquet",
+      "expected_sha256": "03f6be49389bcc42761caeaae159c5f782fcfd9cf6b6921f6a9cf85445105fa8",
+      "current_sha256": "03f6be49389bcc42761caeaae159c5f782fcfd9cf6b6921f6a9cf85445105fa8",
+      "matches": true
+    },
+    {
+      "ticker": "206400",
+      "path": "data/market/adjusted/stocks/206400.parquet",
+      "expected_sha256": "ff061dcab9deac6d22d8451f07dbaac0e07ae31382dc57446b2802dd418a4088",
+      "current_sha256": "ff061dcab9deac6d22d8451f07dbaac0e07ae31382dc57446b2802dd418a4088",
+      "matches": true
+    },
+    {
+      "ticker": "206640",
+      "path": "data/market/adjusted/stocks/206640.parquet",
+      "expected_sha256": "1011587d9c15ec5ad7f4b268f349ab4f4636192e3fe1298056d706f3deacdc69",
+      "current_sha256": "1011587d9c15ec5ad7f4b268f349ab4f4636192e3fe1298056d706f3deacdc69",
+      "matches": true
+    },
+    {
+      "ticker": "207760",
+      "path": "data/market/adjusted/stocks/207760.parquet",
+      "expected_sha256": "1d1d7d14f841ac7924765ba0abd436946d7d010247d487ec8f56d16eb51c3155",
+      "current_sha256": "1d1d7d14f841ac7924765ba0abd436946d7d010247d487ec8f56d16eb51c3155",
+      "matches": true
+    },
+    {
+      "ticker": "208140",
+      "path": "data/market/adjusted/stocks/208140.parquet",
+      "expected_sha256": "497305f3bf8e9b0d83496039764e7b11f9f33929519615123ae4312f963e8e35",
+      "current_sha256": "497305f3bf8e9b0d83496039764e7b11f9f33929519615123ae4312f963e8e35",
+      "matches": true
+    },
+    {
+      "ticker": "208350",
+      "path": "data/market/adjusted/stocks/208350.parquet",
+      "expected_sha256": "9e3eb189ffefda12725d1ff0a68d89533a31ab49b26b67a7326252c26aeb8b19",
+      "current_sha256": "9e3eb189ffefda12725d1ff0a68d89533a31ab49b26b67a7326252c26aeb8b19",
+      "matches": true
+    },
+    {
+      "ticker": "208370",
+      "path": "data/market/adjusted/stocks/208370.parquet",
+      "expected_sha256": "b739cf5cb0c3f7eb3d0a65d8328a18af61931a6cc4f68786db02dd2a76653522",
+      "current_sha256": "b739cf5cb0c3f7eb3d0a65d8328a18af61931a6cc4f68786db02dd2a76653522",
+      "matches": true
+    },
+    {
+      "ticker": "208640",
+      "path": "data/market/adjusted/stocks/208640.parquet",
+      "expected_sha256": "97d0d10f185e2b3ae874fd02a13e9e119d2db83c49fdbfbbf2a6fce709147e13",
+      "current_sha256": "97d0d10f185e2b3ae874fd02a13e9e119d2db83c49fdbfbbf2a6fce709147e13",
+      "matches": true
+    },
+    {
+      "ticker": "208710",
+      "path": "data/market/adjusted/stocks/208710.parquet",
+      "expected_sha256": "062f8c49063926dd9d4891917034d6a519d88368b92a02baad69fb14e517f636",
+      "current_sha256": "062f8c49063926dd9d4891917034d6a519d88368b92a02baad69fb14e517f636",
+      "matches": true
+    },
+    {
+      "ticker": "214150",
+      "path": "data/market/adjusted/stocks/214150.parquet",
+      "expected_sha256": "fc3d91ccb8b446e89bfcdaa13de85281b9d644207a95c58844f3ba5332630bdb",
+      "current_sha256": "fc3d91ccb8b446e89bfcdaa13de85281b9d644207a95c58844f3ba5332630bdb",
+      "matches": true
+    },
+    {
+      "ticker": "214270",
+      "path": "data/market/adjusted/stocks/214270.parquet",
+      "expected_sha256": "327eca39b6b46e11ff2505e9cba2781068b9d60e9b8a0d24e36748c3424b0d51",
+      "current_sha256": "327eca39b6b46e11ff2505e9cba2781068b9d60e9b8a0d24e36748c3424b0d51",
+      "matches": true
+    },
+    {
+      "ticker": "214680",
+      "path": "data/market/adjusted/stocks/214680.parquet",
+      "expected_sha256": "9b46501d6602f33f5a8022838a08b76554f236d2717dc988055958141298da9b",
+      "current_sha256": "9b46501d6602f33f5a8022838a08b76554f236d2717dc988055958141298da9b",
+      "matches": true
+    },
+    {
+      "ticker": "215090",
+      "path": "data/market/adjusted/stocks/215090.parquet",
+      "expected_sha256": "c65b2f0c403eba7ccc845839835cfade20e642c1a6b934e0fbb658fb25008665",
+      "current_sha256": "c65b2f0c403eba7ccc845839835cfade20e642c1a6b934e0fbb658fb25008665",
+      "matches": true
+    },
+    {
+      "ticker": "215100",
+      "path": "data/market/adjusted/stocks/215100.parquet",
+      "expected_sha256": "c598f193217f3091b02cbb2b93c78e10d5f0995d5d79a1aef399e0ef3f742114",
+      "current_sha256": "c598f193217f3091b02cbb2b93c78e10d5f0995d5d79a1aef399e0ef3f742114",
+      "matches": true
+    },
+    {
+      "ticker": "215380",
+      "path": "data/market/adjusted/stocks/215380.parquet",
+      "expected_sha256": "795e49128b76ef75dad486c8709f98cf06468c2519d7de4629709aeedbb3a69d",
+      "current_sha256": "795e49128b76ef75dad486c8709f98cf06468c2519d7de4629709aeedbb3a69d",
+      "matches": true
+    },
+    {
+      "ticker": "215480",
+      "path": "data/market/adjusted/stocks/215480.parquet",
+      "expected_sha256": "e2f46cda1616f8c4237cd0a70a546b1e40280689cfe4156b6d5de73a606cbad8",
+      "current_sha256": "e2f46cda1616f8c4237cd0a70a546b1e40280689cfe4156b6d5de73a606cbad8",
+      "matches": true
+    },
+    {
+      "ticker": "215790",
+      "path": "data/market/adjusted/stocks/215790.parquet",
+      "expected_sha256": "e7a4fc4e2479d00de7a2f867dab56970775f0653cd56aec823087c7b61f84ac4",
+      "current_sha256": "e7a4fc4e2479d00de7a2f867dab56970775f0653cd56aec823087c7b61f84ac4",
+      "matches": true
+    },
+    {
+      "ticker": "217270",
+      "path": "data/market/adjusted/stocks/217270.parquet",
+      "expected_sha256": "54f85a6b7f41aeb4d76865a5ddbbe5bae9894ed023acd7eb148cf726a41afc45",
+      "current_sha256": "54f85a6b7f41aeb4d76865a5ddbbe5bae9894ed023acd7eb148cf726a41afc45",
+      "matches": true
+    },
+    {
+      "ticker": "217500",
+      "path": "data/market/adjusted/stocks/217500.parquet",
+      "expected_sha256": "67f3346b7b32eeb52d2f67bd3cc52b0e31e51de2d5971b3421e8faac6b17bd38",
+      "current_sha256": "67f3346b7b32eeb52d2f67bd3cc52b0e31e51de2d5971b3421e8faac6b17bd38",
+      "matches": true
+    },
+    {
+      "ticker": "217600",
+      "path": "data/market/adjusted/stocks/217600.parquet",
+      "expected_sha256": "909920289d3ab3cbbb2bc5e17f059eab0284a8a1be73ef0d2e7650b2582667f1",
+      "current_sha256": "909920289d3ab3cbbb2bc5e17f059eab0284a8a1be73ef0d2e7650b2582667f1",
+      "matches": true
+    },
+    {
+      "ticker": "217620",
+      "path": "data/market/adjusted/stocks/217620.parquet",
+      "expected_sha256": "f3065eff56bed05de187b1599e937a282c5776f25514d445e7e3b8cb72b1ab34",
+      "current_sha256": "f3065eff56bed05de187b1599e937a282c5776f25514d445e7e3b8cb72b1ab34",
+      "matches": true
+    },
+    {
+      "ticker": "218150",
+      "path": "data/market/adjusted/stocks/218150.parquet",
+      "expected_sha256": "aefae915d9766918e5d3e9fd4a530ad4130146e6cc217f82e6d6736354142924",
+      "current_sha256": "aefae915d9766918e5d3e9fd4a530ad4130146e6cc217f82e6d6736354142924",
+      "matches": true
+    },
+    {
+      "ticker": "218410",
+      "path": "data/market/adjusted/stocks/218410.parquet",
+      "expected_sha256": "1d626513eae1b85552c5de7d9fc3eff1110a532be09fa0f58a6c2146573064e3",
+      "current_sha256": "1d626513eae1b85552c5de7d9fc3eff1110a532be09fa0f58a6c2146573064e3",
+      "matches": true
+    },
+    {
+      "ticker": "219550",
+      "path": "data/market/adjusted/stocks/219550.parquet",
+      "expected_sha256": "281d9d53c89692f435bbfbe71acc3bbfc26be61a262da8044c86917e3a4eba7f",
+      "current_sha256": "281d9d53c89692f435bbfbe71acc3bbfc26be61a262da8044c86917e3a4eba7f",
+      "matches": true
+    },
+    {
+      "ticker": "220260",
+      "path": "data/market/adjusted/stocks/220260.parquet",
+      "expected_sha256": "67d930ab9a8f56477d63e19a910283545675716d08499af89535b0de2e3ed42b",
+      "current_sha256": "67d930ab9a8f56477d63e19a910283545675716d08499af89535b0de2e3ed42b",
+      "matches": true
+    },
+    {
+      "ticker": "220630",
+      "path": "data/market/adjusted/stocks/220630.parquet",
+      "expected_sha256": "e5d4d8f1f7abc7d606c64ad00bc8e915b63adfbafb1cf41096662380fc79524f",
+      "current_sha256": "e5d4d8f1f7abc7d606c64ad00bc8e915b63adfbafb1cf41096662380fc79524f",
+      "matches": true
+    },
+    {
+      "ticker": "222080",
+      "path": "data/market/adjusted/stocks/222080.parquet",
+      "expected_sha256": "e2fe33e6e9e219f2650a76a1c555f7f2819e08d476cfd0fad36d53d719c099de",
+      "current_sha256": "e2fe33e6e9e219f2650a76a1c555f7f2819e08d476cfd0fad36d53d719c099de",
+      "matches": true
+    },
+    {
+      "ticker": "222420",
+      "path": "data/market/adjusted/stocks/222420.parquet",
+      "expected_sha256": "d0d30dc26cdb438a4f37cebefc9275be3e66ff6e1ee88aae14410e3bd11c5866",
+      "current_sha256": "d0d30dc26cdb438a4f37cebefc9275be3e66ff6e1ee88aae14410e3bd11c5866",
+      "matches": true
+    },
+    {
+      "ticker": "222810",
+      "path": "data/market/adjusted/stocks/222810.parquet",
+      "expected_sha256": "4514ce9c7e76eda96dff6c8e89598b577d5da1b0ff1982d473100aafb36c136b",
+      "current_sha256": "4514ce9c7e76eda96dff6c8e89598b577d5da1b0ff1982d473100aafb36c136b",
+      "matches": true
+    },
+    {
+      "ticker": "225430",
+      "path": "data/market/adjusted/stocks/225430.parquet",
+      "expected_sha256": "2e828bd92ce362e88401292b3509c485c4d914d3e1d3c96eee4f621f33309120",
+      "current_sha256": "2e828bd92ce362e88401292b3509c485c4d914d3e1d3c96eee4f621f33309120",
+      "matches": true
+    },
+    {
+      "ticker": "225570",
+      "path": "data/market/adjusted/stocks/225570.parquet",
+      "expected_sha256": "71d72baf11073fdd57548ed70f87ad4f40ad69181cf87b2fc4f313f7a57d8ff7",
+      "current_sha256": "71d72baf11073fdd57548ed70f87ad4f40ad69181cf87b2fc4f313f7a57d8ff7",
+      "matches": true
+    },
+    {
+      "ticker": "225590",
+      "path": "data/market/adjusted/stocks/225590.parquet",
+      "expected_sha256": "adb1dbd06fe5521882b8be2e4f563b7e0dda9a161098c705b944da84db9e237d",
+      "current_sha256": "adb1dbd06fe5521882b8be2e4f563b7e0dda9a161098c705b944da84db9e237d",
+      "matches": true
+    },
+    {
+      "ticker": "226340",
+      "path": "data/market/adjusted/stocks/226340.parquet",
+      "expected_sha256": "962b7b64ec0fd2f02e76165681f31c258f7559c3adabd26a040e0309e2daaaae",
+      "current_sha256": "962b7b64ec0fd2f02e76165681f31c258f7559c3adabd26a040e0309e2daaaae",
+      "matches": true
+    },
+    {
+      "ticker": "226360",
+      "path": "data/market/adjusted/stocks/226360.parquet",
+      "expected_sha256": "8808e20f01092264bea02a7c2b58b35fa8517b5e2faa0141ee862fbf969a6ffc",
+      "current_sha256": "8808e20f01092264bea02a7c2b58b35fa8517b5e2faa0141ee862fbf969a6ffc",
+      "matches": true
+    },
+    {
+      "ticker": "226440",
+      "path": "data/market/adjusted/stocks/226440.parquet",
+      "expected_sha256": "ec2dfc6cace7fa732ff12f21940b8916790160b9b7197dbc334deba39655deb5",
+      "current_sha256": "ec2dfc6cace7fa732ff12f21940b8916790160b9b7197dbc334deba39655deb5",
+      "matches": true
+    },
+    {
+      "ticker": "227950",
+      "path": "data/market/adjusted/stocks/227950.parquet",
+      "expected_sha256": "99df6b1f3cf21139f123e3cd0be75cf334feaa9cd24d32420a5abf52e6485d2f",
+      "current_sha256": "99df6b1f3cf21139f123e3cd0be75cf334feaa9cd24d32420a5abf52e6485d2f",
+      "matches": true
+    },
+    {
+      "ticker": "230240",
+      "path": "data/market/adjusted/stocks/230240.parquet",
+      "expected_sha256": "ff69cefd235ad263b42e568adc1d6cfc7b854325b339b636455f42f5883ee449",
+      "current_sha256": "ff69cefd235ad263b42e568adc1d6cfc7b854325b339b636455f42f5883ee449",
+      "matches": true
+    },
+    {
+      "ticker": "230980",
+      "path": "data/market/adjusted/stocks/230980.parquet",
+      "expected_sha256": "948dfda0d09377cfb10b2bf4995d0fec0a02479e336dc1278d0e014f066a6d03",
+      "current_sha256": "948dfda0d09377cfb10b2bf4995d0fec0a02479e336dc1278d0e014f066a6d03",
+      "matches": true
+    },
+    {
+      "ticker": "232140",
+      "path": "data/market/adjusted/stocks/232140.parquet",
+      "expected_sha256": "3d16ccd99ebe1c965cbf4d46dcc4857dea64ef13acb5dd2759b804c83fc94b92",
+      "current_sha256": "3d16ccd99ebe1c965cbf4d46dcc4857dea64ef13acb5dd2759b804c83fc94b92",
+      "matches": true
+    },
+    {
+      "ticker": "239340",
+      "path": "data/market/adjusted/stocks/239340.parquet",
+      "expected_sha256": "c15d81e5e7f075996691cfb6d065a9babd8beb8b900b5f20a3eb0c6e2c1cf062",
+      "current_sha256": "c15d81e5e7f075996691cfb6d065a9babd8beb8b900b5f20a3eb0c6e2c1cf062",
+      "matches": true
+    },
+    {
+      "ticker": "242040",
+      "path": "data/market/adjusted/stocks/242040.parquet",
+      "expected_sha256": "7a4046d602b867580634ee92551f3eb4838584be48cd4eaa2d50920fe561e69a",
+      "current_sha256": "7a4046d602b867580634ee92551f3eb4838584be48cd4eaa2d50920fe561e69a",
+      "matches": true
+    },
+    {
+      "ticker": "250060",
+      "path": "data/market/adjusted/stocks/250060.parquet",
+      "expected_sha256": "93a2cb74ac3afd2887759c7bd082280d01b9a42d3c3d088782a86e9f5fd8c8f2",
+      "current_sha256": "93a2cb74ac3afd2887759c7bd082280d01b9a42d3c3d088782a86e9f5fd8c8f2",
+      "matches": true
+    },
+    {
+      "ticker": "250930",
+      "path": "data/market/adjusted/stocks/250930.parquet",
+      "expected_sha256": "a80b47a4f8fc8ced100372e131786ce5559e24c8cb52166fd768c11609034441",
+      "current_sha256": "a80b47a4f8fc8ced100372e131786ce5559e24c8cb52166fd768c11609034441",
+      "matches": true
+    },
+    {
+      "ticker": "252500",
+      "path": "data/market/adjusted/stocks/252500.parquet",
+      "expected_sha256": "e4aa4b6aaf75a48a2462b4619d290ab3f0fd79536d5aeb04069ea54448e3b705",
+      "current_sha256": "e4aa4b6aaf75a48a2462b4619d290ab3f0fd79536d5aeb04069ea54448e3b705",
+      "matches": true
+    },
+    {
+      "ticker": "253590",
+      "path": "data/market/adjusted/stocks/253590.parquet",
+      "expected_sha256": "d197eab3d039c04ea7036090d1650dc71a6d8612b2f1ee296aa478293bf3adc3",
+      "current_sha256": "d197eab3d039c04ea7036090d1650dc71a6d8612b2f1ee296aa478293bf3adc3",
+      "matches": true
+    },
+    {
+      "ticker": "254120",
+      "path": "data/market/adjusted/stocks/254120.parquet",
+      "expected_sha256": "5c9b3c8386fdd6004442c71d614a751c39bacf05558a7e5a62401c98b7d47229",
+      "current_sha256": "5c9b3c8386fdd6004442c71d614a751c39bacf05558a7e5a62401c98b7d47229",
+      "matches": true
+    },
+    {
+      "ticker": "256630",
+      "path": "data/market/adjusted/stocks/256630.parquet",
+      "expected_sha256": "c01b131ac94e9d460c7dd514f4a60a10d01b863dfe4e74a074336943da0c064a",
+      "current_sha256": "c01b131ac94e9d460c7dd514f4a60a10d01b863dfe4e74a074336943da0c064a",
+      "matches": true
+    },
+    {
+      "ticker": "256840",
+      "path": "data/market/adjusted/stocks/256840.parquet",
+      "expected_sha256": "49ca608d143bd980ac4e24b67c9f9b322f46add61bb747be259398b63c0fa57f",
+      "current_sha256": "49ca608d143bd980ac4e24b67c9f9b322f46add61bb747be259398b63c0fa57f",
+      "matches": true
+    },
+    {
+      "ticker": "258790",
+      "path": "data/market/adjusted/stocks/258790.parquet",
+      "expected_sha256": "e8cb24dff04f0f00922114dda33c85ebc0e9d7b0f233e7da9496751e9b3c7c1f",
+      "current_sha256": "e8cb24dff04f0f00922114dda33c85ebc0e9d7b0f233e7da9496751e9b3c7c1f",
+      "matches": true
+    },
+    {
+      "ticker": "261200",
+      "path": "data/market/adjusted/stocks/261200.parquet",
+      "expected_sha256": "995f378f71bfccadcba7a615d1108178ac527af58ee452d4efc18774a35dcbf7",
+      "current_sha256": "995f378f71bfccadcba7a615d1108178ac527af58ee452d4efc18774a35dcbf7",
+      "matches": true
+    },
+    {
+      "ticker": "263770",
+      "path": "data/market/adjusted/stocks/263770.parquet",
+      "expected_sha256": "a4b9363cf8f9fbfd7eb264fd223b107e34842893781844724b63ee0e47970eed",
+      "current_sha256": "a4b9363cf8f9fbfd7eb264fd223b107e34842893781844724b63ee0e47970eed",
+      "matches": true
+    },
+    {
+      "ticker": "264850",
+      "path": "data/market/adjusted/stocks/264850.parquet",
+      "expected_sha256": "2b2bb02cd15fb627531552399acac0ec6fa28ccc23dad2ce6ec865ab4067f107",
+      "current_sha256": "2b2bb02cd15fb627531552399acac0ec6fa28ccc23dad2ce6ec865ab4067f107",
+      "matches": true
+    },
+    {
+      "ticker": "267320",
+      "path": "data/market/adjusted/stocks/267320.parquet",
+      "expected_sha256": "6edf850af5e35fdd9291602218d940263346997cc3beb8b9fd65bbf6c29a4097",
+      "current_sha256": "6edf850af5e35fdd9291602218d940263346997cc3beb8b9fd65bbf6c29a4097",
+      "matches": true
+    },
+    {
+      "ticker": "270520",
+      "path": "data/market/adjusted/stocks/270520.parquet",
+      "expected_sha256": "8ca4cadb7eca4f0acecc1ff6e83b076e92baafbef68986f6a81b1d906042e4e5",
+      "current_sha256": "8ca4cadb7eca4f0acecc1ff6e83b076e92baafbef68986f6a81b1d906042e4e5",
+      "matches": true
+    },
+    {
+      "ticker": "273060",
+      "path": "data/market/adjusted/stocks/273060.parquet",
+      "expected_sha256": "2cba1aa2e2c0248bdad27a2c604a0bc3edc3a048ab2d2639ce0ec3687464a860",
+      "current_sha256": "2cba1aa2e2c0248bdad27a2c604a0bc3edc3a048ab2d2639ce0ec3687464a860",
+      "matches": true
+    },
+    {
+      "ticker": "277410",
+      "path": "data/market/adjusted/stocks/277410.parquet",
+      "expected_sha256": "faeb45d6224f2585c5d7c61c869df3bf69fb41ed7aa2262492d8f8c146fa3a6f",
+      "current_sha256": "faeb45d6224f2585c5d7c61c869df3bf69fb41ed7aa2262492d8f8c146fa3a6f",
+      "matches": true
+    },
+    {
+      "ticker": "281740",
+      "path": "data/market/adjusted/stocks/281740.parquet",
+      "expected_sha256": "5eaa0c0d8e1e86dc175d0c7eb3f0b9d3c46bb1aad98c9ca7dc4435a0c87a60e8",
+      "current_sha256": "5eaa0c0d8e1e86dc175d0c7eb3f0b9d3c46bb1aad98c9ca7dc4435a0c87a60e8",
+      "matches": true
+    },
+    {
+      "ticker": "284620",
+      "path": "data/market/adjusted/stocks/284620.parquet",
+      "expected_sha256": "955d592ee41eb03adb4f423e5fab1ce8209bcf31558411bf72943bfca748548b",
+      "current_sha256": "955d592ee41eb03adb4f423e5fab1ce8209bcf31558411bf72943bfca748548b",
+      "matches": true
+    },
+    {
+      "ticker": "287410",
+      "path": "data/market/adjusted/stocks/287410.parquet",
+      "expected_sha256": "cec36a015b5b58ef0d1e5fa676f378857e7046ceff95ee8960d63d88dcfed034",
+      "current_sha256": "cec36a015b5b58ef0d1e5fa676f378857e7046ceff95ee8960d63d88dcfed034",
+      "matches": true
+    },
+    {
+      "ticker": "291230",
+      "path": "data/market/adjusted/stocks/291230.parquet",
+      "expected_sha256": "2d3c7cfcd20585be8f410c69716583dcc5821f54be7c12d59cf30c10848200b7",
+      "current_sha256": "2d3c7cfcd20585be8f410c69716583dcc5821f54be7c12d59cf30c10848200b7",
+      "matches": true
+    },
+    {
+      "ticker": "297570",
+      "path": "data/market/adjusted/stocks/297570.parquet",
+      "expected_sha256": "25ba110b6e1b5ba694ef8cdf61256c92dcc2be5958e48f63dc9c95c20f13dcc3",
+      "current_sha256": "25ba110b6e1b5ba694ef8cdf61256c92dcc2be5958e48f63dc9c95c20f13dcc3",
+      "matches": true
+    },
+    {
+      "ticker": "299170",
+      "path": "data/market/adjusted/stocks/299170.parquet",
+      "expected_sha256": "2ad96d83d8776015893f288e559103a45c227f65e8ba840b8f5a5c32435dc416",
+      "current_sha256": "2ad96d83d8776015893f288e559103a45c227f65e8ba840b8f5a5c32435dc416",
+      "matches": true
+    },
+    {
+      "ticker": "303030",
+      "path": "data/market/adjusted/stocks/303030.parquet",
+      "expected_sha256": "56312f8947f41240bbc90ebe2d53931ff6d331b45b2cd9dd2c1d7c1989643a0d",
+      "current_sha256": "56312f8947f41240bbc90ebe2d53931ff6d331b45b2cd9dd2c1d7c1989643a0d",
+      "matches": true
+    },
+    {
+      "ticker": "306620",
+      "path": "data/market/adjusted/stocks/306620.parquet",
+      "expected_sha256": "9fa82ff2bb126b4a271cd02fb77dc08da9c645a146eee7e03bc4c7a3ebc37a42",
+      "current_sha256": "9fa82ff2bb126b4a271cd02fb77dc08da9c645a146eee7e03bc4c7a3ebc37a42",
+      "matches": true
+    },
+    {
+      "ticker": "307180",
+      "path": "data/market/adjusted/stocks/307180.parquet",
+      "expected_sha256": "4b2c6304325d082c3801150e2e031f95fc6babcd00b9c50b25c12285f3f169e7",
+      "current_sha256": "4b2c6304325d082c3801150e2e031f95fc6babcd00b9c50b25c12285f3f169e7",
+      "matches": true
+    },
+    {
+      "ticker": "307280",
+      "path": "data/market/adjusted/stocks/307280.parquet",
+      "expected_sha256": "9c929467d6fd5be34943405a1458f931249b0d662525c2a34647ad7a7932ed6b",
+      "current_sha256": "9c929467d6fd5be34943405a1458f931249b0d662525c2a34647ad7a7932ed6b",
+      "matches": true
+    },
+    {
+      "ticker": "307750",
+      "path": "data/market/adjusted/stocks/307750.parquet",
+      "expected_sha256": "d8914f7e57473a8e7523a4e1d23e83af1bd075922f3a96ecc0a4c768cbcbc909",
+      "current_sha256": "d8914f7e57473a8e7523a4e1d23e83af1bd075922f3a96ecc0a4c768cbcbc909",
+      "matches": true
+    },
+    {
+      "ticker": "307870",
+      "path": "data/market/adjusted/stocks/307870.parquet",
+      "expected_sha256": "aa097538e92735d1bb8bbbc03659818a507fe3c69fb930e18d00a57404395c7e",
+      "current_sha256": "aa097538e92735d1bb8bbbc03659818a507fe3c69fb930e18d00a57404395c7e",
+      "matches": true
+    },
+    {
+      "ticker": "309930",
+      "path": "data/market/adjusted/stocks/309930.parquet",
+      "expected_sha256": "c4b3e7d4679779e6b0cffb437f6b2c86787059f919b8d4671d96372b224f9162",
+      "current_sha256": "c4b3e7d4679779e6b0cffb437f6b2c86787059f919b8d4671d96372b224f9162",
+      "matches": true
+    },
+    {
+      "ticker": "310200",
+      "path": "data/market/adjusted/stocks/310200.parquet",
+      "expected_sha256": "32526e3b1eeae385d20c612b2ba5df1e43565f49864d79b41f36b37acc90777b",
+      "current_sha256": "32526e3b1eeae385d20c612b2ba5df1e43565f49864d79b41f36b37acc90777b",
+      "matches": true
+    },
+    {
+      "ticker": "310870",
+      "path": "data/market/adjusted/stocks/310870.parquet",
+      "expected_sha256": "8246e2a05f587bab8ab0293e26f189f1cc33acec1e485afebfb03ce5b33ecbd1",
+      "current_sha256": "8246e2a05f587bab8ab0293e26f189f1cc33acec1e485afebfb03ce5b33ecbd1",
+      "matches": true
+    },
+    {
+      "ticker": "317240",
+      "path": "data/market/adjusted/stocks/317240.parquet",
+      "expected_sha256": "b8418d0a19ac2e7396390834e4782c7550dc0155c21a38ac64ffca8855cda8b6",
+      "current_sha256": "b8418d0a19ac2e7396390834e4782c7550dc0155c21a38ac64ffca8855cda8b6",
+      "matches": true
+    },
+    {
+      "ticker": "319400",
+      "path": "data/market/adjusted/stocks/319400.parquet",
+      "expected_sha256": "fdf5b50e0fad1338127d4c339ed7ad80d063681324736431f5b34dfdf79c54ff",
+      "current_sha256": "fdf5b50e0fad1338127d4c339ed7ad80d063681324736431f5b34dfdf79c54ff",
+      "matches": true
+    },
+    {
+      "ticker": "320000",
+      "path": "data/market/adjusted/stocks/320000.parquet",
+      "expected_sha256": "a349fae686660b402fef3d86b685e32cf79c0f76a321ca00821c3d18d84269f0",
+      "current_sha256": "a349fae686660b402fef3d86b685e32cf79c0f76a321ca00821c3d18d84269f0",
+      "matches": true
+    },
+    {
+      "ticker": "321260",
+      "path": "data/market/adjusted/stocks/321260.parquet",
+      "expected_sha256": "10c1f6270fa21d88a6ebeda3806de7842c92e9e536ead6d535e88f42355e204d",
+      "current_sha256": "10c1f6270fa21d88a6ebeda3806de7842c92e9e536ead6d535e88f42355e204d",
+      "matches": true
+    },
+    {
+      "ticker": "322780",
+      "path": "data/market/adjusted/stocks/322780.parquet",
+      "expected_sha256": "c31db14f3b0febcbe96f0b10797c979d9bf01db7a2729e1be317f80297c2471c",
+      "current_sha256": "c31db14f3b0febcbe96f0b10797c979d9bf01db7a2729e1be317f80297c2471c",
+      "matches": true
+    },
+    {
+      "ticker": "323230",
+      "path": "data/market/adjusted/stocks/323230.parquet",
+      "expected_sha256": "fc27171457f973aa8a8505da0dcd85fd87ce04a2a1bc11ceeccbfcfdfc310da0",
+      "current_sha256": "fc27171457f973aa8a8505da0dcd85fd87ce04a2a1bc11ceeccbfcfdfc310da0",
+      "matches": true
+    },
+    {
+      "ticker": "323280",
+      "path": "data/market/adjusted/stocks/323280.parquet",
+      "expected_sha256": "115cdbbea4bec12f880e060485a02f88da01661336ddcb7e23be767e6e3c7903",
+      "current_sha256": "115cdbbea4bec12f880e060485a02f88da01661336ddcb7e23be767e6e3c7903",
+      "matches": true
+    },
+    {
+      "ticker": "328380",
+      "path": "data/market/adjusted/stocks/328380.parquet",
+      "expected_sha256": "08d3cc53e083898ba13fe9d4cb69ad7bd7893ba02215bbbef6b3e73192e992f8",
+      "current_sha256": "08d3cc53e083898ba13fe9d4cb69ad7bd7893ba02215bbbef6b3e73192e992f8",
+      "matches": true
+    },
+    {
+      "ticker": "331380",
+      "path": "data/market/adjusted/stocks/331380.parquet",
+      "expected_sha256": "37865ccae4d81855d70beadb0b9e898f7c776bd1436ad8bef748c42eb1fb0d69",
+      "current_sha256": "37865ccae4d81855d70beadb0b9e898f7c776bd1436ad8bef748c42eb1fb0d69",
+      "matches": true
+    },
+    {
+      "ticker": "331520",
+      "path": "data/market/adjusted/stocks/331520.parquet",
+      "expected_sha256": "d1765ddb2913cf0252ef00ddba64bf81b9a14927c4502aed7f7dd523032fd6ac",
+      "current_sha256": "d1765ddb2913cf0252ef00ddba64bf81b9a14927c4502aed7f7dd523032fd6ac",
+      "matches": true
+    },
+    {
+      "ticker": "332290",
+      "path": "data/market/adjusted/stocks/332290.parquet",
+      "expected_sha256": "e0891373b79811e1eb1b3924422903684299635be0b72dcf1463ef3a48252c77",
+      "current_sha256": "e0891373b79811e1eb1b3924422903684299635be0b72dcf1463ef3a48252c77",
+      "matches": true
+    },
+    {
+      "ticker": "333050",
+      "path": "data/market/adjusted/stocks/333050.parquet",
+      "expected_sha256": "5d619f3dcf822587364469d5784911a4838f2293a308afe17c2b84c13b5e4b22",
+      "current_sha256": "5d619f3dcf822587364469d5784911a4838f2293a308afe17c2b84c13b5e4b22",
+      "matches": true
+    },
+    {
+      "ticker": "333430",
+      "path": "data/market/adjusted/stocks/333430.parquet",
+      "expected_sha256": "c7860731c296f0099296813b94c38329068c0c3f7715e066448fbf0d95b943ef",
+      "current_sha256": "c7860731c296f0099296813b94c38329068c0c3f7715e066448fbf0d95b943ef",
+      "matches": true
+    },
+    {
+      "ticker": "335870",
+      "path": "data/market/adjusted/stocks/335870.parquet",
+      "expected_sha256": "8a6142763f1a47e501946180882c1e5e854fa840eb0f89e2412eec3a9ec327ab",
+      "current_sha256": "8a6142763f1a47e501946180882c1e5e854fa840eb0f89e2412eec3a9ec327ab",
+      "matches": true
+    },
+    {
+      "ticker": "336060",
+      "path": "data/market/adjusted/stocks/336060.parquet",
+      "expected_sha256": "6488585396940f862cde12203e4f3ee28bf7e7894937f1caa14c0b9b005d3d5f",
+      "current_sha256": "6488585396940f862cde12203e4f3ee28bf7e7894937f1caa14c0b9b005d3d5f",
+      "matches": true
+    },
+    {
+      "ticker": "336570",
+      "path": "data/market/adjusted/stocks/336570.parquet",
+      "expected_sha256": "711c1cf887d481f4db9d345229f112d79a25b9caac9b758586a35ded4bc6fe95",
+      "current_sha256": "711c1cf887d481f4db9d345229f112d79a25b9caac9b758586a35ded4bc6fe95",
+      "matches": true
+    },
+    {
+      "ticker": "339950",
+      "path": "data/market/adjusted/stocks/339950.parquet",
+      "expected_sha256": "4c303c4565962ee631e3fae14b07c0dc92dc0ccf0eeb315ee00addb13e6823ab",
+      "current_sha256": "4c303c4565962ee631e3fae14b07c0dc92dc0ccf0eeb315ee00addb13e6823ab",
+      "matches": true
+    },
+    {
+      "ticker": "340360",
+      "path": "data/market/adjusted/stocks/340360.parquet",
+      "expected_sha256": "5d4500287ab6847bb6870b2da0ff388da7e56bf7c07a2869736b58a85fa69ddf",
+      "current_sha256": "5d4500287ab6847bb6870b2da0ff388da7e56bf7c07a2869736b58a85fa69ddf",
+      "matches": true
+    },
+    {
+      "ticker": "340440",
+      "path": "data/market/adjusted/stocks/340440.parquet",
+      "expected_sha256": "e970ddc5d35437f712c62f4b31c001ef0faf99f433c4568dc507ae5d1f011fd3",
+      "current_sha256": "e970ddc5d35437f712c62f4b31c001ef0faf99f433c4568dc507ae5d1f011fd3",
+      "matches": true
+    },
+    {
+      "ticker": "351320",
+      "path": "data/market/adjusted/stocks/351320.parquet",
+      "expected_sha256": "9cce308512781ca4b8d8d8c6d5bc21bd6dc91a646db275a16748e21ff3d35141",
+      "current_sha256": "9cce308512781ca4b8d8d8c6d5bc21bd6dc91a646db275a16748e21ff3d35141",
+      "matches": true
+    },
+    {
+      "ticker": "353190",
+      "path": "data/market/adjusted/stocks/353190.parquet",
+      "expected_sha256": "609ce544bce89dbc4b62340e937ac71c9b2a0c1f4ed1ae14b5a9914c677ebf5f",
+      "current_sha256": "609ce544bce89dbc4b62340e937ac71c9b2a0c1f4ed1ae14b5a9914c677ebf5f",
+      "matches": true
+    },
+    {
+      "ticker": "355150",
+      "path": "data/market/adjusted/stocks/355150.parquet",
+      "expected_sha256": "6af5e03c3adfde18e6a3b1aa8b4bcc12f15c9072efb201bb6e8d2c42c4c3bdc1",
+      "current_sha256": "6af5e03c3adfde18e6a3b1aa8b4bcc12f15c9072efb201bb6e8d2c42c4c3bdc1",
+      "matches": true
+    },
+    {
+      "ticker": "359090",
+      "path": "data/market/adjusted/stocks/359090.parquet",
+      "expected_sha256": "b39261be5946df7143b72a13331e2179fff7d4097bc40fac2bfb8e5607a3f030",
+      "current_sha256": "b39261be5946df7143b72a13331e2179fff7d4097bc40fac2bfb8e5607a3f030",
+      "matches": true
+    },
+    {
+      "ticker": "363260",
+      "path": "data/market/adjusted/stocks/363260.parquet",
+      "expected_sha256": "dc74d404e330e0103912df05a93dc63661ee51f3cdc64283274921c72c18d9ac",
+      "current_sha256": "dc74d404e330e0103912df05a93dc63661ee51f3cdc64283274921c72c18d9ac",
+      "matches": true
+    },
+    {
+      "ticker": "365590",
+      "path": "data/market/adjusted/stocks/365590.parquet",
+      "expected_sha256": "618b60c4696cf94dc9f6c46417bab94aa4e29cbf3894c1c5c5d2abb00d1c6a52",
+      "current_sha256": "618b60c4696cf94dc9f6c46417bab94aa4e29cbf3894c1c5c5d2abb00d1c6a52",
+      "matches": true
+    },
+    {
+      "ticker": "368770",
+      "path": "data/market/adjusted/stocks/368770.parquet",
+      "expected_sha256": "1d838684f52ed9fc13876585eba892dfa3b91ad07ba5450039b69b9e0d2a6d72",
+      "current_sha256": "1d838684f52ed9fc13876585eba892dfa3b91ad07ba5450039b69b9e0d2a6d72",
+      "matches": true
+    },
+    {
+      "ticker": "369370",
+      "path": "data/market/adjusted/stocks/369370.parquet",
+      "expected_sha256": "30cf194d0034883d514ea517dfa61815230e2554b6459652721f010174560672",
+      "current_sha256": "30cf194d0034883d514ea517dfa61815230e2554b6459652721f010174560672",
+      "matches": true
+    },
+    {
+      "ticker": "373200",
+      "path": "data/market/adjusted/stocks/373200.parquet",
+      "expected_sha256": "abb1951e2baa4fa9a36d14dfb78c46fceccb83cffc217198b601f29b12ff1bc7",
+      "current_sha256": "abb1951e2baa4fa9a36d14dfb78c46fceccb83cffc217198b601f29b12ff1bc7",
+      "matches": true
+    },
+    {
+      "ticker": "388790",
+      "path": "data/market/adjusted/stocks/388790.parquet",
+      "expected_sha256": "946f0abb779aa5117b8bfcc7ea437021cd025f65f95dff914c21ff589b482d46",
+      "current_sha256": "946f0abb779aa5117b8bfcc7ea437021cd025f65f95dff914c21ff589b482d46",
+      "matches": true
+    },
+    {
+      "ticker": "391710",
+      "path": "data/market/adjusted/stocks/391710.parquet",
+      "expected_sha256": "07d159791b387b24ee62ffd213f08401435fa1875331db9c1f7a2eb63c54e8c3",
+      "current_sha256": "07d159791b387b24ee62ffd213f08401435fa1875331db9c1f7a2eb63c54e8c3",
+      "matches": true
+    },
+    {
+      "ticker": "408920",
+      "path": "data/market/adjusted/stocks/408920.parquet",
+      "expected_sha256": "8501941ee5bdbd2e95db83630f9ea91c996c6a6cc36e96a4c6bb275755abfb42",
+      "current_sha256": "8501941ee5bdbd2e95db83630f9ea91c996c6a6cc36e96a4c6bb275755abfb42",
+      "matches": true
+    },
+    {
+      "ticker": "413630",
+      "path": "data/market/adjusted/stocks/413630.parquet",
+      "expected_sha256": "4f8cd8e5289ac75f905ceeadb854610044f5a91da38f02187aec6538bd8e28fa",
+      "current_sha256": "4f8cd8e5289ac75f905ceeadb854610044f5a91da38f02187aec6538bd8e28fa",
+      "matches": true
+    },
+    {
+      "ticker": "424760",
+      "path": "data/market/adjusted/stocks/424760.parquet",
+      "expected_sha256": "6821a4d7583615a472d3506aa06c9f1545c43e976747d1694252452b71f7ec2e",
+      "current_sha256": "6821a4d7583615a472d3506aa06c9f1545c43e976747d1694252452b71f7ec2e",
+      "matches": true
+    },
+    {
+      "ticker": "446840",
+      "path": "data/market/adjusted/stocks/446840.parquet",
+      "expected_sha256": "ed33d1f9c2cb479ccef4599d63e794219f2c4c55a56b5dac58971b961c6f82c1",
+      "current_sha256": "ed33d1f9c2cb479ccef4599d63e794219f2c4c55a56b5dac58971b961c6f82c1",
+      "matches": true
+    },
+    {
+      "ticker": "465320",
+      "path": "data/market/adjusted/stocks/465320.parquet",
+      "expected_sha256": "c9ab520f54794148a617232c2658075d6ecdd5487eb01560164dcd8ef945a1bb",
+      "current_sha256": "c9ab520f54794148a617232c2658075d6ecdd5487eb01560164dcd8ef945a1bb",
+      "matches": true
+    },
+    {
+      "ticker": "471050",
+      "path": "data/market/adjusted/stocks/471050.parquet",
+      "expected_sha256": "83a9e86144b69779c0c2001730db2d77cab4c44e0ba34a6bdeeb74c1ecc82072",
+      "current_sha256": "83a9e86144b69779c0c2001730db2d77cab4c44e0ba34a6bdeeb74c1ecc82072",
+      "matches": true
+    },
+    {
+      "ticker": "472220",
+      "path": "data/market/adjusted/stocks/472220.parquet",
+      "expected_sha256": "8f2bc8d80b36b9584d2b8f15ca68d7d9a1c9de35bd3a45fc702a693056314508",
+      "current_sha256": "8f2bc8d80b36b9584d2b8f15ca68d7d9a1c9de35bd3a45fc702a693056314508",
+      "matches": true
+    },
+    {
+      "ticker": "472230",
+      "path": "data/market/adjusted/stocks/472230.parquet",
+      "expected_sha256": "d4b6ad10892aece40438e6a95705b1b566437cb6949e4bb78353c3f85143fb85",
+      "current_sha256": "d4b6ad10892aece40438e6a95705b1b566437cb6949e4bb78353c3f85143fb85",
+      "matches": true
+    },
+    {
+      "ticker": "473050",
+      "path": "data/market/adjusted/stocks/473050.parquet",
+      "expected_sha256": "36628c6290a02b6fc3adb374b02d4465bff325ee596ec130441ebc328fecf882",
+      "current_sha256": "36628c6290a02b6fc3adb374b02d4465bff325ee596ec130441ebc328fecf882",
+      "matches": true
+    }
+  ],
+  "input_files": [
+    {
+      "path": "docs/validation/official_strategy_adoption_criteria.md",
+      "sha256": "380f34cd7e24fd9881d7a154000d9b51512d905d7c7ef24b1940f5fa4e22cb88"
+    },
+    {
+      "path": "docs/validation/backtest_common_rules.md",
+      "sha256": "e8783958064ddfc54f57bef3500ad41de6d3b6bc853fce2464845f9c4cc4d06b"
+    },
+    {
+      "path": "docs/strategies/strategy_lifecycle.md",
+      "sha256": "c89bad3f56b95a9bac3284fb9817067940534b52c87c29f57f3009ea5a1e25e8"
+    },
+    {
+      "path": "docs/patterns/pattern_a_fast/strategy/version_02/OFFICIAL_ADOPTION_REVALIDATION_PLAN_V02.md",
+      "sha256": "84f7c7ab2dfd3f3af049dc876925f103d1e8d04e391248a780cd9d0537c1501c"
+    },
+    {
+      "path": "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py",
+      "sha256": "f045750c5fb5afcf0b8c132151ed7b8f387865f7653beb4e5b849c79b50f0dc1"
+    },
+    {
+      "path": "src/trend_scanner/data/repository_v2.py",
+      "sha256": "c252835604b0fd8f2e839d438052670d9700e773f1c34cb83582c5c29a198215"
+    },
+    {
+      "path": "src/trend_scanner/data/repository_v2_loader.py",
+      "sha256": "d5c2333022acf5b777f38bfd024c7540aaae8bc16f455c1a7e779c60c510a97d"
+    },
+    {
+      "path": "src/trend_scanner/data/rolling_market_data_refresh.py",
+      "sha256": "80270ab3efb0d906b1161410cc1756a613df8d7aa930c63415dcd7ba8bf94c87"
+    },
+    {
+      "path": "src/trend_scanner/data/krx_raw_stock_store.py",
+      "sha256": "43b491cf74d6b3c41d02f7877d006199a9e5419901f0b8e8a6a50d1c5ad6e95e"
+    },
+    {
+      "path": "src/trend_scanner/universe/permanent_identity_exclusions.py",
+      "sha256": "858ec93e656bea5aa9ad036f7bd8e129253b4f682d062e7fb9350ad5eea1cffa"
+    },
+    {
+      "path": "scripts/run_v2_official_adoption_revalidation_v02.py",
+      "sha256": "ef3d33e03290feb36af5aec671aa63a91ec3dc552f72c83f40aaae99970a6639"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/execution_contract.json",
+      "sha256": "fdf30f484575a7e4ea383d1db6ba289e49325d456e98d0a01e7aad8afd45728c"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/preflight.json",
+      "sha256": "d48eabe634653d62ff204abf866bd5c4e7ac34f3ff0c2c4ff79881e77d0a7e69"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/integrity_audit.json",
+      "sha256": "c41e4f69c6d0b6ba85beb3ff3b831c4fdde3781051185d11cbe3132166fe2d19"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/gate_results.json",
+      "sha256": "7b59c30a382aabdff8977848ef4dc5225663dc759e0896621411762771497ac8"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/summary.json",
+      "sha256": "43de30fb4666af77e9a7dd7ef1a4c52321c9b40b61c57947e243c77dfd150ff3"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/source_manifest.json",
+      "sha256": "9fe39f3c17b1b08affb8a6d785f2a3e8f2f14ea2a1f7ac55d312519ae6a6c672"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/artifact_hashes.json",
+      "sha256": "0144a50dd68c4f31dd17f1ea10483ac29d0855d347eb519a1403f93726440823"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/ticker_price_source_audit.csv",
+      "sha256": "15952beceb5f1bf82798fa1cce5eaadb767c55c8d84ee73cb4f9c925b785026b"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/control_trades.csv",
+      "sha256": "1e012fd41d6ebb76effc27d85c52647a25652359ad3d39430d44665f341ad69d"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/candidate_trades.csv",
+      "sha256": "426f1f5c42727d1674e7bd06cf0d7fa5bceda7ca3529cb4168c0b1c18b949beb"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/control_portfolio_events.csv",
+      "sha256": "c1fed47e990826b372696edfa3a1bfe14afa17e12f5d359b16c351fa2c93f04f"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/candidate_portfolio_events.csv",
+      "sha256": "efc9d9f82be00ea6b1a20568d1f8eeaed808cfacbd9fe3c3b300854213ad4017"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/candidate_valuation_audit.csv",
+      "sha256": "8e6cc533a3c7dcc78318c0a377b51568f0913cd8c7b80b95f5715cf197de2ab4"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/candidate_missing_marks.csv",
+      "sha256": "c55088572a0ca859c893fc0c63539c51843db1f8755da05bd165b996a219cfc6"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/run_official_realistic_replay.py",
+      "sha256": "5fe187dedb2b5b856792d498e31070db6ff7ed9e844f933a606b4dc424bcd446"
+    }
+  ],
+  "source_snapshots": [
+    {
+      "path": "targeted_signal_evaluation_raw.json",
+      "sha256": "e77ead90d8f9586c89730725f3c36f18e9e503f4baa41d44ca9ac867525a10fc"
+    },
+    {
+      "path": "price_input_source_diagnostic.json",
+      "sha256": "e32f9c28b4cc6423b33cd161fa0d9789924825cc8155ca4a0cc3043a784eaab9"
+    }
+  ],
+  "primary_official_sources": [
+    {
+      "kind": "KIND original exchange decision",
+      "url": "https://kind.krx.co.kr/external/2025/03/18/000013/20250318000040/11347.htm",
+      "publication_date": "2025-03-18",
+      "dart_rcp_no": "20250318000008",
+      "dart_url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20250318000008"
+    },
+    {
+      "kind": "KIND initial termination report",
+      "url": "https://kind.krx.co.kr/external/2025/05/30/000516/20250530000967/12000.htm",
+      "publication_date": "2025-05-30",
+      "dart_rcp_no": "20250530001046",
+      "dart_url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20250530001046"
+    },
+    {
+      "kind": "KIND corrected termination report",
+      "url": "https://kind.krx.co.kr/external/2025/06/13/000546/20250613001236/12000.htm",
+      "publication_date": "2025-06-13",
+      "dart_rcp_no": "20250613000412",
+      "dart_url": "https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20250613000412"
+    },
+    {
+      "kind": "KIND trading halt notice",
+      "url": "https://kind.krx.co.kr/external/2025/05/23/000393/20250523000924/70797.htm",
+      "publication_date": "2025-05-23"
+    },
+    {
+      "kind": "KIND delisting notice",
+      "url": "https://kind.krx.co.kr/external/2025/06/13/000637/20250613001387/70769.htm",
+      "publication_date": "2025-06-13"
+    }
+  ],
+  "external_access_note": "DART viewer URLs were resolved to official receipt numbers but returned HTTP 502 in this session; filing body and correction were verified on the corresponding official KIND transmission copies.",
+  "run_artifact_policy": "Only this new folder is intended for commit/push; pre-existing unrelated untracked research files are excluded."
+}

@@ -1,0 +1,78 @@
+{
+  "schema": "fast_core_v2_p3_2_data_nav_closure_replay_decision_v01",
+  "status": "TARGETED_SIGNAL_REEVALUATION_AND_AFFECTED_GROUP_PORTFOLIO_REPLAY_COMPLETE",
+  "baseline_head": "cbef18c7eed1d7002b16751b1000df2ce9851061",
+  "baseline_origin_main": "cbef18c7eed1d7002b16751b1000df2ce9851061",
+  "read_only_diagnosis_first": true,
+  "full_universe_signal_rerun": false,
+  "strategy_rules_or_cost_contract_changed": false,
+  "existing_v01_overwritten": false,
+  "signal_scope": {
+    "tickers": 123,
+    "workers": 10,
+    "available": 123,
+    "worker_errors": 0,
+    "new_control_signal_trade_rows": 44,
+    "new_candidate_signal_trade_rows": 4,
+    "new_signal_audit_rows": 133,
+    "control_first_signal": "2022-01-07",
+    "control_first_execution": "2022-01-10",
+    "candidate_first_signal": "2022-12-02",
+    "candidate_first_execution": "2022-12-05"
+  },
+  "portfolio_replay": {
+    "groups": [
+      "CONTROL",
+      "ALIGNMENT_MCAP_500B"
+    ],
+    "window": "2022-01-03..2026-08-31 with 2026-09-01 support session",
+    "chronology_sessions": 1140,
+    "why_full_chronology": "earliest new CONTROL signal is 2022-01-07; sequential cash/entry order is path dependent",
+    "inputs": "saved V01 signal rows plus new signals from 123 identities only",
+    "new_signal_entry_status_counts": {
+      "control": {
+        "SKIPPED_CASH_UNAVAILABLE": 37,
+        "EXECUTED": 7
+      },
+      "candidate": {
+        "EXECUTED": 2,
+        "SKIPPED_CASH_UNAVAILABLE": 2
+      }
+    },
+    "scope_issues": {
+      "CONTROL": [],
+      "ALIGNMENT_MCAP_500B": []
+    },
+    "cash_conservation_pass": {
+      "CONTROL": true,
+      "ALIGNMENT_MCAP_500B": true
+    }
+  },
+  "A_koentec": {
+    "actual_payment_date_proven": false,
+    "accounting_contract_defined": false,
+    "special_settlement_event_inserted": false,
+    "new_control_entry_status": "SKIPPED_CASH_UNAVAILABLE",
+    "new_control_entry_reason": "INSUFFICIENT_AVAILABLE_CASH",
+    "original_v01_unresolved_nav_sessions": 297,
+    "new_control_koentec_position": false,
+    "disposition": "NO_SPECIAL_SETTLEMENT_PATCH; original V01 gap remains documented; new replay skipped entry because available cash was insufficient."
+  },
+  "B_price_inputs": {
+    "123_range_mismatch_rows": 123,
+    "bounded_load_success_rows": 123,
+    "in_pit_mismatch_dates": 0,
+    "adjusted_hash_mismatch_rows": 0,
+    "380440_adjusted_file_missing": true,
+    "disposition": "123 identities were evaluated from available adjusted-price ranges; no interpolation or source-file edit. 380440 remains unresolved."
+  },
+  "C_candidate_marks": {
+    "ticker": "003690",
+    "missing_sessions": 4,
+    "confirmed_krx_raw_activity_rows": 4,
+    "carry_applied": false,
+    "candidate_replay_nav_coverage": 99.64881474978051,
+    "disposition": "KEEP_FOUR_NAV_DAYS_EXCLUDED; no mark filled."
+  },
+  "metrics_scope": "replayed portfolio outcomes are provisional P3-2 comparisons; full adoption and promotion were not evaluated."
+}

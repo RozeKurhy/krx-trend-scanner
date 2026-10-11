@@ -1,0 +1,62 @@
+{
+  "schema": "fast_core_v2_p3_2_data_nav_closure_gate_results_v01",
+  "scope": "P3-2 only; updated input replay; preliminary, not five-window adoption",
+  "integrity": {
+    "status": "CHECK_REQUIRED",
+    "critical_integrity_error_count": 0,
+    "worker_error_count": 0,
+    "unresolved_universe_price_ticker_count": 1,
+    "unresolved_ticker": [
+      "380440"
+    ],
+    "reason": "ADJUSTED_MISSING; signal/trade effect remains unknown"
+  },
+  "CONTROL": {
+    "A_integrity": "CHECK_REQUIRED",
+    "B_costs": "PASS",
+    "C_profitability": "PASS",
+    "C_total_return_pct": 31.781515409339956,
+    "C_cagr_pct": 6.105025110145501,
+    "D_reference_mdd_pct": -38.70371641131746,
+    "D_mdd_type": "OBSERVED",
+    "E_validity": "OBSERVED",
+    "E_valid_days": 1138,
+    "E_total_days": 1139,
+    "E_coverage_pct": 99.91220368744513,
+    "E_missing_marks": 1
+  },
+  "ALIGNMENT_MCAP_500B": {
+    "A_integrity": "CHECK_REQUIRED",
+    "B_costs": "PASS",
+    "C_profitability": "PASS",
+    "C_total_return_pct": 108.2343651626457,
+    "C_cagr_pct": 17.058157620153636,
+    "D_mdd": "PASS",
+    "D_candidate_mdd_pct": -13.63701338545491,
+    "D_control_mdd_pct": -38.70371641131746,
+    "D_control_minus_candidate_mdd_pp": -25.066703025862548,
+    "D_absolute_floor_pct": -40.0,
+    "D_relative_failure_threshold_pp": 5.0,
+    "E_validity": "OBSERVED",
+    "E_valid_days": 1135,
+    "E_total_days": 1139,
+    "E_coverage_pct": 99.64881474978051,
+    "E_missing_marks": 4
+  },
+  "whole_five_window_adoption": "NOT_FINAL_5WINDOW",
+  "strategy_promotion": "NOT_EVALUATED",
+  "official_default_remains": "A FAST Core V2",
+  "cash_shortage_is_official_gate": false,
+  "replay_integrity": {
+    "control_cash_conservation_pass": true,
+    "candidate_cash_conservation_pass": true,
+    "control_scope_issues": 0,
+    "candidate_scope_issues": 0,
+    "control_source_or_execution_issue_count": 0,
+    "candidate_source_or_execution_issue_count": 0,
+    "control_v01_artifact_hashes_checked": 52,
+    "control_v01_artifact_hash_mismatches": 0,
+    "exact_181_exclusion_pair_count": 181,
+    "exact_181_exclusion_hash_matches_preflight": true
+  }
+}

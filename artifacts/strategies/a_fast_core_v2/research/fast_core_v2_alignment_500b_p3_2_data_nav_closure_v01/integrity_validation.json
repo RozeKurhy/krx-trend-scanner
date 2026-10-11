@@ -1,0 +1,42 @@
+{
+  "schema": "fast_core_v2_p3_2_data_nav_closure_integrity_validation_v01",
+  "status": "PASS_WITH_CHECK_REQUIRED_DATA_LIMIT",
+  "v01_artifact_hashes": {
+    "checked": 52,
+    "mismatches": 0
+  },
+  "adjusted_price_files": {
+    "checked": 123,
+    "hash_mismatches": 0,
+    "targeted_load_success": 123,
+    "targeted_load_errors": 0,
+    "in_pit_session_mismatch_count": 0
+  },
+  "signal_evaluation": {
+    "tickers": 123,
+    "worker_errors": 0,
+    "control_trade_signal_rows": 44,
+    "candidate_trade_signal_rows": 4,
+    "signal_audit_rows": 133
+  },
+  "portfolio_replay": {
+    "control_scope_issues": 0,
+    "candidate_scope_issues": 0,
+    "control_cash_conservation_pass": true,
+    "candidate_cash_conservation_pass": true,
+    "control_source_or_execution_issue_count": 0,
+    "candidate_source_or_execution_issue_count": 0
+  },
+  "permanent_exclusion_hash": {
+    "pair_count": 181,
+    "preflight_match": true
+  },
+  "unresolved_data": {
+    "ticker": "380440",
+    "reason": "ADJUSTED_MISSING",
+    "effect": "unknown",
+    "control_missing_mark_count": 1,
+    "candidate_missing_mark_count": 4
+  },
+  "v01_unchanged": true
+}
