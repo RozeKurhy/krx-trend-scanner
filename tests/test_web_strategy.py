@@ -648,7 +648,6 @@ def test_strategy_position_examples_keep_meaningful_two_line_values():
 def test_strategy_monitor_json_matches_clean_exporter_projection():
     exporter = _load_exporter()
     monitor = _load_monitor()
-    assert monitor["reference_market_date"] == "2026-10-02"
     assert [row["id"] for row in monitor["strategies"]] == [
         "PATTERN_A_FAST_FINAL_STRATEGY_V02",
         exporter.B_SELECT_ID,
@@ -656,8 +655,12 @@ def test_strategy_monitor_json_matches_clean_exporter_projection():
     ]
     assert exporter.B_SELECT_ID == "PATTERN_B_SELECT_CORE_V02"
     assert exporter.B_SELECT_LABEL == "B Select Core V2"
-    status_path = ROOT / "artifacts/strategies/b_select_core_v2/production/20261003/status.json"
+    status_path = (
+        ROOT / "artifacts/strategies/b_select_core_v2/production"
+        / monitor["requested_as_of"].replace("-", "") / "status.json"
+    )
     status = json.loads(status_path.read_text(encoding="utf-8"))
+    assert monitor["reference_market_date"] == status["reference_market_date"]
     projected = exporter.build_strategy_monitor(
         repo_root=ROOT,
         target_as_of=monitor["requested_as_of"],

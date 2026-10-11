@@ -972,6 +972,393 @@ def _date_text(value: Any) -> str:
     return "" if text.lower() in {"", "nan", "none"} else text[:10]
 
 
+def _canonical_trade_key(trade: Mapping[str, Any]) -> tuple[str, str, int, str, str]:
+    """Return the stable identity of one canonical execution lifecycle."""
+    ticker = str(trade.get("ticker", "")).zfill(6)
+    isu_cd = str(trade.get("isu_cd", "")).strip().upper()
+    signal_date = _date_text(trade.get("entry_signal_date"))
+    execution_date = _date_text(trade.get("entry_execution_date"))
+    try:
+        sequence = int(trade.get("trade_sequence"))
+    except (TypeError, ValueError) as exc:
+        raise BSelectStatusError("B_SELECT_CANONICAL_HISTORY_KEY_INVALID:SEQUENCE") from exc
+    if (
+        len(ticker) != 6 or not ticker.isdigit() or not isu_cd
+        or sequence < 1 or not signal_date or not execution_date
+    ):
+        raise BSelectStatusError("B_SELECT_CANONICAL_HISTORY_KEY_INVALID:IDENTITY_OR_DATE")
+    return ticker, isu_cd, sequence, signal_date, execution_date
+
+
+def _canonical_history_index(
+    rows: Any,
+    *,
+    label: str,
+) -> dict[tuple[str, str, int, str, str], dict[str, Any]]:
+    if not isinstance(rows, list):
+        raise BSelectStatusError(f"B_SELECT_CANONICAL_HISTORY_INVALID:{label}")
+    indexed: dict[tuple[str, str, int, str, str], dict[str, Any]] = {}
+    for row in rows:
+        if not isinstance(row, Mapping):
+            raise BSelectStatusError(f"B_SELECT_CANONICAL_HISTORY_ROW_INVALID:{label}")
+        key = _canonical_trade_key(row)
+        if key in indexed:
+            raise BSelectStatusError(f"B_SELECT_CANONICAL_HISTORY_DUPLICATE_KEY:{label}:{key[0]}:{key[2]}")
+        if str(row.get("strategy_id") or "") != STRATEGY_ID:
+            raise BSelectStatusError(f"B_SELECT_CANONICAL_HISTORY_STRATEGY_INVALID:{label}:{key[0]}")
+        if row.get("trade_status") not in {"REALIZED", "OPEN_AT_REFERENCE"}:
+            raise BSelectStatusError(f"B_SELECT_CANONICAL_HISTORY_STATUS_INVALID:{label}:{key[0]}")
+        indexed[key] = dict(row)
+    return indexed
+
+
+def _history_field_value(row: Mapping[str, Any], field: str) -> Any:
+    value = row.get(field)
+    if field.endswith("_date"):
+        return _date_text(value) or None
+    if field in {"entry_open", "exit_price", "return_pct"}:
+        number = _safe_float(value)
+        return round(number, 12) if number is not None else None
+    return value
+
+
+def _require_history_fields_equal(
+    left: Mapping[str, Any],
+    right: Mapping[str, Any],
+    fields: tuple[str, ...],
+    *,
+    code: str,
+) -> None:
+    if any(_history_field_value(left, field) != _history_field_value(right, field) for field in fields):
+        raise BSelectStatusError(code)
+
+
+def _merge_incremental_canonical_history(
+    *,
+    prior_rows: Any,
+    current_rows: list[dict[str, Any]],
+    hidden_open_updates: Mapping[tuple[str, str, int, str, str], dict[str, Any]],
+    current_identity_pairs: set[tuple[str, str]],
+    prior_reference_market_date: str,
+    reference_market_date: str,
+    trading_dates: list[str],
+) -> tuple[list[dict[str, Any]], int]:
+    """Merge current public lifecycles into the complete prior canonical ledger.
+
+    Prior realized executions are immutable. Prior OPEN executions must either
+    be updated by the current public lifecycle or explicitly replayed as a
+    historical-only OPEN. Missing transitions fail closed.
+    """
+    prior = _canonical_history_index(prior_rows, label="PRIOR")
+    current = _canonical_history_index(current_rows, label="CURRENT")
+    updates: dict[tuple[str, str, int, str, str], dict[str, Any]] = {}
+    for key, row in hidden_open_updates.items():
+        normalized_key = _canonical_trade_key(row)
+        if normalized_key != key:
+            raise BSelectStatusError("B_SELECT_CANONICAL_HISTORY_HIDDEN_IDENTITY_MISMATCH")
+        if key in updates:
+            raise BSelectStatusError("B_SELECT_CANONICAL_HISTORY_HIDDEN_DUPLICATE_UPDATE")
+        updates[key] = dict(row)
+
+    hidden_open_keys = {
+        key for key, row in prior.items()
+        if row.get("trade_status") == "OPEN_AT_REFERENCE"
+        and (key[0], key[1]) not in current_identity_pairs
+    }
+    if hidden_open_keys != set(updates):
+        raise BSelectStatusError(
+            "B_SELECT_CANONICAL_HISTORY_HIDDEN_OPEN_UPDATE_SET_MISMATCH"
+        )
+
+    merged: dict[tuple[str, str, int, str, str], dict[str, Any]] = {}
+    realized_fields = (
+        "entry_open", "exit_signal_date", "exit_execution_date", "exit_price",
+        "exit_reason", "return_pct", "trade_status", "strategy_id", "exit_strategy_id",
+    )
+    open_entry_fields = ("entry_open", "strategy_id")
+    open_to_realized_count = 0
+    for key, prior_row in prior.items():
+        if prior_row.get("trade_status") == "REALIZED":
+            current_row = current.get(key)
+            if current_row is not None:
+                _require_history_fields_equal(
+                    prior_row, current_row, realized_fields,
+                    code="B_SELECT_CANONICAL_HISTORY_REALIZED_ROW_CHANGED",
+                )
+            merged[key] = prior_row
+            continue
+
+        next_row = updates.get(key) or current.get(key)
+        if next_row is None:
+            raise BSelectStatusError("B_SELECT_CANONICAL_HISTORY_OPEN_ROW_LOST")
+        _require_history_fields_equal(
+            prior_row, next_row, open_entry_fields,
+            code="B_SELECT_CANONICAL_HISTORY_OPEN_ENTRY_CHANGED",
+        )
+        if next_row.get("trade_status") == "REALIZED":
+            signal_day = _date_text(next_row.get("exit_signal_date"))
+            execution_day = _date_text(next_row.get("exit_execution_date"))
+            expected_execution = next_exact_session(signal_day, trading_dates) if signal_day else None
+            if (
+                not signal_day or signal_day > reference_market_date
+                or not execution_day or execution_day > reference_market_date
+                or execution_day not in trading_dates or expected_execution != execution_day
+                or next_row.get("exit_reason") != "PATTERN_B_NORMAL_NEXT_OPEN"
+                or next_row.get("exit_strategy_id") != STRATEGY_ID
+            ):
+                raise BSelectStatusError("B_SELECT_CANONICAL_HISTORY_ILLEGAL_OPEN_TO_REALIZED")
+            open_to_realized_count += 1
+        elif next_row.get("trade_status") == "OPEN_AT_REFERENCE":
+            if next_row.get("exit_execution_date") is not None or next_row.get("exit_price") is not None:
+                raise BSelectStatusError("B_SELECT_CANONICAL_HISTORY_OPEN_HAS_EXECUTION")
+        else:
+            raise BSelectStatusError("B_SELECT_CANONICAL_HISTORY_OPEN_TRANSITION_INVALID")
+        merged[key] = dict(next_row)
+
+    for key, row in current.items():
+        if key not in prior:
+            merged[key] = dict(row)
+
+    output = sorted(
+        merged.values(),
+        key=lambda row: (
+            _date_text(row.get("entry_execution_date")),
+            str(row.get("ticker", "")).zfill(6),
+            str(row.get("isu_cd", "")).upper(),
+            int(row.get("trade_sequence") or 0),
+        ),
+    )
+    _canonical_history_index(output, label="MERGED")
+    return output, open_to_realized_count
+
+
+def _replay_historical_only_open_positions(
+    *,
+    prior_status: Mapping[str, Any],
+    current_identity_pairs: set[tuple[str, str]],
+    intervals: list[dict[str, Any]],
+    interval_components: Mapping[Any, str],
+    trading_dates: list[str],
+    session_dates: list[str],
+    repository: Any,
+    reference_market_date: str,
+    root: Path,
+) -> tuple[
+    dict[tuple[str, str, int, str, str], dict[str, Any]],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+]:
+    """Replay hidden prior OPEN rows on exact catch-up sessions only."""
+    prior_rows = _canonical_history_index(
+        prior_status.get("canonical_trade_history"), label="PRIOR_FOR_HIDDEN_REPLAY"
+    )
+    prior_pending = prior_status.get("canonical_pending_events") or []
+    if not isinstance(prior_pending, list):
+        raise BSelectStatusError("B_SELECT_PRIOR_CANONICAL_PENDING_EVENTS_INVALID")
+    updates: dict[tuple[str, str, int, str, str], dict[str, Any]] = {}
+    pending_updates: list[dict[str, Any]] = []
+    replay_audit: list[dict[str, Any]] = []
+    reference_day = str(reference_market_date)[:10]
+    for key, prior_trade in prior_rows.items():
+        if prior_trade.get("trade_status") != "OPEN_AT_REFERENCE" or (key[0], key[1]) in current_identity_pairs:
+            continue
+        ticker, isu_cd, sequence, _, _ = key
+        prior_pending_matches = [
+            event for event in prior_pending
+            if isinstance(event, Mapping)
+            and str(event.get("ticker", "")).zfill(6) == ticker
+            and str(event.get("isu_cd", "")).upper() == isu_cd
+            and event.get("kind") == "EXIT"
+            and (
+                event.get("trade_sequence") is None
+                or int(event.get("trade_sequence") or 0) == sequence
+            )
+        ]
+        if len(prior_pending_matches) > 1:
+            raise BSelectStatusError("B_SELECT_PRIOR_CANONICAL_PENDING_EVENT_DUPLICATE")
+        initial_pending = None
+        if prior_pending_matches:
+            event = prior_pending_matches[0]
+            initial_pending = {
+                "kind": "EXIT",
+                "signal_date": _date_text(event.get("signal_date")),
+                "execution_date": _date_text(event.get("execution_date")) or None,
+                "sequence": sequence,
+                "strategy_id": str(event.get("strategy_id") or STRATEGY_ID),
+            }
+
+        active = [
+            interval for interval in intervals
+            if str(interval.get("ticker", "")).zfill(6) == ticker
+            and str(interval.get("isu_cd", "")).upper() == isu_cd
+            and str(interval.get("state", "")).upper() == "COMMON"
+            and str(interval.get("effective_from", ""))[:10] <= reference_day
+            <= str(interval.get("effective_to", ""))[:10]
+        ]
+        if len(active) != 1:
+            raise BSelectStatusError(
+                f"B_SELECT_CANONICAL_HISTORY_HIDDEN_ACTIVE_IDENTITY_INVALID:{ticker}:{isu_cd}"
+            )
+        interval = active[0]
+        component_id = interval_components.get(pattern_b_source.interval_key(interval))
+        if not component_id:
+            raise BSelectStatusError(
+                f"B_SELECT_CANONICAL_HISTORY_HIDDEN_COMPONENT_MISSING:{ticker}:{isu_cd}"
+            )
+        identity = {
+            "ticker": ticker,
+            "isu_cd": isu_cd,
+            "market": str(interval.get("market", "")).upper(),
+            "component_id": str(component_id),
+            "effective_from": str(interval.get("effective_from", ""))[:10],
+            "effective_to": str(interval.get("effective_to", ""))[:10],
+        }
+        contexts = _build_exact_session_contexts(
+            root=root,
+            ticker=ticker,
+            name=str(prior_trade.get("name") or ticker),
+            identity=identity,
+            intervals=intervals,
+            trading_dates=trading_dates,
+            session_dates=session_dates,
+            report_pattern_history=[],
+            repository=repository,
+            pattern_a_evaluation_dates=set(),
+        )
+        if [str(row.get("date")) for row in contexts] != session_dates:
+            raise BSelectStatusError(
+                f"B_SELECT_CANONICAL_HISTORY_HIDDEN_SESSION_GAP:{ticker}:{isu_cd}"
+            )
+        if any(
+            row.get("pattern_b_state") is None
+            or row.get("pattern_b_evaluation_status") != "READY"
+            for row in contexts
+        ):
+            raise BSelectStatusError(
+                f"B_SELECT_CANONICAL_HISTORY_HIDDEN_PATTERN_B_UNAVAILABLE:{ticker}:{isu_cd}"
+            )
+        normal_dates = {
+            str(row["date"]) for row in contexts
+            if row.get("pattern_b_state") == "NORMAL"
+        }
+        schedule_signal_dates = (
+            {str(initial_pending["signal_date"])}
+            if initial_pending
+            else ({min(normal_dates)} if normal_dates else set())
+        )
+        exact_opens, execution_by_signal_date = _first_valid_open_schedule(
+            repository=repository,
+            ticker=ticker,
+            isu_cd=isu_cd,
+            signal_dates=schedule_signal_dates,
+            intervals=intervals,
+            trading_dates=trading_dates,
+            reference_market_date=reference_day,
+        ) if schedule_signal_dates else ({}, {})
+        if initial_pending:
+            scheduled_pending_execution = execution_by_signal_date.get(initial_pending["signal_date"])
+            if scheduled_pending_execution:
+                initial_pending["execution_date"] = scheduled_pending_execution
+        initial_position = {
+            "trade_sequence": sequence,
+            "entry_signal_date": key[3],
+            "entry_execution_date": key[4],
+            "entry_open": prior_trade.get("entry_open"),
+            "exit_signal_date": prior_trade.get("exit_signal_date"),
+            "strategy_id": str(prior_trade.get("strategy_id") or STRATEGY_ID),
+        }
+        lifecycle = replay_lifecycle(
+            [{"date": str(row["date"]), "state": row["pattern_b_state"]} for row in contexts],
+            [],
+            trading_dates=trading_dates,
+            exact_opens=exact_opens,
+            reference_market_date=reference_day,
+            execution_by_signal_date=execution_by_signal_date,
+            initial_position=initial_position,
+            initial_pending=initial_pending,
+            initial_trade_sequence=sequence,
+        )
+        if len(lifecycle.get("completed_trades", [])) > 1:
+            raise BSelectStatusError("B_SELECT_CANONICAL_HISTORY_HIDDEN_MULTIPLE_EXITS")
+        if lifecycle.get("completed_trades"):
+            updated = {
+                **prior_trade,
+                **dict(lifecycle["completed_trades"][0]),
+                "ticker": ticker,
+                "isu_cd": isu_cd,
+                "market": identity["market"],
+                "asset_type": ASSET_TYPE,
+            }
+        else:
+            position = lifecycle.get("position")
+            if not position:
+                raise BSelectStatusError("B_SELECT_CANONICAL_HISTORY_HIDDEN_OPEN_POSITION_LOST")
+            daily = RepositoryV2DailyLoader(
+                repository, start=reference_day, end=reference_day
+            ).load(ticker)
+            reference_index = pd.Timestamp(reference_day)
+            if daily is None or daily.empty or reference_index not in daily.index:
+                raise BSelectStatusError(
+                    f"B_SELECT_CANONICAL_HISTORY_HIDDEN_REFERENCE_CLOSE_MISSING:{ticker}:{isu_cd}"
+                )
+            reference_close = _safe_float(daily.loc[reference_index, "close"])
+            entry_open = _safe_float(position.get("entry_open"))
+            if reference_close is None or reference_close <= 0 or entry_open is None or entry_open <= 0:
+                raise BSelectStatusError(
+                    f"B_SELECT_CANONICAL_HISTORY_HIDDEN_REFERENCE_CLOSE_INVALID:{ticker}:{isu_cd}"
+                )
+            updated = {
+                **prior_trade,
+                "exit_signal_date": position.get("exit_signal_date"),
+                "exit_execution_date": None,
+                "exit_price": None,
+                "exit_reason": None,
+                "trade_status": "OPEN_AT_REFERENCE",
+                "return_pct": (reference_close / entry_open - 1.0) * 100.0,
+                "ticker": ticker,
+                "isu_cd": isu_cd,
+                "market": identity["market"],
+                "asset_type": ASSET_TYPE,
+            }
+        updates[key] = updated
+        actual_exit_signal_dates = {
+            _date_text(row.get("exit_signal_date"))
+            for row in lifecycle.get("completed_trades", [])
+            if _date_text(row.get("exit_signal_date"))
+        }
+        if lifecycle.get("position") and _date_text(lifecycle["position"].get("exit_signal_date")):
+            actual_exit_signal_dates.add(_date_text(lifecycle["position"].get("exit_signal_date")))
+        replay_audit.append({
+            "ticker": ticker,
+            "isu_cd": isu_cd,
+            "trade_sequence": sequence,
+            "observations": [
+                {
+                    "date": str(row["date"]),
+                    "pattern_b_state": str(row["pattern_b_state"]),
+                }
+                for row in contexts
+            ],
+            "normal_observation_dates": sorted(normal_dates),
+            "exit_signal_dates": sorted(actual_exit_signal_dates),
+            "exit_execution_date": _date_text(updated.get("exit_execution_date")) or None,
+            "result_trade_status": updated.get("trade_status"),
+        })
+        pending = lifecycle.get("pending")
+        if pending:
+            pending_updates.append({
+                **dict(pending),
+                "ticker": ticker,
+                "isu_cd": isu_cd,
+                "name": str(prior_trade.get("name") or ticker),
+                "market": identity["market"],
+                "asset_type": ASSET_TYPE,
+                "trade_sequence": sequence,
+                "strategy_id": str(pending.get("strategy_id") or STRATEGY_ID),
+            })
+    return updates, pending_updates, replay_audit
+
+
 def _calendar_authority_payload(provenance: Mapping[str, Any]) -> dict[str, str]:
     frontier = provenance.get("calendar_frontier")
     sha256 = provenance.get("calendar_sha256")
@@ -1139,6 +1526,31 @@ def build_b_select_status(
             )
         ):
             raise BSelectStatusError("B_SELECT_V2_BASELINE_CONTRACT_INVALID")
+        prior_history = _canonical_history_index(
+            prior_status.get("canonical_trade_history"), label="PRIOR_STATUS"
+        )
+        if prior_status.get("canonical_trade_history_row_count") != len(prior_history):
+            raise BSelectStatusError("B_SELECT_PRIOR_CANONICAL_HISTORY_COUNT_MISMATCH")
+        prior_open_rows = [
+            row for row in prior_history.values()
+            if row.get("trade_status") == "OPEN_AT_REFERENCE"
+        ]
+        prior_open_list = prior_status.get("canonical_current_open_positions")
+        if not isinstance(prior_open_list, list):
+            raise BSelectStatusError("B_SELECT_PRIOR_CANONICAL_OPEN_POSITIONS_MISSING")
+        prior_open_keys = {
+            _canonical_trade_key(row) for row in prior_open_rows
+        }
+        listed_open_keys = {
+            _canonical_trade_key(row) for row in prior_open_list
+            if isinstance(row, Mapping)
+        }
+        if (
+            len(prior_open_list) != len(listed_open_keys)
+            or prior_status.get("canonical_current_open_position_count") != len(prior_open_rows)
+            or listed_open_keys != prior_open_keys
+        ):
+            raise BSelectStatusError("B_SELECT_PRIOR_CANONICAL_OPEN_POSITIONS_MISMATCH")
         try:
             prior_reference = str(prior_status["reference_market_date"])[:10]
             catchup_session_dates = _catchup_session_dates(
@@ -1892,6 +2304,39 @@ def build_b_select_status(
 
     historical_only_identity_count = 0
     historical_only_pending_events: list[dict[str, Any]] = []
+    historical_only_open_replay_audit: list[dict[str, Any]] = []
+    incremental_open_to_realized_count = 0
+    if prior_status is not None and not fresh_history_replay:
+        (
+            hidden_open_updates,
+            historical_only_pending_events,
+            historical_only_open_replay_audit,
+        ) = _replay_historical_only_open_positions(
+            prior_status=prior_status,
+            current_identity_pairs=current_identity_pairs,
+            intervals=intervals,
+            interval_components=interval_components,
+            trading_dates=trading_dates,
+            session_dates=catchup_session_dates,
+            repository=repo,
+            reference_market_date=reference_market_date,
+            root=root,
+        )
+        canonical_trade_history, incremental_open_to_realized_count = _merge_incremental_canonical_history(
+            prior_rows=prior_status.get("canonical_trade_history"),
+            current_rows=canonical_trade_history,
+            hidden_open_updates=hidden_open_updates,
+            current_identity_pairs=current_identity_pairs,
+            prior_reference_market_date=str(prior_status.get("reference_market_date", ""))[:10],
+            reference_market_date=reference_market_date,
+            trading_dates=trading_dates,
+        )
+        historical_only_identity_count = len({
+            (str(trade.get("ticker", "")).zfill(6), str(trade.get("isu_cd", "")).upper())
+            for trade in canonical_trade_history
+            if (str(trade.get("ticker", "")).zfill(6), str(trade.get("isu_cd", "")).upper())
+            not in current_identity_pairs
+        })
     if fresh_history_replay:
         for pair, identity_rows in sorted(canonical_candidate_rows_by_identity.items()):
             if pair in current_identity_pairs:
@@ -2070,18 +2515,61 @@ def build_b_select_status(
         dict(trade) for trade in canonical_trade_history
         if trade.get("trade_status") == "OPEN_AT_REFERENCE"
     ]
-    canonical_history_keys: set[tuple[Any, ...]] = set()
-    for trade in canonical_trade_history:
-        key = (
-            str(trade.get("ticker", "")).zfill(6),
-            str(trade.get("isu_cd", "")).upper(),
-            trade.get("trade_sequence"),
-            trade.get("entry_signal_date"),
-            trade.get("trade_status"),
+    canonical_trade_history = list(
+        _canonical_history_index(canonical_trade_history, label="FINAL").values()
+    )
+    canonical_pending_by_key: dict[tuple[Any, ...], dict[str, Any]] = {}
+    for item in out_items:
+        pending = item.get("pending_event")
+        if not isinstance(pending, dict):
+            continue
+        pending_row = {
+            **dict(pending),
+            "ticker": str(item.get("ticker", "")).zfill(6),
+            "isu_cd": str(item.get("isu_cd", "")).upper(),
+            "name": str(item.get("name") or item.get("ticker") or ""),
+            "market": str(item.get("market") or ""),
+            "asset_type": ASSET_TYPE,
+            "trade_sequence": (
+                (item.get("current_trade") or {}).get("trade_sequence")
+                if isinstance(item.get("current_trade"), dict) else None
+            ),
+            "strategy_id": str(pending.get("strategy_id") or STRATEGY_ID),
+        }
+        pending_key = (
+            pending_row["ticker"], pending_row["isu_cd"], pending_row.get("trade_sequence"),
+            pending_row.get("kind"), _date_text(pending_row.get("signal_date")),
         )
-        if key in canonical_history_keys:
-            raise BSelectStatusError("B_SELECT_CANONICAL_HISTORY_DUPLICATE_GLOBAL_ROW")
-        canonical_history_keys.add(key)
+        canonical_pending_by_key[pending_key] = pending_row
+    for pending in historical_only_pending_events:
+        pending_row = dict(pending)
+        pending_key = (
+            str(pending_row.get("ticker", "")).zfill(6),
+            str(pending_row.get("isu_cd", "")).upper(),
+            pending_row.get("trade_sequence"),
+            pending_row.get("kind"),
+            _date_text(pending_row.get("signal_date")),
+        )
+        existing = canonical_pending_by_key.get(pending_key)
+        if existing is not None and existing != pending_row:
+            raise BSelectStatusError("B_SELECT_CANONICAL_PENDING_EVENT_CONFLICT")
+        canonical_pending_by_key[pending_key] = pending_row
+    canonical_pending_events = sorted(
+        canonical_pending_by_key.values(),
+        key=lambda event: (
+            str(event.get("execution_date") or ""), str(event.get("ticker", "")),
+            str(event.get("isu_cd", "")), str(event.get("kind", "")),
+        ),
+    )
+    for event in canonical_pending_events:
+        signal_day = _date_text(event.get("signal_date"))
+        execution_day = _date_text(event.get("execution_date"))
+        if (
+            not signal_day or signal_day not in trading_dates
+            or not execution_day or execution_day not in trading_dates
+            or execution_day <= signal_day or execution_day <= reference_market_date
+        ):
+            raise BSelectStatusError("B_SELECT_CANONICAL_PENDING_EVENT_INVALID")
 
     tickers = [item["ticker"] for item in out_items]
     duplicate_item_count = len(tickers) - len(set(tickers))
@@ -2153,7 +2641,8 @@ def build_b_select_status(
         "counts": counts,
         "items": out_items,
         "canonical_trade_history": canonical_trade_history,
-        "canonical_pending_events": historical_only_pending_events,
+        "canonical_pending_events": canonical_pending_events,
+        "canonical_pending_event_count": len(canonical_pending_events),
         "canonical_trade_history_row_count": len(canonical_trade_history),
         "canonical_current_open_positions": canonical_current_open_positions,
         "canonical_current_open_position_count": len(canonical_current_open_positions),
@@ -2250,6 +2739,21 @@ def build_b_select_status(
                 "historical_only_identity_count": historical_only_identity_count,
             }
             if fresh_history_replay
+            else {
+                "status": "INCREMENTAL_CONTINUITY",
+                "start_date": str(prior_status.get("reference_market_date", ""))[:10],
+                "end_date": reference_market_date,
+                "exact_session_count": len(catchup_session_dates),
+                "prior_trade_history_row_count": prior_status.get("canonical_trade_history_row_count"),
+                "trade_history_row_count": len(canonical_trade_history),
+                "prior_open_position_count": prior_status.get("canonical_current_open_position_count"),
+                "current_open_position_count": len(canonical_current_open_positions),
+                "open_to_realized_count": incremental_open_to_realized_count,
+                "historical_only_identity_count": historical_only_identity_count,
+                "lost_prior_trade_key_count": 0,
+                "historical_only_open_replay": historical_only_open_replay_audit,
+            }
+            if prior_status is not None
             else None
         ),
         "catchup_entry_pattern_a_authorities": [

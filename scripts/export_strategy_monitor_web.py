@@ -1043,6 +1043,14 @@ def build_strategy_monitor(
         and b_select_status.get("canonical_current_open_position_count") != len(b_canonical_open_positions)
     ):
         raise ValueError("B Select canonical current OPEN count mismatch")
+    b_canonical_pending_events = b_select_status.get("canonical_pending_events") or []
+    if not isinstance(b_canonical_pending_events, list):
+        raise ValueError("B Select canonical pending events are invalid")
+    if (
+        b_select_status.get("canonical_pending_event_count") is not None
+        and b_select_status.get("canonical_pending_event_count") != len(b_canonical_pending_events)
+    ):
+        raise ValueError("B Select canonical pending event count mismatch")
     strategies = [
         {
             "id": STRATEGY_ID,
@@ -1071,6 +1079,8 @@ def build_strategy_monitor(
             "trade_history": b_history_payload,
             "canonical_current_open_positions": b_canonical_open_positions,
             "canonical_current_open_position_count": len(b_canonical_open_positions),
+            "canonical_pending_events": [dict(event) for event in b_canonical_pending_events],
+            "canonical_pending_event_count": len(b_canonical_pending_events),
         },
         {
             "id": JULIA_ID,

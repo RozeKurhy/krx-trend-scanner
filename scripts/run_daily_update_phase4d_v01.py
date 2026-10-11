@@ -440,7 +440,7 @@ def validate_staging(
         raise Phase4DError("PHASE4D_B_SELECT_LABEL_INVALID")
     calendar = load_rolling_production_market_calendar(ROOT)
     trading_dates = {day.strftime("%Y-%m-%d") for day in calendar.trading_dates}
-    from trend_scanner.strategies.b_select_core_v2 import exact_month_end_sessions
+    from trend_scanner.strategies.b_select_core_v2 import exact_month_end_sessions, next_exact_session
 
     month_end_dates = set(exact_month_end_sessions(sorted(trading_dates)))
     item_history_rows: list[dict[str, Any]] = []
@@ -471,9 +471,30 @@ def validate_staging(
         history_rows = item_history_rows
     if not isinstance(history_rows, list):
         raise Phase4DError("PHASE4D_B_SELECT_CANONICAL_HISTORY_INVALID")
+    canonical_trade_keys: set[tuple[str, str, int, str, str]] = set()
+    canonical_trade_by_key: dict[tuple[str, str, int, str, str], dict[str, Any]] = {}
     for trade in history_rows:
         if not isinstance(trade, dict):
             raise Phase4DError("PHASE4D_B_SELECT_CANONICAL_HISTORY_ROW_INVALID")
+        try:
+            canonical_key = (
+                str(trade.get("ticker", "")).zfill(6),
+                str(trade.get("isu_cd", "")).upper(),
+                int(trade.get("trade_sequence")),
+                str(trade.get("entry_signal_date") or "")[:10],
+                str(trade.get("entry_execution_date") or "")[:10],
+            )
+        except (TypeError, ValueError) as exc:
+            raise Phase4DError("PHASE4D_B_SELECT_CANONICAL_HISTORY_KEY_INVALID") from exc
+        if (
+            not canonical_key[0].isdigit() or len(canonical_key[0]) != 6
+            or not canonical_key[1] or canonical_key[2] < 1
+            or not canonical_key[3] or not canonical_key[4]
+            or canonical_key in canonical_trade_keys
+        ):
+            raise Phase4DError("PHASE4D_B_SELECT_CANONICAL_HISTORY_KEY_INVALID")
+        canonical_trade_keys.add(canonical_key)
+        canonical_trade_by_key[canonical_key] = trade
         if trade.get("strategy_id") != B_SELECT_ID or trade.get("exit_strategy_id") not in {None, B_SELECT_ID}:
             if trade.get("strategy_id") == "PATTERN_B_SELECT_CORE_V01":
                 v1_source_rows += 1
@@ -499,6 +520,7 @@ def validate_staging(
         price_key = "entry_price" if monitor_row else "entry_open"
         return (
             str(row.get("ticker", "")).zfill(6),
+            str(row.get("isu_cd", "")).upper(),
             int(row.get("trade_sequence") or 0),
             str(row.get("entry_signal_date") or "")[:10],
             str(row.get("entry_execution_date") or "")[:10],
@@ -531,6 +553,24 @@ def validate_staging(
             != sorted(_history_signature(row, monitor_row=False) for row in expected_open_rows)
         ):
             raise Phase4DError("PHASE4D_B_SELECT_CANONICAL_OPEN_POSITION_MISMATCH")
+    elif canonical_history_available:
+        canonical_open_rows = b_status.get("canonical_current_open_positions")
+        monitor_open_rows = strategy_by_id[B_SELECT_ID].get("canonical_current_open_positions")
+        expected_open_rows = [
+            trade for trade in history_rows
+            if isinstance(trade, dict) and trade.get("trade_status") == "OPEN_AT_REFERENCE"
+        ]
+        if (
+            not isinstance(canonical_open_rows, list)
+            or not isinstance(monitor_open_rows, list)
+            or b_status.get("canonical_current_open_position_count") != len(expected_open_rows)
+            or strategy_by_id[B_SELECT_ID].get("canonical_current_open_position_count") != len(expected_open_rows)
+            or sorted(_history_signature(row, monitor_row=False) for row in canonical_open_rows)
+            != sorted(_history_signature(row, monitor_row=False) for row in expected_open_rows)
+            or sorted(_history_signature(row, monitor_row=True) for row in monitor_open_rows)
+            != sorted(_history_signature(row, monitor_row=False) for row in expected_open_rows)
+        ):
+            raise Phase4DError("PHASE4D_B_SELECT_CANONICAL_OPEN_POSITION_MISMATCH")
     if canonical_history_available and (
         not isinstance(monitor_history, list)
         or sorted(_history_signature(row, monitor_row=False) for row in history_rows)
@@ -538,6 +578,181 @@ def validate_staging(
         or b_status.get("canonical_trade_history_row_count", len(history_rows)) != len(history_rows)
     ):
         raise Phase4DError("PHASE4D_B_SELECT_MONITOR_CANONICAL_HISTORY_MISMATCH")
+    if canonical_history_available:
+        public_identity_pairs = {
+            (str(item.get("ticker", "")).zfill(6), str(item.get("isu_cd", "")).upper())
+            for item in b_status.get("items", [])
+        }
+        historical_identity_pairs = {
+            (key[0], key[1]) for key in canonical_trade_keys
+            if (key[0], key[1]) not in public_identity_pairs
+        }
+        if b_status.get("historical_only_identity_count") != len(historical_identity_pairs):
+            raise Phase4DError("PHASE4D_B_SELECT_HISTORICAL_ONLY_IDENTITY_COUNT_MISMATCH")
+
+        canonical_audit = b_status.get("canonical_history") or {}
+        if canonical_audit.get("status") == "INCREMENTAL_CONTINUITY":
+            catchup_audit = b_status.get("catchup_audit") or {}
+            prior_artifact = str(catchup_audit.get("prior_artifact_path") or "")
+            prior_path = (ROOT / prior_artifact).resolve()
+            if not prior_artifact or ROOT.resolve() not in prior_path.parents or not prior_path.is_file():
+                raise Phase4DError("PHASE4D_B_SELECT_PRIOR_CANONICAL_ARTIFACT_INVALID")
+            prior_status = _read_json(prior_path)
+            prior_rows = prior_status.get("canonical_trade_history")
+            if (
+                not isinstance(prior_rows, list)
+                or prior_status.get("canonical_trade_history_row_count") != len(prior_rows)
+                or str(prior_status.get("reference_market_date") or "")[:10]
+                != str(catchup_audit.get("prior_reference_market_date") or "")[:10]
+            ):
+                raise Phase4DError("PHASE4D_B_SELECT_PRIOR_CANONICAL_HISTORY_INVALID")
+            prior_by_key: dict[tuple[str, str, int, str, str], dict[str, Any]] = {}
+            for prior_trade in prior_rows:
+                if not isinstance(prior_trade, dict):
+                    raise Phase4DError("PHASE4D_B_SELECT_PRIOR_CANONICAL_HISTORY_INVALID")
+                try:
+                    prior_key = (
+                        str(prior_trade.get("ticker", "")).zfill(6),
+                        str(prior_trade.get("isu_cd", "")).upper(),
+                        int(prior_trade.get("trade_sequence")),
+                        str(prior_trade.get("entry_signal_date") or "")[:10],
+                        str(prior_trade.get("entry_execution_date") or "")[:10],
+                    )
+                except (TypeError, ValueError) as exc:
+                    raise Phase4DError("PHASE4D_B_SELECT_PRIOR_CANONICAL_HISTORY_KEY_INVALID") from exc
+                if prior_key in prior_by_key:
+                    raise Phase4DError("PHASE4D_B_SELECT_PRIOR_CANONICAL_HISTORY_DUPLICATE")
+                prior_by_key[prior_key] = prior_trade
+            if not set(prior_by_key).issubset(canonical_trade_keys):
+                raise Phase4DError("PHASE4D_B_SELECT_PRIOR_CANONICAL_TRADE_KEY_LOST")
+            for prior_key, prior_trade in prior_by_key.items():
+                current_trade = canonical_trade_by_key[prior_key]
+                if prior_trade.get("trade_status") == "REALIZED":
+                    if current_trade != prior_trade:
+                        raise Phase4DError("PHASE4D_B_SELECT_PRIOR_REALIZED_TRADE_CHANGED")
+                    continue
+                if prior_trade.get("trade_status") != "OPEN_AT_REFERENCE":
+                    raise Phase4DError("PHASE4D_B_SELECT_PRIOR_TRADE_STATUS_INVALID")
+                if current_trade.get("trade_status") not in {"OPEN_AT_REFERENCE", "REALIZED"}:
+                    raise Phase4DError("PHASE4D_B_SELECT_PRIOR_OPEN_TRADE_DROPPED")
+                for field in ("ticker", "isu_cd", "trade_sequence", "entry_signal_date", "entry_execution_date", "entry_open", "strategy_id"):
+                    if current_trade.get(field) != prior_trade.get(field):
+                        raise Phase4DError("PHASE4D_B_SELECT_PRIOR_OPEN_ENTRY_CHANGED")
+                if current_trade.get("trade_status") == "REALIZED":
+                    signal_day = str(current_trade.get("exit_signal_date") or "")[:10]
+                    execution_day = str(current_trade.get("exit_execution_date") or "")[:10]
+                    if (
+                        current_trade.get("exit_reason") != "PATTERN_B_NORMAL_NEXT_OPEN"
+                        or current_trade.get("exit_strategy_id") != B_SELECT_ID
+                        or signal_day not in trading_dates
+                        or execution_day not in trading_dates
+                        or execution_day != next_exact_session(signal_day, sorted(trading_dates))
+                        or execution_day > reference_market_date
+                    ):
+                        raise Phase4DError("PHASE4D_B_SELECT_PRIOR_OPEN_ILLEGAL_EXIT")
+
+            catchup_dates = catchup_audit.get("catchup_session_dates")
+            hidden_replays = canonical_audit.get("historical_only_open_replay")
+            if not isinstance(catchup_dates, list) or not isinstance(hidden_replays, list):
+                raise Phase4DError("PHASE4D_B_SELECT_HIDDEN_OPEN_REPLAY_AUDIT_INVALID")
+            expected_hidden_open_keys = {
+                (key[0], key[1], key[2])
+                for key, trade in prior_by_key.items()
+                if trade.get("trade_status") == "OPEN_AT_REFERENCE"
+                and (key[0], key[1]) not in public_identity_pairs
+            }
+            actual_hidden_open_keys = {
+                (
+                    str(row.get("ticker", "")).zfill(6),
+                    str(row.get("isu_cd", "")).upper(),
+                    int(row.get("trade_sequence") or 0),
+                )
+                for row in hidden_replays
+                if isinstance(row, dict)
+            }
+            if (
+                len(hidden_replays) != len(actual_hidden_open_keys)
+                or actual_hidden_open_keys != expected_hidden_open_keys
+                or canonical_audit.get("lost_prior_trade_key_count") != 0
+            ):
+                raise Phase4DError("PHASE4D_B_SELECT_HIDDEN_OPEN_REPLAY_AUDIT_INVALID")
+            for replay in hidden_replays:
+                observations = replay.get("observations")
+                if (
+                    not isinstance(observations, list)
+                    or [str(row.get("date") or "")[:10] for row in observations]
+                    != [str(day)[:10] for day in catchup_dates]
+                    or any(not row.get("pattern_b_state") for row in observations)
+                ):
+                    raise Phase4DError("PHASE4D_B_SELECT_HIDDEN_OPEN_OBSERVATIONS_INVALID")
+                state_by_date = {
+                    str(row.get("date") or "")[:10]: row.get("pattern_b_state")
+                    for row in observations
+                }
+                signal_dates = replay.get("exit_signal_dates")
+                if not isinstance(signal_dates, list) or any(
+                    state_by_date.get(str(day)[:10]) != "NORMAL" for day in signal_dates
+                ):
+                    raise Phase4DError("PHASE4D_B_SELECT_HIDDEN_OPEN_EXIT_SIGNAL_INVALID")
+                matching = [
+                    row for row in history_rows
+                    if str(row.get("ticker", "")).zfill(6) == str(replay.get("ticker", "")).zfill(6)
+                    and str(row.get("isu_cd", "")).upper() == str(replay.get("isu_cd", "")).upper()
+                    and int(row.get("trade_sequence") or 0) == int(replay.get("trade_sequence") or 0)
+                ]
+                if len(matching) != 1 or matching[0].get("trade_status") != replay.get("result_trade_status"):
+                    raise Phase4DError("PHASE4D_B_SELECT_HIDDEN_OPEN_RESULT_MISMATCH")
+
+        pending_rows = b_status.get("canonical_pending_events")
+        monitor_pending_rows = strategy_by_id[B_SELECT_ID].get("canonical_pending_events")
+        if (
+            not isinstance(pending_rows, list)
+            or not isinstance(monitor_pending_rows, list)
+            or b_status.get("canonical_pending_event_count", len(pending_rows)) != len(pending_rows)
+            or strategy_by_id[B_SELECT_ID].get("canonical_pending_event_count", len(monitor_pending_rows))
+            != len(monitor_pending_rows)
+        ):
+            raise Phase4DError("PHASE4D_B_SELECT_CANONICAL_PENDING_EVENTS_INVALID")
+
+        def _pending_signature(row: dict[str, Any]) -> tuple[Any, ...]:
+            return (
+                str(row.get("ticker", "")).zfill(6),
+                str(row.get("isu_cd", "")).upper(),
+                int(row.get("trade_sequence") or 0),
+                str(row.get("kind") or ""),
+                str(row.get("signal_date") or "")[:10],
+                str(row.get("execution_date") or "")[:10],
+                str(row.get("strategy_id") or ""),
+            )
+
+        try:
+            pending_signatures = [_pending_signature(row) for row in pending_rows]
+            monitor_pending_signatures = [_pending_signature(row) for row in monitor_pending_rows]
+        except (AttributeError, TypeError, ValueError) as exc:
+            raise Phase4DError("PHASE4D_B_SELECT_CANONICAL_PENDING_EVENTS_INVALID") from exc
+        if (
+            len(pending_signatures) != len(set(pending_signatures))
+            or sorted(pending_signatures) != sorted(monitor_pending_signatures)
+        ):
+            raise Phase4DError("PHASE4D_B_SELECT_MONITOR_CANONICAL_PENDING_EVENTS_MISMATCH")
+        item_pending_signatures = []
+        for item in b_status.get("items", []):
+            event = item.get("pending_event")
+            if not isinstance(event, dict):
+                continue
+            current_trade = item.get("current_trade")
+            item_pending_signatures.append((
+                str(item.get("ticker", "")).zfill(6),
+                str(item.get("isu_cd", "")).upper(),
+                int((current_trade or {}).get("trade_sequence") or 0)
+                if isinstance(current_trade, dict) else 0,
+                str(event.get("kind") or ""),
+                str(event.get("signal_date") or "")[:10],
+                str(event.get("execution_date") or "")[:10],
+                str(event.get("strategy_id") or B_SELECT_ID),
+            ))
+        if not set(item_pending_signatures).issubset(set(pending_signatures)):
+            raise Phase4DError("PHASE4D_B_SELECT_ITEM_PENDING_EVENT_NOT_CANONICAL")
     if (
         v1_source_rows != 0
         or b_status.get("current_v1_source_row_count") != 0
