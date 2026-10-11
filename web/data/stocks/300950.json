@@ -22,8 +22,8 @@
     "flow_state": "FLOW_UNAVAILABLE"
   },
   "price_trend": {
-    "latest_close": 5435.0,
-    "latest_close_as_of": "2026-10-02",
+    "latest_close": 5210.0,
+    "latest_close_as_of": "2026-10-08",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/300950.parquet",
     "score_trend": {
@@ -37,13 +37,13 @@
       "change_6m": -34.41,
       "change_12m": -41.56
     },
-    "trading_value_state": "TRADING_VALUE_WEAKENING",
-    "trading_value_explanation": "최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(1.67억원)이 20일 평균(2.31억원) 및 60일 평균(3.52억원)을 밑돌고 있습니다.",
-    "avg_trading_value_1d_eok": 1.71,
-    "avg_trading_value_5d_eok": 1.67,
-    "avg_trading_value_10d_eok": 1.56,
-    "avg_trading_value_20d_eok": 2.31,
-    "avg_trading_value_60d_eok": 3.52
+    "trading_value_state": "TRADING_VALUE_MIXED",
+    "trading_value_explanation": "최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 2.28억원, 20일: 2.12억원, 60일: 3.41억원)",
+    "avg_trading_value_1d_eok": 2.86,
+    "avg_trading_value_5d_eok": 2.28,
+    "avg_trading_value_10d_eok": 1.91,
+    "avg_trading_value_20d_eok": 2.12,
+    "avg_trading_value_60d_eok": 3.41
   },
   "pattern": {
     "official_stage": "WEAK",
@@ -405,7 +405,7 @@
     "status": "NOT_APPLICABLE",
     "applicability": "NOT_APPLICABLE",
     "reason": "ASSET_TYPE_NOT_APPLICABLE",
-    "requested_as_of": "2026-10-03",
+    "requested_as_of": "2026-10-11",
     "company_family": null,
     "currency": "KRW",
     "filter_status": "NOT_APPLICABLE",
@@ -456,22 +456,22 @@
         "exit_execution_date": null,
         "exit_price": null,
         "trade_status": "OPEN_AT_CUTOFF",
-        "return_pct": -64.43,
+        "return_pct": -65.9,
         "lifecycle_class": "SKIPPED_EARLY_TREND_HANDOFF"
       }
     ],
     "eligibility": {
-      "as_of": "2026-10-02",
+      "as_of": "2026-10-08",
       "official_etf36_membership": true,
       "listing_date": "2018-07-24",
       "listing_age_pass": true,
-      "raw_close_krw": 5435.0,
+      "raw_close_krw": 5210.0,
       "minimum_raw_close_krw": 1000,
       "raw_close_pass": true,
-      "avg_volume_20d_shares": 43098.05,
+      "avg_volume_20d_shares": 39666.6,
       "volume_window_sessions": 20,
-      "volume_window_start": "2026-09-03",
-      "volume_window_end": "2026-10-02",
+      "volume_window_start": "2026-09-08",
+      "volume_window_end": "2026-10-08",
       "volume_window_includes_signal_date": true,
       "minimum_avg_volume_20d_shares": 10000,
       "volume_pass": true,
@@ -485,8 +485,8 @@
     }
   },
   "technical_details": {
-    "requested_as_of": "2026-10-03",
-    "reference_market_date": "2026-10-02",
+    "requested_as_of": "2026-10-11",
+    "reference_market_date": "2026-10-08",
     "report_version": "0.6",
     "report_status": "PARTIAL",
     "asset_type": "ETF",
@@ -499,21 +499,21 @@
     "market_strength_applicability": "NOT_APPLICABLE",
     "market_strength_status": "NOT_EVALUATED",
     "relative_strength_status": "NOT_EVALUATED",
-    "trading_value_state": "TRADING_VALUE_WEAKENING",
-    "price_as_of": "2026-10-02",
+    "trading_value_state": "TRADING_VALUE_MIXED",
+    "price_as_of": "2026-10-08",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/300950.parquet",
     "sector_name": null,
     "data_quality": {
       "cache_present": true,
       "cache_first_date": "2018-07-24",
-      "cache_last_date": "2026-10-02",
-      "daily_rows_count": 2010,
+      "cache_last_date": "2026-10-08",
+      "daily_rows_count": 2013,
       "completed_month_count": 99,
       "quality_status": "OK",
       "quality_flags": []
     },
-    "source_report": "artifacts/reporting/etf_stock_reports/20261003/json/300950_KODEX 게임산업.json"
+    "source_report": "artifacts/reporting/etf_stock_reports/20261011/json/300950_KODEX 게임산업.json"
   },
   "external_links": {
     "naver_finance": "https://finance.naver.com/item/main.naver?code=300950",

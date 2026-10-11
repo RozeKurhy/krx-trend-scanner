@@ -37,6 +37,7 @@ from trend_scanner.data.krx_market_index import (
 from trend_scanner.data.krx_openapi_client import KrxOpenApiClient
 from trend_scanner.data.krx_openapi_quota import LocalKrxOpenApiQuota
 from trend_scanner.data.krx_raw_stock_store import DEFAULT_RAW_STOCK_ROOT, KrxRawStockStore
+from trend_scanner.data.daily_update_foundation import load_confirmed_closed_dates
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -121,6 +122,7 @@ def derive_incremental_trading_dates(
     target_as_of: str | date,
     *,
     existing_frame: pd.DataFrame | None = None,
+    confirmed_closed_dates: Iterable[str | date] | None = None,
 ) -> dict[str, Any]:
     """Derive missing dates from paired KOSPI/KOSDAQ COMPLETE manifest rows."""
 
@@ -129,24 +131,43 @@ def derive_incremental_trading_dates(
     if target_text < boundary_text:
         raise MarketIndexRollingRefreshError("BLOCKED_TARGET_BEFORE_BOUNDARY")
 
+    closed_dates = (
+        set(load_confirmed_closed_dates())
+        if confirmed_closed_dates is None
+        else set(_normalize_dates(confirmed_closed_dates))
+    )
+
     existing_dates: set[str] = set()
     if existing_frame is not None:
         validated_existing = validate_market_index_frame(existing_frame)
         existing_dates = set(validated_existing["date"].astype(str))
 
     states: dict[str, dict[str, str]] = {}
+    closed_complete_evidence: dict[str, set[str]] = {}
     for row in raw_store.list_manifest():
         market = str(row.get("market", "")).strip().upper()
         if market not in RAW_MARKETS:
             continue
         day = _date_text(str(row.get("date", "")))
         if day <= target_text:
-            states.setdefault(day, {})[market] = str(row.get("status", "")).strip().upper()
+            status = str(row.get("status", "")).strip().upper()
+            states.setdefault(day, {})[market] = status
+            if day in closed_dates and status == "COMPLETE":
+                closed_complete_evidence.setdefault(day, set()).add(market)
 
     complete_dates: list[str] = []
     no_data_dates: list[str] = []
+    ignored_closed_manifest_dates: list[str] = []
     for day in sorted(states):
         pair = states[day]
+        if day in closed_dates:
+            if day in closed_complete_evidence:
+                raise MarketIndexRollingRefreshError(
+                    "BLOCKED_CLOSED_DATE_TRADING_EVIDENCE_CONFLICT",
+                    f"date={day} complete_markets={sorted(closed_complete_evidence[day])}",
+                )
+            ignored_closed_manifest_dates.append(day)
+            continue
         statuses = (pair.get("KOSPI"), pair.get("KOSDAQ"))
         if statuses == ("COMPLETE", "COMPLETE"):
             complete_dates.append(day)
@@ -167,6 +188,8 @@ def derive_incremental_trading_dates(
         "candidate_complete_dates_before_or_at_boundary": [day for day in complete_dates if day <= boundary_text],
         "already_present_dates": [day for day in complete_dates if day in existing_dates],
         "no_data_dates": no_data_dates,
+        "confirmed_closed_dates": sorted(day for day in closed_dates if day <= target_text),
+        "ignored_closed_manifest_dates": ignored_closed_manifest_dates,
         "missing_dates": missing_dates,
         "first_missing_date": missing_dates[0] if missing_dates else None,
         "last_missing_date": missing_dates[-1] if missing_dates else None,

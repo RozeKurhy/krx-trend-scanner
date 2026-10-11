@@ -1436,7 +1436,14 @@ class RollingRawMarketUpdater:
             ]
 
         start = min(known_missing, default=_next_day(current_boundary))
-        result = self.runner.run(start, target_as_of, resume=True, markets=("KOSPI", "KOSDAQ"), **run_kwargs)
+        result = self.runner.run(
+            start,
+            target_as_of,
+            required_dates=sessions,
+            resume=True,
+            markets=("KOSPI", "KOSDAQ"),
+            **run_kwargs,
+        )
         if repair_results:
             repair_blockers = [
                 blocker

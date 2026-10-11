@@ -126,6 +126,33 @@ def test_incomplete_raw_pair_fails_closed() -> None:
         derive_incremental_trading_dates(raw, "2026-09-04", "2026-09-11")
 
 
+def test_confirmed_closed_date_ignores_legacy_failed_manifest_rows() -> None:
+    raw = FakeRawStore(_manifest(
+        ("KOSPI", "2026-09-07", "FAILED"),
+        ("KOSDAQ", "2026-09-07", "FAILED"),
+    ))
+    result = derive_incremental_trading_dates(
+        raw,
+        "2026-09-04",
+        "2026-09-11",
+        confirmed_closed_dates=["2026-09-07"],
+    )
+    assert result["missing_dates"] == []
+    assert result["ignored_closed_manifest_dates"] == ["2026-09-07"]
+
+
+@pytest.mark.parametrize("market", ["KOSPI", "KOSDAQ"])
+def test_complete_raw_evidence_conflicts_with_confirmed_closure(market: str) -> None:
+    raw = FakeRawStore(_manifest((market, "2026-09-07", "COMPLETE")))
+    with pytest.raises(MarketIndexRollingRefreshError, match="CLOSED_DATE_TRADING_EVIDENCE_CONFLICT"):
+        derive_incremental_trading_dates(
+            raw,
+            "2026-09-04",
+            "2026-09-11",
+            confirmed_closed_dates=["2026-09-07"],
+        )
+
+
 def test_duplicate_pair_fails_closed() -> None:
     frame = pd.concat([_index_rows(["2026-09-07"]), _index_rows(["2026-09-07"]).iloc[[0]]], ignore_index=True)
     with pytest.raises(MarketIndexRollingRefreshError):

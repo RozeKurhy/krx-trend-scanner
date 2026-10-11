@@ -36,6 +36,91 @@ def test_permanent_exclusions_block_new_entries():
     assert all(not status_v2._is_new_entry_allowed(*pair) for pair in status_v2.PERMANENT_IDENTITY_EXCLUSIONS)
 
 
+def test_incremental_status_carries_forward_authority_for_still_open_exact_catchup_entry():
+    key = ("064260", "KR7064260003", "064260:KR7064260003:000", "2026-09-30")
+    row = {
+        "ticker": key[0],
+        "isu_cd": key[1],
+        "component_id": key[2],
+        "entry_signal_date": key[3],
+        "entry_pattern_a_stage_recomputed": "PROGRESSED",
+        "previous_pattern_a_stage": "EARLY_TREND",
+        "previous_pattern_a_stage_date": "2025-08-29",
+        "source": "REPOSITORY_V2_EXACT_SESSION_EVALUATORS",
+    }
+    prior_item = {
+        "ticker": key[0],
+        "isu_cd": key[1],
+        "component_id": key[2],
+        "canonical_position": "OPEN",
+        "action": "HOLD",
+        "current_trade": {"entry_signal_date": key[3]},
+        "pending_event": None,
+        "entry_pattern_a_stage": "PROGRESSED",
+        "entry_previous_pattern_a_stage": "EARLY_TREND",
+        "entry_previous_pattern_a_stage_date": "2025-08-29",
+    }
+    prior_status = {
+        "catchup_audit": {
+            "catchup_session_dates": [],
+            "recovered_month_end_dates": [key[3]],
+        },
+        "catchup_entry_pattern_a_authorities": [row],
+        "items": [prior_item],
+    }
+
+    authorities, inherited_keys = status_v2._carry_forward_active_entry_stage_authorities(
+        prior_status,
+        [dict(prior_item)],
+        current_catchup_authority_keys=set(),
+    )
+
+    assert set(authorities) == {key}
+    assert inherited_keys == [key]
+    assert authorities[key] == row
+
+
+def test_incremental_status_rejects_changed_context_for_inherited_open_entry_authority():
+    key = ("064260", "KR7064260003", "064260:KR7064260003:000", "2026-09-30")
+    row = {
+        "ticker": key[0],
+        "isu_cd": key[1],
+        "component_id": key[2],
+        "entry_signal_date": key[3],
+        "entry_pattern_a_stage_recomputed": "PROGRESSED",
+        "previous_pattern_a_stage": "EARLY_TREND",
+        "previous_pattern_a_stage_date": "2025-08-29",
+        "source": "REPOSITORY_V2_EXACT_SESSION_EVALUATORS",
+    }
+    item = {
+        "ticker": key[0],
+        "isu_cd": key[1],
+        "component_id": key[2],
+        "canonical_position": "OPEN",
+        "action": "HOLD",
+        "current_trade": {"entry_signal_date": key[3]},
+        "pending_event": None,
+        "entry_pattern_a_stage": "PROGRESSED",
+        "entry_previous_pattern_a_stage": "TRANSITION",
+        "entry_previous_pattern_a_stage_date": "2025-08-29",
+    }
+    prior_status = {
+        "catchup_audit": {
+            "catchup_session_dates": [],
+            "recovered_month_end_dates": [key[3]],
+        },
+        "catchup_entry_pattern_a_authorities": [row],
+        "items": [{**item, "entry_previous_pattern_a_stage": "EARLY_TREND"}],
+    }
+
+    with pytest.raises(status_v2.BSelectStatusError, match="PRIOR_ENTRY_PATTERN_A_CONTEXT_MISMATCH"):
+        status_v2._carry_forward_active_entry_stage_authorities(
+            prior_status,
+            [item],
+            current_catchup_authority_keys=set(),
+        )
+
+
 def test_canonical_v2_exact_session_authority_needs_no_v1_source(tmp_path):
     status = {
         "strategy_id": status_v2.STRATEGY_ID,

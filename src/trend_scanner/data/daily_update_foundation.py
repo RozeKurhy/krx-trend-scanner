@@ -148,7 +148,7 @@ def _candidate_tail(calendar_dates: Sequence[str], target_as_of: str) -> list[st
     return [day.date().isoformat() for day in pd.bdate_range(start, target_as_of)]
 
 
-def _load_confirmed_closed_dates(path: Path) -> dict[str, dict[str, Any]]:
+def load_confirmed_closed_dates(path: Path = DEFAULT_CLOSED_DATE_AUTHORITY_PATH) -> dict[str, dict[str, Any]]:
     """Load individually confirmed KRX closure dates; absent dates stay unresolved."""
 
     if not Path(path).exists():
@@ -277,7 +277,7 @@ class DailyUpdateFoundation:
         manifest, authority = self._load_state(target)
         known_dates = authority["calendar_dates"]
         finalized_no_data = set(_paired_no_data_dates(self.raw_store, target))
-        confirmed_closed = _load_confirmed_closed_dates(self.closed_date_authority_path)
+        confirmed_closed = load_confirmed_closed_dates(self.closed_date_authority_path)
         confirmed_closed_dates = set(confirmed_closed)
         raw_complete_dates = {
             str(row.get("date", ""))

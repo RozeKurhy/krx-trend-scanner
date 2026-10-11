@@ -312,6 +312,43 @@ def test_b_select_catchup_entry_pattern_a_authority_is_session_scoped_and_unique
         exporter._read_catchup_entry_stage_authority(status)
 
 
+def test_b_select_inherited_entry_authority_requires_exact_audit_key():
+    import pytest
+
+    exporter = _load_exporter()
+    row = {
+        "ticker": "064260",
+        "isu_cd": "KR7064260003",
+        "component_id": "064260:KR7064260003:000",
+        "entry_signal_date": "2026-09-30",
+        "entry_pattern_a_stage_recomputed": "PROGRESSED",
+        "previous_pattern_a_stage": "EARLY_TREND",
+        "previous_pattern_a_stage_date": "2025-08-29",
+        "source": "REPOSITORY_V2_EXACT_SESSION_EVALUATORS",
+    }
+    key = ["064260", "KR7064260003", "064260:KR7064260003:000", "2026-09-30"]
+    status = {
+        "catchup_audit": {
+            "catchup_session_count": 3,
+            "catchup_session_dates": ["2026-10-06", "2026-10-07", "2026-10-08"],
+            "recovered_month_end_dates": [],
+            "inherited_entry_authority_count": 1,
+            "inherited_entry_authority_keys": [key],
+            "skipped_krx_session_count": 0,
+        },
+        "catchup_entry_pattern_a_authorities": [row],
+    }
+
+    authority = exporter._read_catchup_entry_stage_authority(status)
+
+    assert list(authority) == [("064260", "KR7064260003", "064260:KR7064260003:000", "2026-09-30")]
+
+    status["catchup_audit"]["inherited_entry_authority_keys"] = []
+    status["catchup_audit"]["inherited_entry_authority_count"] = 0
+    with pytest.raises(ValueError, match="authority is inconsistent"):
+        exporter._read_catchup_entry_stage_authority(status)
+
+
 def test_b_select_watch_item_does_not_receive_fake_entry_pattern_a_context():
     exporter = _load_exporter()
     item = {

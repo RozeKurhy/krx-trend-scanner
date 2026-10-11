@@ -22,8 +22,8 @@
     "flow_state": "FLOW_UNAVAILABLE"
   },
   "price_trend": {
-    "latest_close": 4075.0,
-    "latest_close_as_of": "2026-10-02",
+    "latest_close": 4160.0,
+    "latest_close_as_of": "2026-10-08",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/228790.parquet",
     "score_trend": {
@@ -38,12 +38,12 @@
       "change_12m": 15.59
     },
     "trading_value_state": "TRADING_VALUE_WEAKENING",
-    "trading_value_explanation": "최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(137.35억원)이 20일 평균(252.54억원) 및 60일 평균(283.30억원)을 밑돌고 있습니다.",
-    "avg_trading_value_1d_eok": 192.73,
-    "avg_trading_value_5d_eok": 137.35,
-    "avg_trading_value_10d_eok": 163.14,
-    "avg_trading_value_20d_eok": 252.54,
-    "avg_trading_value_60d_eok": 283.3
+    "trading_value_explanation": "최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(210.49억원)이 20일 평균(241.69억원) 및 60일 평균(281.54억원)을 밑돌고 있습니다.",
+    "avg_trading_value_1d_eok": 170.55,
+    "avg_trading_value_5d_eok": 210.49,
+    "avg_trading_value_10d_eok": 171.49,
+    "avg_trading_value_20d_eok": 241.69,
+    "avg_trading_value_60d_eok": 281.54
   },
   "pattern": {
     "official_stage": "EARLY_TREND",
@@ -405,7 +405,7 @@
     "status": "NOT_APPLICABLE",
     "applicability": "NOT_APPLICABLE",
     "reason": "ASSET_TYPE_NOT_APPLICABLE",
-    "requested_as_of": "2026-10-03",
+    "requested_as_of": "2026-10-11",
     "company_family": null,
     "currency": "KRW",
     "filter_status": "NOT_APPLICABLE",
@@ -471,22 +471,22 @@
         "exit_execution_date": null,
         "exit_price": null,
         "trade_status": "OPEN_AT_CUTOFF",
-        "return_pct": 3.56,
+        "return_pct": 5.72,
         "lifecycle_class": "NEVER_PROGRESSED"
       }
     ],
     "eligibility": {
-      "as_of": "2026-10-02",
+      "as_of": "2026-10-08",
       "official_etf36_membership": true,
       "listing_date": "2015-10-07",
       "listing_age_pass": true,
-      "raw_close_krw": 4075.0,
+      "raw_close_krw": 4160.0,
       "minimum_raw_close_krw": 1000,
       "raw_close_pass": true,
-      "avg_volume_20d_shares": 5800288.65,
+      "avg_volume_20d_shares": 5639674.2,
       "volume_window_sessions": 20,
-      "volume_window_start": "2026-09-03",
-      "volume_window_end": "2026-10-02",
+      "volume_window_start": "2026-09-08",
+      "volume_window_end": "2026-10-08",
       "volume_window_includes_signal_date": true,
       "minimum_avg_volume_20d_shares": 10000,
       "volume_pass": true,
@@ -500,8 +500,8 @@
     }
   },
   "technical_details": {
-    "requested_as_of": "2026-10-03",
-    "reference_market_date": "2026-10-02",
+    "requested_as_of": "2026-10-11",
+    "reference_market_date": "2026-10-08",
     "report_version": "0.6",
     "report_status": "PARTIAL",
     "asset_type": "ETF",
@@ -515,20 +515,20 @@
     "market_strength_status": "NOT_EVALUATED",
     "relative_strength_status": "NOT_EVALUATED",
     "trading_value_state": "TRADING_VALUE_WEAKENING",
-    "price_as_of": "2026-10-02",
+    "price_as_of": "2026-10-08",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/228790.parquet",
     "sector_name": null,
     "data_quality": {
       "cache_present": true,
       "cache_first_date": "2015-10-07",
-      "cache_last_date": "2026-10-02",
-      "daily_rows_count": 2695,
+      "cache_last_date": "2026-10-08",
+      "daily_rows_count": 2698,
       "completed_month_count": 132,
       "quality_status": "OK",
       "quality_flags": []
     },
-    "source_report": "artifacts/reporting/etf_stock_reports/20261003/json/228790_TIGER 화장품.json"
+    "source_report": "artifacts/reporting/etf_stock_reports/20261011/json/228790_TIGER 화장품.json"
   },
   "external_links": {
     "naver_finance": "https://finance.naver.com/item/main.naver?code=228790",

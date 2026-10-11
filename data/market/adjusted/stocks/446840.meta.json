@@ -13,16 +13,46 @@
   "authority_closure_artifact_tree": "65e6bb999f0fc83f1477912a127d53ed82cc7f77",
   "authority_decision_sha256": "07d191f5e7cbf73a090945cd1751145bd131ca89e6e4d2cc948e2969fd943eba",
   "requested_start": "2025-08-14",
-  "requested_end": "2026-10-03",
+  "requested_end": "2026-10-11",
   "actual_date_min": "2025-08-14",
-  "actual_date_max": "2026-10-02",
-  "row_count": 276,
+  "actual_date_max": "2026-10-08",
+  "row_count": 279,
   "ticker_count": 1,
-  "generated_at": "2026-10-03T04:56:41.973903+00:00",
-  "last_success_at": "2026-10-03T04:56:41.973903+00:00",
-  "content_sha256": "d1bf212568b40ef035241d8c5ba053b3839563c6c56aa6bb3b63f4918d9ea7fa",
+  "generated_at": "2026-10-11T04:16:22.621197+00:00",
+  "last_success_at": "2026-10-11T04:16:22.621197+00:00",
+  "content_sha256": "ed33d1f9c2cb479ccef4599d63e794219f2c4c55a56b5dac58971b961c6f82c1",
   "source_native_adjusted": true,
   "analytic_invalid_ohlc_count": 0,
   "phantom_row_count": 0,
-  "source_nonusable_row_count": 0
+  "source_nonusable_row_count": 0,
+  "naver_adjusted_fetch_provenance": {
+    "schema_version": "NAVER_ADJUSTED_FETCH_PROVENANCE_V01",
+    "records": [
+      {
+        "ticker": "446840",
+        "request_start": "2026-10-06",
+        "request_end": "2026-10-08",
+        "fetch_utc_timestamp": "2026-10-11T04:16:22.614371+00:00",
+        "http_status": 200,
+        "raw_payload_sha256": "b48b29603237f22466de7d6762da9893e03ffebf01c5de9d8d6ce11097d4a251",
+        "parsed_row_count": 3,
+        "parsed_ohlc_sha256": "6f71473e3b2f2aa90c15aeb1e791c353e10d221b479d7ec1aa482d9936b6910d",
+        "source_descriptor": {
+          "source_authority_id": "NAVER_DIRECT_DATE_RANGE_ADJUSTED_V1",
+          "source_name": "NAVER_DIRECT_DATE_RANGE_ADJUSTED",
+          "source_endpoint": "https://fchart.stock.naver.com/sise.nhn",
+          "source_request_type": 1,
+          "count": "5000",
+          "source_semantics": "ADJUSTED_OHLC_ONLY",
+          "authority_type": "AUTHORITATIVE",
+          "closure_version": "V02",
+          "closure_artifact_head": "b5e785d92db7b24fadef21fd36602d305dd092de",
+          "closure_artifact_tree": "65e6bb999f0fc83f1477912a127d53ed82cc7f77",
+          "authority_decision_sha256": "07d191f5e7cbf73a090945cd1751145bd131ca89e6e4d2cc948e2969fd943eba"
+        },
+        "provider_version": "NaverDirectAdjustedPriceDataProvider_v02",
+        "saved_store_content_sha256": "ed33d1f9c2cb479ccef4599d63e794219f2c4c55a56b5dac58971b961c6f82c1"
+      }
+    ]
+  }
 }

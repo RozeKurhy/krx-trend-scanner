@@ -5,6 +5,7 @@ from datetime import datetime
 import pandas as pd
 import pytest
 
+from trend_scanner.data.errors import MarketDataError
 from trend_scanner.data.krx_openapi_quota import LocalKrxOpenApiQuota
 from trend_scanner.data.krx_openapi_quota import KrxOpenApiQuotaExceeded
 from trend_scanner.data.krx_openapi_client import KrxOpenApiAuthorizationError
@@ -122,6 +123,34 @@ def _runner(tmp_path, provider):
 
 def test_candidate_dates_are_weekdays_only():
     assert candidate_dates("2026-08-21", "2026-08-24") == ["2026-08-21", "2026-08-24"]
+
+
+def test_explicit_required_dates_do_not_expand_to_all_weekdays(tmp_path):
+    provider = _Provider()
+    runner, _ = _runner(tmp_path, provider)
+    required = ["2026-10-06", "2026-10-07", "2026-10-08"]
+    result = runner.run(
+        required[0],
+        "2026-10-11",
+        required_dates=required,
+        resume=True,
+        max_task_attempts=6,
+    )
+    assert result["dates"] == required
+    assert {day for _market, day in provider.calls} == set(required)
+    assert all(day != "2026-10-09" for _market, day in provider.calls)
+
+
+def test_explicit_required_dates_must_fit_requested_bounds(tmp_path):
+    runner, _ = _runner(tmp_path, _Provider())
+    with pytest.raises(MarketDataError, match="BACKFILL_REQUIRED_DATE_OUTSIDE_RANGE"):
+        runner.run(
+            "2026-10-06",
+            "2026-10-08",
+            required_dates=["2026-10-09"],
+            resume=True,
+            max_task_attempts=2,
+        )
 
 
 def test_live_diagnostic_contract_is_one_date_two_requests_without_retry():

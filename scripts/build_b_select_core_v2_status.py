@@ -558,6 +558,143 @@ def _latest_prior_status(
     return value, str(path.relative_to(root))
 
 
+def _active_entry_key_and_context(
+    item: Mapping[str, Any],
+) -> tuple[tuple[str, str, str, str], dict[str, Any]] | None:
+    """Return exact entry identity/context for a current OPEN or pending ENTRY item."""
+    is_open = item.get("canonical_position") == "OPEN"
+    pending = item.get("pending_event")
+    is_pending_entry = (
+        item.get("action") in {"ENTRY", "ENTER_NEXT_OPEN"}
+        or (isinstance(pending, dict) and pending.get("kind") == "ENTRY")
+    )
+    if is_open:
+        trade = item.get("current_trade")
+        if not isinstance(trade, dict):
+            return None
+        signal_date = _date_text(trade.get("entry_signal_date"))
+    elif is_pending_entry:
+        if not isinstance(pending, dict) or pending.get("kind") != "ENTRY":
+            return None
+        signal_date = _date_text(pending.get("signal_date"))
+    else:
+        return None
+    key = (
+        str(item.get("ticker", "")).zfill(6),
+        str(item.get("isu_cd", "")).upper(),
+        str(item.get("component_id", "")),
+        signal_date,
+    )
+    context = {
+        "entry_pattern_a_stage": item.get("entry_pattern_a_stage"),
+        "entry_previous_pattern_a_stage": item.get("entry_previous_pattern_a_stage"),
+        "entry_previous_pattern_a_stage_date": _date_text(item.get("entry_previous_pattern_a_stage_date")),
+    }
+    return key, context
+
+
+def _carry_forward_active_entry_stage_authorities(
+    prior_status: Mapping[str, Any] | None,
+    current_items: list[dict[str, Any]],
+    *,
+    current_catchup_authority_keys: set[tuple[str, str, str, str]],
+) -> tuple[dict[tuple[str, str, str, str], dict[str, str]], list[tuple[str, str, str, str]]]:
+    """Preserve prior exact-session lineage for still-open/pending entries.
+
+    Incremental status snapshots carry the existing trade context forward. If
+    that entry was originally admitted by an exact-session catch-up, its
+    authority row must travel with the position until it closes; otherwise a
+    later read-only report validation loses the provenance for an unchanged
+    open trade.
+    """
+    if prior_status is None:
+        return {}, []
+    audit = prior_status.get("catchup_audit") or {}
+    if not isinstance(audit, Mapping):
+        raise BSelectStatusError("B_SELECT_PRIOR_CATCHUP_AUDIT_INVALID")
+    prior_session_dates = audit.get("catchup_session_dates") or []
+    prior_recovered_dates = audit.get("recovered_month_end_dates") or []
+    if not isinstance(prior_session_dates, list) or not isinstance(prior_recovered_dates, list):
+        raise BSelectStatusError("B_SELECT_PRIOR_CATCHUP_AUTHORITY_DATES_INVALID")
+    prior_authorized_dates = {
+        _date_text(value) for value in (*prior_session_dates, *prior_recovered_dates)
+    }
+    raw_authorities = prior_status.get("catchup_entry_pattern_a_authorities") or []
+    if not isinstance(raw_authorities, list):
+        raise BSelectStatusError("B_SELECT_PRIOR_ENTRY_PATTERN_A_AUTHORITIES_INVALID")
+    prior_authorities: dict[tuple[str, str, str, str], dict[str, str]] = {}
+    for raw in raw_authorities:
+        if not isinstance(raw, Mapping):
+            raise BSelectStatusError("B_SELECT_PRIOR_ENTRY_PATTERN_A_AUTHORITY_ROW_INVALID")
+        row = {
+            "ticker": str(raw.get("ticker", "")).zfill(6),
+            "isu_cd": str(raw.get("isu_cd", "")).upper(),
+            "component_id": str(raw.get("component_id", "")),
+            "entry_signal_date": _date_text(raw.get("entry_signal_date")),
+            "entry_pattern_a_stage_recomputed": str(
+                raw.get("entry_pattern_a_stage_recomputed", "")
+            ).strip().upper(),
+            "previous_pattern_a_stage": str(raw.get("previous_pattern_a_stage", "")).strip().upper(),
+            "previous_pattern_a_stage_date": _date_text(raw.get("previous_pattern_a_stage_date")),
+            "source": str(raw.get("source", "")),
+        }
+        key = (row["ticker"], row["isu_cd"], row["component_id"], row["entry_signal_date"])
+        if (
+            not row["isu_cd"]
+            or not row["component_id"]
+            or not row["entry_signal_date"]
+            or row["entry_signal_date"] not in prior_authorized_dates
+            or row["entry_pattern_a_stage_recomputed"] != "PROGRESSED"
+            or row["previous_pattern_a_stage"] not in ALLOWED_PREVIOUS_STAGES
+            or not row["previous_pattern_a_stage_date"]
+            or row["previous_pattern_a_stage_date"] > row["entry_signal_date"]
+            or row["source"] != "REPOSITORY_V2_EXACT_SESSION_EVALUATORS"
+            or key in prior_authorities
+        ):
+            raise BSelectStatusError(
+                f"B_SELECT_PRIOR_ENTRY_PATTERN_A_AUTHORITY_INVALID:{key[0]}:{key[3]}"
+            )
+        prior_authorities[key] = row
+
+    prior_items = prior_status.get("items") or []
+    if not isinstance(prior_items, list):
+        raise BSelectStatusError("B_SELECT_PRIOR_ITEMS_INVALID")
+    prior_by_identity = {
+        (str(item.get("ticker", "")).zfill(6), str(item.get("isu_cd", "")).upper()): item
+        for item in prior_items
+        if isinstance(item, Mapping)
+    }
+    inherited: dict[tuple[str, str, str, str], dict[str, str]] = {}
+    for current_item in current_items:
+        current_entry = _active_entry_key_and_context(current_item)
+        if current_entry is None:
+            continue
+        key, current_context = current_entry
+        if key in current_catchup_authority_keys:
+            continue
+        prior_item = prior_by_identity.get((key[0], key[1]))
+        if prior_item is None:
+            continue
+        prior_entry = _active_entry_key_and_context(prior_item)
+        if prior_entry is None or prior_entry[0] != key:
+            continue
+        authority = prior_authorities.get(key)
+        if authority is None:
+            continue
+        expected_context = {
+            "entry_pattern_a_stage": authority["entry_pattern_a_stage_recomputed"],
+            "entry_previous_pattern_a_stage": authority["previous_pattern_a_stage"],
+            "entry_previous_pattern_a_stage_date": authority["previous_pattern_a_stage_date"],
+        }
+        if current_context != expected_context or prior_entry[1] != expected_context:
+            raise BSelectStatusError(
+                f"B_SELECT_PRIOR_ENTRY_PATTERN_A_CONTEXT_MISMATCH:{key[0]}:{key[3]}"
+            )
+        inherited[key] = authority
+    keys = sorted(inherited)
+    return inherited, keys
+
+
 def _catchup_session_dates(
     prior_reference_market_date: str,
     reference_market_date: str,
@@ -1722,6 +1859,21 @@ def build_b_select_status(
         }
         out_items.append(item)
 
+    inherited_entry_authorities, inherited_entry_authority_keys = (
+        _carry_forward_active_entry_stage_authorities(
+            prior_status,
+            out_items,
+            current_catchup_authority_keys=set(catchup_entry_stage_authorities),
+        )
+    )
+    for key, authority in inherited_entry_authorities.items():
+        existing = catchup_entry_stage_authorities.get(key)
+        if existing is not None and existing != authority:
+            raise BSelectStatusError(
+                f"B_SELECT_INHERITED_ENTRY_PATTERN_A_AUTHORITY_CONFLICT:{key[0]}:{key[3]}"
+            )
+        catchup_entry_stage_authorities[key] = authority
+
     current_identity_pairs = {
         (str(item.get("ticker", "")).zfill(6), str(item.get("isu_cd", "")).upper())
         for item in out_items
@@ -2064,6 +2216,8 @@ def build_b_select_status(
             "catchup_to": reference_market_date if prior_status else None,
             "catchup_session_count": len(catchup_session_dates),
             "catchup_session_dates": catchup_session_dates,
+            "inherited_entry_authority_count": len(inherited_entry_authority_keys),
+            "inherited_entry_authority_keys": [list(key) for key in inherited_entry_authority_keys],
             "recovered_month_end_dates": [
                 day
                 for day in sorted(month_end_sessions)

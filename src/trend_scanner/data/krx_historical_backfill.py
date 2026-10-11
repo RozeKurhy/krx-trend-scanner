@@ -158,6 +158,7 @@ class KrxHistoricalBackfillRunner:
         start: Any,
         end: Any,
         *,
+        required_dates: Iterable[Any] | None = None,
         resume: bool = False,
         max_task_attempts: int = 10_000,
         retry_failures: bool = False,
@@ -168,7 +169,16 @@ class KrxHistoricalBackfillRunner:
         requested_markets = tuple(dict.fromkeys(normalize_market(value) for value in (markets or MARKETS)))
         if set(requested_markets) != set(MARKETS):
             raise MarketDataError("BACKFILL_REQUIRES_BOTH_MARKETS")
-        dates = candidate_dates(start, end)
+        if required_dates is None:
+            dates = candidate_dates(start, end)
+        else:
+            start_text = normalize_bas_dd(start)
+            end_text = normalize_bas_dd(end)
+            if start_text > end_text:
+                raise MarketDataError("BACKFILL_INVALID_DATE_RANGE")
+            dates = sorted({normalize_bas_dd(value) for value in required_dates})
+            if any(day < start_text or day > end_text for day in dates):
+                raise MarketDataError("BACKFILL_REQUIRED_DATE_OUTSIDE_RANGE")
         usage_date = self.quota.usage_date_kst()
         quota_before = self.quota.get_usage(usage_date)
         task_attempts = 0

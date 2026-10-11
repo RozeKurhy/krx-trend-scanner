@@ -418,18 +418,35 @@ def _read_catchup_entry_stage_authority(
         raise ValueError("B Select catch-up audit is invalid")
     session_dates = audit.get("catchup_session_dates") or []
     recovered_month_end_dates = audit.get("recovered_month_end_dates") or []
+    inherited_authority_keys_raw = audit.get("inherited_entry_authority_keys") or []
     if not isinstance(session_dates, list):
         raise ValueError("B Select catch-up session dates are invalid")
     if not isinstance(recovered_month_end_dates, list):
         raise ValueError("B Select recovered month-end dates are invalid")
+    if not isinstance(inherited_authority_keys_raw, list):
+        raise ValueError("B Select inherited entry authority keys are invalid")
+    inherited_authority_keys: list[tuple[str, str, str, str]] = []
+    for raw_key in inherited_authority_keys_raw:
+        if not isinstance(raw_key, list) or len(raw_key) != 4:
+            raise ValueError("B Select inherited entry authority key is invalid")
+        inherited_authority_keys.append((
+            str(raw_key[0]).zfill(6),
+            str(raw_key[1]).upper(),
+            str(raw_key[2]),
+            str(raw_key[3])[:10],
+        ))
     if (
         int(audit.get("catchup_session_count", len(session_dates))) != len(session_dates)
         or int(audit.get("skipped_krx_session_count", 0)) != 0
         or session_dates != sorted(set(session_dates))
         or recovered_month_end_dates != sorted(set(recovered_month_end_dates))
+        or int(audit.get("inherited_entry_authority_count", len(inherited_authority_keys)))
+        != len(inherited_authority_keys)
+        or inherited_authority_keys != sorted(set(inherited_authority_keys))
     ):
         raise ValueError("B Select catch-up session audit is inconsistent")
     authorized_signal_dates = set(session_dates) | set(recovered_month_end_dates)
+    inherited_key_set = set(inherited_authority_keys)
 
     rows = b_select_status.get("catchup_entry_pattern_a_authorities") or []
     if not isinstance(rows, list):
@@ -463,7 +480,7 @@ def _read_catchup_entry_stage_authority(
         if (
             not row["isu_cd"]
             or not row["component_id"]
-            or row["entry_signal_date"] not in authorized_signal_dates
+            or (row["entry_signal_date"] not in authorized_signal_dates and key not in inherited_key_set)
             or row["entry_pattern_a_stage_recomputed"] != "PROGRESSED"
             or row["previous_pattern_a_stage"] not in ALLOWED_ENTRY_PREVIOUS_STAGES
             or not row["previous_pattern_a_stage_date"]
@@ -475,6 +492,9 @@ def _read_catchup_entry_stage_authority(
                 f"B Select catch-up entry Pattern A authority is inconsistent: {key[0]} {key[3]}"
             )
         authority[key] = row
+
+    if not inherited_key_set <= set(authority):
+        raise ValueError("B Select inherited entry authority audit does not match its rows")
 
     return authority
 
