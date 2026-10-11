@@ -1,0 +1,185 @@
+{
+  "checks": {
+    "accepted_signal_trade_parity_pass": true,
+    "all_required_pass": true,
+    "all_strategies_present": true,
+    "candidate_audits": {
+      "ALIGNMENT": {
+        "accepted_executable_signals": 626,
+        "accepted_signal_trade_parity": true,
+        "audit_rows": 5581,
+        "filter_formula_and_fail_closed": true,
+        "network_calls": 0,
+        "prior_completed_month_only": true,
+        "trade_count": 626
+      },
+      "MA60": {
+        "accepted_executable_signals": 1287,
+        "accepted_signal_trade_parity": true,
+        "audit_rows": 3301,
+        "filter_formula_and_fail_closed": true,
+        "network_calls": 0,
+        "prior_completed_month_only": true,
+        "trade_count": 1287
+      }
+    },
+    "candidate_formula_and_fail_closed_pass": true,
+    "current_survivor_based_exclusion_count": 0,
+    "current_survivor_membership_used": false,
+    "duplicate_trade_key_count": 0,
+    "exact_permanent_exclusion_registry_181": true,
+    "hidden_market_cap_gate_count": 0,
+    "historical_pit_causality_pass": true,
+    "market_cap_based_reject_count": 0,
+    "market_cap_contract_pass": true,
+    "market_cap_filter_applied": false,
+    "market_cap_threshold_present": false,
+    "net_terminal_recompute_mismatch_count": 0,
+    "network_calls": 0,
+    "permanent_exclusion_leakage_count": 0,
+    "permanent_exclusion_signal_audit_leakage_by_strategy": {
+      "ALIGNMENT": 0,
+      "MA60": 0
+    },
+    "permanent_exclusion_trade_leakage_by_strategy": {
+      "ALIGNMENT": 0,
+      "CONTROL": 0,
+      "MA60": 0
+    },
+    "pit_entry_causality_failure_count": 0,
+    "post_cutoff_entry_execution_count": 0,
+    "post_cutoff_entry_signal_count": 0,
+    "prefix_invariance": {
+      "all_required_mismatches_zero": true,
+      "comparison_basis": "P3-1 REALIZED ledger rows only; P3-1 OPEN_AT_CUTOFF rows are intentionally not forced to retain terminal state",
+      "strategies": {
+        "ALIGNMENT": {
+          "all_required_mismatches_zero": true,
+          "baseline_duplicate_stable_key_count": 0,
+          "baseline_realized_count": 416,
+          "duplicate_stable_key_count": 0,
+          "entry_mismatch_count": 0,
+          "exit_mismatch_count": 0,
+          "exit_reason_mismatch_count": 0,
+          "lifecycle_mismatch_count": 0,
+          "missing_count": 0,
+          "p3_2_duplicate_stable_key_count": 0,
+          "realized_net_return_mismatch_count": 0,
+          "status_mismatch_count": 0
+        },
+        "CONTROL": {
+          "all_required_mismatches_zero": true,
+          "baseline_duplicate_stable_key_count": 0,
+          "baseline_realized_count": 894,
+          "duplicate_stable_key_count": 0,
+          "entry_mismatch_count": 0,
+          "exit_mismatch_count": 0,
+          "exit_reason_mismatch_count": 0,
+          "lifecycle_mismatch_count": 0,
+          "missing_count": 0,
+          "p3_2_duplicate_stable_key_count": 0,
+          "realized_net_return_mismatch_count": 0,
+          "status_mismatch_count": 0
+        },
+        "MA60": {
+          "all_required_mismatches_zero": true,
+          "baseline_duplicate_stable_key_count": 0,
+          "baseline_realized_count": 716,
+          "duplicate_stable_key_count": 0,
+          "entry_mismatch_count": 0,
+          "exit_mismatch_count": 0,
+          "exit_reason_mismatch_count": 0,
+          "lifecycle_mismatch_count": 0,
+          "missing_count": 0,
+          "p3_2_duplicate_stable_key_count": 0,
+          "realized_net_return_mismatch_count": 0,
+          "status_mismatch_count": 0
+        }
+      }
+    },
+    "prefix_invariance_pass": true,
+    "price_partition_hash_metadata_checks_pass": true,
+    "processed_ticker_counts": {
+      "ALIGNMENT": 2551,
+      "CONTROL": 2551,
+      "MA60": 2551
+    },
+    "same_starting_universe_processed": true,
+    "validation_errors": [],
+    "worker_count_is_10_each": true,
+    "worker_counts": {
+      "ALIGNMENT": 10,
+      "CONTROL": 10,
+      "MA60": 10
+    },
+    "worker_error_count": 0,
+    "worker_errors_by_strategy": {
+      "ALIGNMENT": 0,
+      "CONTROL": 0,
+      "MA60": 0
+    }
+  },
+  "elapsed_seconds": 10021.472720417194,
+  "execution": {
+    "common_pit_segment_count": 2558,
+    "current_survivor_membership_used": false,
+    "effective_end": "2026-08-31",
+    "effective_start": "2022-01-03",
+    "eligible_historical_identity_key_count": 2558,
+    "execution": {
+      "ALIGNMENT": {
+        "elapsed_seconds": 3345.244396875147,
+        "raw_signal_audit_count": 5581,
+        "strategy_trade_count": 626,
+        "ticker_count": 2551,
+        "worker_count": 10,
+        "worker_errors": []
+      },
+      "CONTROL": {
+        "elapsed_seconds": 3240.2693549576215,
+        "market_cap_based_reject_count": 0,
+        "market_cap_filter_applied": false,
+        "strategy_trade_count": 1688,
+        "ticker_count": 2551,
+        "worker_count": 10,
+        "worker_errors": []
+      },
+      "MA60": {
+        "elapsed_seconds": 3287.7325561670586,
+        "raw_signal_audit_count": 3301,
+        "strategy_trade_count": 1287,
+        "ticker_count": 2551,
+        "worker_count": 10,
+        "worker_errors": []
+      }
+    },
+    "execution_support": "2026-09-01",
+    "historical_common_identity_key_count": 2717,
+    "identity_scope": "historical frozen COMMON PIT then exact (ticker, ISU) permanent exclusions",
+    "market_cap_based_reject_count": 0,
+    "market_cap_filter": "NONE",
+    "market_cap_gate_injected": false,
+    "permanent_exclusion_removed_identity_key_count": 159,
+    "permanent_exclusion_removed_segment_count": 159,
+    "reused_saved_trade_ledgers": false,
+    "unique_ticker_count": 2551,
+    "window_id": "P3-2",
+    "worker_count": 10,
+    "worker_errors": []
+  },
+  "final_token": "FAST_CORE_V2_P3_2_CORRECTED_SIMPLE_BACKTEST_V02_PASS",
+  "report_generation_recovery": {
+    "replay_reexecuted": false,
+    "report_recovery_script_sha256": "376f1752cc60e3d461e8878e9bf52ff326db53ffc5966a065a0182b434835d10",
+    "status": "RESOLVED_FROM_SAVED_OUTPUTS"
+  },
+  "status": "PASS",
+  "window": {
+    "effective_end": "2026-08-31",
+    "effective_start": "2022-01-03",
+    "execution_support": "2026-09-01"
+  },
+  "window_id": "P3-2",
+  "work_id": "FAST_CORE_V2_P3_2_CORRECTED_SIMPLE_BACKTEST_V02",
+  "worker_count": 10
+}

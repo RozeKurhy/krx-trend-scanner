@@ -1,0 +1,28 @@
+{
+  "checks": {
+    "network_calls": 0,
+    "post_cutoff_entry_execution_count": 0,
+    "post_cutoff_entry_signal_count": 0,
+    "saved_price_audit_metadata_and_hash_checks": true,
+    "saved_strategy_metrics_complete": true,
+    "saved_trade_ledgers_match_metrics_and_have_unique_pair_ids": true,
+    "worker_errors": 0
+  },
+  "original_failure": {
+    "automatic_retry": false,
+    "error": "'post_cutoff_entry_count'",
+    "error_type": "KeyError",
+    "final_token": "FAST_CORE_V2_P3_2_CORRECTED_SIMPLE_BACKTEST_V02_CHECK_REQUIRED",
+    "next_action": "stop and report; do not automatically replay or interpret incomplete metrics",
+    "partial_output_is_final_result": false,
+    "replay_started": true,
+    "stage": "P3_2_RESULT_INTEGRITY",
+    "status": "CHECK_REQUIRED"
+  },
+  "replay_reexecuted": false,
+  "report_recovery_script_sha256": "376f1752cc60e3d461e8878e9bf52ff326db53ffc5966a065a0182b434835d10",
+  "runner_source_sha256_matches_preflight_and_sample": true,
+  "saved_execution_status": "PASS",
+  "saved_final_token": "FAST_CORE_V2_P3_2_CORRECTED_SIMPLE_BACKTEST_V02_PASS",
+  "status": "RESOLVED_FROM_SAVED_OUTPUTS"
+}

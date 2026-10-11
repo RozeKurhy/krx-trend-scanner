@@ -1,0 +1,72 @@
+{
+  "estimator": "linear extrapolation from 50 representative tickers; report includes 20% planning buffer; actual signal density and ticker history may vary",
+  "planning_estimate_with_20pct_buffer_hours": 3.3519625824895534,
+  "population": {
+    "common_pit_segment_count": 2558,
+    "current_survivor_membership_used": false,
+    "effective_end": "2026-08-31",
+    "effective_start": "2022-01-03",
+    "eligible_historical_identity_key_count": 2558,
+    "execution_support": "2026-09-01",
+    "historical_common_identity_key_count": 2717,
+    "identity_scope": "historical frozen COMMON PIT then exact (ticker, ISU) permanent exclusions",
+    "market_cap_based_reject_count": 0,
+    "market_cap_filter": "NONE",
+    "market_cap_gate_injected": false,
+    "permanent_exclusion_removed_identity_key_count": 159,
+    "permanent_exclusion_removed_segment_count": 159,
+    "unique_ticker_count": 2551,
+    "window_id": "P3-2"
+  },
+  "rough_full_window_estimate_by_strategy": {
+    "ALIGNMENT": {
+      "estimated_full_hours": 0.94424041405367,
+      "estimated_full_seconds": 3399.265490593212
+    },
+    "CONTROL": {
+      "estimated_full_hours": 0.9197005215768029,
+      "estimated_full_seconds": 3310.9218776764906
+    },
+    "MA60": {
+      "estimated_full_hours": 0.9293612164441548,
+      "estimated_full_seconds": 3345.7003791989573
+    }
+  },
+  "rough_full_window_total_hours": 2.7933021520746277,
+  "rough_full_window_total_seconds": 10055.88774746866,
+  "sample_runs": {
+    "ALIGNMENT": {
+      "elapsed_seconds": 66.62613662471995,
+      "raw_signal_audit_count": 93,
+      "strategy_trade_count": 13,
+      "ticker_count": 50,
+      "worker_count": 10,
+      "worker_errors": []
+    },
+    "CONTROL": {
+      "elapsed_seconds": 64.89458795916289,
+      "market_cap_based_reject_count": 0,
+      "market_cap_filter_applied": false,
+      "strategy_trade_count": 29,
+      "ticker_count": 50,
+      "worker_count": 10,
+      "worker_errors": []
+    },
+    "MA60": {
+      "elapsed_seconds": 65.5762520423159,
+      "raw_signal_audit_count": 54,
+      "strategy_trade_count": 26,
+      "ticker_count": 50,
+      "worker_count": 10,
+      "worker_errors": []
+    }
+  },
+  "sample_ticker_selection": "evenly spaced across sorted P3-2 historical COMMON PIT ticker universe after exact exclusions",
+  "sampled_tickers": 50,
+  "source_script_sha256": "e42711de2bcf8f1aa11e83aa735ca23614a8e8c913f7542e7bcb1ada9ae19ac0",
+  "start_head": "20f123797545c57524fb6d91aedf7d749825db34",
+  "status": "PASS",
+  "target_tickers": 2551,
+  "window_id": "P3-2",
+  "worker_count": 10
+}

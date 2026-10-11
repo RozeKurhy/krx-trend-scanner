@@ -1,0 +1,74 @@
+{
+  "current_or_future_survivor_roster_loaded_or_used": false,
+  "entry_path": [
+    "P3-2 wrapper -> historical frozen PIT/calendar loader -> historical_common_rows(P3-2) -> exact (ticker, ISU) exclusions -> context_for_window(P3-2)",
+    "CONTROL: run_full_window -> run_control -> V2 _process_ticker with entry_signal_gate=None",
+    "MA60: run_full_window -> MA60 candidate_replay with an empty audit-only gate; MA60 predicate is prior completed monthly history only",
+    "ALIGNMENT: run_full_window -> Alignment candidate_replay with no inherited eligibility gate; strict signal-day close > prior completed MA20 > prior completed MA60"
+  ],
+  "exact_raw_mcap_gate_in_call_path": false,
+  "hidden_investability_or_fundamental_gate_count": 0,
+  "historical_pit_membership_is_only_universe_authority": true,
+  "market_cap_based_reject_count": 0,
+  "market_cap_filter_applied": false,
+  "permanent_exclusion_rule": "exact 181 unique (ticker, ISU) pairs; no ticker-only or market-key matching",
+  "source_hashes": {
+    "alignment_helper": {
+      "head_sha256": "e349bbe5584a75f7a7844dc2ab3da208a0d1d34790e027ce41b97c98d26bc14c",
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_monthly_ma20_ma60_bullish_alignment_backtest_v01/run_bullish_alignment_backtest.py",
+      "sha256": "e349bbe5584a75f7a7844dc2ab3da208a0d1d34790e027ce41b97c98d26bc14c",
+      "working_tree_modified": false
+    },
+    "canonical_strategy": {
+      "head_sha256": "f045750c5fb5afcf0b8c132151ed7b8f387865f7653beb4e5b849c79b50f0dc1",
+      "path": "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py",
+      "sha256": "f045750c5fb5afcf0b8c132151ed7b8f387865f7653beb4e5b849c79b50f0dc1",
+      "working_tree_modified": false
+    },
+    "certified_p2_2_runner_utilities": {
+      "head_sha256": "a53abaa70792f6d4a3704da90ca03b1ec4ab9c95865d35086f16b847bb1513a7",
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p2_2_ma60_vs_bullish_alignment_simple_backtest_v01/run_p2_2_simple_backtest.py",
+      "sha256": "a53abaa70792f6d4a3704da90ca03b1ec4ab9c95865d35086f16b847bb1513a7",
+      "tracked_at_start": true,
+      "working_tree_modified": false
+    },
+    "core_strategy_runner": {
+      "head_sha256": "9c95e482f5ca7d216c4f608d98dfaeb11b54d4abc9445b432f99fcc1df91a4f0",
+      "path": "scripts/run_fastcore_neg40_weak_protect_p2_1.py",
+      "sha256": "9c95e482f5ca7d216c4f608d98dfaeb11b54d4abc9445b432f99fcc1df91a4f0",
+      "working_tree_modified": false
+    },
+    "frozen_merged_calendar": {
+      "head_sha256": "cf9560da17674c866c57906b4b8e21ce956a0e7a0a9a3ccd1779d1a83a7111c2",
+      "path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/p2_2_identity_authority_extension_v01/merged_trading_calendar.json",
+      "sha256": "cf9560da17674c866c57906b4b8e21ce956a0e7a0a9a3ccd1779d1a83a7111c2",
+      "working_tree_modified": false
+    },
+    "frozen_merged_pit": {
+      "head_sha256": "6747f26368369bc2ff5d20d695daed702c577bab34dd79640d41fbc862950bd1",
+      "path": "artifacts/data/end_to_end_data_parity/v01/survivorship_safe_denominator_freeze/p2_2_identity_authority_extension_v01/merged_pit_intervals.json",
+      "sha256": "6747f26368369bc2ff5d20d695daed702c577bab34dd79640d41fbc862950bd1",
+      "working_tree_modified": false
+    },
+    "ma60_helper": {
+      "head_sha256": "1017c6e880f5f627c9cfe86eae8fad94d239a89b6747e691559262eeab598544",
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_monthly_ma20_ma60_entry_filter_backtest_v01/run_monthly_ma_entry_filter_backtest.py",
+      "sha256": "1017c6e880f5f627c9cfe86eae8fad94d239a89b6747e691559262eeab598544",
+      "working_tree_modified": false
+    },
+    "permanent_identity_exclusion_registry": {
+      "head_sha256": "858ec93e656bea5aa9ad036f7bd8e129253b4f682d062e7fb9350ad5eea1cffa",
+      "path": "src/trend_scanner/universe/permanent_identity_exclusions.py",
+      "sha256": "858ec93e656bea5aa9ad036f7bd8e129253b4f682d062e7fb9350ad5eea1cffa",
+      "working_tree_modified": false
+    },
+    "shared_replay_helper": {
+      "head_sha256": "779ec553b87fb6f27dc895c60c32f7b3d3ce850e37b5902b46ec7e4d85acad3c",
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_ma60_vs_bullish_alignment_5window_simple_backtest_v01/run_5window_simple_backtest.py",
+      "sha256": "779ec553b87fb6f27dc895c60c32f7b3d3ce850e37b5902b46ec7e4d85acad3c",
+      "working_tree_modified": false
+    }
+  },
+  "status": "PASS",
+  "strategy_lifecycle_and_exit_sources_unchanged_from_p3_1": true
+}
