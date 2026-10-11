@@ -1271,6 +1271,13 @@ PERMANENT_IDENTITY_EXCLUSIONS: dict[tuple[str, str], dict[str, str]] = {
         "approved_date": "2026-10-05",
         "policy_version": "permanent_identity_exclusions_v01",
     },
+    ("380440", "KR7380440008"): {
+        "reason": "user-approved permanent exclusion after the adjusted-price file was missing in both P3-2 and P3-1",
+        "approval_scope": "GLOBAL permanent identity exclusion; conditional user approval confirmed in P3-1",
+        "failure_class": "ADJUSTED_PRICE_DATA_UNAVAILABLE",
+        "approved_date": "2026-10-12",
+        "policy_version": "permanent_identity_exclusions_v01",
+    },
 
 }
 
