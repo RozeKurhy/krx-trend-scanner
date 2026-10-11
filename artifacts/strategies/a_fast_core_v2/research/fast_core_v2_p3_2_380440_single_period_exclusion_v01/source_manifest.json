@@ -1,0 +1,756 @@
+{
+  "schema": "fast_core_v2_p3_2_380440_single_period_exclusion_source_manifest_v01",
+  "work_id": "FAST_CORE_V2_P3_2_380440_SINGLE_PERIOD_EXCLUSION_V01",
+  "generated_at_local": "2026-10-12 Asia/Seoul",
+  "baseline_head": "105c68e9469979f339abe49bcd17dd150b5bf599",
+  "baseline_origin_main": "105c68e9469979f339abe49bcd17dd150b5bf599",
+  "output_scope": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_380440_single_period_exclusion_v01",
+  "execution_policy": {
+    "strategy_signal_rerun": false,
+    "portfolio_replay": false,
+    "full_universe_rerun": false,
+    "reason": "NO_FULL_RERUN; exact identity absent from saved P3-2 transactions and portfolio records, so preserve closure V01 outputs unchanged.",
+    "P1_P2_1_P2_2_P3_1_modified": false
+  },
+  "identity_exception": {
+    "ticker": "380440",
+    "isu_cd": "KR7380440008",
+    "reason": "user-approved P3-2 exception for missing adjusted-price file"
+  },
+  "universe_counts": {
+    "shared_pre_signal_tickers_before": 2552,
+    "shared_pre_signal_tickers_after": 2551,
+    "groups": [
+      "CONTROL",
+      "ALIGNMENT_MCAP_500B"
+    ],
+    "adjusted_price_files_present_before": 2551,
+    "adjusted_price_files_present_after": 2550,
+    "missing_adjusted_files_before": [
+      "380440"
+    ],
+    "missing_adjusted_files_after": []
+  },
+  "signal_effect": "UNKNOWN_NOT_EVALUATED",
+  "persisted_output_invariance": {
+    "event_artifacts_scanned": 38,
+    "target_rows_in_trade_cash_event_valuation_mark_skip_artifacts": 0,
+    "metrics_source_rows": 61,
+    "post_exception_persisted_metrics_delta": "0"
+  },
+  "checks": {
+    "closure_output_hashes": {
+      "checked": 33,
+      "mismatches": 0
+    },
+    "official_realistic_v01_hashes": {
+      "checked": 52,
+      "mismatches": 0
+    },
+    "closure_input_hashes": {
+      "checked": 26,
+      "mismatches": 0
+    },
+    "adjusted_price_hashes": {
+      "checked": 123,
+      "mismatches": 0
+    },
+    "closure_snapshot_hashes": {
+      "checked": 2,
+      "mismatches": 0
+    },
+    "permanent_registry_pairs": 181,
+    "target_pair_already_permanent": false,
+    "worker_errors": 0
+  },
+  "official_policy_compatibility": "CONFLICT: backtest_common_rules.md §2.6 requires permanent all-window exclusions; this exception is P3-2 only",
+  "inputs": [
+    {
+      "path": "docs/validation/backtest_common_rules.md",
+      "role": "official common exclusion and execution rules",
+      "exists": true,
+      "sha256": "e8783958064ddfc54f57bef3500ad41de6d3b6bc853fce2464845f9c4cc4d06b",
+      "bytes": 24228
+    },
+    {
+      "path": "docs/validation/official_strategy_adoption_criteria.md",
+      "role": "official A-E and five-window criteria",
+      "exists": true,
+      "sha256": "380f34cd7e24fd9881d7a154000d9b51512d905d7c7ef24b1940f5fa4e22cb88",
+      "bytes": 11128
+    },
+    {
+      "path": "src/trend_scanner/universe/permanent_identity_exclusions.py",
+      "role": "unchanged permanent exclusion registry",
+      "exists": true,
+      "sha256": "858ec93e656bea5aa9ad036f7bd8e129253b4f682d062e7fb9350ad5eea1cffa",
+      "bytes": 68853
+    },
+    {
+      "path": "data/market/rolling_authority/merged_pit_intervals.json",
+      "role": "PIT membership and exact identity interval",
+      "exists": true,
+      "sha256": "d93a958d7bbae9142ef1fa5aded36080d1d107739e777eb4ec3b6566fea90654",
+      "bytes": 626207
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/preflight.json",
+      "role": "base P3-2 universe size and price availability",
+      "exists": true,
+      "sha256": "d48eabe634653d62ff204abf866bd5c4e7ac34f3ff0c2c4ff79881e77d0a7e69",
+      "bytes": 6992
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/ticker_price_source_audit.csv",
+      "role": "base P3-2 evaluator universe",
+      "exists": true,
+      "sha256": "15952beceb5f1bf82798fa1cce5eaadb767c55c8d84ee73cb4f9c925b785026b",
+      "bytes": 150761
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/summary.json",
+      "role": "P3-2 execution context",
+      "exists": true,
+      "sha256": "43de30fb4666af77e9a7dd7ef1a4c52321c9b40b61c57947e243c77dfd150ff3",
+      "bytes": 38155
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/source_manifest.json",
+      "role": "closure provenance",
+      "exists": true,
+      "sha256": "c9f078d7125fbc1f76b65344ec69a44fdc8b21e6f4f5851f05e8743acdf2bdb7",
+      "bytes": 47092
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/price_input_124_audit.csv",
+      "role": "exact pair price availability",
+      "exists": true,
+      "sha256": "d2745d88d6014bdfa7226d2e44900e21cb70494e18a4f2eea1ed885de4475855",
+      "bytes": 593087
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/gate_results.json",
+      "role": "baseline P3-2 gates",
+      "exists": true,
+      "sha256": "b044773147f12533c2ae69b32de96081e1636c3d08ff4d49fc07e71c56315f63",
+      "bytes": 2135
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/metrics_comparison.csv",
+      "role": "baseline P3-2 metrics",
+      "exists": true,
+      "sha256": "880e0400619791552bd43948ccbc3066aaf478320f4ef6c9cb8ce8614e6d8267",
+      "bytes": 7878
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/integrity_validation.json",
+      "role": "closure integrity status",
+      "exists": true,
+      "sha256": "ae94bb8ba1a6db336cf0fa90fc682db4a7e6499efeb45ea715631cd30cda30b0",
+      "bytes": 1144
+    },
+    {
+      "path": "/Users/june/Documents/projects/w.md",
+      "role": "user work order",
+      "exists": true,
+      "sha256": "6d419e1de57f24bd46684948b2de43450ec8555fdb6ef6d86fa5486ab21ae4ee",
+      "bytes": 2471
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/candidate_4day_nav_audit.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "ec4db21918f607f5cc367ebfa8f3cee34b2628fdc7771681845bb413c75c2762",
+      "bytes": 4029
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/candidate_cash_events.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "50b3e4316b7eb56276b0cfb67cd335e30626c4f39e65b38b66f5f7c1c81a3071",
+      "bytes": 148185
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/candidate_daily_equity.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "db4647e110d44f82760e038c6851e93aa3a5239b09c9a5dee2c6c4f7e1d4e7d1",
+      "bytes": 137147
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/candidate_missing_marks.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "c55088572a0ca859c893fc0c63539c51843db1f8755da05bd165b996a219cfc6",
+      "bytes": 560
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/candidate_portfolio_events.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "50b3e4316b7eb56276b0cfb67cd335e30626c4f39e65b38b66f5f7c1c81a3071",
+      "bytes": 148185
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/candidate_replay_metrics.json",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "0fd5ba211595cabf81e5e18b8900cf639fc84db958c06ba2ed3d20f71434040a",
+      "bytes": 3490
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/candidate_signal_trade_inputs.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "6dea123c50cdd19d2d6b2342ce8b5b430349a56120d691545f29b501c3fd4662",
+      "bytes": 95206
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/candidate_skipped_entries.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "b900e7161ea4650e15ab05b40fe5cad5819b8544e40761109ce33b0f60f50dba",
+      "bytes": 8630
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/candidate_valuation_audit.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "8e6cc533a3c7dcc78318c0a377b51568f0913cd8c7b80b95f5715cf197de2ab4",
+      "bytes": 35545
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/control_cash_events.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "c206cddd3b1830876687d405d01d35fb0ca2d5bab83a53b75af148b3dec51a93",
+      "bytes": 648257
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/control_daily_equity.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "777b273795a1cec2c22a507bcc7afc1c18e94eb4db6dd433a6300c2e3042c382",
+      "bytes": 139008
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/control_missing_marks.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "3c942056c664a36b0e44a47ba462695f89e37e0bc5aeed6dd882a3a092bbe1e7",
+      "bytes": 188
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/control_portfolio_events.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "c206cddd3b1830876687d405d01d35fb0ca2d5bab83a53b75af148b3dec51a93",
+      "bytes": 648257
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/control_replay_metrics.json",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "d4dfd3fb68e41ab56a165cb704d717436b71c2af5ddffeb32a8ba271a18bdc83",
+      "bytes": 4766
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/control_signal_trade_inputs.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "bdfecc159fcb3059da3aaa301ec3ea6bb1124c705aca6c9adb8fd07782f32bc8",
+      "bytes": 639570
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/control_skipped_entries.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "a12e9938ae6a7e5b4a115c7f4a94789139a22c1c5c17441cfb469f8ddd04779c",
+      "bytes": 459933
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/control_valuation_audit.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "7b6dc660bcb1084bac871bdae7011211567c248a88c59c1bf9c871f269900236",
+      "bytes": 59448
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/corporate_action_audit.md",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "7a103b3c2c3e700f8a3a304b5e38bfe3e345bc083edd1767cb9da55fc25b5020",
+      "bytes": 5999
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/exit_reason_counts.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "75b9c27a1d11fbcc585bd84f1a49fee7d7ea3ee1f64b62513b4b0ee4b2a493dc",
+      "bytes": 304
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/gate_results.json",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "b044773147f12533c2ae69b32de96081e1636c3d08ff4d49fc07e71c56315f63",
+      "bytes": 2135
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/integrity_validation.json",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "ae94bb8ba1a6db336cf0fa90fc682db4a7e6499efeb45ea715631cd30cda30b0",
+      "bytes": 1144
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/metrics_comparison.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "880e0400619791552bd43948ccbc3066aaf478320f4ef6c9cb8ce8614e6d8267",
+      "bytes": 7878
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/price_input_124_audit.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "d2745d88d6014bdfa7226d2e44900e21cb70494e18a4f2eea1ed885de4475855",
+      "bytes": 593087
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/price_input_source_diagnostic.json",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "e32f9c28b4cc6423b33cd161fa0d9789924825cc8155ca4a0cc3043a784eaab9",
+      "bytes": 1913540
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/replay_decision.json",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "e5d27672d913836b3513e92f0048b44898dbb2a1880e5e85d6420e3f8247e1ac",
+      "bytes": 2963
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/replay_summary.json",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "cad9f9066a9584bc1af04cf2c2f9404cc2844955111a5d30b6f7823133a2beb9",
+      "bytes": 9764
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/report.md",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "b7c2d7eb93185ebc8d556fd8da8d27621e4462e89a31e79113b22d2a93c32d3c",
+      "bytes": 8490
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/source_manifest.json",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "c9f078d7125fbc1f76b65344ec69a44fdc8b21e6f4f5851f05e8743acdf2bdb7",
+      "bytes": 47092
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/targeted_candidate_signal_trades.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "f8d8175dd5c4febc7c72671145d6bab7204107b6d4445a15b77353b416efd6e2",
+      "bytes": 2146
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/targeted_control_signal_trades.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "c69aec42058332d4dd947fdc9e62bca720deae4c3a0f27f85ebd9b73b541a3ef",
+      "bytes": 17199
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/targeted_signal_evaluation_raw.json",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "e77ead90d8f9586c89730725f3c36f18e9e503f4baa41d44ca9ac867525a10fc",
+      "bytes": 674012
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/targeted_signal_evaluation_summary.json",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "5083a692eb6aed66f73902fe98dbdd5ada5d54c5693406a9df98ff4e535e9de0",
+      "bytes": 968
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/targeted_signal_filter_audit.csv",
+      "role": "closure_v01 immutable artifact",
+      "exists": true,
+      "sha256": "4bf98086cd8e01b62f546b21217da623ad34a58cbd9f838ab2920e48a0188a71",
+      "bytes": 81581
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/candidate_cash_events.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "efc9d9f82be00ea6b1a20568d1f8eeaed808cfacbd9fe3c3b300854213ad4017",
+      "bytes": 146539
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/candidate_daily_equity.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "72bc5d2eda5207d389abbda1ca79a52aad0a6b17a1a4b38b7f296ac1dd343d08",
+      "bytes": 137183
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/candidate_missing_marks.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "c55088572a0ca859c893fc0c63539c51843db1f8755da05bd165b996a219cfc6",
+      "bytes": 560
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/candidate_portfolio_events.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "efc9d9f82be00ea6b1a20568d1f8eeaed808cfacbd9fe3c3b300854213ad4017",
+      "bytes": 146539
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/candidate_signal_filter_audit.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "2e8c6c84c49293d6ec0b631c5e3f18c92e4a779b5037f8131ccd19cff1e43d93",
+      "bytes": 3944691
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/candidate_skipped_entries.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "54cf66da748e7cb98afc1ef4edc3db15f2f564038456a8ae90ab05b6d1cad92f",
+      "bytes": 7587
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/candidate_trades.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "426f1f5c42727d1674e7bd06cf0d7fa5bceda7ca3529cb4168c0b1c18b949beb",
+      "bytes": 94188
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/candidate_valuation_audit.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "8e6cc533a3c7dcc78318c0a377b51568f0913cd8c7b80b95f5715cf197de2ab4",
+      "bytes": 35545
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/control_cash_events.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "c1fed47e990826b372696edfa3a1bfe14afa17e12f5d359b16c351fa2c93f04f",
+      "bytes": 635350
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/control_daily_equity.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "e0c4192020796fb6a7d3bb4189f4b57e4b762bca970e5452718d249678eed43a",
+      "bytes": 132166
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/control_missing_marks.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "323546d3dca923c14636fdd427108899b34131a1b30d17107c8a81713bf0ff59",
+      "bytes": 37189
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/control_portfolio_events.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "c1fed47e990826b372696edfa3a1bfe14afa17e12f5d359b16c351fa2c93f04f",
+      "bytes": 635350
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/control_reuse_audit.json",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "284228839d73a693f066cfccdaaed674e3407dee7af41eede319b429c17023a7",
+      "bytes": 1740
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/control_skipped_entries.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "79f46a30bba9ffbaf8db0eb6a974f204b210e792bf42ea41e9853c6b1000574e",
+      "bytes": 441263
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/control_trades.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "1e012fd41d6ebb76effc27d85c52647a25652359ad3d39430d44665f341ad69d",
+      "bytes": 625969
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/control_valuation_audit.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "cc9981b13d1806a735f4898c051220e6d2dfc925e2f6a2a70e91c428a800af81",
+      "bytes": 209004
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/execution_contract.json",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "fdf30f484575a7e4ea383d1db6ba289e49325d456e98d0a01e7aad8afd45728c",
+      "bytes": 3810
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/finalize_research_artifacts.py",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "8bdf6050615338e9d225038964707bb2b23ae7cfdbb07f120ea18e90e006d5b3",
+      "bytes": 73468
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/full_run_execution.json",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "e8f7cdf047084584e7182768903a5a75a06a9f68a5f320f5db3343d1c665f7f5",
+      "bytes": 11523
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/gate_results.json",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "7b59c30a382aabdff8977848ef4dc5225663dc759e0896621411762771497ac8",
+      "bytes": 2025
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/integrity_audit.json",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "c41e4f69c6d0b6ba85beb3ff3b831c4fdde3781051185d11cbe3132166fe2d19",
+      "bytes": 8614
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/metrics_comparison.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "0321d950d84abbb72ec898fbb9e1ca172f5d18dc2842c4e9f02cae25ed76e19c",
+      "bytes": 4745
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/plan.md",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "056f3f2d2b542343fe366f80b1a796aad57428dab0ad076207c1f9912b123efe",
+      "bytes": 5966
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/plan_commit.json",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "78592746a1e1cf60cc06e34308e68fd40be4e274e1c445d7ce1f42f4bca6272b",
+      "bytes": 179
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/preflight.json",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "d48eabe634653d62ff204abf866bd5c4e7ac34f3ff0c2c4ff79881e77d0a7e69",
+      "bytes": 6992
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/report.md",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "8ddb43a2955647128ba9901c4292ba9b5a7407f54726a5b3927c68a6d985cd61",
+      "bytes": 8374
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/repository_v2_adjusted_price_file_hashes.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "ae33ec3df6ccbe29c07c5ab9cbe6d75d4f1846badb46bf3dfbb3ff1d4a98b6bf",
+      "bytes": 279239
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/repository_v2_unavailable_reason_diagnostic.json",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "7cc3430b8dd981eeae68dfd7770562a9496ebaa39f3bd9a5334102f9eeca5d5c",
+      "bytes": 18102
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/run_official_realistic_replay.py",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "5fe187dedb2b5b856792d498e31070db6ff7ed9e844f933a606b4dc424bcd446",
+      "bytes": 39193
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_attempt_01_failure.json",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "019f16a5a126dbadcea00ee114df375ef70898ae229dd0a6ffd926ffa95b0b46",
+      "bytes": 568
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_benchmark.json",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "e959ac371b5047e41f670ee2f3ce7806b80b2d3cd550ee7ee2ebb18c82d693fa",
+      "bytes": 6430
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_benchmark_uncached.json",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "9e7b86e0cb870a701151e39d707b9b3797b721bc22ca9d85be2b9efb96cbb765",
+      "bytes": 5847
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_candidate_cash_events.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "21393b3efb64ed2b1a30ab48a24313621487bac85d1209d6b85600214a2dd860",
+      "bytes": 5703
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_candidate_daily_equity.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "70b76bf02688908b784717028f502c86ca8f4bce39e1db2604c77c5c3c9a53eb",
+      "bytes": 121209
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_candidate_missing_marks.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "bytes": 1
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_candidate_portfolio_events.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "21393b3efb64ed2b1a30ab48a24313621487bac85d1209d6b85600214a2dd860",
+      "bytes": 5703
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_candidate_signal_filter_audit.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "62755c5e1656f3efc03ce14e6b2e02138c10b2e405ecf356116b218cb74ff6b9",
+      "bytes": 42934
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_candidate_skipped_entries.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "bytes": 1
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_candidate_trades.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "fdfd679d71d9abb9075e0b498bd5bac7c45c35e3465adbecbd817f66bac87c01",
+      "bytes": 4099
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_candidate_valuation_audit.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "bytes": 1
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_control_cash_events.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "dddad4d9c6f2b53f50f978adbbcfcf5309eaba4932ac87abca41100143145193",
+      "bytes": 19974
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_control_daily_equity.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "a01a09065a9081722a24bddccb42924474c9313ef52354abac53e84e9cad23b0",
+      "bytes": 130631
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_control_missing_marks.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "bytes": 1
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_control_portfolio_events.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "dddad4d9c6f2b53f50f978adbbcfcf5309eaba4932ac87abca41100143145193",
+      "bytes": 19974
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_control_skipped_entries.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "bytes": 1
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_control_trades.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "c7799114a1f575a862ac9555d9befd248f3a2f9f15a264dffb2117a3a8acc1bc",
+      "bytes": 13014
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_control_valuation_audit.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "105643ec7e300176a05df8475816f754bd2e7e9a310cd9caff9c7606d1576488",
+      "bytes": 1228
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/sample_integrity_validation.json",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "68d11a3790536777e860a1dd7a020e16e3fda401a810cb8929436f070265ea80",
+      "bytes": 1492
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/signal_date_krx_partition_hashes.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "53a9b215a05a0960af48a9ba66c5eca96cb9764f776b42e9fc3af792d583af6b",
+      "bytes": 92284
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/source_manifest.json",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "9fe39f3c17b1b08affb8a6d785f2a3e8f2f14ea2a1f7ac55d312519ae6a6c672",
+      "bytes": 8591
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/summary.json",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "43de30fb4666af77e9a7dd7ef1a4c52321c9b40b61c57947e243c77dfd150ff3",
+      "bytes": 38155
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/ticker_price_source_audit.csv",
+      "role": "official_realistic_v01 immutable artifact",
+      "exists": true,
+      "sha256": "15952beceb5f1bf82798fa1cce5eaadb767c55c8d84ee73cb4f9c925b785026b",
+      "bytes": 150761
+    }
+  ],
+  "run_artifact_policy": "The prior P3-2 closure and official realistic V01 outputs are immutable inputs; no broad signal or portfolio rerun was performed."
+}

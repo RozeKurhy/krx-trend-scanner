@@ -1,0 +1,58 @@
+{
+  "schema": "fast_core_v2_p3_2_380440_single_period_exclusion_scope_decision_v01",
+  "work_id": "FAST_CORE_V2_P3_2_380440_SINGLE_PERIOD_EXCLUSION_V01",
+  "baseline_head_at_start": "105c68e9469979f339abe49bcd17dd150b5bf599",
+  "baseline_origin_main_at_start": "105c68e9469979f339abe49bcd17dd150b5bf599",
+  "identity": {
+    "ticker": "380440",
+    "isu_cd": "KR7380440008",
+    "reason": "user-approved P3-2 exception for missing adjusted-price file"
+  },
+  "scope": "P3-2 only; exact pair filter to shared pre-signal universe for CONTROL and candidate",
+  "applied_universe_view": true,
+  "other_periods_modified": false,
+  "strategy_or_cost_rules_modified": false,
+  "operations_or_web_modified": false,
+  "permanent_exclusion_registry": {
+    "modified": false,
+    "pair_count": 181,
+    "target_pair_already_registered": false,
+    "canonical_hash": "3420a34f41ffa9029fe1869ad80a98f0096b13e74139b413e50a0ad661187f57",
+    "source_sha256": "858ec93e656bea5aa9ad036f7bd8e129253b4f682d062e7fb9350ad5eea1cffa"
+  },
+  "official_policy_compatibility": {
+    "status": "CONFLICT",
+    "reference": "docs/validation/backtest_common_rules.md §2.6",
+    "reason": "docs/validation/backtest_common_rules.md §2.6 requires approved exclusions to be permanent and common across strategies and all standard windows; this exception is P3-2 only."
+  },
+  "signal_effect": {
+    "status": "UNKNOWN_NOT_EVALUATED",
+    "reason": "The adjusted-price file is missing and targeted_data_status is NOT_EVALUATED. Persisted outputs contain no target trade/event rows, but that does not prove the identity would have produced no signal with complete data."
+  },
+  "saved_output_invariance": {
+    "status": "PASS_FOR_PERSISTED_RECORDS",
+    "trade_cash_event_mark_target_rows": 0,
+    "diagnostic_rows": 2,
+    "nav_metrics_replayed": false,
+    "persisted_metric_delta": 0,
+    "limitation": "This proves a no-op filter over persisted outputs only; it does not prove what the missing data would have signaled."
+  },
+  "issue_summary": {
+    "CRITICAL": 0,
+    "MAJOR": 3,
+    "MINOR": 1,
+    "basis": "Independent issue types in this exception plus inherited closure findings; not row or date counts.",
+    "major_issue_types": [
+      "380440 adjusted-price input is missing; potential signal effect is unknown",
+      "P3-2-only exception conflicts with common §2.6 all-window permanent-exclusion rule",
+      "Original V01 Koentec settlement accounting gap remains documented"
+    ],
+    "minor_issue_types": [
+      "003690 has four confirmed KRX trading sessions without candidate NAV marks"
+    ],
+    "resolved_not_counted": [
+      "123 bounded Repository V2 price-range reads succeeded; hash and in-PIT session checks passed"
+    ]
+  },
+  "execution_decision": "NO_FULL_RERUN; exact identity absent from saved P3-2 transactions and portfolio records, so preserve closure V01 outputs unchanged."
+}
