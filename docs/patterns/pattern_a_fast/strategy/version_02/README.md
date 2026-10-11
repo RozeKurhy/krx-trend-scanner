@@ -182,3 +182,6 @@
 - 저장된 V2 portfolio 결과에 최신 공식 채택 기준을 적용한 판정은 `OFFICIAL_STRATEGY_ADOPTED`다. 다섯 기간 A~E 25개 gate가 모두 PASS했다.
 - 재판정 중 백테스트·신호 생성·evaluator를 재실행하지 않았다. 기존 MDD closure V02의 당시 `HOLD`와 원본 산출물은 역사 기록으로 보존했다.
 - 상세 결과와 원본 근거 파일 SHA-256: [최신 공식 기준 재판정 보고서](../../../../../artifacts/patterns/pattern_a_fast/strategy/v2_official_adoption_readjudication_v03/report.md).
+
+<!-- P3-2 ALIGNMENT 500B REVALIDATION V01 -->
+- 2026-10-12 P3-2 alignment + signal-date KRX market cap ≥ KRW 500B research replay: `artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/report.md` (single-window result; adoption and baseline promotion `NOT_EVALUATED`; current V2 default retained; plan commit `df7f81acf42b`).

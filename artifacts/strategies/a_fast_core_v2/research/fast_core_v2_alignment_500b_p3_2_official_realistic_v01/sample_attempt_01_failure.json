@@ -1,0 +1,10 @@
+{
+  "attempt": 1,
+  "status": "FAILED_BEFORE_SIGNAL_REPLAY",
+  "phase": "SAMPLE_CONTEXT_BUILD",
+  "error_type": "KeyError",
+  "error": "Repository V2 daily frame was narrowed to OHLC before build_precomputed_ticker_context; the frozen V2 weekly/monthly resampler requires volume and trading_value columns.",
+  "cause": "research runner implementation error; no portfolio result or performance metric was emitted",
+  "correction": "keep the complete RepositoryV2DailyLoader frame for the frozen evaluator and its precomputed context",
+  "automatic_full_rerun": false
+}

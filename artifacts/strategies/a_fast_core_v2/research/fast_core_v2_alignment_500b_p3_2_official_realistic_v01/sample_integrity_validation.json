@@ -1,0 +1,39 @@
+{
+  "schema": "fast_core_v2_alignment_500b_sample_integrity_v01",
+  "status": "PASS",
+  "checks": {
+    "all_sample_signals_point_in_time_identity_resolved": true,
+    "all_exact_mcap_partition_hashes_present": true,
+    "all_candidate_trades_have_passed_filter": true,
+    "control_and_candidate_trade_sequences_contiguous": true,
+    "portfolio_trade_entry_events_equal_evaluator_entries": true,
+    "buy_and_sell_slippage_commission_recalculation": true,
+    "sample_nav_has_all_1139_evaluation_days": true,
+    "sample_cash_conservation": true,
+    "no_sample_cash_shortage_skips": true
+  },
+  "counts": {
+    "sample_tickers": 30,
+    "control_trades": 32,
+    "candidate_trades": 9,
+    "evaluated_v2_signals": 78,
+    "control_entries": 32,
+    "candidate_entries": 9,
+    "mcap_partition_date_market_pairs": 72,
+    "sample_nav_days_control": 1139,
+    "sample_nav_days_candidate": 1139
+  },
+  "performance": {
+    "authority_setup_seconds": 0.245,
+    "repository_index_setup_seconds": 121.833,
+    "signal_generation_seconds": 44.764,
+    "control_portfolio_replay_seconds": 5.331,
+    "candidate_portfolio_replay_seconds": 2.223,
+    "estimated_full_signal_generation_seconds_by_worker_batches": 3819.842,
+    "estimated_full_portfolio_seconds_conservative_linear_trade_scaling": 642.607,
+    "estimated_full_wall_hours_by_staged_estimate": 1.2735,
+    "max_rss_mb": 3030.09,
+    "frozen_weekly_evaluation_cache_hits": 4968,
+    "frozen_weekly_evaluation_cache_misses": 5308
+  }
+}

@@ -1,103 +1,103 @@
 {
-  "schema": "fast_core_v2_alignment_500b_source_manifest_v01",
+  "schema": "fast_core_v2_alignment_500b_source_manifest_v02",
+  "task_id": "FAST_CORE_V2_ALIGNMENT_500B_P3_2_OFFICIAL_REALISTIC_PORTFOLIO_V01",
+  "plan_commit": "df7f81acf42ba791c51442ba23c432a36eb6b1f7",
+  "plan_sha256": "056f3f2d2b542343fe366f80b1a796aad57428dab0ad076207c1f9912b123efe",
+  "initial_head": "e8506442b4d5847111b2fa20fbcfc9f63e9469b0",
+  "initial_origin_main": "e8506442b4d5847111b2fa20fbcfc9f63e9469b0",
+  "execution_base_head": "df7f81acf42ba791c51442ba23c432a36eb6b1f7",
+  "execution_settings": {
+    "worker_count": 10,
+    "portfolio_event_workers": 1,
+    "external_api_requests": 0
+  },
   "source_files": [
     {
       "path": "docs/validation/official_strategy_adoption_criteria.md",
-      "exists": true,
       "sha256": "380f34cd7e24fd9881d7a154000d9b51512d905d7c7ef24b1940f5fa4e22cb88"
     },
     {
       "path": "docs/validation/backtest_common_rules.md",
-      "exists": true,
       "sha256": "e8783958064ddfc54f57bef3500ad41de6d3b6bc853fce2464845f9c4cc4d06b"
     },
     {
       "path": "docs/strategies/strategy_lifecycle.md",
-      "exists": true,
       "sha256": "c89bad3f56b95a9bac3284fb9817067940534b52c87c29f57f3009ea5a1e25e8"
     },
     {
       "path": "docs/patterns/pattern_a_fast/strategy/version_02/README.md",
-      "exists": true,
-      "sha256": "abee97ddaff03d8a62b3150ce502a739a50a533a058fc03d20076444eb9d5551"
+      "sha256": "d353afec7e26ad4adb296dc14e337a78c88466d3ddcee887932ef1fd58f295ef"
     },
     {
       "path": "docs/patterns/pattern_a_fast/strategy/version_02/OFFICIAL_ADOPTION_REVALIDATION_PLAN_V02.md",
-      "exists": true,
       "sha256": "84f7c7ab2dfd3f3af049dc876925f103d1e8d04e391248a780cd9d0537c1501c"
     },
     {
       "path": "artifacts/patterns/pattern_a_fast/strategy/v2_official_adoption_readjudication_v03/report.md",
-      "exists": true,
       "sha256": "ae636a2eba1f251cdf4abaf9471177410ac13e342318f4d5cf4c017b3d394e48"
     },
     {
       "path": "artifacts/patterns/pattern_a_fast/strategy/v2_official_adoption_readjudication_v03/summary.json",
-      "exists": true,
       "sha256": "da30a2242d0e5d58183fb365789bf47d8c571d24206b7a36f3e062f6c7c9703c"
     },
     {
       "path": "artifacts/patterns/pattern_a_fast/strategy/v2_official_adoption_revalidation_mdd_closure_v02/execution_contract.json",
-      "exists": true,
       "sha256": "c715c25bf09a314a9591fb39dfd882dc0fd766aaaa381fe594e6b92e337abeba"
     },
     {
       "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_monthly_ma20_ma60_bullish_alignment_backtest_v01/run_bullish_alignment_backtest.py",
-      "exists": true,
       "sha256": "e349bbe5584a75f7a7844dc2ab3da208a0d1d34790e027ce41b97c98d26bc14c"
     },
     {
       "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_monthly_ma20_ma60_entry_filter_backtest_v01/run_monthly_ma_entry_filter_backtest.py",
-      "exists": true,
       "sha256": "1017c6e880f5f627c9cfe86eae8fad94d239a89b6747e691559262eeab598544"
     },
     {
       "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_corrected_simple_backtest_v02/p3_2/report.md",
-      "exists": true,
       "sha256": "b5d4b590ddb0079358f513316b94c465561beb94beb7078da78d073d23fbb05f"
     },
     {
       "path": "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py",
-      "exists": true,
       "sha256": "f045750c5fb5afcf0b8c132151ed7b8f387865f7653beb4e5b849c79b50f0dc1"
     },
     {
       "path": "scripts/evaluate_pattern_a_fast_core_v02_reentry.py",
-      "exists": true,
       "sha256": "f6f97f898af67bf8fe0b797c70dc857f269f130bb9b64bd793af5c94ca378a80"
     },
     {
       "path": "src/trend_scanner/data/repository_v2.py",
-      "exists": true,
       "sha256": "c252835604b0fd8f2e839d438052670d9700e773f1c34cb83582c5c29a198215"
     },
     {
       "path": "src/trend_scanner/data/repository_v2_loader.py",
-      "exists": true,
       "sha256": "d5c2333022acf5b777f38bfd024c7540aaae8bc16f455c1a7e779c60c510a97d"
     },
     {
       "path": "src/trend_scanner/data/market_calendar.py",
-      "exists": true,
       "sha256": "1bade7125bd6c503f0a0f0ccafc1a82a931e867edbfd2ffbc9f16cf1ade72b7e"
     },
     {
       "path": "src/trend_scanner/data/rolling_market_data_refresh.py",
-      "exists": true,
       "sha256": "80270ab3efb0d906b1161410cc1756a613df8d7aa930c63415dcd7ba8bf94c87"
     },
     {
       "path": "src/trend_scanner/data/krx_raw_stock_store.py",
-      "exists": true,
       "sha256": "43b491cf74d6b3c41d02f7877d006199a9e5419901f0b8e8a6a50d1c5ad6e95e"
     },
     {
       "path": "src/trend_scanner/universe/permanent_identity_exclusions.py",
-      "exists": true,
       "sha256": "858ec93e656bea5aa9ad036f7bd8e129253b4f682d062e7fb9350ad5eea1cffa"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/run_official_realistic_replay.py",
+      "sha256": "5fe187dedb2b5b856792d498e31070db6ff7ed9e844f933a606b4dc424bcd446"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/finalize_research_artifacts.py",
+      "sha256": "8bdf6050615338e9d225038964707bb2b23ae7cfdbb07f120ea18e90e006d5b3"
     }
   ],
-  "data_authority_files": [
+  "authority_data_files": [
     {
       "path": "data/market/rolling_authority/manifest.json",
       "sha256": "5c4a9e346d7460c4a28b30a3cd9ab19c9c17527f1c4409282206e8ec2a731570"
@@ -115,10 +115,147 @@
       "sha256": "ee0c5beac81f8cdfbe0751803ed2f171607e0c24da59660e3d9137104229a103"
     }
   ],
-  "permanent_identity_exclusion_registry_canonical_sha256": "3420a34f41ffa9029fe1869ad80a98f0096b13e74139b413e50a0ad661187f57",
-  "git": {
-    "head": "e8506442b4d5847111b2fa20fbcfc9f63e9469b0",
-    "origin_main": "e8506442b4d5847111b2fa20fbcfc9f63e9469b0",
-    "head_equals_origin_main": true
-  }
+  "repository_v2_adjusted_price_hashes_path": "repository_v2_adjusted_price_file_hashes.csv",
+  "repository_v2_adjusted_price_hashes_file_sha256": "ae33ec3df6ccbe29c07c5ab9cbe6d75d4f1846badb46bf3dfbb3ff1d4a98b6bf",
+  "ticker_price_source_audit_path": "ticker_price_source_audit.csv",
+  "ticker_price_source_audit_file_sha256": "15952beceb5f1bf82798fa1cce5eaadb767c55c8d84ee73cb4f9c925b785026b",
+  "repository_v2_unavailable_reason_diagnostic_path": "repository_v2_unavailable_reason_diagnostic.json",
+  "repository_v2_unavailable_reason_diagnostic_sha256": "7cc3430b8dd981eeae68dfd7770562a9496ebaa39f3bd9a5334102f9eeca5d5c",
+  "krx_signal_partition_hashes_path": "signal_date_krx_partition_hashes.csv",
+  "krx_signal_partition_hashes_file_sha256": "53a9b215a05a0960af48a9ba66c5eca96cb9764f776b42e9fc3af792d583af6b",
+  "krx_signal_partition_count": 461,
+  "exact_signal_candidate_audit_file_sha256": "2e8c6c84c49293d6ec0b631c5e3f18c92e4a779b5037f8131ccd19cff1e43d93",
+  "excluded_identity_pair_count": 181,
+  "excluded_identity_pair_canonical_sha256": "3420a34f41ffa9029fe1869ad80a98f0096b13e74139b413e50a0ad661187f57",
+  "price_source_unavailable_tickers": [
+    "182360",
+    "184230",
+    "187790",
+    "192250",
+    "198440",
+    "200130",
+    "203650",
+    "203690",
+    "204620",
+    "204630",
+    "204840",
+    "205100",
+    "205470",
+    "205500",
+    "206400",
+    "206640",
+    "207760",
+    "208140",
+    "208350",
+    "208370",
+    "208640",
+    "208710",
+    "214150",
+    "214270",
+    "214680",
+    "215090",
+    "215100",
+    "215380",
+    "215480",
+    "215790",
+    "217270",
+    "217500",
+    "217600",
+    "217620",
+    "218150",
+    "218410",
+    "219550",
+    "220260",
+    "220630",
+    "222080",
+    "222420",
+    "222810",
+    "225430",
+    "225570",
+    "225590",
+    "226340",
+    "226360",
+    "226440",
+    "227950",
+    "230240",
+    "230980",
+    "232140",
+    "239340",
+    "242040",
+    "250060",
+    "250930",
+    "252500",
+    "253590",
+    "254120",
+    "256630",
+    "256840",
+    "258790",
+    "261200",
+    "263770",
+    "264850",
+    "267320",
+    "270520",
+    "273060",
+    "277410",
+    "281740",
+    "284620",
+    "287410",
+    "291230",
+    "297570",
+    "299170",
+    "303030",
+    "306620",
+    "307180",
+    "307280",
+    "307750",
+    "307870",
+    "309930",
+    "310200",
+    "310870",
+    "317240",
+    "319400",
+    "320000",
+    "321260",
+    "322780",
+    "323230",
+    "323280",
+    "328380",
+    "331380",
+    "331520",
+    "332290",
+    "333050",
+    "333430",
+    "335870",
+    "336060",
+    "336570",
+    "339950",
+    "340360",
+    "340440",
+    "351320",
+    "353190",
+    "355150",
+    "359090",
+    "363260",
+    "365590",
+    "368770",
+    "369370",
+    "373200",
+    "380440",
+    "388790",
+    "391710",
+    "408920",
+    "413630",
+    "424760",
+    "446840",
+    "465320",
+    "471050",
+    "472220",
+    "472230",
+    "473050"
+  ],
+  "price_source_unavailable_reason_counts": {
+    "DATA_UNAVAILABLE: ADJUSTED_MISSING": 1,
+    "REPOSITORY_V2_TRADING_SESSION_MISMATCH": 123
+  },
+  "provenance_contract": "RepositoryV2 adjusted prices; rolling merged PIT/calendar; verified exact signal-date KRX raw MKTCAP partitions; no API/fallback/current survivor roster"
 }
