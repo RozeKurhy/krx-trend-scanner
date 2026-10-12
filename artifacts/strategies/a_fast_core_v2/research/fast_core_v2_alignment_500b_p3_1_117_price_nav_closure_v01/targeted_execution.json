@@ -1,0 +1,43 @@
+{
+  "schema": "fast_core_v2_p3_1_117_price_nav_closure_targeted_execution_v01",
+  "status": "TARGETED_EVALUATION_COMPLETE",
+  "identity_pairs": 117,
+  "workers": 10,
+  "worker_outcomes": 117,
+  "worker_error_count": 0,
+  "worker_errors": [],
+  "bounded_projection_integrity_pass": true,
+  "candidate_monthly_window_end_precedes_signal_month": true,
+  "candidate_mcap_unresolved_signal_count": 0,
+  "target_control_trade_signal_rows": 30,
+  "target_candidate_trade_signal_rows": 2,
+  "target_filter_audit_rows": 82,
+  "candidate_filter_status_counts": {
+    "PASS": 2,
+    "REJECT_ALIGNMENT": 36,
+    "REJECT_MA_UNAVAILABLE": 30,
+    "REJECT_MCAP_BELOW_500B": 14
+  },
+  "raw_signal_date_partition_count": 63,
+  "elapsed_seconds": 244.817,
+  "candidate_signal_examples": [
+    {
+      "ticker": "214150",
+      "isu_cd": "KR7214150005",
+      "signal_date": "2022-12-02",
+      "candidate_status": "PASS",
+      "market_cap_krw": 1259906853900,
+      "ma_status": "PASS",
+      "ma_reason": "STRICT_CLOSE_GT_MA20_GT_MA60"
+    },
+    {
+      "ticker": "225570",
+      "isu_cd": "KR7225570001",
+      "signal_date": "2023-03-31",
+      "candidate_status": "PASS",
+      "market_cap_krw": 1216580239000,
+      "ma_status": "PASS",
+      "ma_reason": "STRICT_CLOSE_GT_MA20_GT_MA60"
+    }
+  ]
+}

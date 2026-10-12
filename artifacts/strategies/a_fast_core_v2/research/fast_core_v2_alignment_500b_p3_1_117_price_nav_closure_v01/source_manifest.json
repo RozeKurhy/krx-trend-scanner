@@ -1,0 +1,2094 @@
+{
+  "schema": "fast_core_v2_p3_1_117_price_nav_closure_source_manifest_v01",
+  "work_id": "FAST_CORE_V2_ALIGNMENT_500B_P3_1_117_PRICE_NAV_CLOSURE_V01",
+  "baseline": {
+    "branch": "main",
+    "head": "bef07ad77f56222b468c3efb65f04008735cec5c",
+    "origin_main": "bef07ad77f56222b468c3efb65f04008735cec5c",
+    "head_equals_origin_main": true,
+    "plan_commit": "adf4e7e69907cc9b13cafb941a5c3aecde924181"
+  },
+  "execution_scope": {
+    "window": "2022-01-03 through 2025-05-30, 834 KRX evaluation sessions",
+    "execution_support_only": "2025-06-02",
+    "target_pairs": 117,
+    "workers": 10,
+    "external_api_calls": 0,
+    "full_2460_ticker_rerun": false,
+    "p3_2_signal_or_trade_ledgers_copied": false,
+    "old_p3_1_artifacts_overwritten": false
+  },
+  "reference_artifact_manifests": {
+    "p3_1": {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01",
+      "checked": 62,
+      "expected": 62,
+      "manifest_sha256": "8eada84f736b1c6b11b50cf82afede927f1011f12389db185fe3514027407c0c",
+      "pass": true
+    },
+    "p3_2": {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01",
+      "checked": 33,
+      "expected": 33,
+      "manifest_sha256": "827328c5fcd625dfc96b8ae3cf67b9cfc01e3e70534ad6c0e50178940baa687c",
+      "pass": true
+    }
+  },
+  "reference_files": [
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/artifact_hashes.json",
+      "sha256": "8eada84f736b1c6b11b50cf82afede927f1011f12389db185fe3514027407c0c"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/plan.md",
+      "sha256": "cdf315e2482d5d7c4e11f536f8ee33e0399c624be0ef806fb803912bd406b806"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/execution_contract.json",
+      "sha256": "1d9b833cd99bd045cf4d7e8f079c0477f7ad42da76ccd600d9c429e3a2c3b089"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/report.md",
+      "sha256": "43d40f632461a39e27c622aa5f7246b4d53a9448805ec4eada23c71ffaff2cd1"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/integrity_audit.json",
+      "sha256": "76c518464f30c85fe3b6fbb2c343fb96baccf7e2b6e6dd8817476bb771a1de7c"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/repository_v2_unavailable_cause_audit.json",
+      "sha256": "365c2e72e5c51555480fa805762897f8dab2bc10bf2116dd6d7f0e8ee24e1223"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/artifact_hashes.json",
+      "sha256": "827328c5fcd625dfc96b8ae3cf67b9cfc01e3e70534ad6c0e50178940baa687c"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/price_input_124_audit.csv",
+      "sha256": "d2745d88d6014bdfa7226d2e44900e21cb70494e18a4f2eea1ed885de4475855"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/corporate_action_audit.md",
+      "sha256": "7a103b3c2c3e700f8a3a304b5e38bfe3e345bc083edd1767cb9da55fc25b5020"
+    }
+  ],
+  "frozen_code_and_policy_hashes": {
+    "docs/validation/official_strategy_adoption_criteria.md": {
+      "sha256_at_preflight": "380f34cd7e24fd9881d7a154000d9b51512d905d7c7ef24b1940f5fa4e22cb88",
+      "current_sha256": "380f34cd7e24fd9881d7a154000d9b51512d905d7c7ef24b1940f5fa4e22cb88",
+      "match": true
+    },
+    "docs/validation/backtest_common_rules.md": {
+      "sha256_at_preflight": "e8783958064ddfc54f57bef3500ad41de6d3b6bc853fce2464845f9c4cc4d06b",
+      "current_sha256": "e8783958064ddfc54f57bef3500ad41de6d3b6bc853fce2464845f9c4cc4d06b",
+      "match": true
+    },
+    "docs/strategies/strategy_lifecycle.md": {
+      "sha256_at_preflight": "c89bad3f56b95a9bac3284fb9817067940534b52c87c29f57f3009ea5a1e25e8",
+      "current_sha256": "c89bad3f56b95a9bac3284fb9817067940534b52c87c29f57f3009ea5a1e25e8",
+      "match": true
+    },
+    "docs/patterns/pattern_a_fast/strategy/version_02/README.md": {
+      "sha256_at_preflight": "d353afec7e26ad4adb296dc14e337a78c88466d3ddcee887932ef1fd58f295ef",
+      "current_sha256": "d353afec7e26ad4adb296dc14e337a78c88466d3ddcee887932ef1fd58f295ef",
+      "match": true
+    },
+    "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py": {
+      "sha256_at_preflight": "f045750c5fb5afcf0b8c132151ed7b8f387865f7653beb4e5b849c79b50f0dc1",
+      "current_sha256": "f045750c5fb5afcf0b8c132151ed7b8f387865f7653beb4e5b849c79b50f0dc1",
+      "match": true
+    },
+    "src/trend_scanner/patterns/pattern_a_fast_evaluator.py": {
+      "sha256_at_preflight": "ef06d9df9868526b62b21701a76893b44c393047e036da5f7abbf8239610d99a",
+      "current_sha256": "ef06d9df9868526b62b21701a76893b44c393047e036da5f7abbf8239610d99a",
+      "match": true
+    },
+    "src/trend_scanner/data/repository_v2.py": {
+      "sha256_at_preflight": "c252835604b0fd8f2e839d438052670d9700e773f1c34cb83582c5c29a198215",
+      "current_sha256": "c252835604b0fd8f2e839d438052670d9700e773f1c34cb83582c5c29a198215",
+      "match": true
+    },
+    "src/trend_scanner/data/repository_v2_loader.py": {
+      "sha256_at_preflight": "d5c2333022acf5b777f38bfd024c7540aaae8bc16f455c1a7e779c60c510a97d",
+      "current_sha256": "d5c2333022acf5b777f38bfd024c7540aaae8bc16f455c1a7e779c60c510a97d",
+      "match": true
+    },
+    "src/trend_scanner/data/krx_raw_stock_store.py": {
+      "sha256_at_preflight": "43b491cf74d6b3c41d02f7877d006199a9e5419901f0b8e8a6a50d1c5ad6e95e",
+      "current_sha256": "43b491cf74d6b3c41d02f7877d006199a9e5419901f0b8e8a6a50d1c5ad6e95e",
+      "match": true
+    },
+    "scripts/run_v2_official_adoption_revalidation_v02.py": {
+      "sha256_at_preflight": "ef3d33e03290feb36af5aec671aa63a91ec3dc552f72c83f40aaae99970a6639",
+      "current_sha256": "ef3d33e03290feb36af5aec671aa63a91ec3dc552f72c83f40aaae99970a6639",
+      "match": true
+    },
+    "scripts/run_fastcore_neg40_weak_protect_p2_1.py": {
+      "sha256_at_preflight": "9c95e482f5ca7d216c4f608d98dfaeb11b54d4abc9445b432f99fcc1df91a4f0",
+      "current_sha256": "9c95e482f5ca7d216c4f608d98dfaeb11b54d4abc9445b432f99fcc1df91a4f0",
+      "match": true
+    },
+    "data/market/rolling_authority/manifest.json": {
+      "sha256_at_preflight": "5c4a9e346d7460c4a28b30a3cd9ab19c9c17527f1c4409282206e8ec2a731570",
+      "current_sha256": "5c4a9e346d7460c4a28b30a3cd9ab19c9c17527f1c4409282206e8ec2a731570",
+      "match": true
+    },
+    "data/market/rolling_authority/merged_pit_intervals.json": {
+      "sha256_at_preflight": "d93a958d7bbae9142ef1fa5aded36080d1d107739e777eb4ec3b6566fea90654",
+      "current_sha256": "d93a958d7bbae9142ef1fa5aded36080d1d107739e777eb4ec3b6566fea90654",
+      "match": true
+    },
+    "data/market/rolling_authority/merged_trading_calendar.json": {
+      "sha256_at_preflight": "ab7635de160e06d538d9d0dc7225c8e1b307f191f54f2584d4c79e47a94a7480",
+      "current_sha256": "ab7635de160e06d538d9d0dc7225c8e1b307f191f54f2584d4c79e47a94a7480",
+      "match": true
+    },
+    "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json": {
+      "sha256_at_preflight": "be0dc21c3764aeb147a3565e65850fc179ecc91e5700e8221932f12ce28ae501",
+      "current_sha256": "be0dc21c3764aeb147a3565e65850fc179ecc91e5700e8221932f12ce28ae501",
+      "match": true
+    },
+    "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json": {
+      "sha256_at_preflight": "231cb43e2830017a72a9e8ba8d29296749f8a323e211266035d80cf841b70cf7",
+      "current_sha256": "231cb43e2830017a72a9e8ba8d29296749f8a323e211266035d80cf841b70cf7",
+      "match": true
+    }
+  },
+  "adjusted_price_inputs_117": [
+    {
+      "ticker": "182360",
+      "isu_cd": "KR7182360008",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/182360.parquet",
+      "expected_sha256": "b2f806ddb35a1dec869271573275d7b38adacd6a7996eee520f5ba25ccb2667f",
+      "current_sha256": "b2f806ddb35a1dec869271573275d7b38adacd6a7996eee520f5ba25ccb2667f",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "184230",
+      "isu_cd": "KR7184230001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/184230.parquet",
+      "expected_sha256": "23bba2800bb9e9cfe63a77786922c610e71c425ff53af6e6fe106f3979db1047",
+      "current_sha256": "23bba2800bb9e9cfe63a77786922c610e71c425ff53af6e6fe106f3979db1047",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "187790",
+      "isu_cd": "KR7187790001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/187790.parquet",
+      "expected_sha256": "9c88607e65d5950012deca4668dbef4ecd4ece771f131ce7743c0f7268909fed",
+      "current_sha256": "9c88607e65d5950012deca4668dbef4ecd4ece771f131ce7743c0f7268909fed",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "192250",
+      "isu_cd": "KR7192250009",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/192250.parquet",
+      "expected_sha256": "9c440b4393e8c3d9a8444cd97a3485ac709cdd984f9ebf6f399575583c5c55b8",
+      "current_sha256": "9c440b4393e8c3d9a8444cd97a3485ac709cdd984f9ebf6f399575583c5c55b8",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "198440",
+      "isu_cd": "KR7198440000",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/198440.parquet",
+      "expected_sha256": "0a2825481edbee69671c154cd020d5bb1d06b483b1197fac2904779447566204",
+      "current_sha256": "0a2825481edbee69671c154cd020d5bb1d06b483b1197fac2904779447566204",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "200130",
+      "isu_cd": "KR7200130003",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/200130.parquet",
+      "expected_sha256": "c16848408052eb1af4acf10ad0737bae9df83d49a433eb7e9dd14175c08e1b92",
+      "current_sha256": "c16848408052eb1af4acf10ad0737bae9df83d49a433eb7e9dd14175c08e1b92",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "203650",
+      "isu_cd": "KR7203650007",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/203650.parquet",
+      "expected_sha256": "77b58aba37d5edc460fd31f4b749368d954d31f56a3db81e8bf4ca15d38f28b3",
+      "current_sha256": "77b58aba37d5edc460fd31f4b749368d954d31f56a3db81e8bf4ca15d38f28b3",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "203690",
+      "isu_cd": "KR7203690003",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/203690.parquet",
+      "expected_sha256": "1d8dd682e3d60bf7f3b2fd1f0451415c12e29ff440a70ad5c146fe54cd7d197f",
+      "current_sha256": "1d8dd682e3d60bf7f3b2fd1f0451415c12e29ff440a70ad5c146fe54cd7d197f",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "204620",
+      "isu_cd": "KR7204620009",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/204620.parquet",
+      "expected_sha256": "529ec6ee6c5237bc4fab4dc61c1f6caabe18e2d9b6c29bbce106a478a8520af0",
+      "current_sha256": "529ec6ee6c5237bc4fab4dc61c1f6caabe18e2d9b6c29bbce106a478a8520af0",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "204630",
+      "isu_cd": "KR7204630008",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/204630.parquet",
+      "expected_sha256": "7f627d0112caca2cf496df92a78de930bd27f400b1696e59eb06b8ef814f33da",
+      "current_sha256": "7f627d0112caca2cf496df92a78de930bd27f400b1696e59eb06b8ef814f33da",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "204840",
+      "isu_cd": "KR7204840003",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/204840.parquet",
+      "expected_sha256": "d3ebf8eeeb2f9a3a9e9ba457e5e24158d862db27de4302acb266b33dbf1b2973",
+      "current_sha256": "d3ebf8eeeb2f9a3a9e9ba457e5e24158d862db27de4302acb266b33dbf1b2973",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "205100",
+      "isu_cd": "KR7205100001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/205100.parquet",
+      "expected_sha256": "bf5c984d1e50895bdf6c2d8c2423ceaa4a30850c1b2cd63a47ee34f37c59484d",
+      "current_sha256": "bf5c984d1e50895bdf6c2d8c2423ceaa4a30850c1b2cd63a47ee34f37c59484d",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "205470",
+      "isu_cd": "KR7205470008",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/205470.parquet",
+      "expected_sha256": "91b9f0efd3cb480267bb5f74d82d58379092c9cfed306017f01f435c4c6c78d6",
+      "current_sha256": "91b9f0efd3cb480267bb5f74d82d58379092c9cfed306017f01f435c4c6c78d6",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "205500",
+      "isu_cd": "KR7205500002",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/205500.parquet",
+      "expected_sha256": "03f6be49389bcc42761caeaae159c5f782fcfd9cf6b6921f6a9cf85445105fa8",
+      "current_sha256": "03f6be49389bcc42761caeaae159c5f782fcfd9cf6b6921f6a9cf85445105fa8",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "206400",
+      "isu_cd": "KR7206400004",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/206400.parquet",
+      "expected_sha256": "ff061dcab9deac6d22d8451f07dbaac0e07ae31382dc57446b2802dd418a4088",
+      "current_sha256": "ff061dcab9deac6d22d8451f07dbaac0e07ae31382dc57446b2802dd418a4088",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "206640",
+      "isu_cd": "KR7206640005",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/206640.parquet",
+      "expected_sha256": "1011587d9c15ec5ad7f4b268f349ab4f4636192e3fe1298056d706f3deacdc69",
+      "current_sha256": "1011587d9c15ec5ad7f4b268f349ab4f4636192e3fe1298056d706f3deacdc69",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "207760",
+      "isu_cd": "KR7207760000",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/207760.parquet",
+      "expected_sha256": "1d1d7d14f841ac7924765ba0abd436946d7d010247d487ec8f56d16eb51c3155",
+      "current_sha256": "1d1d7d14f841ac7924765ba0abd436946d7d010247d487ec8f56d16eb51c3155",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "208140",
+      "isu_cd": "KR7208140004",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/208140.parquet",
+      "expected_sha256": "497305f3bf8e9b0d83496039764e7b11f9f33929519615123ae4312f963e8e35",
+      "current_sha256": "497305f3bf8e9b0d83496039764e7b11f9f33929519615123ae4312f963e8e35",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "208350",
+      "isu_cd": "KR7208350009",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/208350.parquet",
+      "expected_sha256": "9e3eb189ffefda12725d1ff0a68d89533a31ab49b26b67a7326252c26aeb8b19",
+      "current_sha256": "9e3eb189ffefda12725d1ff0a68d89533a31ab49b26b67a7326252c26aeb8b19",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "208370",
+      "isu_cd": "KR7208370007",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/208370.parquet",
+      "expected_sha256": "b739cf5cb0c3f7eb3d0a65d8328a18af61931a6cc4f68786db02dd2a76653522",
+      "current_sha256": "b739cf5cb0c3f7eb3d0a65d8328a18af61931a6cc4f68786db02dd2a76653522",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "208640",
+      "isu_cd": "KR7208640003",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/208640.parquet",
+      "expected_sha256": "97d0d10f185e2b3ae874fd02a13e9e119d2db83c49fdbfbbf2a6fce709147e13",
+      "current_sha256": "97d0d10f185e2b3ae874fd02a13e9e119d2db83c49fdbfbbf2a6fce709147e13",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "208710",
+      "isu_cd": "KR7208710004",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/208710.parquet",
+      "expected_sha256": "062f8c49063926dd9d4891917034d6a519d88368b92a02baad69fb14e517f636",
+      "current_sha256": "062f8c49063926dd9d4891917034d6a519d88368b92a02baad69fb14e517f636",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "214150",
+      "isu_cd": "KR7214150005",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/214150.parquet",
+      "expected_sha256": "fc3d91ccb8b446e89bfcdaa13de85281b9d644207a95c58844f3ba5332630bdb",
+      "current_sha256": "fc3d91ccb8b446e89bfcdaa13de85281b9d644207a95c58844f3ba5332630bdb",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "214270",
+      "isu_cd": "KR7214270001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/214270.parquet",
+      "expected_sha256": "327eca39b6b46e11ff2505e9cba2781068b9d60e9b8a0d24e36748c3424b0d51",
+      "current_sha256": "327eca39b6b46e11ff2505e9cba2781068b9d60e9b8a0d24e36748c3424b0d51",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "214680",
+      "isu_cd": "KR7214680001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/214680.parquet",
+      "expected_sha256": "9b46501d6602f33f5a8022838a08b76554f236d2717dc988055958141298da9b",
+      "current_sha256": "9b46501d6602f33f5a8022838a08b76554f236d2717dc988055958141298da9b",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "215090",
+      "isu_cd": "KR7215090002",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/215090.parquet",
+      "expected_sha256": "c65b2f0c403eba7ccc845839835cfade20e642c1a6b934e0fbb658fb25008665",
+      "current_sha256": "c65b2f0c403eba7ccc845839835cfade20e642c1a6b934e0fbb658fb25008665",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "215100",
+      "isu_cd": "KR7215100009",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/215100.parquet",
+      "expected_sha256": "c598f193217f3091b02cbb2b93c78e10d5f0995d5d79a1aef399e0ef3f742114",
+      "current_sha256": "c598f193217f3091b02cbb2b93c78e10d5f0995d5d79a1aef399e0ef3f742114",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "215380",
+      "isu_cd": "KR7215380007",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/215380.parquet",
+      "expected_sha256": "795e49128b76ef75dad486c8709f98cf06468c2519d7de4629709aeedbb3a69d",
+      "current_sha256": "795e49128b76ef75dad486c8709f98cf06468c2519d7de4629709aeedbb3a69d",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "215480",
+      "isu_cd": "KR7215480005",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/215480.parquet",
+      "expected_sha256": "e2f46cda1616f8c4237cd0a70a546b1e40280689cfe4156b6d5de73a606cbad8",
+      "current_sha256": "e2f46cda1616f8c4237cd0a70a546b1e40280689cfe4156b6d5de73a606cbad8",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "215790",
+      "isu_cd": "KR7215790007",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/215790.parquet",
+      "expected_sha256": "e7a4fc4e2479d00de7a2f867dab56970775f0653cd56aec823087c7b61f84ac4",
+      "current_sha256": "e7a4fc4e2479d00de7a2f867dab56970775f0653cd56aec823087c7b61f84ac4",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "217270",
+      "isu_cd": "KR7217270008",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/217270.parquet",
+      "expected_sha256": "54f85a6b7f41aeb4d76865a5ddbbe5bae9894ed023acd7eb148cf726a41afc45",
+      "current_sha256": "54f85a6b7f41aeb4d76865a5ddbbe5bae9894ed023acd7eb148cf726a41afc45",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "217500",
+      "isu_cd": "KR7217500008",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/217500.parquet",
+      "expected_sha256": "67f3346b7b32eeb52d2f67bd3cc52b0e31e51de2d5971b3421e8faac6b17bd38",
+      "current_sha256": "67f3346b7b32eeb52d2f67bd3cc52b0e31e51de2d5971b3421e8faac6b17bd38",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "217600",
+      "isu_cd": "KR7217600006",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/217600.parquet",
+      "expected_sha256": "909920289d3ab3cbbb2bc5e17f059eab0284a8a1be73ef0d2e7650b2582667f1",
+      "current_sha256": "909920289d3ab3cbbb2bc5e17f059eab0284a8a1be73ef0d2e7650b2582667f1",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "217620",
+      "isu_cd": "KR7217620004",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/217620.parquet",
+      "expected_sha256": "f3065eff56bed05de187b1599e937a282c5776f25514d445e7e3b8cb72b1ab34",
+      "current_sha256": "f3065eff56bed05de187b1599e937a282c5776f25514d445e7e3b8cb72b1ab34",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "218150",
+      "isu_cd": "KR7218150001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/218150.parquet",
+      "expected_sha256": "aefae915d9766918e5d3e9fd4a530ad4130146e6cc217f82e6d6736354142924",
+      "current_sha256": "aefae915d9766918e5d3e9fd4a530ad4130146e6cc217f82e6d6736354142924",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "218410",
+      "isu_cd": "KR7218410009",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/218410.parquet",
+      "expected_sha256": "1d626513eae1b85552c5de7d9fc3eff1110a532be09fa0f58a6c2146573064e3",
+      "current_sha256": "1d626513eae1b85552c5de7d9fc3eff1110a532be09fa0f58a6c2146573064e3",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "219550",
+      "isu_cd": "KR7219550001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/219550.parquet",
+      "expected_sha256": "281d9d53c89692f435bbfbe71acc3bbfc26be61a262da8044c86917e3a4eba7f",
+      "current_sha256": "281d9d53c89692f435bbfbe71acc3bbfc26be61a262da8044c86917e3a4eba7f",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "220260",
+      "isu_cd": "KR7220260004",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/220260.parquet",
+      "expected_sha256": "67d930ab9a8f56477d63e19a910283545675716d08499af89535b0de2e3ed42b",
+      "current_sha256": "67d930ab9a8f56477d63e19a910283545675716d08499af89535b0de2e3ed42b",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "220630",
+      "isu_cd": "KR7220630008",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/220630.parquet",
+      "expected_sha256": "e5d4d8f1f7abc7d606c64ad00bc8e915b63adfbafb1cf41096662380fc79524f",
+      "current_sha256": "e5d4d8f1f7abc7d606c64ad00bc8e915b63adfbafb1cf41096662380fc79524f",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "222080",
+      "isu_cd": "KR7222080004",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/222080.parquet",
+      "expected_sha256": "e2fe33e6e9e219f2650a76a1c555f7f2819e08d476cfd0fad36d53d719c099de",
+      "current_sha256": "e2fe33e6e9e219f2650a76a1c555f7f2819e08d476cfd0fad36d53d719c099de",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "222420",
+      "isu_cd": "KR7222420002",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/222420.parquet",
+      "expected_sha256": "d0d30dc26cdb438a4f37cebefc9275be3e66ff6e1ee88aae14410e3bd11c5866",
+      "current_sha256": "d0d30dc26cdb438a4f37cebefc9275be3e66ff6e1ee88aae14410e3bd11c5866",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "222810",
+      "isu_cd": "KR7222810004",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/222810.parquet",
+      "expected_sha256": "4514ce9c7e76eda96dff6c8e89598b577d5da1b0ff1982d473100aafb36c136b",
+      "current_sha256": "4514ce9c7e76eda96dff6c8e89598b577d5da1b0ff1982d473100aafb36c136b",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "225430",
+      "isu_cd": "KR7225430008",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/225430.parquet",
+      "expected_sha256": "2e828bd92ce362e88401292b3509c485c4d914d3e1d3c96eee4f621f33309120",
+      "current_sha256": "2e828bd92ce362e88401292b3509c485c4d914d3e1d3c96eee4f621f33309120",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "225570",
+      "isu_cd": "KR7225570001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/225570.parquet",
+      "expected_sha256": "71d72baf11073fdd57548ed70f87ad4f40ad69181cf87b2fc4f313f7a57d8ff7",
+      "current_sha256": "71d72baf11073fdd57548ed70f87ad4f40ad69181cf87b2fc4f313f7a57d8ff7",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "225590",
+      "isu_cd": "KR7225590009",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/225590.parquet",
+      "expected_sha256": "adb1dbd06fe5521882b8be2e4f563b7e0dda9a161098c705b944da84db9e237d",
+      "current_sha256": "adb1dbd06fe5521882b8be2e4f563b7e0dda9a161098c705b944da84db9e237d",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "226340",
+      "isu_cd": "KR7226340008",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/226340.parquet",
+      "expected_sha256": "962b7b64ec0fd2f02e76165681f31c258f7559c3adabd26a040e0309e2daaaae",
+      "current_sha256": "962b7b64ec0fd2f02e76165681f31c258f7559c3adabd26a040e0309e2daaaae",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "226360",
+      "isu_cd": "KR7226360006",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/226360.parquet",
+      "expected_sha256": "8808e20f01092264bea02a7c2b58b35fa8517b5e2faa0141ee862fbf969a6ffc",
+      "current_sha256": "8808e20f01092264bea02a7c2b58b35fa8517b5e2faa0141ee862fbf969a6ffc",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "226440",
+      "isu_cd": "KR7226440006",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/226440.parquet",
+      "expected_sha256": "ec2dfc6cace7fa732ff12f21940b8916790160b9b7197dbc334deba39655deb5",
+      "current_sha256": "ec2dfc6cace7fa732ff12f21940b8916790160b9b7197dbc334deba39655deb5",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "227950",
+      "isu_cd": "KR7227950003",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/227950.parquet",
+      "expected_sha256": "99df6b1f3cf21139f123e3cd0be75cf334feaa9cd24d32420a5abf52e6485d2f",
+      "current_sha256": "99df6b1f3cf21139f123e3cd0be75cf334feaa9cd24d32420a5abf52e6485d2f",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "230240",
+      "isu_cd": "KR7230240004",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/230240.parquet",
+      "expected_sha256": "ff69cefd235ad263b42e568adc1d6cfc7b854325b339b636455f42f5883ee449",
+      "current_sha256": "ff69cefd235ad263b42e568adc1d6cfc7b854325b339b636455f42f5883ee449",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "230980",
+      "isu_cd": "KR7230980005",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/230980.parquet",
+      "expected_sha256": "948dfda0d09377cfb10b2bf4995d0fec0a02479e336dc1278d0e014f066a6d03",
+      "current_sha256": "948dfda0d09377cfb10b2bf4995d0fec0a02479e336dc1278d0e014f066a6d03",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "232140",
+      "isu_cd": "KR7232140004",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/232140.parquet",
+      "expected_sha256": "3d16ccd99ebe1c965cbf4d46dcc4857dea64ef13acb5dd2759b804c83fc94b92",
+      "current_sha256": "3d16ccd99ebe1c965cbf4d46dcc4857dea64ef13acb5dd2759b804c83fc94b92",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "239340",
+      "isu_cd": "KR7239340003",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/239340.parquet",
+      "expected_sha256": "c15d81e5e7f075996691cfb6d065a9babd8beb8b900b5f20a3eb0c6e2c1cf062",
+      "current_sha256": "c15d81e5e7f075996691cfb6d065a9babd8beb8b900b5f20a3eb0c6e2c1cf062",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "242040",
+      "isu_cd": "KR7242040004",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/242040.parquet",
+      "expected_sha256": "7a4046d602b867580634ee92551f3eb4838584be48cd4eaa2d50920fe561e69a",
+      "current_sha256": "7a4046d602b867580634ee92551f3eb4838584be48cd4eaa2d50920fe561e69a",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "250060",
+      "isu_cd": "KR7250060001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/250060.parquet",
+      "expected_sha256": "93a2cb74ac3afd2887759c7bd082280d01b9a42d3c3d088782a86e9f5fd8c8f2",
+      "current_sha256": "93a2cb74ac3afd2887759c7bd082280d01b9a42d3c3d088782a86e9f5fd8c8f2",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "250930",
+      "isu_cd": "KR7250930005",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/250930.parquet",
+      "expected_sha256": "a80b47a4f8fc8ced100372e131786ce5559e24c8cb52166fd768c11609034441",
+      "current_sha256": "a80b47a4f8fc8ced100372e131786ce5559e24c8cb52166fd768c11609034441",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "252500",
+      "isu_cd": "KR7252500004",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/252500.parquet",
+      "expected_sha256": "e4aa4b6aaf75a48a2462b4619d290ab3f0fd79536d5aeb04069ea54448e3b705",
+      "current_sha256": "e4aa4b6aaf75a48a2462b4619d290ab3f0fd79536d5aeb04069ea54448e3b705",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "253590",
+      "isu_cd": "KR7253590004",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/253590.parquet",
+      "expected_sha256": "d197eab3d039c04ea7036090d1650dc71a6d8612b2f1ee296aa478293bf3adc3",
+      "current_sha256": "d197eab3d039c04ea7036090d1650dc71a6d8612b2f1ee296aa478293bf3adc3",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "254120",
+      "isu_cd": "KR7254120009",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/254120.parquet",
+      "expected_sha256": "5c9b3c8386fdd6004442c71d614a751c39bacf05558a7e5a62401c98b7d47229",
+      "current_sha256": "5c9b3c8386fdd6004442c71d614a751c39bacf05558a7e5a62401c98b7d47229",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "256630",
+      "isu_cd": "KR7256630005",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/256630.parquet",
+      "expected_sha256": "c01b131ac94e9d460c7dd514f4a60a10d01b863dfe4e74a074336943da0c064a",
+      "current_sha256": "c01b131ac94e9d460c7dd514f4a60a10d01b863dfe4e74a074336943da0c064a",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "256840",
+      "isu_cd": "KR7256840000",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/256840.parquet",
+      "expected_sha256": "49ca608d143bd980ac4e24b67c9f9b322f46add61bb747be259398b63c0fa57f",
+      "current_sha256": "49ca608d143bd980ac4e24b67c9f9b322f46add61bb747be259398b63c0fa57f",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "258790",
+      "isu_cd": "KR7258790005",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/258790.parquet",
+      "expected_sha256": "e8cb24dff04f0f00922114dda33c85ebc0e9d7b0f233e7da9496751e9b3c7c1f",
+      "current_sha256": "e8cb24dff04f0f00922114dda33c85ebc0e9d7b0f233e7da9496751e9b3c7c1f",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "261200",
+      "isu_cd": "KR7261200000",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/261200.parquet",
+      "expected_sha256": "995f378f71bfccadcba7a615d1108178ac527af58ee452d4efc18774a35dcbf7",
+      "current_sha256": "995f378f71bfccadcba7a615d1108178ac527af58ee452d4efc18774a35dcbf7",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "263770",
+      "isu_cd": "KR7263770000",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/263770.parquet",
+      "expected_sha256": "a4b9363cf8f9fbfd7eb264fd223b107e34842893781844724b63ee0e47970eed",
+      "current_sha256": "a4b9363cf8f9fbfd7eb264fd223b107e34842893781844724b63ee0e47970eed",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "264850",
+      "isu_cd": "KR7264850009",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/264850.parquet",
+      "expected_sha256": "2b2bb02cd15fb627531552399acac0ec6fa28ccc23dad2ce6ec865ab4067f107",
+      "current_sha256": "2b2bb02cd15fb627531552399acac0ec6fa28ccc23dad2ce6ec865ab4067f107",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "267320",
+      "isu_cd": "KR7267320000",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/267320.parquet",
+      "expected_sha256": "6edf850af5e35fdd9291602218d940263346997cc3beb8b9fd65bbf6c29a4097",
+      "current_sha256": "6edf850af5e35fdd9291602218d940263346997cc3beb8b9fd65bbf6c29a4097",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "270520",
+      "isu_cd": "KR7270520000",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/270520.parquet",
+      "expected_sha256": "8ca4cadb7eca4f0acecc1ff6e83b076e92baafbef68986f6a81b1d906042e4e5",
+      "current_sha256": "8ca4cadb7eca4f0acecc1ff6e83b076e92baafbef68986f6a81b1d906042e4e5",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "273060",
+      "isu_cd": "KR7273060004",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/273060.parquet",
+      "expected_sha256": "2cba1aa2e2c0248bdad27a2c604a0bc3edc3a048ab2d2639ce0ec3687464a860",
+      "current_sha256": "2cba1aa2e2c0248bdad27a2c604a0bc3edc3a048ab2d2639ce0ec3687464a860",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "277410",
+      "isu_cd": "KR7277410007",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/277410.parquet",
+      "expected_sha256": "faeb45d6224f2585c5d7c61c869df3bf69fb41ed7aa2262492d8f8c146fa3a6f",
+      "current_sha256": "faeb45d6224f2585c5d7c61c869df3bf69fb41ed7aa2262492d8f8c146fa3a6f",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "281740",
+      "isu_cd": "KR7281740001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/281740.parquet",
+      "expected_sha256": "5eaa0c0d8e1e86dc175d0c7eb3f0b9d3c46bb1aad98c9ca7dc4435a0c87a60e8",
+      "current_sha256": "5eaa0c0d8e1e86dc175d0c7eb3f0b9d3c46bb1aad98c9ca7dc4435a0c87a60e8",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "284620",
+      "isu_cd": "KR7284620002",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/284620.parquet",
+      "expected_sha256": "955d592ee41eb03adb4f423e5fab1ce8209bcf31558411bf72943bfca748548b",
+      "current_sha256": "955d592ee41eb03adb4f423e5fab1ce8209bcf31558411bf72943bfca748548b",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "287410",
+      "isu_cd": "KR7287410005",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/287410.parquet",
+      "expected_sha256": "cec36a015b5b58ef0d1e5fa676f378857e7046ceff95ee8960d63d88dcfed034",
+      "current_sha256": "cec36a015b5b58ef0d1e5fa676f378857e7046ceff95ee8960d63d88dcfed034",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "291230",
+      "isu_cd": "KR7291230001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/291230.parquet",
+      "expected_sha256": "2d3c7cfcd20585be8f410c69716583dcc5821f54be7c12d59cf30c10848200b7",
+      "current_sha256": "2d3c7cfcd20585be8f410c69716583dcc5821f54be7c12d59cf30c10848200b7",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "297570",
+      "isu_cd": "KR7297570004",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/297570.parquet",
+      "expected_sha256": "25ba110b6e1b5ba694ef8cdf61256c92dcc2be5958e48f63dc9c95c20f13dcc3",
+      "current_sha256": "25ba110b6e1b5ba694ef8cdf61256c92dcc2be5958e48f63dc9c95c20f13dcc3",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "299170",
+      "isu_cd": "KR7299170001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/299170.parquet",
+      "expected_sha256": "2ad96d83d8776015893f288e559103a45c227f65e8ba840b8f5a5c32435dc416",
+      "current_sha256": "2ad96d83d8776015893f288e559103a45c227f65e8ba840b8f5a5c32435dc416",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "303030",
+      "isu_cd": "KR7303030001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/303030.parquet",
+      "expected_sha256": "56312f8947f41240bbc90ebe2d53931ff6d331b45b2cd9dd2c1d7c1989643a0d",
+      "current_sha256": "56312f8947f41240bbc90ebe2d53931ff6d331b45b2cd9dd2c1d7c1989643a0d",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "306620",
+      "isu_cd": "KR7306620006",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/306620.parquet",
+      "expected_sha256": "9fa82ff2bb126b4a271cd02fb77dc08da9c645a146eee7e03bc4c7a3ebc37a42",
+      "current_sha256": "9fa82ff2bb126b4a271cd02fb77dc08da9c645a146eee7e03bc4c7a3ebc37a42",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "307180",
+      "isu_cd": "KR7307180000",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/307180.parquet",
+      "expected_sha256": "4b2c6304325d082c3801150e2e031f95fc6babcd00b9c50b25c12285f3f169e7",
+      "current_sha256": "4b2c6304325d082c3801150e2e031f95fc6babcd00b9c50b25c12285f3f169e7",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "307280",
+      "isu_cd": "KR7307280008",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/307280.parquet",
+      "expected_sha256": "9c929467d6fd5be34943405a1458f931249b0d662525c2a34647ad7a7932ed6b",
+      "current_sha256": "9c929467d6fd5be34943405a1458f931249b0d662525c2a34647ad7a7932ed6b",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "307750",
+      "isu_cd": "KR7307750000",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/307750.parquet",
+      "expected_sha256": "d8914f7e57473a8e7523a4e1d23e83af1bd075922f3a96ecc0a4c768cbcbc909",
+      "current_sha256": "d8914f7e57473a8e7523a4e1d23e83af1bd075922f3a96ecc0a4c768cbcbc909",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "307870",
+      "isu_cd": "KR7307870006",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/307870.parquet",
+      "expected_sha256": "aa097538e92735d1bb8bbbc03659818a507fe3c69fb930e18d00a57404395c7e",
+      "current_sha256": "aa097538e92735d1bb8bbbc03659818a507fe3c69fb930e18d00a57404395c7e",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "309930",
+      "isu_cd": "KR7309930006",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/309930.parquet",
+      "expected_sha256": "c4b3e7d4679779e6b0cffb437f6b2c86787059f919b8d4671d96372b224f9162",
+      "current_sha256": "c4b3e7d4679779e6b0cffb437f6b2c86787059f919b8d4671d96372b224f9162",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "310200",
+      "isu_cd": "KR7310200001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/310200.parquet",
+      "expected_sha256": "32526e3b1eeae385d20c612b2ba5df1e43565f49864d79b41f36b37acc90777b",
+      "current_sha256": "32526e3b1eeae385d20c612b2ba5df1e43565f49864d79b41f36b37acc90777b",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "310870",
+      "isu_cd": "KR7310870001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/310870.parquet",
+      "expected_sha256": "8246e2a05f587bab8ab0293e26f189f1cc33acec1e485afebfb03ce5b33ecbd1",
+      "current_sha256": "8246e2a05f587bab8ab0293e26f189f1cc33acec1e485afebfb03ce5b33ecbd1",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "317240",
+      "isu_cd": "KR7317240000",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/317240.parquet",
+      "expected_sha256": "b8418d0a19ac2e7396390834e4782c7550dc0155c21a38ac64ffca8855cda8b6",
+      "current_sha256": "b8418d0a19ac2e7396390834e4782c7550dc0155c21a38ac64ffca8855cda8b6",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "319400",
+      "isu_cd": "KR7319400008",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/319400.parquet",
+      "expected_sha256": "fdf5b50e0fad1338127d4c339ed7ad80d063681324736431f5b34dfdf79c54ff",
+      "current_sha256": "fdf5b50e0fad1338127d4c339ed7ad80d063681324736431f5b34dfdf79c54ff",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "320000",
+      "isu_cd": "KR7320000003",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/320000.parquet",
+      "expected_sha256": "a349fae686660b402fef3d86b685e32cf79c0f76a321ca00821c3d18d84269f0",
+      "current_sha256": "a349fae686660b402fef3d86b685e32cf79c0f76a321ca00821c3d18d84269f0",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "321260",
+      "isu_cd": "KR7321260002",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/321260.parquet",
+      "expected_sha256": "10c1f6270fa21d88a6ebeda3806de7842c92e9e536ead6d535e88f42355e204d",
+      "current_sha256": "10c1f6270fa21d88a6ebeda3806de7842c92e9e536ead6d535e88f42355e204d",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "322780",
+      "isu_cd": "KR7322780008",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/322780.parquet",
+      "expected_sha256": "c31db14f3b0febcbe96f0b10797c979d9bf01db7a2729e1be317f80297c2471c",
+      "current_sha256": "c31db14f3b0febcbe96f0b10797c979d9bf01db7a2729e1be317f80297c2471c",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "323230",
+      "isu_cd": "KR7323230003",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/323230.parquet",
+      "expected_sha256": "fc27171457f973aa8a8505da0dcd85fd87ce04a2a1bc11ceeccbfcfdfc310da0",
+      "current_sha256": "fc27171457f973aa8a8505da0dcd85fd87ce04a2a1bc11ceeccbfcfdfc310da0",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "323280",
+      "isu_cd": "KR7323280008",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/323280.parquet",
+      "expected_sha256": "115cdbbea4bec12f880e060485a02f88da01661336ddcb7e23be767e6e3c7903",
+      "current_sha256": "115cdbbea4bec12f880e060485a02f88da01661336ddcb7e23be767e6e3c7903",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "328380",
+      "isu_cd": "KR7328380001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/328380.parquet",
+      "expected_sha256": "08d3cc53e083898ba13fe9d4cb69ad7bd7893ba02215bbbef6b3e73192e992f8",
+      "current_sha256": "08d3cc53e083898ba13fe9d4cb69ad7bd7893ba02215bbbef6b3e73192e992f8",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "331380",
+      "isu_cd": "KR7331380006",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/331380.parquet",
+      "expected_sha256": "37865ccae4d81855d70beadb0b9e898f7c776bd1436ad8bef748c42eb1fb0d69",
+      "current_sha256": "37865ccae4d81855d70beadb0b9e898f7c776bd1436ad8bef748c42eb1fb0d69",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "331520",
+      "isu_cd": "KR7331520007",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/331520.parquet",
+      "expected_sha256": "d1765ddb2913cf0252ef00ddba64bf81b9a14927c4502aed7f7dd523032fd6ac",
+      "current_sha256": "d1765ddb2913cf0252ef00ddba64bf81b9a14927c4502aed7f7dd523032fd6ac",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "332290",
+      "isu_cd": "KR7332290006",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/332290.parquet",
+      "expected_sha256": "e0891373b79811e1eb1b3924422903684299635be0b72dcf1463ef3a48252c77",
+      "current_sha256": "e0891373b79811e1eb1b3924422903684299635be0b72dcf1463ef3a48252c77",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "333050",
+      "isu_cd": "KR7333050003",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/333050.parquet",
+      "expected_sha256": "5d619f3dcf822587364469d5784911a4838f2293a308afe17c2b84c13b5e4b22",
+      "current_sha256": "5d619f3dcf822587364469d5784911a4838f2293a308afe17c2b84c13b5e4b22",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "333430",
+      "isu_cd": "KR7333430007",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/333430.parquet",
+      "expected_sha256": "c7860731c296f0099296813b94c38329068c0c3f7715e066448fbf0d95b943ef",
+      "current_sha256": "c7860731c296f0099296813b94c38329068c0c3f7715e066448fbf0d95b943ef",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "335870",
+      "isu_cd": "KR7335870002",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/335870.parquet",
+      "expected_sha256": "8a6142763f1a47e501946180882c1e5e854fa840eb0f89e2412eec3a9ec327ab",
+      "current_sha256": "8a6142763f1a47e501946180882c1e5e854fa840eb0f89e2412eec3a9ec327ab",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "336060",
+      "isu_cd": "KR7336060009",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/336060.parquet",
+      "expected_sha256": "6488585396940f862cde12203e4f3ee28bf7e7894937f1caa14c0b9b005d3d5f",
+      "current_sha256": "6488585396940f862cde12203e4f3ee28bf7e7894937f1caa14c0b9b005d3d5f",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "336570",
+      "isu_cd": "KR7336570007",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/336570.parquet",
+      "expected_sha256": "711c1cf887d481f4db9d345229f112d79a25b9caac9b758586a35ded4bc6fe95",
+      "current_sha256": "711c1cf887d481f4db9d345229f112d79a25b9caac9b758586a35ded4bc6fe95",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "339950",
+      "isu_cd": "KR7339950008",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/339950.parquet",
+      "expected_sha256": "4c303c4565962ee631e3fae14b07c0dc92dc0ccf0eeb315ee00addb13e6823ab",
+      "current_sha256": "4c303c4565962ee631e3fae14b07c0dc92dc0ccf0eeb315ee00addb13e6823ab",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "340360",
+      "isu_cd": "KR7340360007",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/340360.parquet",
+      "expected_sha256": "5d4500287ab6847bb6870b2da0ff388da7e56bf7c07a2869736b58a85fa69ddf",
+      "current_sha256": "5d4500287ab6847bb6870b2da0ff388da7e56bf7c07a2869736b58a85fa69ddf",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "340440",
+      "isu_cd": "KR7340440007",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/340440.parquet",
+      "expected_sha256": "e970ddc5d35437f712c62f4b31c001ef0faf99f433c4568dc507ae5d1f011fd3",
+      "current_sha256": "e970ddc5d35437f712c62f4b31c001ef0faf99f433c4568dc507ae5d1f011fd3",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "351320",
+      "isu_cd": "KR7351320007",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/351320.parquet",
+      "expected_sha256": "9cce308512781ca4b8d8d8c6d5bc21bd6dc91a646db275a16748e21ff3d35141",
+      "current_sha256": "9cce308512781ca4b8d8d8c6d5bc21bd6dc91a646db275a16748e21ff3d35141",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "353190",
+      "isu_cd": "KR7353190002",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/353190.parquet",
+      "expected_sha256": "609ce544bce89dbc4b62340e937ac71c9b2a0c1f4ed1ae14b5a9914c677ebf5f",
+      "current_sha256": "609ce544bce89dbc4b62340e937ac71c9b2a0c1f4ed1ae14b5a9914c677ebf5f",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "355150",
+      "isu_cd": "KR7355150004",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/355150.parquet",
+      "expected_sha256": "6af5e03c3adfde18e6a3b1aa8b4bcc12f15c9072efb201bb6e8d2c42c4c3bdc1",
+      "current_sha256": "6af5e03c3adfde18e6a3b1aa8b4bcc12f15c9072efb201bb6e8d2c42c4c3bdc1",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "359090",
+      "isu_cd": "KR7359090008",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/359090.parquet",
+      "expected_sha256": "b39261be5946df7143b72a13331e2179fff7d4097bc40fac2bfb8e5607a3f030",
+      "current_sha256": "b39261be5946df7143b72a13331e2179fff7d4097bc40fac2bfb8e5607a3f030",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "363260",
+      "isu_cd": "KR7363260001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/363260.parquet",
+      "expected_sha256": "dc74d404e330e0103912df05a93dc63661ee51f3cdc64283274921c72c18d9ac",
+      "current_sha256": "dc74d404e330e0103912df05a93dc63661ee51f3cdc64283274921c72c18d9ac",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "365590",
+      "isu_cd": "KR7365590009",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/365590.parquet",
+      "expected_sha256": "618b60c4696cf94dc9f6c46417bab94aa4e29cbf3894c1c5c5d2abb00d1c6a52",
+      "current_sha256": "618b60c4696cf94dc9f6c46417bab94aa4e29cbf3894c1c5c5d2abb00d1c6a52",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "368770",
+      "isu_cd": "KR7368770004",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/368770.parquet",
+      "expected_sha256": "1d838684f52ed9fc13876585eba892dfa3b91ad07ba5450039b69b9e0d2a6d72",
+      "current_sha256": "1d838684f52ed9fc13876585eba892dfa3b91ad07ba5450039b69b9e0d2a6d72",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "369370",
+      "isu_cd": "KR7369370002",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/369370.parquet",
+      "expected_sha256": "30cf194d0034883d514ea517dfa61815230e2554b6459652721f010174560672",
+      "current_sha256": "30cf194d0034883d514ea517dfa61815230e2554b6459652721f010174560672",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "373200",
+      "isu_cd": "KR7373200005",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/373200.parquet",
+      "expected_sha256": "abb1951e2baa4fa9a36d14dfb78c46fceccb83cffc217198b601f29b12ff1bc7",
+      "current_sha256": "abb1951e2baa4fa9a36d14dfb78c46fceccb83cffc217198b601f29b12ff1bc7",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "388790",
+      "isu_cd": "KR7388790008",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/388790.parquet",
+      "expected_sha256": "946f0abb779aa5117b8bfcc7ea437021cd025f65f95dff914c21ff589b482d46",
+      "current_sha256": "946f0abb779aa5117b8bfcc7ea437021cd025f65f95dff914c21ff589b482d46",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "391710",
+      "isu_cd": "KR7391710001",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/391710.parquet",
+      "expected_sha256": "07d159791b387b24ee62ffd213f08401435fa1875331db9c1f7a2eb63c54e8c3",
+      "current_sha256": "07d159791b387b24ee62ffd213f08401435fa1875331db9c1f7a2eb63c54e8c3",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "408920",
+      "isu_cd": "KR7408920007",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/408920.parquet",
+      "expected_sha256": "8501941ee5bdbd2e95db83630f9ea91c996c6a6cc36e96a4c6bb275755abfb42",
+      "current_sha256": "8501941ee5bdbd2e95db83630f9ea91c996c6a6cc36e96a4c6bb275755abfb42",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "413630",
+      "isu_cd": "KR7413630005",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/413630.parquet",
+      "expected_sha256": "4f8cd8e5289ac75f905ceeadb854610044f5a91da38f02187aec6538bd8e28fa",
+      "current_sha256": "4f8cd8e5289ac75f905ceeadb854610044f5a91da38f02187aec6538bd8e28fa",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    },
+    {
+      "ticker": "424760",
+      "isu_cd": "KR7424760007",
+      "market": "KOSDAQ",
+      "path": "data/market/adjusted/stocks/424760.parquet",
+      "expected_sha256": "6821a4d7583615a472d3506aa06c9f1545c43e976747d1694252452b71f7ec2e",
+      "current_sha256": "6821a4d7583615a472d3506aa06c9f1545c43e976747d1694252452b71f7ec2e",
+      "matches": true,
+      "targeted_data_status": "AVAILABLE",
+      "pit_internal_unresolved_sessions": 0
+    }
+  ],
+  "signal_date_krx_raw_partitions": [
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2022-01-07",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2022/2022-01-07.parquet",
+      "expected_file_sha256": "6bbffacd879d8d0ec04c0c81447d6ec388dab10782fefcf03ec1436c7dc03868",
+      "current_file_sha256": "6bbffacd879d8d0ec04c0c81447d6ec388dab10782fefcf03ec1436c7dc03868",
+      "file_hash_matches": true,
+      "content_sha256": "9e365ba8dab51baeddd7441ef4b0f0b4744642850bb1fd0ab2f7a32f6fdd38f0"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2022-01-14",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2022/2022-01-14.parquet",
+      "expected_file_sha256": "1be6be186e67f44456a1c58cc76d003eee8e5da59a72f88fc57ebe42938daa6d",
+      "current_file_sha256": "1be6be186e67f44456a1c58cc76d003eee8e5da59a72f88fc57ebe42938daa6d",
+      "file_hash_matches": true,
+      "content_sha256": "b333b06095a40ecece7e303e638532453e0a1952e904757a1305788e0c75831a"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2022-04-01",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2022/2022-04-01.parquet",
+      "expected_file_sha256": "c9002de74b66df2c2c610d66d4b14a3f039bbaede2db244068f049dc31445b2e",
+      "current_file_sha256": "c9002de74b66df2c2c610d66d4b14a3f039bbaede2db244068f049dc31445b2e",
+      "file_hash_matches": true,
+      "content_sha256": "85f662c0509c7362808e0ae18012746e5101166e7dcd2bbb7e0529a06d9e289a"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2022-04-08",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2022/2022-04-08.parquet",
+      "expected_file_sha256": "d5b6ce134308f003fc9fc13b177d8f97b6603ffff6afdae0ed6e871195d2885b",
+      "current_file_sha256": "d5b6ce134308f003fc9fc13b177d8f97b6603ffff6afdae0ed6e871195d2885b",
+      "file_hash_matches": true,
+      "content_sha256": "fea6c378aee8cf842a00c940899a3e0ad30e072f53b17899fdca5298071c45a3"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2022-04-22",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2022/2022-04-22.parquet",
+      "expected_file_sha256": "8c25cb443c48bfa0a3c980ea121ef633e2f1843aa6de59013c4f2d3c15373df8",
+      "current_file_sha256": "8c25cb443c48bfa0a3c980ea121ef633e2f1843aa6de59013c4f2d3c15373df8",
+      "file_hash_matches": true,
+      "content_sha256": "69e9625d0f1529564101246aaeb6231a43bdb6aed26254f9000aef7f68e9cc36"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2022-04-29",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2022/2022-04-29.parquet",
+      "expected_file_sha256": "53908fbf78d39ba1cc9e0ca9e56ec40da952d858eeaffcb326dd819610c486ab",
+      "current_file_sha256": "53908fbf78d39ba1cc9e0ca9e56ec40da952d858eeaffcb326dd819610c486ab",
+      "file_hash_matches": true,
+      "content_sha256": "1f5ae1ae9727eed6cd548d1387ac73baaee720c668af60e5532e36f5f236ffcc"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2022-05-20",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2022/2022-05-20.parquet",
+      "expected_file_sha256": "6f40eccbd2f2e39709470f7de21bc4d2d41e06ce11121c0ca89d3f3c81cb71c3",
+      "current_file_sha256": "6f40eccbd2f2e39709470f7de21bc4d2d41e06ce11121c0ca89d3f3c81cb71c3",
+      "file_hash_matches": true,
+      "content_sha256": "3821f19671299ea159369233ea9363883371644e7d6d8117b58348766acae615"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2022-05-27",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2022/2022-05-27.parquet",
+      "expected_file_sha256": "4e7b382b0bed1c13bab993712ac997ee25dc52f4646d10fcd2c206274afe6098",
+      "current_file_sha256": "4e7b382b0bed1c13bab993712ac997ee25dc52f4646d10fcd2c206274afe6098",
+      "file_hash_matches": true,
+      "content_sha256": "0a612c18a978c8c891bc698647c8944851468b0be2f85d480eb80f4df75a94d3"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2022-06-03",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2022/2022-06-03.parquet",
+      "expected_file_sha256": "daaad6703aca4a9aeac7f59868bc845bac610c42fae15ec7b01957b56dde9f83",
+      "current_file_sha256": "daaad6703aca4a9aeac7f59868bc845bac610c42fae15ec7b01957b56dde9f83",
+      "file_hash_matches": true,
+      "content_sha256": "6b95fe4d82b38c4c32019e094161555600351933d91fd7f3c12eb306c8124dd6"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2022-12-02",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2022/2022-12-02.parquet",
+      "expected_file_sha256": "bcc5c13228941c9f48d6dd02df2708024e6de40be95ae402f8fb77272ed165bb",
+      "current_file_sha256": "bcc5c13228941c9f48d6dd02df2708024e6de40be95ae402f8fb77272ed165bb",
+      "file_hash_matches": true,
+      "content_sha256": "231175926a31507ae5d618fb175e638fc6750818cb19f351d1a5d92495822b99"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-02-03",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-02-03.parquet",
+      "expected_file_sha256": "6a640c6294559712734f060479d3d7e846950b491c35011777e05b716968331f",
+      "current_file_sha256": "6a640c6294559712734f060479d3d7e846950b491c35011777e05b716968331f",
+      "file_hash_matches": true,
+      "content_sha256": "69a948309b74104726513b28124e6ada35c0ff3dd10467d5b94965a87d83385f"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-02-10",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-02-10.parquet",
+      "expected_file_sha256": "9920f24e53e8e54bc2e2e253e69b19f36048091d0e508e3e703bb42014cc7c16",
+      "current_file_sha256": "9920f24e53e8e54bc2e2e253e69b19f36048091d0e508e3e703bb42014cc7c16",
+      "file_hash_matches": true,
+      "content_sha256": "fd905c7361ee03353c2fda0ba31580870332346ce4d82831b79e15c19acdd93e"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-02-17",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-02-17.parquet",
+      "expected_file_sha256": "c3f6e7201b7d43465a4bd6ffdcbbedbbf15fc0291569144987d4bdb3435c6a8e",
+      "current_file_sha256": "c3f6e7201b7d43465a4bd6ffdcbbedbbf15fc0291569144987d4bdb3435c6a8e",
+      "file_hash_matches": true,
+      "content_sha256": "184689e26650868096bd3500227aec4f103cbe244f949f07a03ae63bd85ccb37"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-02-24",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-02-24.parquet",
+      "expected_file_sha256": "9d2bda102b9e3179343e870a49d0ea033261492aaa9fa59a3876dd1d51ef3eb5",
+      "current_file_sha256": "9d2bda102b9e3179343e870a49d0ea033261492aaa9fa59a3876dd1d51ef3eb5",
+      "file_hash_matches": true,
+      "content_sha256": "b3880fe89d71cb511888235e89c037d64887e377b938c8289d4bb8989aa92bc5"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-03-03",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-03-03.parquet",
+      "expected_file_sha256": "f097561ca387bcbc4e004aeb5fc81130264f106114b9a558771ce9e28c05df02",
+      "current_file_sha256": "f097561ca387bcbc4e004aeb5fc81130264f106114b9a558771ce9e28c05df02",
+      "file_hash_matches": true,
+      "content_sha256": "e03a76bfd176d5e4a4137251789b2d8dbe17f042218aa050403a794e520fa782"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-03-17",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-03-17.parquet",
+      "expected_file_sha256": "da91149b4cf42ae1c74cfe77dd754ab6731118a4a3977988cb2ab2f6c65befb2",
+      "current_file_sha256": "da91149b4cf42ae1c74cfe77dd754ab6731118a4a3977988cb2ab2f6c65befb2",
+      "file_hash_matches": true,
+      "content_sha256": "aa6a8abe420aa699150c94c603a2971ffe3a7dbb5ecffaa95615eefee0df42c2"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-03-24",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-03-24.parquet",
+      "expected_file_sha256": "d7ea43a901d0dc86de090fa93c7cb6d6e334b1f6f4d8c1a2c17fa3a7e598eca1",
+      "current_file_sha256": "d7ea43a901d0dc86de090fa93c7cb6d6e334b1f6f4d8c1a2c17fa3a7e598eca1",
+      "file_hash_matches": true,
+      "content_sha256": "64dcf07064c6a0784e8afdb279c0e5fc9e21b570e51a9e7086e494f28d513c48"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-03-31",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-03-31.parquet",
+      "expected_file_sha256": "217ece262c797de3d99eb41a09d46ce312d4b0794ef27631a5fe3487ca19c875",
+      "current_file_sha256": "217ece262c797de3d99eb41a09d46ce312d4b0794ef27631a5fe3487ca19c875",
+      "file_hash_matches": true,
+      "content_sha256": "7303d2537379e60d8b3e59d7667e70a87efdb1066c82434d686e4f27ab863322"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-04-07",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-04-07.parquet",
+      "expected_file_sha256": "b69063633820b4f6d05c3d50e8557fd5396ab270de71ad4bbbcd60922ff2b35e",
+      "current_file_sha256": "b69063633820b4f6d05c3d50e8557fd5396ab270de71ad4bbbcd60922ff2b35e",
+      "file_hash_matches": true,
+      "content_sha256": "88ad1a63689439e50a966395d8c51f1ea7bb6f0a3b64fe883084c5b188987270"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-04-14",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-04-14.parquet",
+      "expected_file_sha256": "0f6967e17fa1680296ae57ae0c20b7a049f7e2269ba62dcd8d1a4e8fafcb86ba",
+      "current_file_sha256": "0f6967e17fa1680296ae57ae0c20b7a049f7e2269ba62dcd8d1a4e8fafcb86ba",
+      "file_hash_matches": true,
+      "content_sha256": "ea8343e2d2bb6c720aff92b55cc5fa785cba8b9671297740c76570a0b4367f1d"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-05-12",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-05-12.parquet",
+      "expected_file_sha256": "45387bb0b9ed6873257069efa0040d5be3d3899d260a41beda07b5d3deb538f6",
+      "current_file_sha256": "45387bb0b9ed6873257069efa0040d5be3d3899d260a41beda07b5d3deb538f6",
+      "file_hash_matches": true,
+      "content_sha256": "5181bfa23a8f3f57b472b5b452dd63fdc813d60599cf6af95d1fa61ba0aaab24"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-05-19",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-05-19.parquet",
+      "expected_file_sha256": "0c3016ab15b1e2f46c25e0b20473a6273e6b4d05ba204a10c1304f8ad850a887",
+      "current_file_sha256": "0c3016ab15b1e2f46c25e0b20473a6273e6b4d05ba204a10c1304f8ad850a887",
+      "file_hash_matches": true,
+      "content_sha256": "39600251af3034cd9e3163bc9c33bc6dde240eae8ab64990a9bf037eb5fd51c9"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-06-23",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-06-23.parquet",
+      "expected_file_sha256": "2402d1cc444946a2cc96bfbf43ddf7cc5d270c595231e38e63ceeed914d839af",
+      "current_file_sha256": "2402d1cc444946a2cc96bfbf43ddf7cc5d270c595231e38e63ceeed914d839af",
+      "file_hash_matches": true,
+      "content_sha256": "78cfa20bd2f96c0395c101eff7c89707434e363941e1ea3c771166ffc18b7a6c"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-07-07",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-07-07.parquet",
+      "expected_file_sha256": "d1a4baec3baf71ac70021bd77f30863c93e3b40836b70bdb3f38e4635d526f77",
+      "current_file_sha256": "d1a4baec3baf71ac70021bd77f30863c93e3b40836b70bdb3f38e4635d526f77",
+      "file_hash_matches": true,
+      "content_sha256": "50d52f5a31d8537cb5bd396659b05342da19b71800003463ff8e4685cbf7cf0d"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-07-14",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-07-14.parquet",
+      "expected_file_sha256": "4cea816ac240c096b9926dfc48f600e2e223785f02b51bee203287a4ccbf5f4e",
+      "current_file_sha256": "4cea816ac240c096b9926dfc48f600e2e223785f02b51bee203287a4ccbf5f4e",
+      "file_hash_matches": true,
+      "content_sha256": "b0f6b5099d289a2f56d036447c89c11c837d7566e9200d8181f03bd3f394e4a8"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-07-28",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-07-28.parquet",
+      "expected_file_sha256": "eee75160e7347ee18a3e97a1c737ba91f48a24ea8d506c9ebe6e6e0eec20197f",
+      "current_file_sha256": "eee75160e7347ee18a3e97a1c737ba91f48a24ea8d506c9ebe6e6e0eec20197f",
+      "file_hash_matches": true,
+      "content_sha256": "032636b6e463445d4bd9292185bee594ebbf9f98d4fac34d678db1576c7cffdc"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-10-06",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-10-06.parquet",
+      "expected_file_sha256": "5f637b0d54a7cf8cb87f607ef891e117a66538651e969a19586f5b6300c27002",
+      "current_file_sha256": "5f637b0d54a7cf8cb87f607ef891e117a66538651e969a19586f5b6300c27002",
+      "file_hash_matches": true,
+      "content_sha256": "3c59b7b3046b1e9c4c428c0cbcf24072981562c5c8b22175cb1fc5ca6c9969d8"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-10-13",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-10-13.parquet",
+      "expected_file_sha256": "ee08beb3942ed7fec7c1edbb975173232ad466af2148fb6138e62e3cddf1a697",
+      "current_file_sha256": "ee08beb3942ed7fec7c1edbb975173232ad466af2148fb6138e62e3cddf1a697",
+      "file_hash_matches": true,
+      "content_sha256": "ffe521f711fa0605fff2487662bdae0eadcf82674c59934364e583619549ef42"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-11-03",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-11-03.parquet",
+      "expected_file_sha256": "3a4db0fcde49a05f97235098395c6c547637ff74a5b49abda6454c5b042b9aff",
+      "current_file_sha256": "3a4db0fcde49a05f97235098395c6c547637ff74a5b49abda6454c5b042b9aff",
+      "file_hash_matches": true,
+      "content_sha256": "ac9c5170d86532b6256be4a9a36453bd9317a14062244d176c60439fd9c48647"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-11-10",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-11-10.parquet",
+      "expected_file_sha256": "b67a2c844d1e3c01be9ce6aab7594ecd315f71f11463902ddedbfe1ad9291242",
+      "current_file_sha256": "b67a2c844d1e3c01be9ce6aab7594ecd315f71f11463902ddedbfe1ad9291242",
+      "file_hash_matches": true,
+      "content_sha256": "7cafb8e23a6826212d27ebccc3ffb146cac90bdb843312678e52e8bbd34b050d"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-11-17",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-11-17.parquet",
+      "expected_file_sha256": "c452c47c7af1786b7210c79111af71cd957713aa1b2bdd75de7359393a8ed587",
+      "current_file_sha256": "c452c47c7af1786b7210c79111af71cd957713aa1b2bdd75de7359393a8ed587",
+      "file_hash_matches": true,
+      "content_sha256": "083188b63a1b31c73c98e78ecfa8757a430b845b3ac1e911b33e250a89a45ab9"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-11-24",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-11-24.parquet",
+      "expected_file_sha256": "3a40d9fb7243b687a94a50ddcf4ce41cf414be0eed8fbc5323f7e60b03abb446",
+      "current_file_sha256": "3a40d9fb7243b687a94a50ddcf4ce41cf414be0eed8fbc5323f7e60b03abb446",
+      "file_hash_matches": true,
+      "content_sha256": "2200e0399eaf40e6cb66aa404b68305db1d64a162ab7b3e97d8d826a26d7af72"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2023-12-22",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2023/2023-12-22.parquet",
+      "expected_file_sha256": "2b795799283a2225317c0e9765ade1c3c3c022230e58788dd2cdc54f05c40806",
+      "current_file_sha256": "2b795799283a2225317c0e9765ade1c3c3c022230e58788dd2cdc54f05c40806",
+      "file_hash_matches": true,
+      "content_sha256": "769e2632bff6958dba4b564a9d0ccb63d9c55c9dcbfef5e0eb2de10fa8bdced0"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2024-03-29",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2024/2024-03-29.parquet",
+      "expected_file_sha256": "438d34bde378312030eecdc26b42a322ed884acbdd525bdcb6ff3e741b866a1d",
+      "current_file_sha256": "438d34bde378312030eecdc26b42a322ed884acbdd525bdcb6ff3e741b866a1d",
+      "file_hash_matches": true,
+      "content_sha256": "ce6f875ae7e626515baad28b86521271a5751c09f0379548210c8734f9883312"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2024-04-19",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2024/2024-04-19.parquet",
+      "expected_file_sha256": "baeed7feb3e6b13a55aea92c0fa0fbec39f7efeafb23c7aebf691f1151f63901",
+      "current_file_sha256": "baeed7feb3e6b13a55aea92c0fa0fbec39f7efeafb23c7aebf691f1151f63901",
+      "file_hash_matches": true,
+      "content_sha256": "75f40f669674bcc74f72271c8bd9548a5b0f5e8f6b752caf25dcaf053e84fc19"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2024-04-26",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2024/2024-04-26.parquet",
+      "expected_file_sha256": "1e75c388a5ccbdc52a69babcb8fe8b38e15bdc7ea9f6bdb991d5b67c6ef0823a",
+      "current_file_sha256": "1e75c388a5ccbdc52a69babcb8fe8b38e15bdc7ea9f6bdb991d5b67c6ef0823a",
+      "file_hash_matches": true,
+      "content_sha256": "a9a4d3f2a88aa2e6a0a326b8b919169dedead7cd96d1116726cac45c0d58ca74"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2024-05-03",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2024/2024-05-03.parquet",
+      "expected_file_sha256": "d8d4866304374880cf5f5e843096c235fb4eb24da8aed75665152d6cbca2eb81",
+      "current_file_sha256": "d8d4866304374880cf5f5e843096c235fb4eb24da8aed75665152d6cbca2eb81",
+      "file_hash_matches": true,
+      "content_sha256": "82a2ac6b5a73cb9a6a3e3e1b5a5b237aa03f215189f1b60b617f046b7eca1366"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2024-05-17",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2024/2024-05-17.parquet",
+      "expected_file_sha256": "c98547a5d29b6f5012dcb10b220cdb7cf1eae6debe1abcfc672500f0c55b66d9",
+      "current_file_sha256": "c98547a5d29b6f5012dcb10b220cdb7cf1eae6debe1abcfc672500f0c55b66d9",
+      "file_hash_matches": true,
+      "content_sha256": "6d9f6294b4a83a6f72163db73889a741e51d10f22a8db536861c65747620d25a"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2024-05-24",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2024/2024-05-24.parquet",
+      "expected_file_sha256": "45d2fdd7878fbeeaf96206a1052b4d222b7c72c8b79b3149992295767ce8a9a3",
+      "current_file_sha256": "45d2fdd7878fbeeaf96206a1052b4d222b7c72c8b79b3149992295767ce8a9a3",
+      "file_hash_matches": true,
+      "content_sha256": "34e3148590ee77f52a62e34f2f732bc14d176f07823fc7d98df59830d123da6b"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2024-08-02",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2024/2024-08-02.parquet",
+      "expected_file_sha256": "9e2c6f3b9987d4ffa85e73cfd47b14a4d5d6074ad31ffe7e7a7a07cd7a829b33",
+      "current_file_sha256": "9e2c6f3b9987d4ffa85e73cfd47b14a4d5d6074ad31ffe7e7a7a07cd7a829b33",
+      "file_hash_matches": true,
+      "content_sha256": "2720e94b63b21320eb2a72b170864553792d63f3f9462551e562c9ad1fbdd9ab"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2024-08-09",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2024/2024-08-09.parquet",
+      "expected_file_sha256": "5ae714ab502cf51ae7dbe185333ba15d877f4f1d0cc8fea534e08f87db06c845",
+      "current_file_sha256": "5ae714ab502cf51ae7dbe185333ba15d877f4f1d0cc8fea534e08f87db06c845",
+      "file_hash_matches": true,
+      "content_sha256": "7744da92c543a8e2cd6c634a4e9966264b77a345d4e08ccb7f80c76c41da76a7"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2024-11-08",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2024/2024-11-08.parquet",
+      "expected_file_sha256": "2c1bba4a3ae2e425d6b5bec2775e8cfe133b922ac7c416c8a1af74305faeb008",
+      "current_file_sha256": "2c1bba4a3ae2e425d6b5bec2775e8cfe133b922ac7c416c8a1af74305faeb008",
+      "file_hash_matches": true,
+      "content_sha256": "b92b7e8bb9fe6c5709e1270908d6d4e07f34099fcc6be274761f1feec9f3e8a4"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2024-12-06",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2024/2024-12-06.parquet",
+      "expected_file_sha256": "a202a830184cc8e9ac61a8d5a6a3657908257889a3a84198b75f638bd71d80e1",
+      "current_file_sha256": "a202a830184cc8e9ac61a8d5a6a3657908257889a3a84198b75f638bd71d80e1",
+      "file_hash_matches": true,
+      "content_sha256": "310a705c5f68924c4860455c2f73d43e40f28c169ecb70e40312f47bf700a706"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2024-12-13",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2024/2024-12-13.parquet",
+      "expected_file_sha256": "55e73e65f8a54147f54d1155f2b24d76d85c85468f51fbc2e520d8a14a630533",
+      "current_file_sha256": "55e73e65f8a54147f54d1155f2b24d76d85c85468f51fbc2e520d8a14a630533",
+      "file_hash_matches": true,
+      "content_sha256": "ecf091aca5e975842b1c3206a9d1a29b7cfaeec6e8f27e7bd5f3d680f58f5a24"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2024-12-20",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2024/2024-12-20.parquet",
+      "expected_file_sha256": "f41334e98bd54edb3ee5ab46054dc96156dde1c792c979fad66da8c3f06d4af9",
+      "current_file_sha256": "f41334e98bd54edb3ee5ab46054dc96156dde1c792c979fad66da8c3f06d4af9",
+      "file_hash_matches": true,
+      "content_sha256": "c3fabb8f1f147b9ee193b5bbbf78da13ef7a8b3b87c93e1c4383f38c15976d3d"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2024-12-27",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2024/2024-12-27.parquet",
+      "expected_file_sha256": "a35300c3673e107fd10f98a24031701c6b8f19fac2b3f920f7d7bf4a10da2209",
+      "current_file_sha256": "a35300c3673e107fd10f98a24031701c6b8f19fac2b3f920f7d7bf4a10da2209",
+      "file_hash_matches": true,
+      "content_sha256": "d92f9b6d1a50dec181255ee77a135c3e490523cfc76ab9ca346cf8c8dca7524a"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-01-03",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-01-03.parquet",
+      "expected_file_sha256": "2e9fd7f7f2030848d1024fbb1a0cd42e4a4745218c946681afb62ca28b7c188e",
+      "current_file_sha256": "2e9fd7f7f2030848d1024fbb1a0cd42e4a4745218c946681afb62ca28b7c188e",
+      "file_hash_matches": true,
+      "content_sha256": "55d2748fd9876136a130f7e80334cfd120e0f8c43c70d25470ec4b060b7b06c0"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-01-10",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-01-10.parquet",
+      "expected_file_sha256": "1a01bd46e642692e323f8853a85c655b99f42b76e01eaeb74128ca31e1b227c1",
+      "current_file_sha256": "1a01bd46e642692e323f8853a85c655b99f42b76e01eaeb74128ca31e1b227c1",
+      "file_hash_matches": true,
+      "content_sha256": "4653154b97dbccd68d7dd9af7e6256c17f432a8e0da8b3efd8cc37d357b064fe"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-01-17",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-01-17.parquet",
+      "expected_file_sha256": "650f385874783800c91b7fca51af1856ccd70d172da55d9e629b76d91dbc8a01",
+      "current_file_sha256": "650f385874783800c91b7fca51af1856ccd70d172da55d9e629b76d91dbc8a01",
+      "file_hash_matches": true,
+      "content_sha256": "0fc2966f7fde45315e8eb3ef1929dbf4dd4423954c7e52ae573efdcebb362d22"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-01-24",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-01-24.parquet",
+      "expected_file_sha256": "6b7de31cb2d5fab6d9c9da78634915e66865c915ffa666bf6298a479114bdb85",
+      "current_file_sha256": "6b7de31cb2d5fab6d9c9da78634915e66865c915ffa666bf6298a479114bdb85",
+      "file_hash_matches": true,
+      "content_sha256": "498b6789f90abef9be88c24a8ba8e7fcf3e3eb7377fcec9ef11b4672054bc39a"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-01-31",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-01-31.parquet",
+      "expected_file_sha256": "c74bd47cf82a8fd1192340088819e486efb93aedad79eb32f9481fa4258620c1",
+      "current_file_sha256": "c74bd47cf82a8fd1192340088819e486efb93aedad79eb32f9481fa4258620c1",
+      "file_hash_matches": true,
+      "content_sha256": "1fbb94b45b90dc20bb99a6df96f6521c34c139d1c54a8df0c7a13bc37a5ff81b"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-02-07",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-02-07.parquet",
+      "expected_file_sha256": "91e4276c601facc18cc772d699277a738e3bea6b5b87631d71abf5606025d8d8",
+      "current_file_sha256": "91e4276c601facc18cc772d699277a738e3bea6b5b87631d71abf5606025d8d8",
+      "file_hash_matches": true,
+      "content_sha256": "1858356ff803489f3946787cf425404fd3c2250b5e22f94248b782f180fab0b9"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-02-14",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-02-14.parquet",
+      "expected_file_sha256": "3038789963292ac88ea74fe0584ba2eac6e424647d7fe2c796e678d2de555da0",
+      "current_file_sha256": "3038789963292ac88ea74fe0584ba2eac6e424647d7fe2c796e678d2de555da0",
+      "file_hash_matches": true,
+      "content_sha256": "d2ff83a149d6c6b1d02dd37a0604efbd9d81b8f41c3a05ecfcc64e8831f6fe90"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-02-21",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-02-21.parquet",
+      "expected_file_sha256": "74d1e72bc0d967af4c5b262271d4b4f6e781ea2e6fa172c37cd90f858893de7b",
+      "current_file_sha256": "74d1e72bc0d967af4c5b262271d4b4f6e781ea2e6fa172c37cd90f858893de7b",
+      "file_hash_matches": true,
+      "content_sha256": "7caeed470ab570026af8f92744ba5c004d63e4a51877576690963cf847fdb2a7"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-02-28",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-02-28.parquet",
+      "expected_file_sha256": "0d51bedb84c28a894bfda1dcd1f8897d1de1adf8685f20a73e7c30134c880a0d",
+      "current_file_sha256": "0d51bedb84c28a894bfda1dcd1f8897d1de1adf8685f20a73e7c30134c880a0d",
+      "file_hash_matches": true,
+      "content_sha256": "41a4398a17cf48245dcaffc87eb2d96ca7bd30ab954a1e7348b40be92d1d50ae"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-03-07",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-03-07.parquet",
+      "expected_file_sha256": "fc11f953928b7457ec7854e6554724ee59e1d07baf078c6d4d584f95a503a081",
+      "current_file_sha256": "fc11f953928b7457ec7854e6554724ee59e1d07baf078c6d4d584f95a503a081",
+      "file_hash_matches": true,
+      "content_sha256": "5e97ddca8655b8482aea983b6d7deeec4324a5cb2804485668b681ef8b455472"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-03-14",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-03-14.parquet",
+      "expected_file_sha256": "dc9e8888bcf3e4482a7460d2dba8010cf8e3406c7ed9e57ee829de8984d02385",
+      "current_file_sha256": "dc9e8888bcf3e4482a7460d2dba8010cf8e3406c7ed9e57ee829de8984d02385",
+      "file_hash_matches": true,
+      "content_sha256": "263fa24839753f9c3d428532c92be1ec9ca6cecee5b7d4b83b7e7e1f5347b714"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-03-21",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-03-21.parquet",
+      "expected_file_sha256": "0c76613617947f88c038200c868eb874854a6604aba574d0c7c46fb67c7ba145",
+      "current_file_sha256": "0c76613617947f88c038200c868eb874854a6604aba574d0c7c46fb67c7ba145",
+      "file_hash_matches": true,
+      "content_sha256": "f2500830a095edb9ac45525c4b2f6eaaa398f1506f936182564e301b2f8f34a0"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-03-28",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-03-28.parquet",
+      "expected_file_sha256": "4e0d9da1f2bac3752ad204b564de33fb50032f3fdbaf0d140af7d76b987a1b97",
+      "current_file_sha256": "4e0d9da1f2bac3752ad204b564de33fb50032f3fdbaf0d140af7d76b987a1b97",
+      "file_hash_matches": true,
+      "content_sha256": "1c64b905a47f4ef7a0579294b98442b2bd4ba701c9308795cc5313b690c09d54"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-05-02",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-05-02.parquet",
+      "expected_file_sha256": "7b698261e0d135f50990f56f96efc6a9e6dcf76344e88989acaa11df17a6adca",
+      "current_file_sha256": "7b698261e0d135f50990f56f96efc6a9e6dcf76344e88989acaa11df17a6adca",
+      "file_hash_matches": true,
+      "content_sha256": "4c3e3a3d19fd252b53bc25feff2ef464bb81256c0657585e1aa2553d0f21c6b9"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-05-09",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-05-09.parquet",
+      "expected_file_sha256": "b32a4ecfad55b3783d2ddf964da944453bbb22816fd7e3a92c8e878cc3db2a79",
+      "current_file_sha256": "b32a4ecfad55b3783d2ddf964da944453bbb22816fd7e3a92c8e878cc3db2a79",
+      "file_hash_matches": true,
+      "content_sha256": "b178a88302be214dd5e238ca8cec523f635868bcaa6492fd604e5da47911f822"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-05-23",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-05-23.parquet",
+      "expected_file_sha256": "3b457736a71429f3fa4174ea6770fe1f13d61391d09fbe439eebf2572af1bfb8",
+      "current_file_sha256": "3b457736a71429f3fa4174ea6770fe1f13d61391d09fbe439eebf2572af1bfb8",
+      "file_hash_matches": true,
+      "content_sha256": "29cff8bcd7e8ab386036679a734f97042288ad076bf43aa5d6cdd29179f812c7"
+    },
+    {
+      "market": "KOSDAQ",
+      "partition_date": "2025-05-30",
+      "status": "COMPLETE",
+      "path": "data/market/raw/krx_stocks/v01/market=KOSDAQ/year=2025/2025-05-30.parquet",
+      "expected_file_sha256": "bd91402d1ebc96d36c8efbe133404abfad2d915872286fa48655b70dffc86ea1",
+      "current_file_sha256": "bd91402d1ebc96d36c8efbe133404abfad2d915872286fa48655b70dffc86ea1",
+      "file_hash_matches": true,
+      "content_sha256": "3ae9c4c366078e71a63f1dba2eae3c32db9a4830dfa85de270a128616c60a880"
+    }
+  ],
+  "permanent_exclusions": {
+    "pair_count": 182,
+    "canonical_sha256": "9091a40d5dfc3dc115e00166ea3ef806ef5a4ca3b595d76864598ec050904b12",
+    "source_sha256": "1c7cb7512024130f1ab0efa0ceb9f48ae0017a51af7f6db3f74d87b141a7d6ae",
+    "matches_sealed_p3_1": true
+  },
+  "other_p3_1_adjusted_inputs": {
+    "count": 2343,
+    "mismatches": 0,
+    "verified_against": "P3-1 sealed artifact manifest"
+  },
+  "hash_check_summary": {
+    "frozen_policy_and_code_hashes_match": true,
+    "adjusted_price_hashes_117_match": true,
+    "signal_date_partition_file_hashes_match": true
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "schema": "fast_core_v2_p3_1_117_price_nav_closure_execution_contract_v01",
+  "work_id": "FAST_CORE_V2_ALIGNMENT_500B_P3_1_117_PRICE_NAV_CLOSURE_V01",
+  "baseline_head": "bef07ad77f56222b468c3efb65f04008735cec5c",
+  "period": {
+    "evaluation_start": "2022-01-03",
+    "cutoff": "2025-05-30",
+    "execution_support": "2025-06-02",
+    "krx_evaluation_sessions": 834
+  },
+  "target_scope": {
+    "exact_identity_pair_count": 117,
+    "source": "P3-1 integrity_audit.json unresolved universe price ticker list cross-joined to identity_repository_v2_bounds.csv",
+    "workers": 10,
+    "portfolio_replay": "Replay both groups from the fixed evaluation start if any newly evaluated target signal exists; otherwise reuse hash-verified original P3-1 outputs.",
+    "untouched_p3_1_identity_count": 2343
+  },
+  "candidate_only_conditions": [
+    "Exact signal-date adjusted close > prior completed monthly MA20 > prior completed monthly MA60",
+    "Exact signal-date same-market KRX raw market capitalization >= 500000000000 KRW"
+  ],
+  "permanent_exclusion_pair_count": 182,
+  "portfolio": {
+    "initial_capital_krw": 200000000,
+    "buy_budget_inclusive_of_commission_krw": 5000000,
+    "commission_each_side": 0.00015,
+    "slippage_each_side": 0.001,
+    "sell_tax": 0,
+    "sale_proceeds_available": "T+1",
+    "cash_skip_regenerates_signal": false,
+    "same_open_exit_reentry": false,
+    "pyramiding": false
+  },
+  "prohibited": [
+    "P1/P2-1/P2-2/P3-2 full execution",
+    "strategy rule or official threshold changes",
+    "interpolation, future data, or unauthorized lifecycle settlement",
+    "overwriting existing P3-1 artifacts",
+    "production, web, or Strategy Monitor edits",
+    "five-window adoption or promotion"
+  ],
+  "status": "EXECUTION_COMPLETE",
+  "post_execution": {
+    "targeted_evaluation_status": "TARGETED_EVALUATION_COMPLETE",
+    "portfolio_replay_status": "PORTFOLIO_REPLAY_COMPLETE",
+    "targeted_workers": 10,
+    "targeted_worker_errors": 0,
+    "groups_replayed": [
+      "CONTROL",
+      "ALIGNMENT_MCAP_500B"
+    ],
+    "residual_nav_missing_days": {
+      "CONTROL": 1,
+      "ALIGNMENT_MCAP_500B": 4
+    },
+    "new_strategy_or_portfolio_rule_changes": false
+  }
+}

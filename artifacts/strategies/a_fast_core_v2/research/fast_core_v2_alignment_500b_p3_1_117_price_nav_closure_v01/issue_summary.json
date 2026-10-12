@@ -1,0 +1,34 @@
+{
+  "schema": "fast_core_v2_p3_1_117_price_nav_closure_issue_summary_v01",
+  "counting_basis": "independent root causes, not affected sessions",
+  "severity_counts": {
+    "CRITICAL": 0,
+    "MAJOR": 0,
+    "MINOR": 2
+  },
+  "issues": [
+    {
+      "severity": "MINOR",
+      "group": "CONTROL",
+      "identity": "128940 / KR7128940004",
+      "dates": [
+        "2022-07-05"
+      ],
+      "impact": "One of 834 portfolio valuation days is excluded; NAV coverage is 99.880%. The adjusted source row exists, but replay has no valid Repository V2 portfolio mark. No carry or interpolation was applied.",
+      "decision_effect": "CONTROL MDD remains OBSERVED; candidate relative MDD decision remains favorable. The source/composition reason remains undocumented."
+    },
+    {
+      "severity": "MINOR",
+      "group": "ALIGNMENT_MCAP_500B",
+      "identity": "003690 / KR7003690005",
+      "dates": [
+        "2023-04-25",
+        "2023-06-28",
+        "2024-02-16",
+        "2024-06-27"
+      ],
+      "impact": "Four of 834 portfolio valuation days are excluded; NAV coverage is 99.520%. The adjusted source rows exist, but replay has no valid Repository V2 portfolio marks. No carry or interpolation was applied.",
+      "decision_effect": "Candidate MDD remains OBSERVED and is 26.363 percentage points above the absolute -40% floor. The source/composition reason remains undocumented."
+    }
+  ]
+}

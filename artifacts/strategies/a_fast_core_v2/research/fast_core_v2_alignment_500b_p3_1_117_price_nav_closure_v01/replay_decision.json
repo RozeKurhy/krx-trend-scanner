@@ -1,0 +1,36 @@
+{
+  "schema": "fast_core_v2_p3_1_117_price_nav_closure_replay_decision_v01",
+  "status": "TARGETED_SIGNAL_REEVALUATION_AND_BOTH_GROUP_PORTFOLIO_REPLAY_COMPLETE",
+  "baseline_head": "bef07ad77f56222b468c3efb65f04008735cec5c",
+  "target_identities": 117,
+  "targeted_signal_evaluation": {
+    "workers": 10,
+    "worker_errors": 0,
+    "new_control_trade_signal_rows": 30,
+    "new_candidate_trade_signal_rows": 2
+  },
+  "portfolio_replay": {
+    "groups": [
+      "CONTROL",
+      "ALIGNMENT_MCAP_500B"
+    ],
+    "start": "2022-01-03",
+    "cutoff": "2025-05-30",
+    "support": "2025-06-02",
+    "merged_signal_rows": {
+      "control": 1099,
+      "candidate": 177
+    },
+    "scope_issues": {
+      "control": 0,
+      "candidate": 0
+    },
+    "cash_conservation_pass": {
+      "control": true,
+      "candidate": true
+    }
+  },
+  "other_2343_signal_ledgers_reused_after_hash_validation": true,
+  "p3_2_signal_or_trade_ledgers_copied": false,
+  "unresolved_critical_checks": []
+}
