@@ -1,0 +1,169 @@
+{
+  "schema": "fast_core_v2_alignment_500b_p2_2_koentec_full_exposure_audit_v02",
+  "scope": "P2-2 full CONTROL and candidate portfolio ledgers; signal rows are not treated as filled positions",
+  "ticker": "029960",
+  "standard_isu_cd": "KR7029960002",
+  "full_run_status": "FULL_COMPLETED",
+  "control_signal_trade_rows": 2,
+  "candidate_signal_trade_rows": 0,
+  "control_portfolio_event_rows": 2,
+  "candidate_portfolio_event_rows": 0,
+  "candidate_signal_filter_rows": [
+    {
+      "signal_date": "2021-07-09",
+      "seen_in_candidate_scan": "True",
+      "candidate_status": "REJECT_MCAP_BELOW_500B",
+      "ma_status": "PASS",
+      "mcap_status": "REJECT_BELOW_THRESHOLD",
+      "market_cap_krw": "484500000000"
+    },
+    {
+      "signal_date": "2024-11-15",
+      "seen_in_candidate_scan": "True",
+      "candidate_status": "REJECT_ALIGNMENT",
+      "ma_status": "ALIGNMENT_FAIL",
+      "mcap_status": "REJECT_BELOW_THRESHOLD",
+      "market_cap_krw": "448000000000"
+    },
+    {
+      "signal_date": "2024-11-22",
+      "seen_in_candidate_scan": "True",
+      "candidate_status": "REJECT_ALIGNMENT",
+      "ma_status": "ALIGNMENT_FAIL",
+      "mcap_status": "REJECT_BELOW_THRESHOLD",
+      "market_cap_krw": "448000000000"
+    }
+  ],
+  "control_entry_attempts": [
+    {
+      "signal_date": "2021-07-09",
+      "execution_date": "2021-07-12",
+      "event_status": "SKIPPED_CASH_UNAVAILABLE",
+      "reason": "INSUFFICIENT_AVAILABLE_CASH",
+      "hypothetical_integer_shares_if_filled": 513,
+      "cash_before_krw": 2550668.6576864785,
+      "cash_after_krw": 2550668.6576864785,
+      "pending_sale_proceeds_krw_not_available_until_t_plus_1": 0.0,
+      "required_total_buy_cost_krw_including_fee": 4997230.9622235,
+      "cash_shortfall_krw": 2446562.3045370216,
+      "same_session_entry_order": 2,
+      "same_session_entry_count": 3,
+      "event_file_row_index_zero_based": 599
+    },
+    {
+      "signal_date": "2024-11-15",
+      "execution_date": "2024-11-18",
+      "event_status": "SKIPPED_CASH_UNAVAILABLE",
+      "reason": "INSUFFICIENT_AVAILABLE_CASH",
+      "hypothetical_integer_shares_if_filled": 558,
+      "cash_before_krw": 3353280.769531998,
+      "cash_after_krw": 3353280.769531998,
+      "pending_sale_proceeds_krw_not_available_until_t_plus_1": 4083778.861272,
+      "required_total_buy_cost_krw_including_fee": 4999843.964114999,
+      "cash_shortfall_krw": 1646563.1945830015,
+      "same_session_entry_order": 2,
+      "same_session_entry_count": 4,
+      "event_file_row_index_zero_based": 1838
+    }
+  ],
+  "control_events_on_2024_11_18_in_deterministic_order": [
+    {
+      "candidate_id": "017960|KR7017960006|2024-08-16|2024-08-19",
+      "ticker": "017960",
+      "event_type": "EXIT",
+      "event_status": "EXECUTED",
+      "reason": "STRATEGY_EXIT",
+      "cash_before_krw": "8347720.525137298",
+      "cash_after_krw": "8347720.525137298",
+      "pending_sale_proceeds_krw": "4083778.861272",
+      "required_total_buy_cost_krw": ""
+    },
+    {
+      "candidate_id": "010640|KR7010640001|2024-11-15|2024-11-18",
+      "ticker": "010640",
+      "event_type": "ENTRY",
+      "event_status": "EXECUTED",
+      "reason": "V2_CONTROL_SIGNAL",
+      "cash_before_krw": "8347720.525137298",
+      "cash_after_krw": "3353280.769531998",
+      "pending_sale_proceeds_krw": "4083778.861272",
+      "required_total_buy_cost_krw": "4994439.7556053"
+    },
+    {
+      "candidate_id": "029960|KR7029960002|2024-11-15|2024-11-18",
+      "ticker": "029960",
+      "event_type": "ENTRY",
+      "event_status": "SKIPPED_CASH_UNAVAILABLE",
+      "reason": "INSUFFICIENT_AVAILABLE_CASH",
+      "cash_before_krw": "3353280.769531998",
+      "cash_after_krw": "3353280.769531998",
+      "pending_sale_proceeds_krw": "4083778.861272",
+      "required_total_buy_cost_krw": "4999843.964114999"
+    },
+    {
+      "candidate_id": "084010|KR7084010008|2024-11-15|2024-11-18",
+      "ticker": "084010",
+      "event_type": "ENTRY",
+      "event_status": "SKIPPED_CASH_UNAVAILABLE",
+      "reason": "INSUFFICIENT_AVAILABLE_CASH",
+      "cash_before_krw": "3353280.769531998",
+      "cash_after_krw": "3353280.769531998",
+      "pending_sale_proceeds_krw": "4083778.861272",
+      "required_total_buy_cost_krw": "4991964.9124345"
+    },
+    {
+      "candidate_id": "105550|KR7105550008|2024-11-15|2024-11-18",
+      "ticker": "105550",
+      "event_type": "ENTRY",
+      "event_status": "SKIPPED_CASH_UNAVAILABLE",
+      "reason": "INSUFFICIENT_AVAILABLE_CASH",
+      "cash_before_krw": "3353280.769531998",
+      "cash_after_krw": "3353280.769531998",
+      "pending_sale_proceeds_krw": "4083778.861272",
+      "required_total_buy_cost_krw": "4994487.810812499"
+    }
+  ],
+  "holdings_on_corporate_action_and_cutoff_dates": {
+    "2025-05-30": {
+      "event": "SHARE_EXCHANGE_DATE",
+      "control_shares_held": 0,
+      "candidate_shares_held": 0
+    },
+    "2025-06-16": {
+      "event": "DELISTING_DATE",
+      "control_shares_held": 0,
+      "candidate_shares_held": 0
+    },
+    "2026-08-31": {
+      "event": "P2_2_CUTOFF",
+      "control_shares_held": 0,
+      "candidate_shares_held": 0
+    }
+  },
+  "no_exposure_after_full_replay": true,
+  "disposition": "NO_EXPOSURE_AFTER_FULL_REPLAY",
+  "no_cash_receivable_or_special_settlement_booked_for_koentec": true,
+  "9000_krw_per_share_payment_assumed": false,
+  "2025_06_20_expected_payment_booked": false,
+  "price_preflight": {
+    "load_status": "AVAILABLE",
+    "adjusted_file_sha256": "6e5ebb929999e411de2f05dad9164be1f23ba09587f19bdccbf82fabd45cad7e",
+    "adjusted_last_date": "2025-05-27",
+    "repository_v2_last_date": "2025-05-27",
+    "rejected_raw_only_count": "0",
+    "confirmed_nontrading_placeholder_count": "11",
+    "active_pit_sessions_missing_both_sources": "11"
+  },
+  "prior_p3_2_corporate_action_evidence": {
+    "actual_payment_date_proven": false,
+    "accounting_contract_defined": false,
+    "special_settlement_event_inserted": false,
+    "evidence_file": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/replay_decision.json",
+    "evidence_sha256": "e5d27672d913836b3513e92f0048b44898dbb2a1880e5e85d6420e3f8247e1ac"
+  },
+  "input_files": {
+    "control_trades.csv_sha256": "d169d4ad5c9575ac56af0c5f8e9e5a10786e32acd0e05b60d5559b7f0040a6e5",
+    "control_portfolio_events.csv_sha256": "867d95bf88d2079a53666a0c1172df183ec42783b854455da4e6fd8ec3dcd259",
+    "candidate_portfolio_events.csv_sha256": "1d50261c8a45a95aa501d48cf535b3640f6cc355574c19e7333f09e4bee5f493"
+  }
+}

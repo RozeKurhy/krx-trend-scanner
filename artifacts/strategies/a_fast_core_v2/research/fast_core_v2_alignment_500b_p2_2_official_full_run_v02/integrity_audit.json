@@ -1,0 +1,271 @@
+{
+  "schema": "fast_core_v2_alignment_500b_p2_2_integrity_audit_v02",
+  "status": "CHECK_REQUIRED",
+  "severity_issue_type_counts": {
+    "CRITICAL": 0,
+    "MAJOR": 1,
+    "MINOR": 2
+  },
+  "critical_issue_types": [],
+  "major_issue_types": [
+    "NAV_MARK_UNRESOLVED"
+  ],
+  "minor_issue_types": [
+    "CASH_SHORTAGE_SKIP_DIAGNOSTIC",
+    "CUTOFF_OPEN_POSITIONS_MARKED_WITHOUT_HYPOTHETICAL_EXIT_COST"
+  ],
+  "source_manifest_verification": {
+    "status": "PASS",
+    "checked": 106,
+    "expected": 106,
+    "mismatches": []
+  },
+  "permanent_exclusions": {
+    "pair_count": 182,
+    "canonical_sha256": "9091a40d5dfc3dc115e00166ea3ef806ef5a4ca3b595d76864598ec050904b12",
+    "matches_contract": true
+  },
+  "signal_ledger_checks": {
+    "duplicate_exact_pit_signal_audit_keys": 0,
+    "control_trade_without_one_active_common_identity_audit": 0,
+    "candidate_trade_alignment_mcap_or_prior_60m_mismatch": [],
+    "control_trade_set_matches_pit_pass_audit": true,
+    "candidate_trade_set_matches_candidate_pass_audit": true,
+    "excluded_identity_trade_leakage": [],
+    "control_missing_examples": []
+  },
+  "candidate_signal_filter_status_counts": {
+    "PASS": 284,
+    "REJECT_ALIGNMENT": 6259,
+    "REJECT_MA_UNAVAILABLE": 728,
+    "REJECT_MCAP_BELOW_500B": 1812
+  },
+  "active_pit_missing_session_reason_counts": {
+    "ADJUSTED_ANALYTICALLY_INVALID_EXCLUDED": 1899,
+    "ADJUSTED_SOURCE_NONUSABLE": 2,
+    "AUTHORIZED_RAW_NONTRADING_PLACEHOLDER_EXCLUDED_FROM_SIGNALS": 76791,
+    "CONFIRMED_SHARED_NONTRADING_PLACEHOLDER_EXCLUDED_FROM_SIGNALS": 26367
+  },
+  "unavailable_price_tickers": [],
+  "projection_mismatch_tickers": [],
+  "unresolved_candidate_signal_mcap_count": 0,
+  "control_cost_audit": {
+    "entry_attempt_events_equal_prefixed_trade_rows": true,
+    "executed_entry_events_match_summary": true,
+    "all_filled_sides_recalculate_commission_and_slippage": true,
+    "entry_and_exit_fill_prices_match_v2_trade_ledger": true,
+    "integer_shares_and_inclusive_5m_buy_budget": true,
+    "sale_proceeds_remain_pending_on_exit_execution_day": true,
+    "portfolio_cash_conservation": true,
+    "no_hidden_position_cap_skip": true,
+    "no_same_ticker_overlap_or_unmatched_exit": true,
+    "event_cost_totals_match_summary": true,
+    "evaluation_window_commission_krw_from_events": 667636.8049952989,
+    "evaluation_window_slippage_impact_krw_from_events": 4450804.345999749,
+    "post_cutoff_support_exit_count": 1,
+    "post_cutoff_support_commission_krw": 1053.430515,
+    "post_cutoff_support_slippage_impact_krw": 7029.899999999689,
+    "observed_max_concurrent_positions": 67,
+    "trade_rows": 2287,
+    "entry_attempts": 2287,
+    "executed_entries": 458,
+    "cash_shortage_skips": 1829,
+    "other_entry_skips": 0,
+    "executed_exits": 411
+  },
+  "candidate_cost_audit": {
+    "entry_attempt_events_equal_prefixed_trade_rows": true,
+    "executed_entry_events_match_summary": true,
+    "all_filled_sides_recalculate_commission_and_slippage": true,
+    "entry_and_exit_fill_prices_match_v2_trade_ledger": true,
+    "integer_shares_and_inclusive_5m_buy_budget": true,
+    "sale_proceeds_remain_pending_on_exit_execution_day": true,
+    "portfolio_cash_conservation": true,
+    "no_hidden_position_cap_skip": true,
+    "no_same_ticker_overlap_or_unmatched_exit": true,
+    "event_cost_totals_match_summary": true,
+    "evaluation_window_commission_krw_from_events": 382306.1718550496,
+    "evaluation_window_slippage_impact_krw_from_events": 2548782.9189998587,
+    "post_cutoff_support_exit_count": 1,
+    "post_cutoff_support_commission_krw": 672.1671599999999,
+    "post_cutoff_support_slippage_impact_krw": 4485.60000000021,
+    "observed_max_concurrent_positions": 53,
+    "trade_rows": 283,
+    "entry_attempts": 283,
+    "executed_entries": 250,
+    "cash_shortage_skips": 33,
+    "other_entry_skips": 0,
+    "executed_exits": 229
+  },
+  "control_nav": {
+    "total_valuation_days": 1387,
+    "valid_nav_days": 955,
+    "missing_nav_days": 432,
+    "nav_coverage_pct": 68.8536409516943,
+    "mdd_type": "CHECK_REQUIRED",
+    "mdd_pct": null,
+    "observed_mdd_pct": -36.78396477965834,
+    "mdd_peak_date": "2023-04-07",
+    "mdd_trough_date": "2023-10-31",
+    "mdd_recovery_date": null,
+    "maximum_consecutive_missing_nav_days": 430,
+    "mdd_unresolved_mark_count": 432,
+    "cutoff_equity_krw": null,
+    "ending_equity_krw": null,
+    "total_return_pct": null,
+    "cagr_pct": null,
+    "mdd_underwater_sessions": 260,
+    "mdd_recovered": false,
+    "average_capital_utilization_pct": 90.68756590438392,
+    "maximum_capital_utilization_pct": 99.99500899949965,
+    "average_cash_ratio_pct": 9.312434095616085,
+    "turnover_krw": 4450912033.301997,
+    "turnover_multiple": 22.254560166509986,
+    "total_commissions_krw": 667636.804995299,
+    "total_slippage_impact_krw": 4450804.34599975
+  },
+  "candidate_nav": {
+    "total_valuation_days": 1387,
+    "valid_nav_days": 858,
+    "missing_nav_days": 529,
+    "nav_coverage_pct": 61.86012977649603,
+    "mdd_type": "CHECK_REQUIRED",
+    "mdd_pct": null,
+    "observed_mdd_pct": -19.45040224353778,
+    "mdd_peak_date": "2021-08-09",
+    "mdd_trough_date": "2022-10-13",
+    "mdd_recovery_date": "2023-07-28",
+    "maximum_consecutive_missing_nav_days": 521,
+    "mdd_unresolved_mark_count": 531,
+    "cutoff_equity_krw": null,
+    "ending_equity_krw": null,
+    "total_return_pct": null,
+    "cagr_pct": null,
+    "mdd_underwater_sessions": 196,
+    "mdd_recovered": true,
+    "average_capital_utilization_pct": 52.93168959763436,
+    "maximum_capital_utilization_pct": 99.85751373709236,
+    "average_cash_ratio_pct": 47.06831040236565,
+    "turnover_krw": 2548707812.367001,
+    "turnover_multiple": 12.743539061835005,
+    "total_commissions_krw": 382306.17185505014,
+    "total_slippage_impact_krw": 2548782.918999859
+  },
+  "identity_exposure_audit": "identity_exposure_audit.csv",
+  "worker_error_count": 0,
+  "support_day_new_entry_allowed": false,
+  "external_api_requests": 0,
+  "koentec_full_exposure_audit": {
+    "disposition": "NO_EXPOSURE_AFTER_FULL_REPLAY",
+    "control_position_at_share_exchange": 0,
+    "candidate_position_at_share_exchange": 0,
+    "payment_assumed": false,
+    "audit_file": "koentec_full_exposure_audit.json"
+  },
+  "unresolved_mark_reconciliation": {
+    "total_rows": 963,
+    "by_group": {
+      "CONTROL": {
+        "mark_count": 432,
+        "ticker_count": 2,
+        "raw_activity_confirmed_count": 2,
+        "adjusted_source_row_present_count": 2,
+        "adjusted_analytic_invalid_count": 2,
+        "adjusted_source_row_absent_count": 430,
+        "tickers": [
+          "068240",
+          "138580"
+        ]
+      },
+      "CANDIDATE": {
+        "mark_count": 531,
+        "ticker_count": 4,
+        "raw_activity_confirmed_count": 10,
+        "adjusted_source_row_present_count": 10,
+        "adjusted_analytic_invalid_count": 10,
+        "adjusted_source_row_absent_count": 521,
+        "tickers": [
+          "003410",
+          "003690",
+          "068240",
+          "085660"
+        ]
+      }
+    },
+    "by_group_ticker": {
+      "CANDIDATE:003410": {
+        "mark_count": 521,
+        "first_missing_date": "2024-07-09",
+        "last_missing_date": "2026-08-31",
+        "raw_activity_confirmed_count": 0,
+        "adjusted_source_row_present_count": 0,
+        "adjusted_analytic_invalid_count": 0,
+        "adjusted_source_row_absent_count": 521,
+        "root_causes": [
+          "NO_EXACT_ADJUSTED_SOURCE_ROW; exact raw ticker row also missing"
+        ]
+      },
+      "CANDIDATE:003690": {
+        "mark_count": 4,
+        "first_missing_date": "2023-04-25",
+        "last_missing_date": "2024-06-27",
+        "raw_activity_confirmed_count": 4,
+        "adjusted_source_row_present_count": 4,
+        "adjusted_analytic_invalid_count": 4,
+        "adjusted_source_row_absent_count": 0,
+        "root_causes": [
+          "ADJUSTED_SOURCE_ROW_EXCLUDED_FROM_REPOSITORY_V2_ANALYTIC_PROJECTION"
+        ]
+      },
+      "CANDIDATE:068240": {
+        "mark_count": 2,
+        "first_missing_date": "2022-01-20",
+        "last_missing_date": "2022-01-28",
+        "raw_activity_confirmed_count": 2,
+        "adjusted_source_row_present_count": 2,
+        "adjusted_analytic_invalid_count": 2,
+        "adjusted_source_row_absent_count": 0,
+        "root_causes": [
+          "ADJUSTED_SOURCE_ROW_EXCLUDED_FROM_REPOSITORY_V2_ANALYTIC_PROJECTION"
+        ]
+      },
+      "CANDIDATE:085660": {
+        "mark_count": 4,
+        "first_missing_date": "2022-02-25",
+        "last_missing_date": "2024-11-25",
+        "raw_activity_confirmed_count": 4,
+        "adjusted_source_row_present_count": 4,
+        "adjusted_analytic_invalid_count": 4,
+        "adjusted_source_row_absent_count": 0,
+        "root_causes": [
+          "ADJUSTED_SOURCE_ROW_EXCLUDED_FROM_REPOSITORY_V2_ANALYTIC_PROJECTION"
+        ]
+      },
+      "CONTROL:068240": {
+        "mark_count": 2,
+        "first_missing_date": "2022-01-20",
+        "last_missing_date": "2022-01-28",
+        "raw_activity_confirmed_count": 2,
+        "adjusted_source_row_present_count": 2,
+        "adjusted_analytic_invalid_count": 2,
+        "adjusted_source_row_absent_count": 0,
+        "root_causes": [
+          "ADJUSTED_SOURCE_ROW_EXCLUDED_FROM_REPOSITORY_V2_ANALYTIC_PROJECTION"
+        ]
+      },
+      "CONTROL:138580": {
+        "mark_count": 430,
+        "first_missing_date": "2024-11-22",
+        "last_missing_date": "2026-08-31",
+        "raw_activity_confirmed_count": 0,
+        "adjusted_source_row_present_count": 0,
+        "adjusted_analytic_invalid_count": 0,
+        "adjusted_source_row_absent_count": 430,
+        "root_causes": [
+          "NO_EXACT_ADJUSTED_SOURCE_ROW; exact raw ticker row also missing"
+        ]
+      }
+    },
+    "audit_file": "unresolved_mark_reconciliation.csv"
+  }
+}

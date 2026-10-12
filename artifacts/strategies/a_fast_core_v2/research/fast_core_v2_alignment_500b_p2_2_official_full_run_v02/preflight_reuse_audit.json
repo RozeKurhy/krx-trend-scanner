@@ -1,0 +1,151 @@
+{
+  "schema": "fast_core_v2_alignment_500b_p2_2_preflight_reuse_audit_v02",
+  "task_id": "FAST_CORE_V2_ALIGNMENT_500B_P2_2_OFFICIAL_FULL_RUN_V02",
+  "status": "PASS",
+  "generated_utc": "2026-10-12T03:43:49.095835+00:00",
+  "baseline": {
+    "branch": "main",
+    "head": "5ffb83968c1c94f167c0e849427d7c3e1a2313b5",
+    "origin_main": "5ffb83968c1c94f167c0e849427d7c3e1a2313b5",
+    "tracked_tree_clean": true,
+    "preexisting_untracked_preserved": true
+  },
+  "v01_evidence": {
+    "preflight_path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/preflight.json",
+    "preflight_sha256": "b38683bb0dcd659136aaf7cb6b7d139c20fe4c4c1a4cf43ca49c12e295e6753f",
+    "preflight_status": "PASS",
+    "sample_validation_sha256": "153d192a653576de11416c7b2eced2e36221c83edd67e373d6e42aa817c33eff",
+    "sample_benchmark_sha256": "b6f1a328a91741184f5dcda5037155f1c4748273c4f9876d7ca9dbb646bc6be4",
+    "sample_validation_status": "CHECK_REQUIRED",
+    "sample_failed_checks": [
+      "control_nav_coverage_at_least_90_percent"
+    ],
+    "sample_coverage_pct_control": false,
+    "sample_benchmark": {
+      "sample_ticker_count": 32,
+      "evaluated_ticker_count": 32,
+      "eligible_universe_ticker_count": 2573,
+      "available_price_ticker_count": 32,
+      "worker_error_count": 0,
+      "workers": 10,
+      "wall_seconds_including_portfolio_replays": 191.241,
+      "estimated_full_wall_seconds": 4601.332,
+      "estimated_full_wall_hours": 1.2781,
+      "full_run_authorized_by_sample_contract": true,
+      "control_signal_trade_count": 38,
+      "candidate_signal_trade_count": 13,
+      "candidate_filter_status_counts": {
+        "PASS": 13,
+        "REJECT_ALIGNMENT": 61,
+        "REJECT_MA_UNAVAILABLE": 13,
+        "REJECT_MCAP_BELOW_500B": 11
+      }
+    },
+    "sample_execution_repeated": false,
+    "sample_trade_outputs_used_as_full_run": false
+  },
+  "manifest_audit": {
+    "v01_final_source_manifest_files": 85,
+    "v01_final_source_manifest_internal_matches": 84,
+    "v01_final_source_manifest_internal_mismatches": [],
+    "stale_previous_w_directive_record": [
+      {
+        "previous_sha256": "22390bc73b3bd8622f4f9faa90abacd5672be1973559e6d879dc3f2544392056",
+        "current_sha256": "3ca40eb71333ffe100e0ac15cc1a2d09b60f1c3fe68f5deaab08c6c99f016ac7",
+        "previous_bytes": 15164,
+        "current_bytes": 17542
+      }
+    ],
+    "current_w_sha256": "3ca40eb71333ffe100e0ac15cc1a2d09b60f1c3fe68f5deaab08c6c99f016ac7",
+    "v01_pre_sample_historical_manifest_files": 52,
+    "v01_pre_sample_historical_matches": 47,
+    "expected_after_sample_patch_differences": [
+      "/Users/june/Documents/projects/w.md",
+      "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/finalize_p2_2.py",
+      "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/run_p2_2_replay.py",
+      "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/seal_source_manifest.py",
+      "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/validate_sample_p2_2.py"
+    ],
+    "v01_artifact_hash_files": 51,
+    "v01_artifact_hash_matches": 51,
+    "v01_artifact_hash_mismatches": [],
+    "v01_adjusted_price_hash_rows": 2573,
+    "v01_adjusted_price_hash_matches": 2573,
+    "adjusted_price_hash_mismatches": [],
+    "v01_raw_partition_rows": 2776,
+    "current_raw_manifest_rows": 12078,
+    "raw_partition_matches": 2776,
+    "raw_partition_mismatches": [],
+    "raw_partition_missing_manifest_keys": [],
+    "raw_manifest_database_sha256": "ee0c5beac81f8cdfbe0751803ed2f171607e0c24da59660e3d9137104229a103",
+    "rolling_authority_file_sha256": {
+      "data/market/rolling_authority/manifest.json": "5c4a9e346d7460c4a28b30a3cd9ab19c9c17527f1c4409282206e8ec2a731570",
+      "data/market/rolling_authority/merged_pit_intervals.json": "d93a958d7bbae9142ef1fa5aded36080d1d107739e777eb4ec3b6566fea90654",
+      "data/market/rolling_authority/merged_trading_calendar.json": "ab7635de160e06d538d9d0dc7225c8e1b307f191f54f2584d4c79e47a94a7480"
+    },
+    "rolling_authority_internal_manifest_sha256": "980881df0d9ec88937740b62a2f24ec19473282ef3ee8f19f0c1a5c789205773",
+    "permanent_exclusion_count": 182,
+    "permanent_exclusion_source_sha256": "1c7cb7512024130f1ab0efa0ceb9f48ae0017a51af7f6db3f74d87b141a7d6ae",
+    "permanent_exclusion_canonical_sha256": "9091a40d5dfc3dc115e00166ea3ef806ef5a4ca3b595d76864598ec050904b12",
+    "p3_source_hashes": {
+      "p3_1_execution_contract": "1d9b833cd99bd045cf4d7e8f079c0477f7ad42da76ccd600d9c429e3a2c3b089",
+      "p3_1_replay": "3d7f573bb908b904758427e59967d698fc471cf3af0de699815aa5516ab9705b",
+      "p3_1_117_portfolio_replay": "ef5e8783f7466522c52e620847f6243ec7c71324043e7412623ab4bf7b1d7b49",
+      "p3_1_117_targeted_evaluation": "46cd1e56fb7ed979d1469fc806c12f721b7fc7f7e2d632f5fdf19806a869f093",
+      "p3_2_replay": "5fe187dedb2b5b856792d498e31070db6ff7ed9e844f933a606b4dc424bcd446",
+      "p3_2_gate_readjudication": "275d49e4d9bec088cfe49bccf8f2fe7ee5246062f0aa49b55bc1681d23d5f70f",
+      "p3_2_data_nav_replay_decision": "e5d27672d913836b3513e92f0048b44898dbb2a1880e5e85d6420e3f8247e1ac"
+    }
+  },
+  "calendar_and_universe": {
+    "exact_evaluation_sessions": 1387,
+    "evaluation_start": "2021-01-04",
+    "evaluation_end": "2026-08-31",
+    "support_session": "2026-09-01",
+    "support_is_next_exact_session": true,
+    "calendar_frontier": "2026-10-08",
+    "eligible_tickers_after_exclusions": 2573,
+    "completed_ma60_warmup_months": 60,
+    "warmup_first_month": "2016-01",
+    "warmup_last_month": "2020-12",
+    "unclassified_raw_only_sessions": 0,
+    "unexplained_adjusted_only_sessions": 0
+  },
+  "checks": {
+    "baseline_main_head_origin_equal": true,
+    "tracked_tree_clean": true,
+    "v01_source_manifest_internal_hashes_match": true,
+    "v01_pre_sample_manifest_known_post_sample_edits_only": true,
+    "v01_artifact_hashes_match": true,
+    "v01_preflight_sha_matches_manifest": true,
+    "adjusted_price_files_all_match": true,
+    "raw_partitions_all_match": true,
+    "raw_manifest_database_hash_matches_v01_source": true,
+    "rolling_authority_hashes_match_v01_source": true,
+    "rolling_authority_internal_hash_matches_preflight": true,
+    "permanent_exclusions_exactly_182_and_hash_match": true,
+    "required_380440_pair_excluded": true,
+    "current_p2_authority_1387_sessions_and_2573_tickers": true,
+    "support_date_is_next_exact_krx_session": true,
+    "v01_preflight_unclassified_source_rows_zero": true,
+    "current_code_hashes_match_v01_final_manifest": true,
+    "representative_sample_all_checks_except_control_nav_coverage_pass": true,
+    "worker_count_stays_10_and_external_api_calls_zero": true
+  },
+  "sample_gate_policy": {
+    "failed_sample_check_allowed_for_full_run_authorization": [
+      "control_nav_coverage_at_least_90_percent"
+    ],
+    "all_other_sample_checks_required": true,
+    "official_full_run_E_threshold_unchanged": true,
+    "full_run_E_below_90_percent": "CHECK_REQUIRED"
+  },
+  "external_api_requests": 0,
+  "elapsed_seconds": 0.756,
+  "runtime": {
+    "python": "3.13.5",
+    "numpy": "2.5.2",
+    "pandas": "2.3.3"
+  },
+  "full_run_started": false
+}
