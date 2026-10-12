@@ -1,0 +1,262 @@
+{
+  "schema": "fast_core_v2_alignment_500b_p2_1_integrity_audit_v01",
+  "status": "PASS",
+  "severity_issue_type_counts": {
+    "CRITICAL": 0,
+    "MAJOR": 0,
+    "MINOR": 3
+  },
+  "critical_issue_types": [],
+  "major_issue_types": [],
+  "minor_issue_types": [
+    "CASH_SHORTAGE_SKIP_DIAGNOSTIC",
+    "CUTOFF_OPEN_POSITIONS_MARKED_WITHOUT_HYPOTHETICAL_EXIT_COST",
+    "OBSERVED_NAV_MARK_GAPS"
+  ],
+  "source_manifest_verification": {
+    "status": "PASS",
+    "checked": 313,
+    "expected": 313,
+    "mismatches": []
+  },
+  "sample_gate_authorization": {
+    "status": "PASS",
+    "full_run_allowed": true,
+    "estimated_full_wall_hours": 0.8501,
+    "actual_full_wall_hours": 1.02606,
+    "authorization_guard_passed": true
+  },
+  "adjusted_price_input_hash_check": {
+    "status": "PASS",
+    "checked": 2480,
+    "mismatch_count": 0
+  },
+  "raw_partition_input_hash_check": {
+    "status": "PASS",
+    "checked": 2166,
+    "mismatch_count": 0
+  },
+  "permanent_exclusions": {
+    "pair_count": 184,
+    "canonical_sha256": "5d3bd9a1e27e7e558235f0fba211263cdc90eb0b477978c8338eb019b1a6ec2e",
+    "matches_contract": true
+  },
+  "signal_ledger_checks": {
+    "duplicate_exact_pit_signal_audit_keys": 0,
+    "control_trade_without_one_active_common_identity_audit": 0,
+    "candidate_trade_alignment_mcap_or_prior_60m_mismatch": [],
+    "control_trade_set_matches_pit_pass_audit": true,
+    "candidate_trade_set_matches_candidate_pass_audit": true,
+    "excluded_identity_trade_leakage": [],
+    "control_missing_examples": []
+  },
+  "candidate_signal_filter_status_counts": {
+    "PASS": 214,
+    "REJECT_ALIGNMENT": 4188,
+    "REJECT_MA_UNAVAILABLE": 589,
+    "REJECT_MCAP_BELOW_500B": 1394
+  },
+  "active_pit_missing_session_reason_counts": {
+    "ADJUSTED_ANALYTICALLY_INVALID_EXCLUDED": 1892,
+    "ADJUSTED_SOURCE_NONUSABLE": 1,
+    "AUTHORIZED_RAW_NONTRADING_PLACEHOLDER_EXCLUDED_FROM_SIGNALS": 59798,
+    "CONFIRMED_SHARED_NONTRADING_PLACEHOLDER_EXCLUDED_FROM_SIGNALS": 16500
+  },
+  "unavailable_price_tickers": [],
+  "projection_mismatch_tickers": [],
+  "unresolved_candidate_signal_mcap_count": 0,
+  "nav_mark_resolution": {
+    "classification": "OBSERVED_NAV_GAPS_MINOR",
+    "cutoff_nav_unresolved": false,
+    "groups": {
+      "CONTROL": {
+        "missing_mark_rows": 2,
+        "unresolved_nav_dates": [
+          "2022-01-20",
+          "2022-01-28"
+        ],
+        "by_ticker": {
+          "068240": {
+            "count": 2,
+            "dates": [
+              "2022-01-20",
+              "2022-01-28"
+            ],
+            "reasons": [
+              "UNRESOLVED_DAILY_MARK"
+            ],
+            "evidence_states": [
+              "RAW_ROW_NOT_PLACEHOLDER"
+            ]
+          }
+        }
+      },
+      "ALIGNMENT_MCAP_500B": {
+        "missing_mark_rows": 10,
+        "unresolved_nav_dates": [
+          "2022-01-20",
+          "2022-01-28",
+          "2022-02-25",
+          "2022-05-13",
+          "2023-04-25",
+          "2023-06-28",
+          "2024-02-16",
+          "2024-06-27",
+          "2024-10-31",
+          "2024-11-25"
+        ],
+        "by_ticker": {
+          "003690": {
+            "count": 4,
+            "dates": [
+              "2023-04-25",
+              "2023-06-28",
+              "2024-02-16",
+              "2024-06-27"
+            ],
+            "reasons": [
+              "UNRESOLVED_DAILY_MARK"
+            ],
+            "evidence_states": [
+              "RAW_ROW_NOT_PLACEHOLDER"
+            ]
+          },
+          "068240": {
+            "count": 2,
+            "dates": [
+              "2022-01-20",
+              "2022-01-28"
+            ],
+            "reasons": [
+              "UNRESOLVED_DAILY_MARK"
+            ],
+            "evidence_states": [
+              "RAW_ROW_NOT_PLACEHOLDER"
+            ]
+          },
+          "085660": {
+            "count": 4,
+            "dates": [
+              "2022-02-25",
+              "2022-05-13",
+              "2024-10-31",
+              "2024-11-25"
+            ],
+            "reasons": [
+              "UNRESOLVED_DAILY_MARK"
+            ],
+            "evidence_states": [
+              "RAW_ROW_NOT_PLACEHOLDER"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "control_cost_audit": {
+    "entry_attempt_events_equal_prefixed_trade_rows": true,
+    "executed_entry_events_match_summary": true,
+    "all_filled_sides_recalculate_commission_and_slippage": true,
+    "entry_and_exit_fill_prices_match_v2_trade_ledger": true,
+    "integer_shares_and_inclusive_5m_buy_budget": true,
+    "sale_proceeds_remain_pending_on_exit_execution_day": true,
+    "portfolio_cash_conservation": true,
+    "no_hidden_position_cap_skip": true,
+    "no_same_ticker_overlap_or_unmatched_exit": true,
+    "event_cost_totals_match_summary": true,
+    "evaluation_window_commission_krw_from_events": 520240.61592959956,
+    "evaluation_window_slippage_impact_krw_from_events": 3468078.783999799,
+    "post_cutoff_support_exit_count": 0,
+    "post_cutoff_support_commission_krw": 0.0,
+    "post_cutoff_support_slippage_impact_krw": 0.0,
+    "observed_max_concurrent_positions": 47,
+    "trade_rows": 1704,
+    "entry_attempts": 1704,
+    "executed_entries": 368,
+    "cash_shortage_skips": 1336,
+    "other_entry_skips": 0,
+    "executed_exits": 323
+  },
+  "candidate_cost_audit": {
+    "entry_attempt_events_equal_prefixed_trade_rows": true,
+    "executed_entry_events_match_summary": true,
+    "all_filled_sides_recalculate_commission_and_slippage": true,
+    "entry_and_exit_fill_prices_match_v2_trade_ledger": true,
+    "integer_shares_and_inclusive_5m_buy_budget": true,
+    "sale_proceeds_remain_pending_on_exit_execution_day": true,
+    "portfolio_cash_conservation": true,
+    "no_hidden_position_cap_skip": true,
+    "no_same_ticker_overlap_or_unmatched_exit": true,
+    "event_cost_totals_match_summary": true,
+    "evaluation_window_commission_krw_from_events": 259276.93932314997,
+    "evaluation_window_slippage_impact_krw_from_events": 1728382.4689998887,
+    "post_cutoff_support_exit_count": 0,
+    "post_cutoff_support_commission_krw": 0.0,
+    "post_cutoff_support_slippage_impact_krw": 0.0,
+    "observed_max_concurrent_positions": 39,
+    "trade_rows": 208,
+    "entry_attempts": 208,
+    "executed_entries": 188,
+    "cash_shortage_skips": 20,
+    "other_entry_skips": 0,
+    "executed_exits": 156
+  },
+  "control_nav": {
+    "total_valuation_days": 1082,
+    "valid_nav_days": 1080,
+    "missing_nav_days": 2,
+    "nav_coverage_pct": 99.81515711645102,
+    "mdd_type": "OBSERVED",
+    "mdd_pct": -36.865536686092284,
+    "observed_mdd_pct": -36.865536686092284,
+    "mdd_peak_date": "2023-04-07",
+    "mdd_trough_date": "2023-10-31",
+    "mdd_recovery_date": null,
+    "maximum_consecutive_missing_nav_days": 1,
+    "mdd_unresolved_mark_count": 2,
+    "cutoff_equity_krw": 281875564.6000706,
+    "ending_equity_krw": 281875564.6000706,
+    "total_return_pct": 40.93778230003531,
+    "cagr_pct": 8.11152137099973,
+    "mdd_underwater_sessions": 385,
+    "mdd_recovered": false,
+    "average_capital_utilization_pct": 91.39150273007698,
+    "maximum_capital_utilization_pct": 99.99500899949965,
+    "average_cash_ratio_pct": 8.608497269923024,
+    "turnover_krw": 3468270772.8639975,
+    "turnover_multiple": 17.341353864319988,
+    "total_commissions_krw": 520240.6159295999,
+    "total_slippage_impact_krw": 3468078.783999803
+  },
+  "candidate_nav": {
+    "total_valuation_days": 1082,
+    "valid_nav_days": 1072,
+    "missing_nav_days": 10,
+    "nav_coverage_pct": 99.07578558225508,
+    "mdd_type": "OBSERVED",
+    "mdd_pct": -18.751322523382907,
+    "observed_mdd_pct": -18.751322523382907,
+    "mdd_peak_date": "2021-08-09",
+    "mdd_trough_date": "2022-10-13",
+    "mdd_recovery_date": "2023-07-25",
+    "maximum_consecutive_missing_nav_days": 1,
+    "mdd_unresolved_mark_count": 10,
+    "cutoff_equity_krw": 262290783.59167707,
+    "ending_equity_krw": 262290783.59167707,
+    "total_return_pct": 31.145391795838528,
+    "cagr_pct": 6.356422044902432,
+    "mdd_underwater_sessions": 193,
+    "mdd_recovered": true,
+    "average_capital_utilization_pct": 55.75331097462367,
+    "maximum_capital_utilization_pct": 98.81550995905593,
+    "average_cash_ratio_pct": 44.246689025376334,
+    "turnover_krw": 1728512928.821,
+    "turnover_multiple": 8.642564644105,
+    "total_commissions_krw": 259276.93932315017,
+    "total_slippage_impact_krw": 1728382.4689998887
+  },
+  "identity_exposure_audit": "identity_exposure_audit.csv",
+  "worker_error_count": 0,
+  "support_day_new_entry_allowed": false,
+  "external_api_requests": 0
+}

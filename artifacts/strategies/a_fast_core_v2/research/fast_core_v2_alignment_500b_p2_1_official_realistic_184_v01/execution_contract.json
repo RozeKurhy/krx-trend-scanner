@@ -1,0 +1,111 @@
+{
+  "schema": "fast_core_v2_alignment_500b_p2_1_official_realistic_184_v01",
+  "task_id": "FAST_CORE_V2_ALIGNMENT_500B_P2_1_OFFICIAL_REALISTIC_184_V01",
+  "status": "SEALED_BEFORE_PREFLIGHT_EXECUTION",
+  "baseline_commit": "ff3d200f2192745c83256d3435e4d0b59a6891cc",
+  "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "window": {
+    "calendar_start": "2021-01-01",
+    "calendar_end": "2025-05-31",
+    "evaluation_start": "2021-01-04",
+    "signal_cutoff": "2025-05-30",
+    "execution_support_end": "2025-06-02",
+    "expected_evaluation_sessions": "exact count from validated rolling KRX calendar; sealed in preflight.json",
+    "post_cutoff_new_entries": false,
+    "support_day_exit_only": true,
+    "support_day_pnl_and_costs_in_cutoff_nav": false
+  },
+  "monthly_alignment": {
+    "source": "MarketDataRepositoryV2 adjusted daily close",
+    "signal_month_included": false,
+    "periods": [
+      20,
+      60
+    ],
+    "prior_completed_months_first_signal": [
+      "2016-01",
+      "2020-12"
+    ],
+    "required_month_bars": 60,
+    "window_gap_policy": "reject that candidate signal; no imputation",
+    "comparison": "strict signal_close > MA20 > MA60"
+  },
+  "strategy_comparison": {
+    "control": "frozen PATTERN_A_FAST_FINAL_STRATEGY_V02 plus exact active COMMON PIT identity and shared 184-pair exclusions; no other entry filters",
+    "candidate": "same frozen V2 evaluator; only prior-completed monthly alignment and exact signal-date KRX market_cap >= 500000000000 KRW entry gate",
+    "external_entry_filter_before_reentry_state": true,
+    "independent_signal_ledgers": true,
+    "no_survivor_filter": true,
+    "no_other_universe_filters": true,
+    "no_strategy_tuning": true,
+    "previous_p2_1_trade_ledger_reuse": false,
+    "p2_2_signal_ledger_reuse": false
+  },
+  "market_cap": {
+    "authority": "local immutable exact KRX raw market-date partition",
+    "threshold_krw": 500000000000,
+    "inclusive": true,
+    "date": "exact V2 signal date",
+    "identity": "exact signal-date PIT ticker + standard ISU_CD + market",
+    "missing_duplicate_zero_invalid_or_unavailable": "reject candidate signal with exact cause; no date/ticker/market substitution"
+  },
+  "universe": {
+    "authority": "validated rolling merged PIT COMMON intervals",
+    "eligibility": "exact COMMON interval active on each signal date",
+    "permanent_exclusion_matching": "exact (ticker, standard ISU_CD) pairs, applied once before group split",
+    "permanent_exclusion_pair_count": 184,
+    "exclusion_hash_scheme": "sorted_exact_pair_json_v01",
+    "exclusion_canonical_sha256": "5d3bd9a1e27e7e558235f0fba211263cdc90eb0b477978c8338eb019b1a6ec2e",
+    "no_ticker_wide_expansion": true
+  },
+  "portfolio": {
+    "initial_capital_krw": 200000000,
+    "per_entry_total_buy_budget_krw": 5000000,
+    "budget_includes_commission": true,
+    "shares": "integer floor after adverse buy slippage and commission",
+    "partial_fills": false,
+    "max_positions": null,
+    "buy_slippage_rate": 0.001,
+    "sell_slippage_rate": 0.001,
+    "buy_commission_rate": 0.00015,
+    "sell_commission_rate": 0.00015,
+    "sell_tax_rate": 0,
+    "cash_shortage": "SKIPPED_CASH_UNAVAILABLE; fixed signals are not regenerated",
+    "sale_proceeds_available": "next exact normal KRX session",
+    "same_open_sale_proceeds_reused_for_entries": false,
+    "same_ticker_overlap": false,
+    "pyramiding": false,
+    "same_open_exit_reentry": false,
+    "entry_order": [
+      "ticker",
+      "standard_ISU_CD",
+      "signal_date",
+      "execution_date",
+      "trade_id"
+    ],
+    "signal_evaluation_workers": 10,
+    "portfolio_event_workers": 1,
+    "replay": "single deterministic chronological event loop per group"
+  },
+  "valuation": {
+    "daily_nav": "available cash + unsettled sale proceeds + confirmed receivables + shares times valid exact-date adjusted close",
+    "normal_trading_day_missing_mark": "whole-day NAV unresolved; no partial omission, zero fill, interpolation, nearest date, or arbitrary carry",
+    "carry": "valuation only, only with exact RepositoryV2/KRX evidence of official non-trading placeholder",
+    "cutoff_positions": "valid 2025-05-30 adjusted close, no hypothetical liquidation or costs"
+  },
+  "official_gates": {
+    "A_integrity": "zero material PIT/future/identity/lifecycle/cash/overlap/hidden-cap violations; unresolved material structural evidence is CHECK_REQUIRED",
+    "B_costs": "all filled sides include 0.015% commission and 0.1% adverse slippage; transaction tax excluded",
+    "C_profitability": "each group total_return > 0 and CAGR > 0; unresolved cutoff equity makes CHECK_REQUIRED",
+    "D_mdd": "both MDD >= -40%; candidate fails if CONTROL MDD - candidate MDD >= +5.0 percentage points",
+    "E_validity": "100% EXACT; >=90% and <100% OBSERVED; <90% CHECK_REQUIRED",
+    "cash_shortage_is_gate": false
+  },
+  "decision_scope": {
+    "official_result": "P2-1 single window only",
+    "whole_five_window_adoption": "NOT_FINAL_5WINDOW",
+    "candidate_adoption": "NOT_EVALUATED",
+    "baseline_promotion": "NOT_EVALUATED",
+    "official_default_remains": "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+  }
+}
