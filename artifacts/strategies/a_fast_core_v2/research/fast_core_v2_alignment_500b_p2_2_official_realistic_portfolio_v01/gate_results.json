@@ -1,0 +1,66 @@
+{
+  "schema": "fast_core_v2_alignment_500b_p2_2_gates_v01",
+  "window": "P2-2",
+  "official_execution_status": "NOT_RUN_SAMPLE_GATE_CHECK_REQUIRED",
+  "CONTROL": {
+    "A_integrity": {
+      "status": "CHECK_REQUIRED",
+      "reason": "Sample contains unresolved post-delisting open position and active-trading-day marks."
+    },
+    "B_costs": {
+      "status": "NOT_EVALUATED",
+      "sample_diagnostic_status": "PASS"
+    },
+    "C_profitability": {
+      "status": "NOT_EVALUATED",
+      "sample_diagnostic_total_return_pct": null,
+      "sample_diagnostic_cagr_pct": null
+    },
+    "D_mdd": {
+      "status": "NOT_EVALUATED",
+      "sample_screen_status": "CHECK_REQUIRED",
+      "sample_coverage_pct": 77.577505407354,
+      "sample_observed_mdd_pct": -7.413932253184285
+    },
+    "E_validity": {
+      "status": "NOT_EVALUATED",
+      "sample_screen_status": "CHECK_REQUIRED",
+      "sample_coverage_pct": 77.577505407354
+    }
+  },
+  "ALIGNMENT_MCAP_500B": {
+    "A_integrity": {
+      "status": "CHECK_REQUIRED",
+      "reason": "Four sample NAV marks remain unresolved for 003690 on raw trading days."
+    },
+    "B_costs": {
+      "status": "NOT_EVALUATED",
+      "sample_diagnostic_status": "PASS"
+    },
+    "C_profitability": {
+      "status": "NOT_EVALUATED",
+      "sample_diagnostic_total_return_pct": 8.011742847376402,
+      "sample_diagnostic_cagr_pct": 1.3725168416620859
+    },
+    "D_mdd": {
+      "status": "NOT_EVALUATED",
+      "sample_screen_status": "OBSERVED",
+      "sample_coverage_pct": 99.71160778658977,
+      "sample_observed_mdd_pct": -3.9510380965893432
+    },
+    "E_validity": {
+      "status": "NOT_EVALUATED",
+      "sample_screen_status": "OBSERVED",
+      "sample_coverage_pct": 99.71160778658977
+    }
+  },
+  "sample_gate_status": "CHECK_REQUIRED",
+  "sample_validation_failed_checks": [
+    "control_nav_coverage_at_least_90_percent"
+  ],
+  "whole_five_window_adoption": "NOT_FINAL_5WINDOW",
+  "candidate_adoption": "NOT_EVALUATED",
+  "baseline_promotion": "NOT_EVALUATED",
+  "official_default_remains": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "cash_shortage_is_official_gate": false
+}

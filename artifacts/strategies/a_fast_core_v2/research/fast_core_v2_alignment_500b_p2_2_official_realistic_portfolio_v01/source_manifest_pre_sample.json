@@ -1,0 +1,560 @@
+{
+  "schema": "fast_core_v2_alignment_500b_p2_2_source_manifest_v01",
+  "task_id": "FAST_CORE_V2_ALIGNMENT_500B_P2_2_OFFICIAL_REALISTIC_PORTFOLIO_V01",
+  "status": "FROZEN_BEFORE_SAMPLE",
+  "created_before_sample_or_full_run": true,
+  "baseline": {
+    "branch": "main",
+    "head": "ac40772e546addb31f9c39b9e6b9ad77f4440444",
+    "origin_main": "ac40772e546addb31f9c39b9e6b9ad77f4440444",
+    "matches_origin_main": true
+  },
+  "directive": {
+    "path": "/Users/june/Documents/projects/w.md",
+    "absolute_path": "/Users/june/Documents/projects/w.md",
+    "sha256": "22390bc73b3bd8622f4f9faa90abacd5672be1973559e6d879dc3f2544392056",
+    "bytes": 15164
+  },
+  "p2_2_execution": {
+    "plan_sha256": "20313fd3f2bc791a93c677b50e38854eda80743908fc7bb4a25665811b86506a",
+    "execution_contract_sha256": "f9d2c3269026de02a3ee5b899b49528275d9b051824ca0361a0b2e1eed5b93c1",
+    "preflight_sha256": "b38683bb0dcd659136aaf7cb6b7d139c20fe4c4c1a4cf43ca49c12e295e6753f",
+    "signal_evaluation_workers": 10,
+    "external_api_requests": 0
+  },
+  "rolling_authority": {
+    "manifest_sha256": "980881df0d9ec88937740b62a2f24ec19473282ef3ee8f19f0c1a5c789205773",
+    "evaluation_start": "2021-01-04",
+    "evaluation_end": "2026-08-31",
+    "evaluation_sessions": 1387
+  },
+  "price_input_inventory": {
+    "path": "identity_price_preflight.csv",
+    "adjusted_files_hashed": 2573,
+    "all_adjusted_files_hashed": true
+  },
+  "krx_raw_partition_inventory": {
+    "path": "raw_partition_preflight.csv",
+    "partition_rows": 2776
+  },
+  "source_references": [
+    {
+      "path": "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json",
+      "sha256": "be0dc21c3764aeb147a3565e65850fc179ecc91e5700e8221932f12ce28ae501",
+      "bytes": 5451
+    },
+    {
+      "path": "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json",
+      "sha256": "231cb43e2830017a72a9e8ba8d29296749f8a323e211266035d80cf841b70cf7",
+      "bytes": 3199
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_117_price_nav_closure_v01/report.md",
+      "sha256": "1b2af8f2819fea5462791c6493121901200b3ff199a0ea32eb5a6161c0b51c9e",
+      "bytes": 12999
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_117_price_nav_closure_v01/run_portfolio_replay.py",
+      "sha256": "ef5e8783f7466522c52e620847f6243ec7c71324043e7412623ab4bf7b1d7b49",
+      "bytes": 41180
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_117_price_nav_closure_v01/run_targeted_evaluation.py",
+      "sha256": "46cd1e56fb7ed979d1469fc806c12f721b7fc7f7e2d632f5fdf19806a869f093",
+      "bytes": 33564
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/execution_contract.json",
+      "sha256": "1d9b833cd99bd045cf4d7e8f079c0477f7ad42da76ccd600d9c429e3a2c3b089",
+      "bytes": 4086
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/plan.md",
+      "sha256": "cdf315e2482d5d7c4e11f536f8ee33e0399c624be0ef806fb803912bd406b806",
+      "bytes": 5907
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/report.md",
+      "sha256": "43d40f632461a39e27c622aa5f7246b4d53a9448805ec4eada23c71ffaff2cd1",
+      "bytes": 9856
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/run_official_realistic_replay.py",
+      "sha256": "3d7f573bb908b904758427e59967d698fc471cf3af0de699815aa5516ab9705b",
+      "bytes": 39413
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/seal_preflight.py",
+      "sha256": "2f096a2a7fa258c06e3d8fcea942d84ea5be99288e2ee9ed35685fbd196cd4c3",
+      "bytes": 21564
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/corporate_action_audit.md",
+      "sha256": "7a103b3c2c3e700f8a3a304b5e38bfe3e345bc083edd1767cb9da55fc25b5020",
+      "bytes": 5999
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/integrity_validation.json",
+      "sha256": "ae94bb8ba1a6db336cf0fa90fc682db4a7e6499efeb45ea715631cd30cda30b0",
+      "bytes": 1144
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/price_input_124_audit.csv",
+      "sha256": "d2745d88d6014bdfa7226d2e44900e21cb70494e18a4f2eea1ed885de4475855",
+      "bytes": 593087
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/report.md",
+      "sha256": "b7c2d7eb93185ebc8d556fd8da8d27621e4462e89a31e79113b22d2a93c32d3c",
+      "bytes": 8490
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_gate_readjudication_v01/identity_policy_transition.csv",
+      "sha256": "e1bd16296c6e87a9f0ba6368b4d809d47e72b8ad497a79a5a2d2dc918c559084",
+      "bytes": 392
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_gate_readjudication_v01/nav_missing_marks.csv",
+      "sha256": "0da5b7370ffc40cd7ce9e8a481f0d4763ee8f67f5fa367536580be97310dbdc3",
+      "bytes": 767
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_gate_readjudication_v01/report.md",
+      "sha256": "c629d895f9a43400b1847a5a0cc5d01008587151af6cfa2507f2dd7a2d01e1fd",
+      "bytes": 7571
+    },
+    {
+      "path": "data/market/rolling_authority/manifest.json",
+      "sha256": "5c4a9e346d7460c4a28b30a3cd9ab19c9c17527f1c4409282206e8ec2a731570",
+      "bytes": 3816
+    },
+    {
+      "path": "data/market/rolling_authority/merged_pit_intervals.json",
+      "sha256": "d93a958d7bbae9142ef1fa5aded36080d1d107739e777eb4ec3b6566fea90654",
+      "bytes": 626207
+    },
+    {
+      "path": "data/market/rolling_authority/merged_trading_calendar.json",
+      "sha256": "ab7635de160e06d538d9d0dc7225c8e1b307f191f54f2584d4c79e47a94a7480",
+      "bytes": 74619
+    },
+    {
+      "path": "docs/patterns/pattern_a_fast/strategy/version_02/OFFICIAL_ADOPTION_REVALIDATION_PLAN_V02.md",
+      "sha256": "84f7c7ab2dfd3f3af049dc876925f103d1e8d04e391248a780cd9d0537c1501c",
+      "bytes": 20287
+    },
+    {
+      "path": "docs/patterns/pattern_a_fast/strategy/version_02/README.md",
+      "sha256": "d353afec7e26ad4adb296dc14e337a78c88466d3ddcee887932ef1fd58f295ef",
+      "bytes": 16798
+    },
+    {
+      "path": "docs/strategies/strategy_lifecycle.md",
+      "sha256": "c89bad3f56b95a9bac3284fb9817067940534b52c87c29f57f3009ea5a1e25e8",
+      "bytes": 10562
+    },
+    {
+      "path": "docs/validation/backtest_common_rules.md",
+      "sha256": "e8783958064ddfc54f57bef3500ad41de6d3b6bc853fce2464845f9c4cc4d06b",
+      "bytes": 24228
+    },
+    {
+      "path": "docs/validation/official_strategy_adoption_criteria.md",
+      "sha256": "380f34cd7e24fd9881d7a154000d9b51512d905d7c7ef24b1940f5fa4e22cb88",
+      "bytes": 11128
+    },
+    {
+      "path": "scripts/run_fastcore_neg40_weak_protect_p2_1.py",
+      "sha256": "9c95e482f5ca7d216c4f608d98dfaeb11b54d4abc9445b432f99fcc1df91a4f0",
+      "bytes": 266679
+    },
+    {
+      "path": "scripts/run_v2_official_adoption_revalidation_v02.py",
+      "sha256": "ef3d33e03290feb36af5aec671aa63a91ec3dc552f72c83f40aaae99970a6639",
+      "bytes": 87373
+    },
+    {
+      "path": "src/trend_scanner/backtest/snapshot_context.py",
+      "sha256": "a1cf522708d596220e5d3904594be8b223ce9e4fffa5e42ba42a247aec2c0bb9",
+      "bytes": 13545
+    },
+    {
+      "path": "src/trend_scanner/data/krx_raw_stock_store.py",
+      "sha256": "43b491cf74d6b3c41d02f7877d006199a9e5419901f0b8e8a6a50d1c5ad6e95e",
+      "bytes": 17774
+    },
+    {
+      "path": "src/trend_scanner/data/market_calendar.py",
+      "sha256": "1bade7125bd6c503f0a0f0ccafc1a82a931e867edbfd2ffbc9f16cf1ade72b7e",
+      "bytes": 20716
+    },
+    {
+      "path": "src/trend_scanner/data/repository_v2.py",
+      "sha256": "c252835604b0fd8f2e839d438052670d9700e773f1c34cb83582c5c29a198215",
+      "bytes": 43489
+    },
+    {
+      "path": "src/trend_scanner/data/repository_v2_loader.py",
+      "sha256": "d5c2333022acf5b777f38bfd024c7540aaae8bc16f455c1a7e779c60c510a97d",
+      "bytes": 7544
+    },
+    {
+      "path": "src/trend_scanner/data/repository_v2_session_authority.py",
+      "sha256": "4d6b1f431c98a3c04119b09e6032f76fb2ecb3a9900f8b4a2e81f418f1bde3b7",
+      "bytes": 6996
+    },
+    {
+      "path": "src/trend_scanner/data/rolling_market_data_refresh.py",
+      "sha256": "80270ab3efb0d906b1161410cc1756a613df8d7aa930c63415dcd7ba8bf94c87",
+      "bytes": 210332
+    },
+    {
+      "path": "src/trend_scanner/patterns/pattern_a_stage.py",
+      "sha256": "af881b94d33314855c2bf1a0b516a7e61a0b511fed5ae3597743f86fc247a435",
+      "bytes": 19710
+    },
+    {
+      "path": "src/trend_scanner/universe/permanent_identity_exclusions.py",
+      "sha256": "1c7cb7512024130f1ab0efa0ceb9f48ae0017a51af7f6db3f74d87b141a7d6ae",
+      "bytes": 69285
+    },
+    {
+      "path": "src/trend_scanner/validation/feature_report.py",
+      "sha256": "eeafc564792d89e1f0fb810084d707cefe14aab9d893cb61a2f37115278341ac",
+      "bytes": 13511
+    },
+    {
+      "path": "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py",
+      "sha256": "f045750c5fb5afcf0b8c132151ed7b8f387865f7653beb4e5b849c79b50f0dc1",
+      "bytes": 28291
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/plan.md",
+      "sha256": "20313fd3f2bc791a93c677b50e38854eda80743908fc7bb4a25665811b86506a",
+      "bytes": 7948
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/execution_contract.json",
+      "sha256": "f9d2c3269026de02a3ee5b899b49528275d9b051824ca0361a0b2e1eed5b93c1",
+      "bytes": 6329
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/preflight.json",
+      "sha256": "b38683bb0dcd659136aaf7cb6b7d139c20fe4c4c1a4cf43ca49c12e295e6753f",
+      "bytes": 28842
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/identity_price_preflight.csv",
+      "sha256": "5adde9d65344c4520eda0e79057b646ff1f26e1397ec49d70ff1f3a708af8f0b",
+      "bytes": 3180987
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/active_pit_missing_sessions.csv",
+      "sha256": "df84569dad960361dc4bd9e995f820c286aacd0ac864057256dbab9b066da0fe",
+      "bytes": 12479713
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/raw_partition_preflight.csv",
+      "sha256": "ba3146b533267a5c54c61d3ef0e836d278bc9d69cb230bab7a66ede30b292d02",
+      "bytes": 564992
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/permanent_exclusion_pairs.csv",
+      "sha256": "10f0213a24e354e2d9709206cce71f71f500df0ed5f7cb2d0453d07df02ebdbf",
+      "bytes": 39364
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/sample_tickers.json",
+      "sha256": "7b9865a7b66c73faffee2f31408324dc0002f95a7c2c2f26b43fcecb93f70abf",
+      "bytes": 2362
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/seal_preflight.py",
+      "sha256": "69ddc497276ad81a1dc16955e088773ff982f317f49c1f4900803701723f5ef2",
+      "bytes": 38873
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/run_p2_2_replay.py",
+      "sha256": "282aa35b3d218003119f196cf19f2217dd016fc95038a847207b0bf2089bb79b",
+      "bytes": 23312
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/validate_sample_p2_2.py",
+      "sha256": "581062569b5bfe49cea4a2fac888730297b3131efd6bdd5ed6093a3968c1383d",
+      "bytes": 6492
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/finalize_p2_2.py",
+      "sha256": "84c69a8eef335bf0a0e1802c2a2527d7fdc84676254acb938f3214fb0dfe814d",
+      "bytes": 37623
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/seal_source_manifest.py",
+      "sha256": "48460e541876863c34dea1e174b165c652ea4bb10a7af5c0e7247361a72b31c3",
+      "bytes": 8075
+    }
+  ],
+  "files": [
+    {
+      "path": "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json",
+      "sha256": "be0dc21c3764aeb147a3565e65850fc179ecc91e5700e8221932f12ce28ae501",
+      "bytes": 5451
+    },
+    {
+      "path": "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json",
+      "sha256": "231cb43e2830017a72a9e8ba8d29296749f8a323e211266035d80cf841b70cf7",
+      "bytes": 3199
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_117_price_nav_closure_v01/report.md",
+      "sha256": "1b2af8f2819fea5462791c6493121901200b3ff199a0ea32eb5a6161c0b51c9e",
+      "bytes": 12999
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_117_price_nav_closure_v01/run_portfolio_replay.py",
+      "sha256": "ef5e8783f7466522c52e620847f6243ec7c71324043e7412623ab4bf7b1d7b49",
+      "bytes": 41180
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_117_price_nav_closure_v01/run_targeted_evaluation.py",
+      "sha256": "46cd1e56fb7ed979d1469fc806c12f721b7fc7f7e2d632f5fdf19806a869f093",
+      "bytes": 33564
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/execution_contract.json",
+      "sha256": "1d9b833cd99bd045cf4d7e8f079c0477f7ad42da76ccd600d9c429e3a2c3b089",
+      "bytes": 4086
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/plan.md",
+      "sha256": "cdf315e2482d5d7c4e11f536f8ee33e0399c624be0ef806fb803912bd406b806",
+      "bytes": 5907
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/report.md",
+      "sha256": "43d40f632461a39e27c622aa5f7246b4d53a9448805ec4eada23c71ffaff2cd1",
+      "bytes": 9856
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/run_official_realistic_replay.py",
+      "sha256": "3d7f573bb908b904758427e59967d698fc471cf3af0de699815aa5516ab9705b",
+      "bytes": 39413
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/seal_preflight.py",
+      "sha256": "2f096a2a7fa258c06e3d8fcea942d84ea5be99288e2ee9ed35685fbd196cd4c3",
+      "bytes": 21564
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/corporate_action_audit.md",
+      "sha256": "7a103b3c2c3e700f8a3a304b5e38bfe3e345bc083edd1767cb9da55fc25b5020",
+      "bytes": 5999
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/integrity_validation.json",
+      "sha256": "ae94bb8ba1a6db336cf0fa90fc682db4a7e6499efeb45ea715631cd30cda30b0",
+      "bytes": 1144
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/price_input_124_audit.csv",
+      "sha256": "d2745d88d6014bdfa7226d2e44900e21cb70494e18a4f2eea1ed885de4475855",
+      "bytes": 593087
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/report.md",
+      "sha256": "b7c2d7eb93185ebc8d556fd8da8d27621e4462e89a31e79113b22d2a93c32d3c",
+      "bytes": 8490
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_gate_readjudication_v01/identity_policy_transition.csv",
+      "sha256": "e1bd16296c6e87a9f0ba6368b4d809d47e72b8ad497a79a5a2d2dc918c559084",
+      "bytes": 392
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_gate_readjudication_v01/nav_missing_marks.csv",
+      "sha256": "0da5b7370ffc40cd7ce9e8a481f0d4763ee8f67f5fa367536580be97310dbdc3",
+      "bytes": 767
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_gate_readjudication_v01/report.md",
+      "sha256": "c629d895f9a43400b1847a5a0cc5d01008587151af6cfa2507f2dd7a2d01e1fd",
+      "bytes": 7571
+    },
+    {
+      "path": "data/market/rolling_authority/manifest.json",
+      "sha256": "5c4a9e346d7460c4a28b30a3cd9ab19c9c17527f1c4409282206e8ec2a731570",
+      "bytes": 3816
+    },
+    {
+      "path": "data/market/rolling_authority/merged_pit_intervals.json",
+      "sha256": "d93a958d7bbae9142ef1fa5aded36080d1d107739e777eb4ec3b6566fea90654",
+      "bytes": 626207
+    },
+    {
+      "path": "data/market/rolling_authority/merged_trading_calendar.json",
+      "sha256": "ab7635de160e06d538d9d0dc7225c8e1b307f191f54f2584d4c79e47a94a7480",
+      "bytes": 74619
+    },
+    {
+      "path": "docs/patterns/pattern_a_fast/strategy/version_02/OFFICIAL_ADOPTION_REVALIDATION_PLAN_V02.md",
+      "sha256": "84f7c7ab2dfd3f3af049dc876925f103d1e8d04e391248a780cd9d0537c1501c",
+      "bytes": 20287
+    },
+    {
+      "path": "docs/patterns/pattern_a_fast/strategy/version_02/README.md",
+      "sha256": "d353afec7e26ad4adb296dc14e337a78c88466d3ddcee887932ef1fd58f295ef",
+      "bytes": 16798
+    },
+    {
+      "path": "docs/strategies/strategy_lifecycle.md",
+      "sha256": "c89bad3f56b95a9bac3284fb9817067940534b52c87c29f57f3009ea5a1e25e8",
+      "bytes": 10562
+    },
+    {
+      "path": "docs/validation/backtest_common_rules.md",
+      "sha256": "e8783958064ddfc54f57bef3500ad41de6d3b6bc853fce2464845f9c4cc4d06b",
+      "bytes": 24228
+    },
+    {
+      "path": "docs/validation/official_strategy_adoption_criteria.md",
+      "sha256": "380f34cd7e24fd9881d7a154000d9b51512d905d7c7ef24b1940f5fa4e22cb88",
+      "bytes": 11128
+    },
+    {
+      "path": "scripts/run_fastcore_neg40_weak_protect_p2_1.py",
+      "sha256": "9c95e482f5ca7d216c4f608d98dfaeb11b54d4abc9445b432f99fcc1df91a4f0",
+      "bytes": 266679
+    },
+    {
+      "path": "scripts/run_v2_official_adoption_revalidation_v02.py",
+      "sha256": "ef3d33e03290feb36af5aec671aa63a91ec3dc552f72c83f40aaae99970a6639",
+      "bytes": 87373
+    },
+    {
+      "path": "src/trend_scanner/backtest/snapshot_context.py",
+      "sha256": "a1cf522708d596220e5d3904594be8b223ce9e4fffa5e42ba42a247aec2c0bb9",
+      "bytes": 13545
+    },
+    {
+      "path": "src/trend_scanner/data/krx_raw_stock_store.py",
+      "sha256": "43b491cf74d6b3c41d02f7877d006199a9e5419901f0b8e8a6a50d1c5ad6e95e",
+      "bytes": 17774
+    },
+    {
+      "path": "src/trend_scanner/data/market_calendar.py",
+      "sha256": "1bade7125bd6c503f0a0f0ccafc1a82a931e867edbfd2ffbc9f16cf1ade72b7e",
+      "bytes": 20716
+    },
+    {
+      "path": "src/trend_scanner/data/repository_v2.py",
+      "sha256": "c252835604b0fd8f2e839d438052670d9700e773f1c34cb83582c5c29a198215",
+      "bytes": 43489
+    },
+    {
+      "path": "src/trend_scanner/data/repository_v2_loader.py",
+      "sha256": "d5c2333022acf5b777f38bfd024c7540aaae8bc16f455c1a7e779c60c510a97d",
+      "bytes": 7544
+    },
+    {
+      "path": "src/trend_scanner/data/repository_v2_session_authority.py",
+      "sha256": "4d6b1f431c98a3c04119b09e6032f76fb2ecb3a9900f8b4a2e81f418f1bde3b7",
+      "bytes": 6996
+    },
+    {
+      "path": "src/trend_scanner/data/rolling_market_data_refresh.py",
+      "sha256": "80270ab3efb0d906b1161410cc1756a613df8d7aa930c63415dcd7ba8bf94c87",
+      "bytes": 210332
+    },
+    {
+      "path": "src/trend_scanner/patterns/pattern_a_stage.py",
+      "sha256": "af881b94d33314855c2bf1a0b516a7e61a0b511fed5ae3597743f86fc247a435",
+      "bytes": 19710
+    },
+    {
+      "path": "src/trend_scanner/universe/permanent_identity_exclusions.py",
+      "sha256": "1c7cb7512024130f1ab0efa0ceb9f48ae0017a51af7f6db3f74d87b141a7d6ae",
+      "bytes": 69285
+    },
+    {
+      "path": "src/trend_scanner/validation/feature_report.py",
+      "sha256": "eeafc564792d89e1f0fb810084d707cefe14aab9d893cb61a2f37115278341ac",
+      "bytes": 13511
+    },
+    {
+      "path": "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py",
+      "sha256": "f045750c5fb5afcf0b8c132151ed7b8f387865f7653beb4e5b849c79b50f0dc1",
+      "bytes": 28291
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/plan.md",
+      "sha256": "20313fd3f2bc791a93c677b50e38854eda80743908fc7bb4a25665811b86506a",
+      "bytes": 7948
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/execution_contract.json",
+      "sha256": "f9d2c3269026de02a3ee5b899b49528275d9b051824ca0361a0b2e1eed5b93c1",
+      "bytes": 6329
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/preflight.json",
+      "sha256": "b38683bb0dcd659136aaf7cb6b7d139c20fe4c4c1a4cf43ca49c12e295e6753f",
+      "bytes": 28842
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/identity_price_preflight.csv",
+      "sha256": "5adde9d65344c4520eda0e79057b646ff1f26e1397ec49d70ff1f3a708af8f0b",
+      "bytes": 3180987
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/active_pit_missing_sessions.csv",
+      "sha256": "df84569dad960361dc4bd9e995f820c286aacd0ac864057256dbab9b066da0fe",
+      "bytes": 12479713
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/raw_partition_preflight.csv",
+      "sha256": "ba3146b533267a5c54c61d3ef0e836d278bc9d69cb230bab7a66ede30b292d02",
+      "bytes": 564992
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/permanent_exclusion_pairs.csv",
+      "sha256": "10f0213a24e354e2d9709206cce71f71f500df0ed5f7cb2d0453d07df02ebdbf",
+      "bytes": 39364
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/sample_tickers.json",
+      "sha256": "7b9865a7b66c73faffee2f31408324dc0002f95a7c2c2f26b43fcecb93f70abf",
+      "bytes": 2362
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/seal_preflight.py",
+      "sha256": "69ddc497276ad81a1dc16955e088773ff982f317f49c1f4900803701723f5ef2",
+      "bytes": 38873
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/run_p2_2_replay.py",
+      "sha256": "282aa35b3d218003119f196cf19f2217dd016fc95038a847207b0bf2089bb79b",
+      "bytes": 23312
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/validate_sample_p2_2.py",
+      "sha256": "581062569b5bfe49cea4a2fac888730297b3131efd6bdd5ed6093a3968c1383d",
+      "bytes": 6492
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/finalize_p2_2.py",
+      "sha256": "84c69a8eef335bf0a0e1802c2a2527d7fdc84676254acb938f3214fb0dfe814d",
+      "bytes": 37623
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_realistic_portfolio_v01/seal_source_manifest.py",
+      "sha256": "48460e541876863c34dea1e174b165c652ea4bb10a7af5c0e7247361a72b31c3",
+      "bytes": 8075
+    },
+    {
+      "path": "/Users/june/Documents/projects/w.md",
+      "absolute_path": "/Users/june/Documents/projects/w.md",
+      "sha256": "22390bc73b3bd8622f4f9faa90abacd5672be1973559e6d879dc3f2544392056",
+      "bytes": 15164
+    }
+  ]
+}

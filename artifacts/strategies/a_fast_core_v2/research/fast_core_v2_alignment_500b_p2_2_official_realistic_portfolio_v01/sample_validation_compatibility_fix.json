@@ -1,0 +1,12 @@
+{
+  "schema": "fast_core_v2_alignment_500b_p2_2_sample_validation_compatibility_v01",
+  "status": "VALIDATOR_FIXED_SAMPLE_DATA_UNCHANGED",
+  "sample_replay_changed": false,
+  "changes": [
+    "Parse CSV shares such as 285.0 as numeric before the shared integer-share assertion.",
+    "Map the candidate group to candidate-prefixed sample outputs while retaining the full strategy name in report labels.",
+    "Serialize pandas boolean checks as JSON booleans rather than strings."
+  ],
+  "final_validation_outcome": "CHECK_REQUIRED",
+  "blocking_check": "CONTROL sample NAV coverage is 77.5775%, below the 90% full-run sample gate; the observed 297-session 029960 post-delisting open position is not settled or imputed."
+}
