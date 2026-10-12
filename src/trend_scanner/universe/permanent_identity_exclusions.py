@@ -652,6 +652,13 @@ PERMANENT_IDENTITY_EXCLUSIONS: dict[tuple[str, str], dict[str, str]] = {
         "approved_date": "2026-09-28",
         "policy_version": "permanent_identity_exclusions_v01",
     },
+    ("029960", "KR7029960002"): {
+        "reason": "user-approved permanent exclusion for unresolved delisting and corporate-action settlement lifecycle after an actual P1 holding; data-quality basis, not performance",
+        "approval_scope": "GLOBAL permanent identity exclusion; P1/P2-1/P2-2/P3-1/P3-2",
+        "failure_class": "CORPORATE_ACTION_SETTLEMENT_UNRESOLVED",
+        "approved_date": "2026-10-12",
+        "policy_version": "permanent_identity_exclusions_v02",
+    },
     ("032560", "KR7032560005"): {
         "reason": "user-approved permanent exclusion for unresolved Repository V2 daily valuation RAW_DATA_GAP",
         "approval_scope": "V2 official adoption MDD closure 2026-09-28",

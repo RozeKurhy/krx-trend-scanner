@@ -1,0 +1,4643 @@
+{
+  "schema": "fast_core_v2_alignment_500b_exclusion185_p1_integrity_audit_v01",
+  "status": "PASS",
+  "critical_integrity_error_count": 0,
+  "critical_integrity_errors": [],
+  "checks": {
+    "source_manifest_all_data_and_nonpolicy_hashes_match": true,
+    "original_p1_output_hashes_match": true,
+    "current_policy_is_exact_185": true,
+    "non_target_signal_rows_reused_exactly": true,
+    "calendar_has_3107_p1_sessions": true,
+    "target_not_in_pit_universe": true,
+    "control_scope_issues_zero": true,
+    "candidate_scope_issues_zero": true,
+    "control_cash_conservation": true,
+    "candidate_cash_conservation": true,
+    "all_filled_sides_costed_control": true,
+    "all_filled_sides_costed_candidate": true,
+    "worker_error_count": 0
+  },
+  "source_manifest": {
+    "status": "PASS_WITH_AUTHORIZED_POLICY_CHANGE",
+    "checked": 8996,
+    "expected": 8996,
+    "runtime_files_checked": 71,
+    "adjusted_price_files_checked": 2709,
+    "raw_partition_files_checked": 6216,
+    "mismatches": [],
+    "verified_current_source_hashes": 8995,
+    "authorized_policy_source_change": {
+      "path": "src/trend_scanner/universe/permanent_identity_exclusions.py",
+      "sealed_184_registry_sha256": "0bb2e441cf428df56ad94ab33b08fd033737ee9216029016311b5cb3524d8d3a",
+      "current_185_registry_sha256": "1aeadb9e4edce69478040c3e514bc804339f187421842029e93adedcf4afc567",
+      "baseline_head_blob_matches_sealed_source": true,
+      "change_scope": "the single approved exact identity pair only"
+    }
+  },
+  "original_artifact_hashes": {
+    "status": "PASS",
+    "checked": 87,
+    "mismatches": []
+  },
+  "cost_audits": {
+    "CONTROL": {
+      "entry_attempt_events_equal_prefixed_trade_rows": true,
+      "executed_entry_events_match_summary": true,
+      "all_filled_sides_recalculate_commission_and_slippage": true,
+      "entry_and_exit_fill_prices_match_v2_trade_ledger": true,
+      "integer_shares_and_inclusive_5m_buy_budget": true,
+      "sale_proceeds_remain_pending_on_exit_execution_day": true,
+      "portfolio_cash_conservation": true,
+      "no_hidden_position_cap_skip": true,
+      "no_same_ticker_overlap_or_unmatched_exit": true,
+      "event_cost_totals_match_summary": true,
+      "evaluation_window_commission_krw_from_events": 1106117.5520551503,
+      "evaluation_window_slippage_impact_krw_from_events": 7373977.57699959,
+      "post_cutoff_support_exit_count": 0,
+      "post_cutoff_support_commission_krw": 0.0,
+      "post_cutoff_support_slippage_impact_krw": 0.0,
+      "observed_max_concurrent_positions": 65,
+      "trade_rows": 4791,
+      "entry_attempts": 4791,
+      "executed_entries": 756,
+      "cash_shortage_skips": 4035,
+      "other_entry_skips": 0,
+      "executed_exits": 703
+    },
+    "ALIGNMENT_MCAP_500B": {
+      "entry_attempt_events_equal_prefixed_trade_rows": true,
+      "executed_entry_events_match_summary": true,
+      "all_filled_sides_recalculate_commission_and_slippage": true,
+      "entry_and_exit_fill_prices_match_v2_trade_ledger": true,
+      "integer_shares_and_inclusive_5m_buy_budget": true,
+      "sale_proceeds_remain_pending_on_exit_execution_day": true,
+      "portfolio_cash_conservation": true,
+      "no_hidden_position_cap_skip": true,
+      "no_same_ticker_overlap_or_unmatched_exit": true,
+      "event_cost_totals_match_summary": true,
+      "evaluation_window_commission_krw_from_events": 681300.6791273999,
+      "evaluation_window_slippage_impact_krw_from_events": 4542093.557999739,
+      "post_cutoff_support_exit_count": 1,
+      "post_cutoff_support_commission_krw": 672.1671599999999,
+      "post_cutoff_support_slippage_impact_krw": 4485.60000000021,
+      "observed_max_concurrent_positions": 55,
+      "trade_rows": 512,
+      "entry_attempts": 512,
+      "executed_entries": 451,
+      "cash_shortage_skips": 61,
+      "other_entry_skips": 0,
+      "executed_exits": 429
+    }
+  },
+  "scope_issue_counts": {
+    "CONTROL": 0,
+    "ALIGNMENT_MCAP_500B": 0
+  },
+  "unresolved_mark_summary": {
+    "CONTROL": {
+      "missing_mark_count": 259,
+      "ticker_counts": {
+        "000150": 2,
+        "000520": 48,
+        "000720": 22,
+        "001800": 13,
+        "003030": 3,
+        "004150": 4,
+        "004540": 4,
+        "005850": 13,
+        "006120": 27,
+        "007070": 1,
+        "030530": 8,
+        "032750": 26,
+        "033180": 3,
+        "036420": 5,
+        "048260": 7,
+        "063160": 29,
+        "068050": 1,
+        "068240": 2,
+        "084670": 28,
+        "114120": 2,
+        "117670": 3,
+        "138080": 5,
+        "192080": 1,
+        "222800": 2
+      },
+      "rows": [
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-01-14",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2014-01-16",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-01-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-01-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-02-04",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-02-04",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-02-07",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-02-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-02-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "030530|KR7030530000|2014-01-03|2014-01-07",
+          "ticker": "030530",
+          "isu_cd": "KR7030530000",
+          "date": "2014-02-25",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-02-26",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-02-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "030530|KR7030530000|2014-01-03|2014-01-07",
+          "ticker": "030530",
+          "isu_cd": "KR7030530000",
+          "date": "2014-03-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-03-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-03-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-03-25",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-03-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-03-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-04-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005850|KR7005850003|2014-03-28|2014-03-31",
+          "ticker": "005850",
+          "isu_cd": "KR7005850003",
+          "date": "2014-04-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-04-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-04-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "030530|KR7030530000|2014-01-03|2014-01-07",
+          "ticker": "030530",
+          "isu_cd": "KR7030530000",
+          "date": "2014-04-21",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-04-22",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-04-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005850|KR7005850003|2014-03-28|2014-03-31",
+          "ticker": "005850",
+          "isu_cd": "KR7005850003",
+          "date": "2014-05-02",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005850|KR7005850003|2014-03-28|2014-03-31",
+          "ticker": "005850",
+          "isu_cd": "KR7005850003",
+          "date": "2014-05-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2014-05-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-05-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "030530|KR7030530000|2014-01-03|2014-01-07",
+          "ticker": "030530",
+          "isu_cd": "KR7030530000",
+          "date": "2014-05-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-05-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "030530|KR7030530000|2014-01-03|2014-01-07",
+          "ticker": "030530",
+          "isu_cd": "KR7030530000",
+          "date": "2014-05-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "030530|KR7030530000|2014-01-03|2014-01-07",
+          "ticker": "030530",
+          "isu_cd": "KR7030530000",
+          "date": "2014-06-05",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-06-09",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "030530|KR7030530000|2014-01-03|2014-01-07",
+          "ticker": "030530",
+          "isu_cd": "KR7030530000",
+          "date": "2014-06-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-06-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "030530|KR7030530000|2014-01-03|2014-01-07",
+          "ticker": "030530",
+          "isu_cd": "KR7030530000",
+          "date": "2014-06-12",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-06-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2014-06-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2014-06-19",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2014-06-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-06-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-06-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-07-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005850|KR7005850003|2014-03-28|2014-03-31",
+          "ticker": "005850",
+          "isu_cd": "KR7005850003",
+          "date": "2014-07-09",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-07-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2014-07-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005850|KR7005850003|2014-03-28|2014-03-31",
+          "ticker": "005850",
+          "isu_cd": "KR7005850003",
+          "date": "2014-07-14",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2014-07-30",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "004540|KR7004540001|2014-07-04|2014-07-07",
+          "ticker": "004540",
+          "isu_cd": "KR7004540001",
+          "date": "2014-08-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-08-06",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "004540|KR7004540001|2014-07-04|2014-07-07",
+          "ticker": "004540",
+          "isu_cd": "KR7004540001",
+          "date": "2014-08-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-08-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-08-19",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "004540|KR7004540001|2014-07-04|2014-07-07",
+          "ticker": "004540",
+          "isu_cd": "KR7004540001",
+          "date": "2014-08-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-08-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005850|KR7005850003|2014-03-28|2014-03-31",
+          "ticker": "005850",
+          "isu_cd": "KR7005850003",
+          "date": "2014-09-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2014-09-19",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-09-22",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005850|KR7005850003|2014-03-28|2014-03-31",
+          "ticker": "005850",
+          "isu_cd": "KR7005850003",
+          "date": "2014-09-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005850|KR7005850003|2014-03-28|2014-03-31",
+          "ticker": "005850",
+          "isu_cd": "KR7005850003",
+          "date": "2014-09-25",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-09-30",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2014-10-02",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-10-02",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-10-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-10-14",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-10-22",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-10-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005850|KR7005850003|2014-03-28|2014-03-31",
+          "ticker": "005850",
+          "isu_cd": "KR7005850003",
+          "date": "2014-10-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-11-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "004540|KR7004540001|2014-07-04|2014-07-07",
+          "ticker": "004540",
+          "isu_cd": "KR7004540001",
+          "date": "2014-11-14",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-12-02",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-12-04",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2014-12-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-12-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2014-12-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2014-12-19|2014-12-22",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2014-12-30",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2015-01-12",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-01-15",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005850|KR7005850003|2014-03-28|2014-03-31",
+          "ticker": "005850",
+          "isu_cd": "KR7005850003",
+          "date": "2015-01-15",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2014-12-19|2014-12-22",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-01-22",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-01-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-02-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2015-02-12",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-02-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "063160|KR7063160006|2014-01-10|2014-01-13",
+          "ticker": "063160",
+          "isu_cd": "KR7063160006",
+          "date": "2015-02-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005850|KR7005850003|2014-03-28|2014-03-31",
+          "ticker": "005850",
+          "isu_cd": "KR7005850003",
+          "date": "2015-02-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005850|KR7005850003|2014-03-28|2014-03-31",
+          "ticker": "005850",
+          "isu_cd": "KR7005850003",
+          "date": "2015-03-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2014-12-19|2014-12-22",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-04-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-04-07",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005850|KR7005850003|2014-03-28|2014-03-31",
+          "ticker": "005850",
+          "isu_cd": "KR7005850003",
+          "date": "2015-04-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2014-12-19|2014-12-22",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-04-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2015-04-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-05-19",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "004150|KR7004150009|2015-05-22|2015-05-26",
+          "ticker": "004150",
+          "isu_cd": "KR7004150009",
+          "date": "2015-05-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2015-05-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-06-02",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "004150|KR7004150009|2015-05-22|2015-05-26",
+          "ticker": "004150",
+          "isu_cd": "KR7004150009",
+          "date": "2015-06-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-06-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2014-12-19|2014-12-22",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-07-09",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "036420|KR7036420008|2015-06-05|2015-06-08",
+          "ticker": "036420",
+          "isu_cd": "KR7036420008",
+          "date": "2015-07-09",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "004150|KR7004150009|2015-05-22|2015-05-26",
+          "ticker": "004150",
+          "isu_cd": "KR7004150009",
+          "date": "2015-07-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-07-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "036420|KR7036420008|2015-06-05|2015-06-08",
+          "ticker": "036420",
+          "isu_cd": "KR7036420008",
+          "date": "2015-07-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2014-12-19|2014-12-22",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-07-14",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2014-12-19|2014-12-22",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-07-22",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "004150|KR7004150009|2015-05-22|2015-05-26",
+          "ticker": "004150",
+          "isu_cd": "KR7004150009",
+          "date": "2015-07-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2014-12-19|2014-12-22",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-07-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "007070|KR7007070006|2015-02-06|2015-02-09",
+          "ticker": "007070",
+          "isu_cd": "KR7007070006",
+          "date": "2015-07-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-08-04",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2015-08-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-09-02",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2014-12-19|2014-12-22",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-09-15",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "114120|KR7114120009|2015-09-11|2015-09-14",
+          "ticker": "114120",
+          "isu_cd": "KR7114120009",
+          "date": "2015-09-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2014-12-19|2014-12-22",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-09-30",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-10-16",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "114120|KR7114120009|2015-09-11|2015-09-14",
+          "ticker": "114120",
+          "isu_cd": "KR7114120009",
+          "date": "2015-10-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-10-21",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "036420|KR7036420008|2015-06-05|2015-06-08",
+          "ticker": "036420",
+          "isu_cd": "KR7036420008",
+          "date": "2015-10-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-11-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2015-12-02",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-12-15",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "036420|KR7036420008|2015-06-05|2015-06-08",
+          "ticker": "036420",
+          "isu_cd": "KR7036420008",
+          "date": "2015-12-16",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-12-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2015-12-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2015-12-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2016-01-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2016-01-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2016-02-04",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "036420|KR7036420008|2015-06-05|2015-06-08",
+          "ticker": "036420",
+          "isu_cd": "KR7036420008",
+          "date": "2016-02-04",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2016-02-05",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "033180|KR7033180001|2016-01-22|2016-01-25",
+          "ticker": "033180",
+          "isu_cd": "KR7033180001",
+          "date": "2016-02-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2016-02-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2016-02-19",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "117670|KR7117670000|2016-02-05|2016-02-11",
+          "ticker": "117670",
+          "isu_cd": "KR7117670000",
+          "date": "2016-03-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2016-03-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2014-12-19|2014-12-22",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2016-03-30",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "033180|KR7033180001|2016-01-22|2016-01-25",
+          "ticker": "033180",
+          "isu_cd": "KR7033180001",
+          "date": "2016-04-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "117670|KR7117670000|2016-02-05|2016-02-11",
+          "ticker": "117670",
+          "isu_cd": "KR7117670000",
+          "date": "2016-04-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2014-12-19|2014-12-22",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2016-05-19",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "033180|KR7033180001|2016-01-22|2016-01-25",
+          "ticker": "033180",
+          "isu_cd": "KR7033180001",
+          "date": "2016-06-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2016-06-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2016-06-15",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2016-06-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2016-06-21",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "117670|KR7117670000|2016-02-05|2016-02-11",
+          "ticker": "117670",
+          "isu_cd": "KR7117670000",
+          "date": "2016-06-21",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "068050|KR7068050004|2016-05-20|2016-05-23",
+          "ticker": "068050",
+          "isu_cd": "KR7068050004",
+          "date": "2016-06-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2016-06-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2016-07-12",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2014-12-19|2014-12-22",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2016-07-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2016-08-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2016-08-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000150|KR7000150003|2016-08-12|2016-08-16",
+          "ticker": "000150",
+          "isu_cd": "KR7000150003",
+          "date": "2016-08-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000150|KR7000150003|2016-08-12|2016-08-16",
+          "ticker": "000150",
+          "isu_cd": "KR7000150003",
+          "date": "2016-08-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2016-09-19",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2016-09-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2016-10-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2016-10-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2016-11-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2016-11-14",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2016-11-22",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2016-11-22",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2016-11-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003030|KR7003030004|2016-11-11|2016-11-15",
+          "ticker": "003030",
+          "isu_cd": "KR7003030004",
+          "date": "2016-11-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000520|KR7000520007|2014-01-10|2014-01-13",
+          "ticker": "000520",
+          "isu_cd": "KR7000520007",
+          "date": "2016-11-25",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2016-11-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2016-12-05",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2016-12-16",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003030|KR7003030004|2016-11-11|2016-11-15",
+          "ticker": "003030",
+          "isu_cd": "KR7003030004",
+          "date": "2016-12-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2016-12-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2016-12-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2017-01-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-02-06",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-02-14",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2017-02-15",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003030|KR7003030004|2016-11-11|2016-11-15",
+          "ticker": "003030",
+          "isu_cd": "KR7003030004",
+          "date": "2017-02-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2017-02-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-02-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-02-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-02-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-03-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2017-03-06",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-03-07",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2017-03-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2017-03-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-03-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2017-03-03|2017-03-06",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2017-03-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2017-04-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2017-04-12",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2017-04-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-04-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-04-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2017-03-03|2017-03-06",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2017-04-21",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2017-03-03|2017-03-06",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2017-05-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2017-05-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2017-05-12",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2017-06-02",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2017-03-03|2017-03-06",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2017-06-21",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-06-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2017-07-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2017-03-03|2017-03-06",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2017-07-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2017-03-03|2017-03-06",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2017-07-21",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2017-07-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-08-07",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-08-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2017-09-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-09-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2017-09-14",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-09-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2017-09-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-10-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-10-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-10-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006120|KR7006120000|2014-01-10|2014-01-13",
+          "ticker": "006120",
+          "isu_cd": "KR7006120000",
+          "date": "2017-11-02",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2017-11-07",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "048260|KR7048260004|2017-09-29|2017-10-10",
+          "ticker": "048260",
+          "isu_cd": "KR7048260004",
+          "date": "2017-11-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2017-11-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "048260|KR7048260004|2017-09-29|2017-10-10",
+          "ticker": "048260",
+          "isu_cd": "KR7048260004",
+          "date": "2017-11-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-12-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2017-12-06",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2017-12-26",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2018-01-02",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2018-01-05",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "084670|KR7084670009|2016-10-21|2016-10-25",
+          "ticker": "084670",
+          "isu_cd": "KR7084670009",
+          "date": "2018-01-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2018-01-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2018-01-26",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2018-01-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "032750|KR7032750002|2015-11-27|2015-11-30",
+          "ticker": "032750",
+          "isu_cd": "KR7032750002",
+          "date": "2018-02-19",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2018-04-20|2018-04-23",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2018-06-05",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2018-04-20|2018-04-23",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2018-09-21",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2018-04-20|2018-04-23",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2019-01-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "048260|KR7048260004|2019-01-18|2019-01-21",
+          "ticker": "048260",
+          "isu_cd": "KR7048260004",
+          "date": "2019-02-07",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "138080|KR7138080007|2018-11-16|2018-11-19",
+          "ticker": "138080",
+          "isu_cd": "KR7138080007",
+          "date": "2019-02-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "138080|KR7138080007|2018-11-16|2018-11-19",
+          "ticker": "138080",
+          "isu_cd": "KR7138080007",
+          "date": "2019-03-06",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "048260|KR7048260004|2019-01-18|2019-01-21",
+          "ticker": "048260",
+          "isu_cd": "KR7048260004",
+          "date": "2019-04-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "138080|KR7138080007|2018-11-16|2018-11-19",
+          "ticker": "138080",
+          "isu_cd": "KR7138080007",
+          "date": "2019-05-15",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "048260|KR7048260004|2019-01-18|2019-01-21",
+          "ticker": "048260",
+          "isu_cd": "KR7048260004",
+          "date": "2019-06-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "048260|KR7048260004|2019-01-18|2019-01-21",
+          "ticker": "048260",
+          "isu_cd": "KR7048260004",
+          "date": "2019-07-19",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "138080|KR7138080007|2018-11-16|2018-11-19",
+          "ticker": "138080",
+          "isu_cd": "KR7138080007",
+          "date": "2019-07-22",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "048260|KR7048260004|2019-01-18|2019-01-21",
+          "ticker": "048260",
+          "isu_cd": "KR7048260004",
+          "date": "2019-08-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "138080|KR7138080007|2018-11-16|2018-11-19",
+          "ticker": "138080",
+          "isu_cd": "KR7138080007",
+          "date": "2019-08-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2018-04-20|2018-04-23",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2019-09-04",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "222800|KR7222800005|2019-12-06|2019-12-09",
+          "ticker": "222800",
+          "isu_cd": "KR7222800005",
+          "date": "2020-01-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2018-04-20|2018-04-23",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2020-01-15",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "222800|KR7222800005|2019-12-06|2019-12-09",
+          "ticker": "222800",
+          "isu_cd": "KR7222800005",
+          "date": "2020-02-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2018-04-20|2018-04-23",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2020-03-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2018-04-20|2018-04-23",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2020-04-09",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2018-04-20|2018-04-23",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2020-04-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2018-04-20|2018-04-23",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2020-05-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2018-04-20|2018-04-23",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2020-06-05",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2018-04-20|2018-04-23",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2020-06-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2018-04-20|2018-04-23",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2020-07-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "192080|KR7192080000|2020-05-08|2020-05-11",
+          "ticker": "192080",
+          "isu_cd": "KR7192080000",
+          "date": "2020-09-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2018-04-20|2018-04-23",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2020-11-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2018-04-20|2018-04-23",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2021-01-19",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2018-04-20|2018-04-23",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2021-05-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "000720|KR7000720003|2018-04-20|2018-04-23",
+          "ticker": "000720",
+          "isu_cd": "KR7000720003",
+          "date": "2021-06-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "068240|KR7068240001|2021-10-15|2021-10-18",
+          "ticker": "068240",
+          "isu_cd": "KR7068240001",
+          "date": "2022-01-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "068240|KR7068240001|2021-10-15|2021-10-18",
+          "ticker": "068240",
+          "isu_cd": "KR7068240001",
+          "date": "2022-01-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        }
+      ]
+    },
+    "ALIGNMENT_MCAP_500B": {
+      "missing_mark_count": 238,
+      "ticker_counts": {
+        "001800": 12,
+        "003620": 7,
+        "003690": 4,
+        "003850": 10,
+        "005300": 27,
+        "005850": 3,
+        "006040": 4,
+        "007070": 1,
+        "009410": 1,
+        "011760": 1,
+        "012630": 1,
+        "017800": 5,
+        "018670": 32,
+        "025980": 1,
+        "029460": 3,
+        "035420": 16,
+        "035720": 10,
+        "036830": 5,
+        "048260": 7,
+        "068240": 2,
+        "079160": 16,
+        "080160": 2,
+        "085660": 4,
+        "086450": 25,
+        "086520": 7,
+        "086900": 26,
+        "098460": 2,
+        "112040": 1,
+        "112610": 3
+      },
+      "rows": [
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2015-01-02|2015-01-05",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-01-22",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003620|KR7003620002|2015-02-27|2015-03-02",
+          "ticker": "003620",
+          "isu_cd": "KR7003620002",
+          "date": "2015-03-12",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "036830|KR7036830008|2015-02-27|2015-03-02",
+          "ticker": "036830",
+          "isu_cd": "KR7036830008",
+          "date": "2015-03-26",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "036830|KR7036830008|2015-02-27|2015-03-02",
+          "ticker": "036830",
+          "isu_cd": "KR7036830008",
+          "date": "2015-03-30",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003620|KR7003620002|2015-02-27|2015-03-02",
+          "ticker": "003620",
+          "isu_cd": "KR7003620002",
+          "date": "2015-04-02",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2015-01-02|2015-01-05",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-04-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003620|KR7003620002|2015-02-27|2015-03-02",
+          "ticker": "003620",
+          "isu_cd": "KR7003620002",
+          "date": "2015-04-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003620|KR7003620002|2015-02-27|2015-03-02",
+          "ticker": "003620",
+          "isu_cd": "KR7003620002",
+          "date": "2015-04-14",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2015-01-02|2015-01-05",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-04-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003620|KR7003620002|2015-02-27|2015-03-02",
+          "ticker": "003620",
+          "isu_cd": "KR7003620002",
+          "date": "2015-04-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2015-05-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "011760|KR7011760006|2015-05-22|2015-05-26",
+          "ticker": "011760",
+          "isu_cd": "KR7011760006",
+          "date": "2015-06-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "079160|KR7079160008|2015-01-02|2015-01-05",
+          "ticker": "079160",
+          "isu_cd": "KR7079160008",
+          "date": "2015-06-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003620|KR7003620002|2015-02-27|2015-03-02",
+          "ticker": "003620",
+          "isu_cd": "KR7003620002",
+          "date": "2015-07-07",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2015-01-02|2015-01-05",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-07-09",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2015-01-02|2015-01-05",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-07-14",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003620|KR7003620002|2015-02-27|2015-03-02",
+          "ticker": "003620",
+          "isu_cd": "KR7003620002",
+          "date": "2015-07-16",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "036830|KR7036830008|2015-02-27|2015-03-02",
+          "ticker": "036830",
+          "isu_cd": "KR7036830008",
+          "date": "2015-07-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2015-01-02|2015-01-05",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-07-22",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2015-01-02|2015-01-05",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-07-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "036830|KR7036830008|2015-02-27|2015-03-02",
+          "ticker": "036830",
+          "isu_cd": "KR7036830008",
+          "date": "2015-07-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "079160|KR7079160008|2015-01-02|2015-01-05",
+          "ticker": "079160",
+          "isu_cd": "KR7079160008",
+          "date": "2015-08-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "079160|KR7079160008|2015-01-02|2015-01-05",
+          "ticker": "079160",
+          "isu_cd": "KR7079160008",
+          "date": "2015-08-26",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "079160|KR7079160008|2015-01-02|2015-01-05",
+          "ticker": "079160",
+          "isu_cd": "KR7079160008",
+          "date": "2015-09-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2015-09-09",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2015-01-02|2015-01-05",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-09-15",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2015-09-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006040|KR7006040000|2015-07-31|2015-08-03",
+          "ticker": "006040",
+          "isu_cd": "KR7006040000",
+          "date": "2015-09-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2015-01-02|2015-01-05",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2015-09-30",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "079160|KR7079160008|2015-01-02|2015-01-05",
+          "ticker": "079160",
+          "isu_cd": "KR7079160008",
+          "date": "2015-10-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "079160|KR7079160008|2015-01-02|2015-01-05",
+          "ticker": "079160",
+          "isu_cd": "KR7079160008",
+          "date": "2015-11-05",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "079160|KR7079160008|2015-01-02|2015-01-05",
+          "ticker": "079160",
+          "isu_cd": "KR7079160008",
+          "date": "2015-11-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "079160|KR7079160008|2015-01-02|2015-01-05",
+          "ticker": "079160",
+          "isu_cd": "KR7079160008",
+          "date": "2015-11-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2015-12-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "079160|KR7079160008|2015-01-02|2015-01-05",
+          "ticker": "079160",
+          "isu_cd": "KR7079160008",
+          "date": "2015-12-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2015-12-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "079160|KR7079160008|2015-01-02|2015-01-05",
+          "ticker": "079160",
+          "isu_cd": "KR7079160008",
+          "date": "2015-12-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2016-01-19",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "079160|KR7079160008|2015-01-02|2015-01-05",
+          "ticker": "079160",
+          "isu_cd": "KR7079160008",
+          "date": "2016-01-22",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2016-01-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2016-02-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2015-01-02|2015-01-05",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2016-03-30",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2016-04-07",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "079160|KR7079160008|2015-01-02|2015-01-05",
+          "ticker": "079160",
+          "isu_cd": "KR7079160008",
+          "date": "2016-04-21",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "079160|KR7079160008|2015-01-02|2015-01-05",
+          "ticker": "079160",
+          "isu_cd": "KR7079160008",
+          "date": "2016-04-25",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "079160|KR7079160008|2015-01-02|2015-01-05",
+          "ticker": "079160",
+          "isu_cd": "KR7079160008",
+          "date": "2016-04-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2015-01-02|2015-01-05",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2016-05-19",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2016-05-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "001800|KR7001800002|2015-01-02|2015-01-05",
+          "ticker": "001800",
+          "isu_cd": "KR7001800002",
+          "date": "2016-07-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035420|KR7035420009|2016-06-10|2016-06-13",
+          "ticker": "035420",
+          "isu_cd": "KR7035420009",
+          "date": "2016-08-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "079160|KR7079160008|2015-01-02|2015-01-05",
+          "ticker": "079160",
+          "isu_cd": "KR7079160008",
+          "date": "2016-08-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035420|KR7035420009|2016-06-10|2016-06-13",
+          "ticker": "035420",
+          "isu_cd": "KR7035420009",
+          "date": "2016-08-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003850|KR7003850005|2016-07-29|2016-08-01",
+          "ticker": "003850",
+          "isu_cd": "KR7003850005",
+          "date": "2016-09-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2016-09-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2016-09-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "079160|KR7079160008|2015-01-02|2015-01-05",
+          "ticker": "079160",
+          "isu_cd": "KR7079160008",
+          "date": "2016-10-04",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003850|KR7003850005|2016-07-29|2016-08-01",
+          "ticker": "003850",
+          "isu_cd": "KR7003850005",
+          "date": "2016-10-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2016-10-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006040|KR7006040000|2016-05-27|2016-05-30",
+          "ticker": "006040",
+          "isu_cd": "KR7006040000",
+          "date": "2016-10-19",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "012630|KR7012630000|2016-09-23|2016-09-26",
+          "ticker": "012630",
+          "isu_cd": "KR7012630000",
+          "date": "2016-11-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2016-11-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2016-11-21",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2016-12-06",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2016-12-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2016-12-16",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2016-12-16",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035420|KR7035420009|2016-06-10|2016-06-13",
+          "ticker": "035420",
+          "isu_cd": "KR7035420009",
+          "date": "2016-12-16",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2016-12-21",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2016-12-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006040|KR7006040000|2016-05-27|2016-05-30",
+          "ticker": "006040",
+          "isu_cd": "KR7006040000",
+          "date": "2017-01-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-01-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-01-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-02-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035420|KR7035420009|2016-06-10|2016-06-13",
+          "ticker": "035420",
+          "isu_cd": "KR7035420009",
+          "date": "2017-02-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035420|KR7035420009|2016-06-10|2016-06-13",
+          "ticker": "035420",
+          "isu_cd": "KR7035420009",
+          "date": "2017-02-16",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2017-02-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-03-16",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-03-22",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-04-04",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035420|KR7035420009|2016-06-10|2016-06-13",
+          "ticker": "035420",
+          "isu_cd": "KR7035420009",
+          "date": "2017-04-06",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "080160|KR7080160005|2017-04-07|2017-04-10",
+          "ticker": "080160",
+          "isu_cd": "KR7080160005",
+          "date": "2017-04-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2017-04-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2017-04-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035420|KR7035420009|2016-06-10|2016-06-13",
+          "ticker": "035420",
+          "isu_cd": "KR7035420009",
+          "date": "2017-04-21",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2017-04-21",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-04-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-04-25",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035420|KR7035420009|2016-06-10|2016-06-13",
+          "ticker": "035420",
+          "isu_cd": "KR7035420009",
+          "date": "2017-04-25",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2017-04-25",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2017-04-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035420|KR7035420009|2016-06-10|2016-06-13",
+          "ticker": "035420",
+          "isu_cd": "KR7035420009",
+          "date": "2017-05-04",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "007070|KR7007070006|2017-02-10|2017-02-13",
+          "ticker": "007070",
+          "isu_cd": "KR7007070006",
+          "date": "2017-05-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2017-05-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-05-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-05-26",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "029460|KR7029460003|2017-05-19|2017-05-22",
+          "ticker": "029460",
+          "isu_cd": "KR7029460003",
+          "date": "2017-05-26",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-05-30",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2017-05-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-06-02",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2017-06-07",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-06-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "080160|KR7080160005|2017-04-07|2017-04-10",
+          "ticker": "080160",
+          "isu_cd": "KR7080160005",
+          "date": "2017-06-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2017-06-14",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "006040|KR7006040000|2016-05-27|2016-05-30",
+          "ticker": "006040",
+          "isu_cd": "KR7006040000",
+          "date": "2017-06-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2017-07-07",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2017-07-14",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-07-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2017-07-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2017-07-26",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2017-07-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-07-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-08-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2017-08-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-08-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-08-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "029460|KR7029460003|2017-05-19|2017-05-22",
+          "ticker": "029460",
+          "isu_cd": "KR7029460003",
+          "date": "2017-08-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2017-08-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2017-09-06",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-09-07",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2017-09-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-09-15",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2017-09-15",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2017-10-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2017-10-16",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-10-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2017-10-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "029460|KR7029460003|2017-05-19|2017-05-22",
+          "ticker": "029460",
+          "isu_cd": "KR7029460003",
+          "date": "2017-10-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035420|KR7035420009|2016-06-10|2016-06-13",
+          "ticker": "035420",
+          "isu_cd": "KR7035420009",
+          "date": "2017-10-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "098460|KR7098460009|2016-07-22|2016-07-25",
+          "ticker": "098460",
+          "isu_cd": "KR7098460009",
+          "date": "2017-11-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2017-11-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "098460|KR7098460009|2016-07-22|2016-07-25",
+          "ticker": "098460",
+          "isu_cd": "KR7098460009",
+          "date": "2017-11-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2017-11-07",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "048260|KR7048260004|2017-09-29|2017-10-10",
+          "ticker": "048260",
+          "isu_cd": "KR7048260004",
+          "date": "2017-11-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2017-11-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "048260|KR7048260004|2017-09-29|2017-10-10",
+          "ticker": "048260",
+          "isu_cd": "KR7048260004",
+          "date": "2017-11-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2017-12-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2017-12-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2017-12-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2017-12-15",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035420|KR7035420009|2016-06-10|2016-06-13",
+          "ticker": "035420",
+          "isu_cd": "KR7035420009",
+          "date": "2017-12-15",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2017-12-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2017-12-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2018-01-02",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2018-01-05",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2018-01-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035420|KR7035420009|2016-06-10|2016-06-13",
+          "ticker": "035420",
+          "isu_cd": "KR7035420009",
+          "date": "2018-01-22",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2018-01-22",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2018-01-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2018-01-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "018670|KR7018670000|2016-09-30|2016-10-04",
+          "ticker": "018670",
+          "isu_cd": "KR7018670000",
+          "date": "2018-01-25",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2018-01-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2018-02-02",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2018-02-14",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2018-02-23",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035420|KR7035420009|2016-06-10|2016-06-13",
+          "ticker": "035420",
+          "isu_cd": "KR7035420009",
+          "date": "2018-03-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2018-03-12",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2018-03-14",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2018-03-26",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2018-03-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2018-03-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035420|KR7035420009|2016-06-10|2016-06-13",
+          "ticker": "035420",
+          "isu_cd": "KR7035420009",
+          "date": "2018-04-09",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "025980|KR7025980004|2018-04-06|2018-04-09",
+          "ticker": "025980",
+          "isu_cd": "KR7025980004",
+          "date": "2018-04-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003850|KR7003850005|2018-04-06|2018-04-09",
+          "ticker": "003850",
+          "isu_cd": "KR7003850005",
+          "date": "2018-04-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2018-04-30",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003850|KR7003850005|2018-04-06|2018-04-09",
+          "ticker": "003850",
+          "isu_cd": "KR7003850005",
+          "date": "2018-05-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2018-05-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "017800|KR7017800004|2018-02-23|2018-02-26",
+          "ticker": "017800",
+          "isu_cd": "KR7017800004",
+          "date": "2018-05-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2018-05-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2018-06-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2018-06-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2018-06-07",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "017800|KR7017800004|2018-02-23|2018-02-26",
+          "ticker": "017800",
+          "isu_cd": "KR7017800004",
+          "date": "2018-06-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2018-06-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2018-06-12",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2018-06-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086900|KR7086900008|2017-03-31|2017-04-03",
+          "ticker": "086900",
+          "isu_cd": "KR7086900008",
+          "date": "2018-06-25",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "036830|KR7036830008|2018-06-01|2018-06-04",
+          "ticker": "036830",
+          "isu_cd": "KR7036830008",
+          "date": "2018-06-26",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035420|KR7035420009|2016-06-10|2016-06-13",
+          "ticker": "035420",
+          "isu_cd": "KR7035420009",
+          "date": "2018-08-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035420|KR7035420009|2016-06-10|2016-06-13",
+          "ticker": "035420",
+          "isu_cd": "KR7035420009",
+          "date": "2018-08-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "017800|KR7017800004|2018-02-23|2018-02-26",
+          "ticker": "017800",
+          "isu_cd": "KR7017800004",
+          "date": "2018-08-17",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "017800|KR7017800004|2018-02-23|2018-02-26",
+          "ticker": "017800",
+          "isu_cd": "KR7017800004",
+          "date": "2018-08-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2018-09-12",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2018-09-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2017-03-31|2017-04-03",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2018-09-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "017800|KR7017800004|2018-02-23|2018-02-26",
+          "ticker": "017800",
+          "isu_cd": "KR7017800004",
+          "date": "2018-09-21",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2018-10-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2018-12-12",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "048260|KR7048260004|2019-01-18|2019-01-21",
+          "ticker": "048260",
+          "isu_cd": "KR7048260004",
+          "date": "2019-02-07",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005300|KR7005300009|2015-04-17|2015-04-20",
+          "ticker": "005300",
+          "isu_cd": "KR7005300009",
+          "date": "2019-02-14",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005850|KR7005850003|2019-03-15|2019-03-18",
+          "ticker": "005850",
+          "isu_cd": "KR7005850003",
+          "date": "2019-03-22",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "048260|KR7048260004|2019-01-18|2019-01-21",
+          "ticker": "048260",
+          "isu_cd": "KR7048260004",
+          "date": "2019-04-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "112040|KR7112040001|2019-03-08|2019-03-11",
+          "ticker": "112040",
+          "isu_cd": "KR7112040001",
+          "date": "2019-05-15",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035720|KR7035720002|2019-05-03|2019-05-07",
+          "ticker": "035720",
+          "isu_cd": "KR7035720002",
+          "date": "2019-05-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005850|KR7005850003|2019-03-15|2019-03-18",
+          "ticker": "005850",
+          "isu_cd": "KR7005850003",
+          "date": "2019-05-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003850|KR7003850005|2019-04-12|2019-04-15",
+          "ticker": "003850",
+          "isu_cd": "KR7003850005",
+          "date": "2019-06-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "048260|KR7048260004|2019-01-18|2019-01-21",
+          "ticker": "048260",
+          "isu_cd": "KR7048260004",
+          "date": "2019-06-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035720|KR7035720002|2019-05-03|2019-05-07",
+          "ticker": "035720",
+          "isu_cd": "KR7035720002",
+          "date": "2019-07-04",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "048260|KR7048260004|2019-01-18|2019-01-21",
+          "ticker": "048260",
+          "isu_cd": "KR7048260004",
+          "date": "2019-07-19",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "048260|KR7048260004|2019-01-18|2019-01-21",
+          "ticker": "048260",
+          "isu_cd": "KR7048260004",
+          "date": "2019-08-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003850|KR7003850005|2019-04-12|2019-04-15",
+          "ticker": "003850",
+          "isu_cd": "KR7003850005",
+          "date": "2019-08-16",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035720|KR7035720002|2019-05-03|2019-05-07",
+          "ticker": "035720",
+          "isu_cd": "KR7035720002",
+          "date": "2019-08-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003850|KR7003850005|2019-04-12|2019-04-15",
+          "ticker": "003850",
+          "isu_cd": "KR7003850005",
+          "date": "2019-09-04",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "005850|KR7005850003|2019-03-15|2019-03-18",
+          "ticker": "005850",
+          "isu_cd": "KR7005850003",
+          "date": "2019-09-04",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035720|KR7035720002|2019-05-03|2019-05-07",
+          "ticker": "035720",
+          "isu_cd": "KR7035720002",
+          "date": "2019-09-24",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2019-07-12|2019-07-15",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2019-10-01",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2019-07-12|2019-07-15",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2019-10-08",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003850|KR7003850005|2019-04-12|2019-04-15",
+          "ticker": "003850",
+          "isu_cd": "KR7003850005",
+          "date": "2019-10-30",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035720|KR7035720002|2019-05-03|2019-05-07",
+          "ticker": "035720",
+          "isu_cd": "KR7035720002",
+          "date": "2019-12-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035720|KR7035720002|2019-05-03|2019-05-07",
+          "ticker": "035720",
+          "isu_cd": "KR7035720002",
+          "date": "2019-12-04",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2019-07-12|2019-07-15",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2019-12-18",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035720|KR7035720002|2019-05-03|2019-05-07",
+          "ticker": "035720",
+          "isu_cd": "KR7035720002",
+          "date": "2020-01-07",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003850|KR7003850005|2019-04-12|2019-04-15",
+          "ticker": "003850",
+          "isu_cd": "KR7003850005",
+          "date": "2020-02-03",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035720|KR7035720002|2019-05-03|2019-05-07",
+          "ticker": "035720",
+          "isu_cd": "KR7035720002",
+          "date": "2020-02-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003850|KR7003850005|2019-04-12|2019-04-15",
+          "ticker": "003850",
+          "isu_cd": "KR7003850005",
+          "date": "2020-03-10",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035720|KR7035720002|2019-05-03|2019-05-07",
+          "ticker": "035720",
+          "isu_cd": "KR7035720002",
+          "date": "2020-04-02",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086450|KR7086450004|2019-07-12|2019-07-15",
+          "ticker": "086450",
+          "isu_cd": "KR7086450004",
+          "date": "2020-04-21",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "035720|KR7035720002|2019-05-03|2019-05-07",
+          "ticker": "035720",
+          "isu_cd": "KR7035720002",
+          "date": "2020-04-22",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "112610|KR7112610001|2020-05-29|2020-06-01",
+          "ticker": "112610",
+          "isu_cd": "KR7112610001",
+          "date": "2020-06-12",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "112610|KR7112610001|2020-07-03|2020-07-06",
+          "ticker": "112610",
+          "isu_cd": "KR7112610001",
+          "date": "2020-07-16",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "112610|KR7112610001|2020-07-03|2020-07-06",
+          "ticker": "112610",
+          "isu_cd": "KR7112610001",
+          "date": "2020-07-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086520|KR7086520004|2020-07-31|2020-08-03",
+          "ticker": "086520",
+          "isu_cd": "KR7086520004",
+          "date": "2020-08-19",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086520|KR7086520004|2020-07-31|2020-08-03",
+          "ticker": "086520",
+          "isu_cd": "KR7086520004",
+          "date": "2020-09-02",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086520|KR7086520004|2020-07-31|2020-08-03",
+          "ticker": "086520",
+          "isu_cd": "KR7086520004",
+          "date": "2020-10-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086520|KR7086520004|2020-07-31|2020-08-03",
+          "ticker": "086520",
+          "isu_cd": "KR7086520004",
+          "date": "2020-10-29",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086520|KR7086520004|2020-07-31|2020-08-03",
+          "ticker": "086520",
+          "isu_cd": "KR7086520004",
+          "date": "2020-11-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086520|KR7086520004|2020-07-31|2020-08-03",
+          "ticker": "086520",
+          "isu_cd": "KR7086520004",
+          "date": "2020-12-04",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "086520|KR7086520004|2020-07-31|2020-08-03",
+          "ticker": "086520",
+          "isu_cd": "KR7086520004",
+          "date": "2020-12-11",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "009410|KR7009410002|2020-05-22|2020-05-25",
+          "ticker": "009410",
+          "isu_cd": "KR7009410002",
+          "date": "2021-04-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "068240|KR7068240001|2021-10-15|2021-10-18",
+          "ticker": "068240",
+          "isu_cd": "KR7068240001",
+          "date": "2022-01-20",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "068240|KR7068240001|2021-10-15|2021-10-18",
+          "ticker": "068240",
+          "isu_cd": "KR7068240001",
+          "date": "2022-01-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "085660|KR7085660009|2021-06-11|2021-06-14",
+          "ticker": "085660",
+          "isu_cd": "KR7085660009",
+          "date": "2022-02-25",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "085660|KR7085660009|2021-06-11|2021-06-14",
+          "ticker": "085660",
+          "isu_cd": "KR7085660009",
+          "date": "2022-05-13",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003690|KR7003690005|2023-02-24|2023-02-27",
+          "ticker": "003690",
+          "isu_cd": "KR7003690005",
+          "date": "2023-04-25",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003690|KR7003690005|2023-02-24|2023-02-27",
+          "ticker": "003690",
+          "isu_cd": "KR7003690005",
+          "date": "2023-06-28",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003690|KR7003690005|2023-09-15|2023-09-18",
+          "ticker": "003690",
+          "isu_cd": "KR7003690005",
+          "date": "2024-02-16",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "003690|KR7003690005|2023-09-15|2023-09-18",
+          "ticker": "003690",
+          "isu_cd": "KR7003690005",
+          "date": "2024-06-27",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "085660|KR7085660009|2021-06-11|2021-06-14",
+          "ticker": "085660",
+          "isu_cd": "KR7085660009",
+          "date": "2024-10-31",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        },
+        {
+          "window_id": "P1",
+          "candidate_id": "085660|KR7085660009|2021-06-11|2021-06-14",
+          "ticker": "085660",
+          "isu_cd": "KR7085660009",
+          "date": "2024-11-25",
+          "reason": "UNRESOLVED_DAILY_MARK",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER"
+        }
+      ]
+    }
+  },
+  "full_replay_seconds": 572.804,
+  "portfolio_replay_workers": 1,
+  "signal_workers": 0,
+  "signal_evaluation_rerun": false
+}

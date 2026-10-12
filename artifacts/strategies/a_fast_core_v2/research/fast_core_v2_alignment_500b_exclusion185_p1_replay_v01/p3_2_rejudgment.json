@@ -1,0 +1,114 @@
+{
+  "window": "P3-2",
+  "status": "PASS_WITH_OBSERVED_NAV",
+  "policy_lineage": {
+    "source_pair_count": 181,
+    "source_canonical_sha256": {
+      "pair_count": 181,
+      "preflight_match": true
+    },
+    "first_readjudgment_pair": [
+      "380440",
+      "KR7380440008"
+    ],
+    "additional_pairs_to_184": [
+      [
+        "003410",
+        "KR7003410008"
+      ],
+      [
+        "138580",
+        "KR7138580006"
+      ]
+    ],
+    "182_rejudgment_status": "recorded in p3_2_official_gate_readjudication_v01",
+    "184_rejudgment_ledger": "p3_2_rejudgment.json",
+    "all_rejudgment_conditions_pass": true
+  },
+  "artifact_hash_verification": {
+    "status": "PASS",
+    "checked": 33,
+    "mismatches": []
+  },
+  "target_row_audit": {
+    "files": {
+      "control_signal_trade_inputs.csv": {
+        "rows": 1,
+        "sha256": "bdfecc159fcb3059da3aaa301ec3ea6bb1124c705aca6c9adb8fd07782f32bc8",
+        "trade_status_counts": {
+          "OPEN_AT_CUTOFF": 1
+        },
+        "dates": [
+          "2024-11-15"
+        ]
+      },
+      "control_cash_events.csv": {
+        "rows": 1,
+        "sha256": "c206cddd3b1830876687d405d01d35fb0ca2d5bab83a53b75af148b3dec51a93",
+        "event_status_counts": {
+          "SKIPPED_CASH_UNAVAILABLE": 1
+        },
+        "event_type_counts": {
+          "ENTRY": 1
+        },
+        "reason_counts": {
+          "INSUFFICIENT_AVAILABLE_CASH": 1
+        },
+        "cash_delta_rows": 1,
+        "cash_delta_sum_krw": 0.0,
+        "cash_delta_all_zero": true,
+        "dates": [
+          "2024-11-15"
+        ]
+      }
+    },
+    "errors": []
+  },
+  "target_entry_effect": {
+    "control_signal_trade_rows": 1,
+    "candidate_signal_trade_rows": 0,
+    "candidate_filter_rows": 0,
+    "control_cash_events_are_zero_cash_skips": true,
+    "candidate_executions": 0,
+    "target_missing_marks": 0
+  },
+  "official_gate_status_before_185": {
+    "CONTROL": {
+      "A": "PASS",
+      "B": "PASS",
+      "C": "PASS",
+      "D": "PASS",
+      "E": "OBSERVED"
+    },
+    "ALIGNMENT_MCAP_500B": {
+      "A": "PASS",
+      "B": "PASS",
+      "C": "PASS",
+      "D": "PASS",
+      "E": "OBSERVED"
+    }
+  },
+  "185_rejudgment": {
+    "removed_only_exact_target_pair": true,
+    "cash_delta": 0,
+    "nonexcluded_cash_path_unchanged": true,
+    "daily_nav_and_metrics_replay_required": false,
+    "gate_status_after_185": {
+      "CONTROL": {
+        "A": "PASS",
+        "B": "PASS",
+        "C": "PASS",
+        "D": "PASS",
+        "E": "OBSERVED"
+      },
+      "ALIGNMENT_MCAP_500B": {
+        "A": "PASS",
+        "B": "PASS",
+        "C": "PASS",
+        "D": "PASS",
+        "E": "OBSERVED"
+      }
+    }
+  },
+  "minimal_replay_required": false
+}

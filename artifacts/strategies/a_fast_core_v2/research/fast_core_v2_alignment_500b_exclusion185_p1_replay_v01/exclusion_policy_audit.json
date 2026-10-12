@@ -1,0 +1,30 @@
+{
+  "schema": "fast_core_v2_alignment_500b_exclusion_policy_audit_v01",
+  "matching": "exact (ticker, standard ISU_CD); applied to common universe before CONTROL/candidate split",
+  "before": {
+    "pair_count": 184,
+    "canonical_sha256": "5d3bd9a1e27e7e558235f0fba211263cdc90eb0b477978c8338eb019b1a6ec2e",
+    "sealed_expected_sha256": "5d3bd9a1e27e7e558235f0fba211263cdc90eb0b477978c8338eb019b1a6ec2e"
+  },
+  "after": {
+    "pair_count": 185,
+    "canonical_sha256": "c0089f72ed390a2a1df9048d0dac1f309259422e3ff9e77c4f6d986517a5163c",
+    "registry_source_sha256": "1aeadb9e4edce69478040c3e514bc804339f187421842029e93adedcf4afc567"
+  },
+  "added_pairs": [
+    [
+      "029960",
+      "KR7029960002"
+    ]
+  ],
+  "removed_pairs": [],
+  "unchanged_pair_metadata": 184,
+  "added_policy": {
+    "reason": "user-approved permanent exclusion for unresolved delisting and corporate-action settlement lifecycle after an actual P1 holding; data-quality basis, not performance",
+    "approval_scope": "GLOBAL permanent identity exclusion; P1/P2-1/P2-2/P3-1/P3-2",
+    "failure_class": "CORPORATE_ACTION_SETTLEMENT_UNRESOLVED",
+    "approved_date": "2026-10-12",
+    "policy_version": "permanent_identity_exclusions_v02"
+  },
+  "pair_set_diff_exact": true
+}

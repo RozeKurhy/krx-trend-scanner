@@ -1,0 +1,130 @@
+{
+  "window": "P3-1",
+  "status": "PASS_WITH_OBSERVED_NAV",
+  "policy_lineage": {
+    "source_pair_count": 182,
+    "source_canonical_sha256": "9091a40d5dfc3dc115e00166ea3ef806ef5a4ca3b595d76864598ec050904b12",
+    "added_to_184": [
+      [
+        "003410",
+        "KR7003410008"
+      ],
+      [
+        "138580",
+        "KR7138580006"
+      ]
+    ],
+    "184_rejudgment_ledger": "p3_1_rejudgment.json",
+    "all_rejudgment_conditions_pass": true
+  },
+  "artifact_hash_verification": {
+    "status": "PASS",
+    "checked": 46,
+    "mismatches": []
+  },
+  "target_row_audit": {
+    "files": {
+      "candidate_signal_filter_audit.csv": {
+        "rows": 2,
+        "sha256": "e9a5ce7f5cfc858dc72dff11245b19eb4cdcd298e9c218f9611a55ff86414371",
+        "candidate_status_counts": {
+          "REJECT_ALIGNMENT": 2
+        },
+        "candidate_signal_disposition_counts": {
+          "REJECT_ALIGNMENT": 2
+        },
+        "dates": [
+          "2024-11-15",
+          "2024-11-22"
+        ]
+      },
+      "control_signal_trade_inputs.csv": {
+        "rows": 1,
+        "sha256": "f14fcae83125edc023ef3a5d2d8c02e6f4ff15cba4b414e57a7607766977d966",
+        "trade_status_counts": {
+          "OPEN_AT_CUTOFF": 1
+        },
+        "dates": [
+          "2024-11-15"
+        ]
+      },
+      "control_trades.csv": {
+        "rows": 1,
+        "sha256": "f14fcae83125edc023ef3a5d2d8c02e6f4ff15cba4b414e57a7607766977d966",
+        "trade_status_counts": {
+          "OPEN_AT_CUTOFF": 1
+        },
+        "dates": [
+          "2024-11-15"
+        ]
+      },
+      "control_cash_events.csv": {
+        "rows": 1,
+        "sha256": "8d65d0a7e663b9356ba88cf595de53e1566257e9a6a516c6b9082a4945a7d053",
+        "event_status_counts": {
+          "SKIPPED_CASH_UNAVAILABLE": 1
+        },
+        "event_type_counts": {
+          "ENTRY": 1
+        },
+        "reason_counts": {
+          "INSUFFICIENT_AVAILABLE_CASH": 1
+        },
+        "cash_delta_rows": 1,
+        "cash_delta_sum_krw": 0.0,
+        "cash_delta_all_zero": true,
+        "dates": [
+          "2024-11-15"
+        ]
+      }
+    },
+    "errors": []
+  },
+  "target_entry_effect": {
+    "control_signal_trade_rows": 1,
+    "candidate_signal_trade_rows": 0,
+    "candidate_filter_rows": 2,
+    "control_cash_events_are_zero_cash_skips": true,
+    "candidate_executions": 0,
+    "target_missing_marks": 0
+  },
+  "official_gate_status_before_185": {
+    "CONTROL": {
+      "A": "PASS",
+      "B": "PASS",
+      "C": "PASS",
+      "D": "PASS",
+      "E": "OBSERVED"
+    },
+    "ALIGNMENT_MCAP_500B": {
+      "A": "PASS",
+      "B": "PASS",
+      "C": "PASS",
+      "D": "PASS",
+      "E": "OBSERVED"
+    }
+  },
+  "185_rejudgment": {
+    "removed_only_exact_target_pair": true,
+    "cash_delta": 0,
+    "nonexcluded_cash_path_unchanged": true,
+    "daily_nav_and_metrics_replay_required": false,
+    "gate_status_after_185": {
+      "CONTROL": {
+        "A": "PASS",
+        "B": "PASS",
+        "C": "PASS",
+        "D": "PASS",
+        "E": "OBSERVED"
+      },
+      "ALIGNMENT_MCAP_500B": {
+        "A": "PASS",
+        "B": "PASS",
+        "C": "PASS",
+        "D": "PASS",
+        "E": "OBSERVED"
+      }
+    }
+  },
+  "minimal_replay_required": false
+}

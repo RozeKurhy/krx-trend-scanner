@@ -1,0 +1,131 @@
+{
+  "schema": "fast_core_v2_alignment_500b_exclusion185_authority_hashes_v01",
+  "baseline_head": "303ff64383bea6116253228ac1e6ef7d5d30d7ea",
+  "origin_main": "303ff64383bea6116253228ac1e6ef7d5d30d7ea",
+  "documents": [
+    {
+      "path": "docs/validation/backtest_common_rules.md",
+      "sha256": "e8783958064ddfc54f57bef3500ad41de6d3b6bc853fce2464845f9c4cc4d06b"
+    },
+    {
+      "path": "docs/validation/official_strategy_adoption_criteria.md",
+      "sha256": "380f34cd7e24fd9881d7a154000d9b51512d905d7c7ef24b1940f5fa4e22cb88"
+    },
+    {
+      "path": "docs/strategies/strategy_lifecycle.md",
+      "sha256": "c89bad3f56b95a9bac3284fb9817067940534b52c87c29f57f3009ea5a1e25e8"
+    },
+    {
+      "path": "docs/patterns/pattern_a_fast/strategy/version_02/README.md",
+      "sha256": "d353afec7e26ad4adb296dc14e337a78c88466d3ddcee887932ef1fd58f295ef"
+    }
+  ],
+  "strategy_and_execution_sources": [
+    {
+      "path": "src/trend_scanner/universe/permanent_identity_exclusions.py",
+      "sha256": "1aeadb9e4edce69478040c3e514bc804339f187421842029e93adedcf4afc567"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p1_official_realistic_184_v01/run_p1_official_realistic_replay.py",
+      "sha256": "06d100f193b898447088f78c7ce1971f4016cc214c20b8a3e6651b74ad4a613b"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p1_official_realistic_184_v01/frozen_reference_engine.py",
+      "sha256": "93ba80d9a7537cb4c398947944b53548aa489feefe1654fb12f0605a2a9c935c"
+    },
+    {
+      "path": "scripts/run_v2_official_adoption_revalidation_v02.py",
+      "sha256": "ef3d33e03290feb36af5aec671aa63a91ec3dc552f72c83f40aaae99970a6639"
+    },
+    {
+      "path": "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py",
+      "sha256": "f045750c5fb5afcf0b8c132151ed7b8f387865f7653beb4e5b849c79b50f0dc1"
+    }
+  ],
+  "p1_184_source_artifacts": [
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p1_official_realistic_184_v01/execution_contract.json",
+      "sha256": "04a28aad4ef929bf6fc371bb6ad900dfe8a930f1d29e478cc23b79d1765bbbce",
+      "bytes": 6091
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p1_official_realistic_184_v01/preflight.json",
+      "sha256": "67f68ed6b05f5d1b733ca5d2e498ac26103360e3bfec74f0c44bff682b094519",
+      "bytes": 57998
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p1_official_realistic_184_v01/source_manifest.json",
+      "sha256": "0f9bae2df9adcf1cf5044c2b674e6edf5c437a6941587768319f6beaa4867b1f",
+      "bytes": 3317118
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p1_official_realistic_184_v01/control_trades.csv",
+      "sha256": "88f98deda134055e2fcd5c48762ccc04b5fe4cdb0a3ada714d031963bdfaa211",
+      "bytes": 1878810,
+      "rows": 4795
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p1_official_realistic_184_v01/candidate_trades.csv",
+      "sha256": "744ed373a84358408f263ac8371c3ac2b909f1ea314ae8323a4e5edd3209b45c",
+      "bytes": 197872,
+      "rows": 512
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p1_official_realistic_184_v01/candidate_signal_filter_audit.csv",
+      "sha256": "bd72df0643b41aae90d193610062a17509263cf4b15350731cc28d19327b6c9d",
+      "bytes": 11897601,
+      "rows": 21662
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p1_official_realistic_184_v01/identity_price_preflight.csv",
+      "sha256": "e6057b3e874fa9e452b097371bd9c533600efbb37be6246ea2375cebb6e094f8",
+      "bytes": 3775120,
+      "rows": 2709
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p1_official_realistic_184_v01/permanent_exclusion_pairs.csv",
+      "sha256": "da7c0521013ad37808d7fc3b62206cb1ebddbd3517ccfc9f1921159069b9cbfc",
+      "bytes": 40076,
+      "rows": 184
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p1_official_realistic_184_v01/full_run_execution.json",
+      "sha256": "e04515047676b3741ba305d8c5271c3cfce6f2dcbd46df7c134e749ebed2ec1e",
+      "bytes": 10544
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p1_official_realistic_184_v01/signal_date_krx_partition_hashes.csv",
+      "sha256": "6e25b4024adb60d088b0b32f93bc017bb135a03c44997927bcd84765d2f30e2b",
+      "bytes": 239683,
+      "rows": 1198
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p1_official_realistic_184_v01/raw_partition_preflight.csv",
+      "sha256": "391fec24737e3abe872cd9742d093e3da22437ac4e69ed05496d41e576a20f11",
+      "bytes": 1265032,
+      "rows": 6216
+    }
+  ],
+  "p1_source_manifest_check": {
+    "status": "PASS_WITH_AUTHORIZED_POLICY_CHANGE",
+    "checked": 8996,
+    "expected": 8996,
+    "runtime_files_checked": 71,
+    "adjusted_price_files_checked": 2709,
+    "raw_partition_files_checked": 6216,
+    "mismatches": [],
+    "verified_current_source_hashes": 8995,
+    "authorized_policy_source_change": {
+      "path": "src/trend_scanner/universe/permanent_identity_exclusions.py",
+      "sealed_184_registry_sha256": "0bb2e441cf428df56ad94ab33b08fd033737ee9216029016311b5cb3524d8d3a",
+      "current_185_registry_sha256": "1aeadb9e4edce69478040c3e514bc804339f187421842029e93adedcf4afc567",
+      "baseline_head_blob_matches_sealed_source": true,
+      "change_scope": "the single approved exact identity pair only"
+    }
+  },
+  "p1_original_artifact_hash_check": {
+    "status": "PASS",
+    "checked": 87,
+    "mismatches": []
+  }
+}

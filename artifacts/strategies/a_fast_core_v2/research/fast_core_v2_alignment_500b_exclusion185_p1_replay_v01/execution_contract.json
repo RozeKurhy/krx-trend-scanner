@@ -1,0 +1,97 @@
+{
+  "schema": "fast_core_v2_alignment_500b_exclusion185_p1_replay_execution_contract_v01",
+  "work_id": "FAST_CORE_V2_ALIGNMENT_500B_EXCLUDE_KOENTEC_185_P1_REPLAY_V01",
+  "status": "SEALED_BEFORE_REPLAY",
+  "directive": {
+    "path": "/Users/june/Documents/projects/w.md",
+    "sha256": "ecbe203dec2a97def4fd6670d55beb5fc0f083fb95fbc19f3b39fca38e971f7b"
+  },
+  "baseline": {
+    "branch": "main",
+    "head": "303ff64383bea6116253228ac1e6ef7d5d30d7ea",
+    "origin_main": "303ff64383bea6116253228ac1e6ef7d5d30d7ea",
+    "tracked_tree_clean_before_registry_change": true
+  },
+  "policy": {
+    "schema": "fast_core_v2_alignment_500b_exclusion_policy_audit_v01",
+    "matching": "exact (ticker, standard ISU_CD); applied to common universe before CONTROL/candidate split",
+    "before": {
+      "pair_count": 184,
+      "canonical_sha256": "5d3bd9a1e27e7e558235f0fba211263cdc90eb0b477978c8338eb019b1a6ec2e",
+      "sealed_expected_sha256": "5d3bd9a1e27e7e558235f0fba211263cdc90eb0b477978c8338eb019b1a6ec2e"
+    },
+    "after": {
+      "pair_count": 185,
+      "canonical_sha256": "c0089f72ed390a2a1df9048d0dac1f309259422e3ff9e77c4f6d986517a5163c",
+      "registry_source_sha256": "1aeadb9e4edce69478040c3e514bc804339f187421842029e93adedcf4afc567"
+    },
+    "added_pairs": [
+      [
+        "029960",
+        "KR7029960002"
+      ]
+    ],
+    "removed_pairs": [],
+    "unchanged_pair_metadata": 184,
+    "added_policy": {
+      "reason": "user-approved permanent exclusion for unresolved delisting and corporate-action settlement lifecycle after an actual P1 holding; data-quality basis, not performance",
+      "approval_scope": "GLOBAL permanent identity exclusion; P1/P2-1/P2-2/P3-1/P3-2",
+      "failure_class": "CORPORATE_ACTION_SETTLEMENT_UNRESOLVED",
+      "approved_date": "2026-10-12",
+      "policy_version": "permanent_identity_exclusions_v02"
+    },
+    "pair_set_diff_exact": true
+  },
+  "period": {
+    "calendar_start": "2014-01-01",
+    "evaluation_start": "2014-01-02",
+    "cutoff": "2026-08-31",
+    "support_date": "2026-09-01",
+    "expected_krx_sessions": 3107,
+    "support_day_exit_only": true,
+    "support_day_in_nav_or_return": false
+  },
+  "universe": {
+    "authority": "validated rolling merged PIT COMMON intervals",
+    "exact_exclusion_stage": "before CONTROL/candidate split",
+    "candidate_ticker_count": "recomputed from current 185-pair policy; not hardcoded to 2709"
+  },
+  "strategy": {
+    "control": "PATTERN_A_FAST_FINAL_STRATEGY_V02 unchanged",
+    "candidate": "frozen V2 plus signal-date prior completed monthly MA20/MA60 alignment and exact PIT raw market cap >=500B",
+    "signal_generation_reruns": 0,
+    "per_ticker_states_recomputed": false
+  },
+  "portfolio": {
+    "initial_capital_krw": 200000000,
+    "buy_budget_including_commission_krw": 5000000,
+    "integer_shares": true,
+    "commission_each_side": 0.00015,
+    "slippage_each_side": 0.001,
+    "sell_tax": 0,
+    "sale_proceeds_available": "T+1",
+    "cash_shortage": "skip full order; do not regenerate signals",
+    "same_open_exit_reentry": false,
+    "pyramiding": false,
+    "open_cutoff": "value by valid cutoff close; no hypothetical exit costs"
+  },
+  "valuation": {
+    "daily_nav": "cash + pending sale proceeds + evidence-backed holdings at exact-date valid adjusted close",
+    "no_interpolation_or_unapproved_carry": true,
+    "unresolved_day_nav": "UNRESOLVED for the entire date"
+  },
+  "prior_windows": {
+    "P2-1": "PASS_WITH_OBSERVED_NAV",
+    "P2-2": "PASS_WITH_OBSERVED_NAV",
+    "P3-1": "PASS_WITH_OBSERVED_NAV",
+    "P3-2": "PASS_WITH_OBSERVED_NAV"
+  },
+  "prohibited": [
+    "P2/P3 full signal or portfolio replay",
+    "P2-1/P2-2/P3-1/P3-2 rerun unless audit proves needed and user approves",
+    "strategy rules/official thresholds changes",
+    "source or sealed artifact modification",
+    "production/web changes",
+    "automatic strategy promotion/default replacement"
+  ]
+}

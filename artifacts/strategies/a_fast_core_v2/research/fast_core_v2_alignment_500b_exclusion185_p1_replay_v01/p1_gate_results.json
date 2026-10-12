@@ -1,0 +1,146 @@
+{
+  "schema": "fast_core_v2_alignment_500b_exclusion185_p1_gate_results_v01",
+  "window": "P1",
+  "CONTROL": {
+    "A_integrity": {
+      "status": "PASS",
+      "checks": {
+        "source_manifest_all_data_and_nonpolicy_hashes_match": true,
+        "original_p1_output_hashes_match": true,
+        "current_policy_is_exact_185": true,
+        "non_target_signal_rows_reused_exactly": true,
+        "calendar_has_3107_p1_sessions": true,
+        "target_not_in_pit_universe": true,
+        "control_scope_issues_zero": true,
+        "candidate_scope_issues_zero": true,
+        "control_cash_conservation": true,
+        "candidate_cash_conservation": true,
+        "all_filled_sides_costed_control": true,
+        "all_filled_sides_costed_candidate": true,
+        "worker_error_count": 0
+      }
+    },
+    "B_costs": {
+      "status": "PASS",
+      "cost_audit": {
+        "entry_attempt_events_equal_prefixed_trade_rows": true,
+        "executed_entry_events_match_summary": true,
+        "all_filled_sides_recalculate_commission_and_slippage": true,
+        "entry_and_exit_fill_prices_match_v2_trade_ledger": true,
+        "integer_shares_and_inclusive_5m_buy_budget": true,
+        "sale_proceeds_remain_pending_on_exit_execution_day": true,
+        "portfolio_cash_conservation": true,
+        "no_hidden_position_cap_skip": true,
+        "no_same_ticker_overlap_or_unmatched_exit": true,
+        "event_cost_totals_match_summary": true,
+        "evaluation_window_commission_krw_from_events": 1106117.5520551503,
+        "evaluation_window_slippage_impact_krw_from_events": 7373977.57699959,
+        "post_cutoff_support_exit_count": 0,
+        "post_cutoff_support_commission_krw": 0.0,
+        "post_cutoff_support_slippage_impact_krw": 0.0,
+        "observed_max_concurrent_positions": 65,
+        "trade_rows": 4791,
+        "entry_attempts": 4791,
+        "executed_entries": 756,
+        "cash_shortage_skips": 4035,
+        "other_entry_skips": 0,
+        "executed_exits": 703
+      }
+    },
+    "C_profitability": {
+      "status": "PASS",
+      "total_return_pct": 66.08293043547266,
+      "cagr_pct": 4.088675697105226,
+      "cutoff_nav_resolved": true
+    },
+    "D_mdd": {
+      "status": "PASS",
+      "mdd_pct": -49.600837439089204,
+      "mdd_type": "OBSERVED",
+      "absolute_floor_pct": -55.0
+    },
+    "E_validity": {
+      "status": "OBSERVED",
+      "nav_coverage_pct": 92.33987769552623,
+      "valid_days": 2869,
+      "total_days": 3107,
+      "missing_days": 238,
+      "cutoff_nav_resolved": true
+    }
+  },
+  "ALIGNMENT_MCAP_500B": {
+    "A_integrity": {
+      "status": "PASS",
+      "checks": {
+        "source_manifest_all_data_and_nonpolicy_hashes_match": true,
+        "original_p1_output_hashes_match": true,
+        "current_policy_is_exact_185": true,
+        "non_target_signal_rows_reused_exactly": true,
+        "calendar_has_3107_p1_sessions": true,
+        "target_not_in_pit_universe": true,
+        "control_scope_issues_zero": true,
+        "candidate_scope_issues_zero": true,
+        "control_cash_conservation": true,
+        "candidate_cash_conservation": true,
+        "all_filled_sides_costed_control": true,
+        "all_filled_sides_costed_candidate": true,
+        "worker_error_count": 0
+      }
+    },
+    "B_costs": {
+      "status": "PASS",
+      "cost_audit": {
+        "entry_attempt_events_equal_prefixed_trade_rows": true,
+        "executed_entry_events_match_summary": true,
+        "all_filled_sides_recalculate_commission_and_slippage": true,
+        "entry_and_exit_fill_prices_match_v2_trade_ledger": true,
+        "integer_shares_and_inclusive_5m_buy_budget": true,
+        "sale_proceeds_remain_pending_on_exit_execution_day": true,
+        "portfolio_cash_conservation": true,
+        "no_hidden_position_cap_skip": true,
+        "no_same_ticker_overlap_or_unmatched_exit": true,
+        "event_cost_totals_match_summary": true,
+        "evaluation_window_commission_krw_from_events": 681300.6791273999,
+        "evaluation_window_slippage_impact_krw_from_events": 4542093.557999739,
+        "post_cutoff_support_exit_count": 1,
+        "post_cutoff_support_commission_krw": 672.1671599999999,
+        "post_cutoff_support_slippage_impact_krw": 4485.60000000021,
+        "observed_max_concurrent_positions": 55,
+        "trade_rows": 512,
+        "entry_attempts": 512,
+        "executed_entries": 451,
+        "cash_shortage_skips": 61,
+        "other_entry_skips": 0,
+        "executed_exits": 429
+      }
+    },
+    "C_profitability": {
+      "status": "PASS",
+      "total_return_pct": 107.65162488143645,
+      "cagr_pct": 5.941552880330669,
+      "cutoff_nav_resolved": true
+    },
+    "D_mdd": {
+      "status": "PASS",
+      "mdd_pct": -32.5790351953956,
+      "mdd_type": "OBSERVED",
+      "absolute_floor_pct": -55.0,
+      "control_mdd_minus_candidate_mdd_pp": -17.021802243693607,
+      "relative_failure_threshold_pp": 5.0
+    },
+    "E_validity": {
+      "status": "OBSERVED",
+      "nav_coverage_pct": 93.27325394271001,
+      "valid_days": 2898,
+      "total_days": 3107,
+      "missing_days": 209,
+      "cutoff_nav_resolved": true
+    }
+  },
+  "candidate_relative_mdd_delta_pp": -17.021802243693607,
+  "p1_overall_status": "PASS_WITH_OBSERVED_NAV",
+  "whole_five_window_adoption": "NOT_EVALUATED",
+  "candidate_adoption": "NOT_EVALUATED",
+  "baseline_promotion": "NOT_EVALUATED",
+  "official_default_remains": "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+}

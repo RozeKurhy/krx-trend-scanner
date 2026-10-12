@@ -1,0 +1,167 @@
+{
+  "schema": "fast_core_v2_alignment_500b_exclusion185_five_window_gate_summary_v01",
+  "five_window_status": "5WINDOW_GATES_PASS",
+  "windows": [
+    {
+      "window": "P1",
+      "status": "PASS_WITH_OBSERVED_NAV",
+      "groups": {
+        "CONTROL": {
+          "A": "PASS",
+          "B": "PASS",
+          "C": "PASS",
+          "D": "PASS",
+          "E": "OBSERVED"
+        },
+        "ALIGNMENT_MCAP_500B": {
+          "A": "PASS",
+          "B": "PASS",
+          "C": "PASS",
+          "D": "PASS",
+          "E": "OBSERVED"
+        }
+      },
+      "policy_lineage": {
+        "pair_count": 185,
+        "canonical_sha256": "c0089f72ed390a2a1df9048d0dac1f309259422e3ff9e77c4f6d986517a5163c"
+      },
+      "minimal_replay_required_for_185": false
+    },
+    {
+      "window": "P2-1",
+      "status": "PASS_WITH_OBSERVED_NAV",
+      "groups": {
+        "CONTROL": {
+          "A": "PASS",
+          "B": "PASS",
+          "C": "PASS",
+          "D": "PASS",
+          "E": "OBSERVED"
+        },
+        "ALIGNMENT_MCAP_500B": {
+          "A": "PASS",
+          "B": "PASS",
+          "C": "PASS",
+          "D": "PASS",
+          "E": "OBSERVED"
+        }
+      },
+      "policy_lineage": {
+        "source_pair_count": 184,
+        "source_canonical_sha256": "5d3bd9a1e27e7e558235f0fba211263cdc90eb0b477978c8338eb019b1a6ec2e",
+        "lineage": "sealed P2-1 official run"
+      },
+      "minimal_replay_required_for_185": false
+    },
+    {
+      "window": "P2-2",
+      "status": "PASS_WITH_OBSERVED_NAV",
+      "groups": {
+        "CONTROL": {
+          "A": "PASS",
+          "B": "PASS",
+          "C": "PASS",
+          "D": "PASS",
+          "E": "OBSERVED"
+        },
+        "ALIGNMENT_MCAP_500B": {
+          "A": "PASS",
+          "B": "PASS",
+          "C": "PASS",
+          "D": "PASS",
+          "E": "OBSERVED"
+        }
+      },
+      "policy_lineage": {
+        "source_pair_count": 184,
+        "source_canonical_sha256": "5d3bd9a1e27e7e558235f0fba211263cdc90eb0b477978c8338eb019b1a6ec2e",
+        "lineage": "sealed P2-2 replay and P3 rejudgment contract"
+      },
+      "minimal_replay_required_for_185": false
+    },
+    {
+      "window": "P3-1",
+      "status": "PASS_WITH_OBSERVED_NAV",
+      "groups": {
+        "CONTROL": {
+          "A": "PASS",
+          "B": "PASS",
+          "C": "PASS",
+          "D": "PASS",
+          "E": "OBSERVED"
+        },
+        "ALIGNMENT_MCAP_500B": {
+          "A": "PASS",
+          "B": "PASS",
+          "C": "PASS",
+          "D": "PASS",
+          "E": "OBSERVED"
+        }
+      },
+      "policy_lineage": {
+        "source_pair_count": 182,
+        "source_canonical_sha256": "9091a40d5dfc3dc115e00166ea3ef806ef5a4ca3b595d76864598ec050904b12",
+        "added_to_184": [
+          [
+            "003410",
+            "KR7003410008"
+          ],
+          [
+            "138580",
+            "KR7138580006"
+          ]
+        ],
+        "184_rejudgment_ledger": "p3_1_rejudgment.json",
+        "all_rejudgment_conditions_pass": true
+      },
+      "minimal_replay_required_for_185": false
+    },
+    {
+      "window": "P3-2",
+      "status": "PASS_WITH_OBSERVED_NAV",
+      "groups": {
+        "CONTROL": {
+          "A": "PASS",
+          "B": "PASS",
+          "C": "PASS",
+          "D": "PASS",
+          "E": "OBSERVED"
+        },
+        "ALIGNMENT_MCAP_500B": {
+          "A": "PASS",
+          "B": "PASS",
+          "C": "PASS",
+          "D": "PASS",
+          "E": "OBSERVED"
+        }
+      },
+      "policy_lineage": {
+        "source_pair_count": 181,
+        "source_canonical_sha256": {
+          "pair_count": 181,
+          "preflight_match": true
+        },
+        "first_readjudgment_pair": [
+          "380440",
+          "KR7380440008"
+        ],
+        "additional_pairs_to_184": [
+          [
+            "003410",
+            "KR7003410008"
+          ],
+          [
+            "138580",
+            "KR7138580006"
+          ]
+        ],
+        "182_rejudgment_status": "recorded in p3_2_official_gate_readjudication_v01",
+        "184_rejudgment_ledger": "p3_2_rejudgment.json",
+        "all_rejudgment_conditions_pass": true
+      },
+      "minimal_replay_required_for_185": false
+    }
+  ],
+  "baseline_promotion": "NOT_EVALUATED",
+  "official_default_remains": "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+}
