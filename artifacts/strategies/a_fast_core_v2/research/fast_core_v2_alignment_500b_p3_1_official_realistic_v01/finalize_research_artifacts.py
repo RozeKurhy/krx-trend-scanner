@@ -259,6 +259,8 @@ def main() -> int:
     cap_partitions = read_csv("signal_date_krx_partition_hashes.csv")
     control_events = read_csv("control_portfolio_events.csv")
     candidate_events = read_csv("candidate_portfolio_events.csv")
+    control_missing_marks = read_csv("control_missing_marks.csv")
+    candidate_missing_marks = read_csv("candidate_missing_marks.csv")
     control_curve = read_csv("control_daily_equity.csv")
     candidate_curve = read_csv("candidate_daily_equity.csv")
     control_metrics = dict(summary_run["control_sample_metrics"])
@@ -283,6 +285,10 @@ def main() -> int:
         price_audit.loc[~price_audit["data_status"].eq("AVAILABLE"), "unavailable_reason"].fillna("UNCLASSIFIED").value_counts().sort_index().to_dict()
         if not price_audit.empty and "unavailable_reason" in price_audit else {}
     )
+    unavailable_cause_path = OUT / "repository_v2_unavailable_cause_audit.json"
+    unavailable_cause_audit = read_json("repository_v2_unavailable_cause_audit.json") if unavailable_cause_path.is_file() else {}
+    root_cause_counts = unavailable_cause_audit.get("reason_counts", unavailable_reason_counts)
+    session_projection_totals = unavailable_cause_audit.get("session_projection_totals_across_tickers", {})
     bounds_audit = read_csv("identity_repository_v2_bounds.csv")
     unavailable_identity_bounds = []
     if not bounds_audit.empty and "ticker" in bounds_audit:
@@ -294,11 +300,13 @@ def main() -> int:
         "schema": "fast_core_v2_alignment_500b_p3_1_repository_v2_unavailable_reason_diagnostic_v01",
         "unavailable_tickers": unavailable_tickers,
         "repository_v2_loader_reason_counts": unavailable_reason_counts,
+        "repository_v2_direct_recheck_reason_counts": root_cause_counts,
+        "repository_v2_direct_recheck_audit": unavailable_cause_audit or None,
         "ticker_outcomes": price_audit.loc[
             ~price_audit.get("data_status", pd.Series(dtype=object)).eq("AVAILABLE")
         ].to_dict("records") if not price_audit.empty else [],
         "matching_pit_identity_price_bounds": unavailable_identity_bounds,
-        "limitations": "The loader returns DATA_UNAVAILABLE without exposing whether the adjusted or raw component caused it. Preflight identity-level file presence, read status, date bounds, and hashes are retained separately; no fallback source is substituted.",
+        "limitations": "The full run's loader used the default full-history range; a read-only date-set audit found these raw-only rejected sessions outside the corresponding P3-1 PIT and MA60 warm-up identity windows. Therefore the ticker-level full-history request still failed closed and these tickers' P3-1 signals are absent from the completed ledgers. No signal repair or second replay was performed.",
     }
     json_write("repository_v2_unavailable_reason_diagnostic.json", unavailable_reason_diagnostic)
     exclusion_audit = identity_exclusion_check(audit, control, candidate, control_events, candidate_events)
@@ -596,7 +604,7 @@ def main() -> int:
             e_status = "EXACT"
         else:
             e_status = "OBSERVED"
-        a_reason = "critical structural integrity checks failed" if critical_errors else "unresolved adjusted-price or exact signal-date market-cap input" if unresolved_a else "no material integrity errors"
+        a_reason = "critical structural integrity checks failed" if critical_errors else "unresolved Repository V2 price-universe or exact signal-date market-cap input" if unresolved_a else "no material integrity errors"
         return {
             "A_integrity": {"status": a_status, "reason": a_reason},
             "B_costs": {"status": b_status, "all_filled_costs_present": costs_ok},
@@ -770,7 +778,7 @@ def main() -> int:
     critical_count = len(critical_errors)
     major_issue_types: list[str] = []
     if unresolved_price:
-        major_issue_types.append("P3-1 PIT identities include adjusted-price inputs that are unavailable or unreadable")
+        major_issue_types.append("P3-1 PIT ticker histories fail Repository V2 raw/adjusted session-set validation under the full-history loader")
     if unresolved_cap_count:
         major_issue_types.append("Candidate V2 signals include unresolved exact signal-date KRX market-cap rows")
     if int(control_metrics.get("valuation_unresolved_count", 0) or 0) or int(candidate_metrics.get("valuation_unresolved_count", 0) or 0):
@@ -803,6 +811,15 @@ def main() -> int:
         if isinstance(value, (float, np.floating)):
             return f"{float(value):,.{digits}f}"
         return str(value)
+
+    candidate_missing_ticker_set = sorted({
+        str(value).zfill(6)
+        for value in candidate_missing_marks.get("ticker", pd.Series(dtype=object)).tolist()
+    })
+    candidate_missing_dates = sorted({
+        str(value)[:10]
+        for value in candidate_missing_marks.get("date", pd.Series(dtype=object)).tolist()
+    })
 
     display_metrics = [
         ("ending_equity_krw", "종료 자산 (원)"), ("total_return_pct", "총수익률 (%)"), ("cagr_pct", "CAGR (%)"),
@@ -876,9 +893,9 @@ def main() -> int:
         "",
         f"- 이전 공식 CONTROL 재사용: **FAIL**. 현재 승인된 {len(PERMANENT_IDENTITY_EXCLUSIONS)}쌍의 정확한 identity 제외 정책 및 unrestricted PIT 조건과 달라 P3-1 CONTROL을 후보와 동일 조건으로 다시 생성했어. 과거 공식 판정은 그대로 보존해.",
         f"- CONTROL / 후보 거래: **{len(control):,} / {len(candidate):,}**. 시총·월간 정배열 후보 gate 결과: `{json.dumps(cap_status_counts, ensure_ascii=False)}`.",
-        f"- 미시세 조정가격 입력 {len(unresolved_price):,}종목: 사유별 `{json.dumps(unavailable_reason_counts, ensure_ascii=False)}`. 대표 누락 `{', '.join(unresolved_price[:10])}`(전체 목록은 price-source audit). exact signal-date 시총 UNRESOLVED 신호 {integrity['unresolved_exact_signal_mcap_count']:,}건. 이 입력 누락은 유니버스 분모에서 제외하거나 legacy/API 값으로 대체하지 않았고, 영향 미해결로 A를 CHECK_REQUIRED 처리해.",
+        f"- Repository V2 가격 미해결 {len(unresolved_price):,} ticker: 재검 결과 reason은 `{json.dumps(root_cause_counts, ensure_ascii=False)}`. 117개 모두 파일 readable이고 P3-1 가격범위와 교차해. 전체 이력 기본 범위 로딩 중 raw-only 원시일 {session_projection_totals.get('rejected_raw_only_count', 0):,}개가 비거래 placeholder 조건을 통과하지 못했고, exact PIT 및 2017-01~2021-12 예열 범위 안에 든 날짜는 0개였어. 그래도 전체범위 호출이 종목 전체를 fail-closed 처리해 신호가 ledger에 포함되지 않아 영향 미해결로 두고 A를 CHECK_REQUIRED 처리했어. 전체 목록과 날짜별 비교는 `repository_v2_unavailable_cause_audit.csv`에 있어. exact signal-date 시총 UNRESOLVED 신호는 {integrity['unresolved_exact_signal_mcap_count']:,}건이야.",
         f"- 380440 영구 제외 정책을 두 그룹 공통 pre-signal 유니버스에 적용했어. P3-2 저장 산출물 {p3_2_policy_audit['persisted_p3_2_outputs']['artifact_hashes_rechecked']}/{p3_2_policy_audit['persisted_p3_2_outputs']['artifact_rows_in_prior_invariance_audit']}개 해시가 기존 감사와 일치하고, 저장된 거래/현금/이벤트/valuation 행은 {p3_2_policy_audit['persisted_p3_2_outputs']['target_exact_pair_transaction_or_portfolio_rows']}개야. P3-2 재실행은 하지 않았고 이전 A 상태는 그대로 CHECK_REQUIRED야. 완전 가격자료였다면 어떤 신호가 나왔을지는 UNKNOWN이야.",
-        f"- 코엔텍(029960) 기업행동 점검: `{corporate_action_audit.get('status')}`. P3-1에 해당 identity의 cutoff 보유 {corporate_action_audit.get('control_open_at_cutoff_count')} / {corporate_action_audit.get('candidate_open_at_cutoff_count')}건, 지원일 청산 {corporate_action_audit.get('support_day_exit_count')}건. 확인하지 못한 교부금·세금·입금일을 임의 회계 처리하지 않았어.",
+        f"- 코엔텍(029960) 기업행동 점검: `{corporate_action_audit.get('status')}`. CONTROL은 교환 효력일·cutoff에 {corporate_action_audit.get('control', {}).get('held_at_cutoff_share_count')}주 {corporate_action_audit.get('control_open_at_cutoff_count')}건이 열려 있었고, 후보는 {corporate_action_audit.get('candidate_open_at_cutoff_count')}건이야. 지원일 청산은 {corporate_action_audit.get('support_day_exit_count')}건이며 확인하지 못한 교부금·세금·입금일을 임의 회계 처리하지 않았어.",
         "- P3-1 기간별 예비 A~E 결과는 `gate_results.json`에 있어. 나머지 4개 공식 기간을 실행하지 않았으므로 최종 5기간 판정은 **NOT_FINAL_5WINDOW**, 전체 공식 채택과 기본전략 승격은 **NOT_EVALUATED**야. A FAST Core V2가 공식 기본 전략으로 유지돼.",
         "",
         "### P3-1 예비 A~E 판정",
@@ -887,7 +904,7 @@ def main() -> int:
         "|---|---|---|",
         *gate_rows,
         "",
-        f"- A의 미해결 가격 입력은 {len(unresolved_price)}종목({json.dumps(unavailable_reason_counts, ensure_ascii=False)}), exact signal-date 시총 UNRESOLVED는 {integrity['unresolved_exact_signal_mcap_count']}건이야. 구조 무결성 오류는 {critical_count}건.",
+        f"- A의 미해결 Repository V2 ticker {len(unresolved_price)}개는 broad-history session mismatch 때문에 full run에서 fail-closed됐어. raw-only mismatch는 P3-1 PIT/예열 window 바깥에서만 관측됐지만 해당 ticker의 signal ledger가 없어 결과 영향은 UNKNOWN이야. exact signal-date 시총 UNRESOLVED는 {integrity['unresolved_exact_signal_mcap_count']}건, 구조 무결성 오류는 {critical_count}건.",
         "",
         "## CONTROL 대비",
         "",
@@ -896,6 +913,7 @@ def main() -> int:
         "### 추가 원장 진단",
         "",
         f"- 평가 거래일 {len(expected_eval):,}일. CONTROL NAV coverage {fmt(control_metrics.get('nav_coverage_pct'))}%, 후보 {fmt(candidate_metrics.get('nav_coverage_pct'))}%; MDD 종류는 각각 {control_metrics.get('mdd_type')} / {candidate_metrics.get('mdd_type')}.",
+        f"- 후보 unresolved valuation marks {len(candidate_missing_marks)}건은 ticker `{', '.join(candidate_missing_ticker_set) or '없음'}`, 날짜 `{', '.join(candidate_missing_dates) or '없음'}`이야. actual raw row가 placeholder가 아닌 날 adjusted mark가 없어 carry를 허용하지 않았고, 그 4일 때문에 후보 NAV가 830/834일 관측됐어.",
         f"- CONTROL V2 신호 원장 cutoff 상태(현금 skip 포함, 실제 포트폴리오 보유 수가 아님): `{json.dumps(control_open_status, ensure_ascii=False)}`. 후보 신호 원장 상태: `{json.dumps(candidate_open_status, ensure_ascii=False)}`. 실제 포트폴리오 cutoff 미청산은 표의 CONTROL {control_metrics.get("open_at_cutoff_count")}건 / 후보 {candidate_metrics.get("open_at_cutoff_count")}건이야.",
         f"- 실제 포트폴리오 청산 exit reason(현금 skip 제외): CONTROL `{control_metrics.get('exit_reason_counts')}`, 후보 `{candidate_metrics.get('exit_reason_counts')}`.",
         f"- 2025-06-02 지원일 cutoff 이전 청산 체결: CONTROL {control_metrics.get('post_cutoff_support_exit_count')}건(수수료 {fmt(control_metrics.get('post_cutoff_support_commissions_krw'))}원, 슬리피지 {fmt(control_metrics.get('post_cutoff_support_slippage_krw'))}원, 실현손익 {fmt(control_metrics.get('post_cutoff_support_realized_pnl_krw'))}원), 후보 {candidate_metrics.get('post_cutoff_support_exit_count')}건(수수료 {fmt(candidate_metrics.get('post_cutoff_support_commissions_krw'))}원, 슬리피지 {fmt(candidate_metrics.get('post_cutoff_support_slippage_krw'))}원, 실현손익 {fmt(candidate_metrics.get('post_cutoff_support_realized_pnl_krw'))}원). 지원일 손익·비용은 평가 cutoff NAV와 기간 성과에서 분리해.",
@@ -910,7 +928,7 @@ def main() -> int:
         f"- 독립 원장 검증 상태: **{integrity['status']}**; 중대 구조 검사 실패 {critical_count}건. 세부 검사는 `integrity_audit.json` 참조.",
         f"- Severity는 독립 문제 유형 수야(행·종목·날짜 수가 아님). 유형은 `issue_summary.json`에 있어: MAJOR `{json.dumps(major_issue_types, ensure_ascii=False)}`.",
         f"- 대표 샘플: {sample_benchmark.get('sample_ticker_count')} ticker, CONTROL/후보 신호거래 {sample_benchmark.get('control_trade_count')}/{sample_benchmark.get('candidate_trade_count')}, 후보 필터 감사 {sample_benchmark.get('candidate_signal_audit_count')}행; worker {sample_benchmark.get('workers')}, 측정시간 {fmt(sample_benchmark.get('wall_seconds_including_portfolio_replays'))}초, 예상 전체 {fmt(sample_benchmark.get('estimated_full_wall_hours_by_staged_estimate'), 2)}시간. 샘플/전체 실행 요약은 각각 `sample_benchmark.json`, `full_run_execution.json`에 있어.",
-        f"- 전체 실행: worker {summary_run.get('workers')}, 유니버스 {summary_run.get('eligible_universe_ticker_count'):,} ticker, CONTROL/후보 signal trade {len(control):,}/{len(candidate):,}; CPU {fmt(summary_run.get('cpu_seconds'))}초, RSS peak {fmt(summary_run.get('max_rss_mb'))} MB.",
+        f"- 전체 실행: worker {summary_run.get('workers')}, 유니버스 {summary_run.get('eligible_universe_ticker_count'):,} ticker, CONTROL/후보 signal trade {len(control):,}/{len(candidate):,}; 벽시계 {fmt(summary_run.get('wall_seconds_including_portfolio_replays'))}초 ({fmt(float(summary_run.get('wall_seconds_including_portfolio_replays') or 0)/60, 1)}분), CPU {fmt(summary_run.get('cpu_seconds'))}초, RSS peak {fmt(summary_run.get('max_rss_mb'))} MB.",
         f"- Worker 오류 {worker_error_count}건 ({completed_worker_outcomes:,}/{expected_worker_outcomes:,} ticker outcome 완료); 포트폴리오 실행 오류 CONTROL/후보 {control_metrics.get('source_or_execution_issue_count', 0)}/{candidate_metrics.get('source_or_execution_issue_count', 0)}건.",
         f"- 계획/정책 봉인 commit: `{plan_commit}`. 결과 경로: `{OUT.relative_to(ROOT)}/`.",
         "- 원천 문서, 실행 코드, Repository V2 adjusted 가격 파일, rolling authority, exact KRX cap partitions 및 산출물 SHA-256은 `source_manifest.json`과 `artifact_hashes.json`에 기록했어.",
@@ -966,6 +984,9 @@ def main() -> int:
         "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_1_ma60_vs_bullish_alignment_simple_backtest_v01/p3_1_execution_audit.json",
         "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_1_ma60_vs_bullish_alignment_simple_backtest_v01/p3_1_control_trades.csv",
         "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_1_ma60_vs_bullish_alignment_simple_backtest_v01/p3_1_alignment_trades.csv",
+        str((OUT / "audit_unavailable_repository_v2.py").relative_to(ROOT)),
+        str((OUT / "audit_corporate_action.py").relative_to(ROOT)),
+        str((OUT / "audit_p3_2_policy_consistency.py").relative_to(ROOT)),
         "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_380440_single_period_exclusion_v01/report.md",
         "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_380440_single_period_exclusion_v01/scope_decision.json",
         "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_380440_single_period_exclusion_v01/gate_results.json",
@@ -1017,7 +1038,8 @@ def main() -> int:
         "excluded_identity_pair_canonical_sha256": preflight.get("universe", {}).get("permanent_exclusion_registry_canonical_sha256"),
         "excluded_identity_pair_hash_scheme": preflight.get("universe", {}).get("permanent_exclusion_hash_scheme"),
         "price_source_unavailable_tickers": unavailable_tickers,
-        "price_source_unavailable_reason_counts": unavailable_reason_counts,
+        "price_source_unavailable_reason_counts": root_cause_counts,
+        "price_source_runner_reported_unavailable_reason_counts": unavailable_reason_counts,
         "p3_2_policy_consistency_audit_sha256": sha(OUT / "p3_2_policy_consistency_audit.json"),
         "corporate_action_audit_sha256": sha(OUT / "corporate_action_audit.json"),
         "provenance_contract": "RepositoryV2 adjusted prices; rolling merged PIT/calendar; verified exact signal-date KRX raw MKTCAP partitions; no API/fallback/current survivor roster",

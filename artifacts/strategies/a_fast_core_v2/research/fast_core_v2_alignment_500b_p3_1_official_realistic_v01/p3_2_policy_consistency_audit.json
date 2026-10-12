@@ -1,0 +1,46 @@
+{
+  "schema": "fast_core_v2_alignment_500b_p3_1_p3_2_policy_consistency_audit_v01",
+  "scope": "Read-only consistency check; no P3-2 signal generation, portfolio replay, or gate rewrite.",
+  "target_identity": {
+    "ticker": "380440",
+    "isu_cd": "KR7380440008"
+  },
+  "global_policy": {
+    "registry_path": "src/trend_scanner/universe/permanent_identity_exclusions.py",
+    "registry_source_sha256": "1c7cb7512024130f1ab0efa0ceb9f48ae0017a51af7f6db3f74d87b141a7d6ae",
+    "current_pair_count": 182,
+    "target_registered_exactly": true,
+    "P3_2_former_single_period_policy_conflict": "CONFLICT",
+    "future_common_policy_status": "SATISFIES_COMMON_PERMANENT_EXCLUSION_RULE"
+  },
+  "persisted_p3_2_outputs": {
+    "artifact_rows_in_prior_invariance_audit": 55,
+    "artifact_hashes_rechecked": 55,
+    "artifact_hash_mismatches": [],
+    "missing_artifacts": [],
+    "event_portfolio_artifacts_checked": 38,
+    "event_portfolio_hash_mismatches": [],
+    "target_exact_pair_transaction_or_portfolio_rows": 0,
+    "target_exact_pair_diagnostic_rows": 1,
+    "persisted_transaction_and_metric_delta_from_global_filter": 0,
+    "hypothetical_complete_data_signal_effect": "UNKNOWN_NOT_EVALUATED"
+  },
+  "historical_p3_2_gate_record": {
+    "file_sha256": "d7a3b4d5eb6f557741f29d9f6142b1c0fdc7b0a63b8b3f4b83ebbbe52555213d",
+    "scope_decision_sha256": "806d16881ceccbd22f54ff10cbac783bab446056dd623150c04e4fa8f580a4db",
+    "prior_gate_status_unchanged": {
+      "CONTROL_A": "CHECK_REQUIRED",
+      "ALIGNMENT_MCAP_500B_A": "CHECK_REQUIRED"
+    },
+    "prior_a_status_remains_check_required": true,
+    "prior_artifact_modified": false
+  },
+  "decision": {
+    "p3_2_rerun": false,
+    "p3_2_prior_results_overwritten": false,
+    "scope_exception_reconciled_for_future_runs": true,
+    "p3_2_a_gate_automatically_promoted": false,
+    "p3_2_persisted_outputs_unchanged": true,
+    "limitation": "The missing adjusted-price input prevents measuring what 380440 would have signaled; zero stored rows proves only persisted-output invariance, not zero hypothetical signal effect."
+  }
+}

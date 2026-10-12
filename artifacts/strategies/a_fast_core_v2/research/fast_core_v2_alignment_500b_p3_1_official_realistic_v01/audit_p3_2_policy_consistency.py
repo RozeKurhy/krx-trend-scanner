@@ -102,6 +102,8 @@ def main() -> int:
         "CONTROL_A": gate.get("CONTROL", {}).get("A_integrity"),
         "ALIGNMENT_MCAP_500B_A": gate.get("ALIGNMENT_MCAP_500B", {}).get("A_integrity"),
     }
+    def status_value(value):
+        return value.get("status") if isinstance(value, dict) else value
     result = {
         "schema": "fast_core_v2_alignment_500b_p3_1_p3_2_policy_consistency_audit_v01",
         "scope": "Read-only consistency check; no P3-2 signal generation, portfolio replay, or gate rewrite.",
@@ -131,7 +133,7 @@ def main() -> int:
             "scope_decision_sha256": sha(previous_scope_path),
             "prior_gate_status_unchanged": prior_gate_status,
             "prior_a_status_remains_check_required": all(
-                isinstance(value, dict) and value.get("status") == "CHECK_REQUIRED"
+                status_value(value) == "CHECK_REQUIRED"
                 for value in prior_gate_status.values()
             ),
             "prior_artifact_modified": False,

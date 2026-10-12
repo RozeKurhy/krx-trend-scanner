@@ -1,0 +1,16 @@
+{
+  "schema": "fast_core_v2_alignment_500b_p3_1_issue_summary_v01",
+  "counting_unit": "independent issue types, not affected rows, tickers, or sessions",
+  "severity_counts": {
+    "CRITICAL": 0,
+    "MAJOR": 3,
+    "MINOR": 0
+  },
+  "critical_issue_types": [],
+  "major_issue_types": [
+    "P3-1 PIT ticker histories fail Repository V2 raw/adjusted session-set validation under the full-history loader",
+    "At least one held-position valuation mark on an actual KRX session is unresolved",
+    "P3-1 portfolio exposure intersects the unresolved Koentec cash-exchange settlement"
+  ],
+  "minor_issue_types": []
+}

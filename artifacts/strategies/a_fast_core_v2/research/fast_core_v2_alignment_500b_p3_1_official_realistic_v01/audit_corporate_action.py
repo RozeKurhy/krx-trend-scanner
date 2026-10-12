@@ -103,6 +103,8 @@ def group_audit(group: str) -> tuple[dict, list[dict]]:
         "cash_unavailable_entry_skip_count": int(len(cash_skips)),
         "held_at_cutoff_after_cutoff_day_events": int(len(open_at_cutoff)),
         "held_at_or_through_cash_exchange_effective_date": int(len(exposed_on_action_date)),
+        "held_at_cutoff_share_count": int(sum(float(row.get("shares") or 0) for row in open_at_cutoff)),
+        "held_at_or_through_effective_date_share_count": int(sum(float(row.get("shares") or 0) for row in exposed_on_action_date)),
         "support_day_exit_count": int(len(support_exits)),
         "open_at_cutoff_candidate_ids": sorted({str(row.get("candidate_id", "")) for row in open_at_cutoff}),
         "support_exit_candidate_ids": sorted({str(row.get("candidate_id", "")) for row in support_exits}),

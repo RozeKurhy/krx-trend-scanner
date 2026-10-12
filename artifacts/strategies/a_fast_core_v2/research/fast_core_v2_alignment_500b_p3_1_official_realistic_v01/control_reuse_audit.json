@@ -1,0 +1,46 @@
+{
+  "schema": "fast_core_v2_alignment_500b_p3_1_control_reuse_audit_v01",
+  "reusable": false,
+  "decision": "REGENERATE_CONTROL_AND_CANDIDATE_UNDER_SHARED_P3_1_PORTFOLIO_CONTRACT",
+  "reason_codes": [
+    "PRIOR_P3_1_USED_A_FROZEN_SURVIVOR_ROSTER_INSTEAD_OF_CURRENT_ROLLING_PIT_COMMON",
+    "PRIOR_EXCLUSION_REGISTRY_COUNT_DIFFERED_FROM_CURRENT_POLICY",
+    "PRIOR_OUTPUT_IS_PER_TRADE_ANALYSIS_WITHOUT_THIS_RUNS_CASH_SETTLEMENT_DAILY_NAV_OR_PORTFOLIO_MDD_LEDGER"
+  ],
+  "prior_report_explicitly_says_no_portfolio_mdd": true,
+  "prior_identity_authority": "saved P3-2 exact survivor roster applied to frozen merged COMMON PIT intervals",
+  "current_identity_authority": "validated current rolling merged COMMON PIT intervals, exact active identity, shared current permanent exclusions, no survivor filter",
+  "prior_exclusion_registry_count": 181,
+  "current_exclusion_registry_count": 182,
+  "p3_1_window_matches": true,
+  "portfolio_contract_differences": [
+    "No persisted daily cash, pending-sale settlement, or deterministic portfolio event ledger is proven by the prior simple trade files.",
+    "No daily portfolio NAV, valuation-missing-mark audit, or portfolio MDD is provided by the prior simple backtest.",
+    "The prior report states its denominator used a frozen survivor roster; this task requires rolling PIT COMMON without survivor filtering.",
+    "The current permanent exact-pair exclusion policy includes the additional P3-1-confirmed 380440 identity."
+  ],
+  "prior_artifact_hashes": [
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_1_ma60_vs_bullish_alignment_simple_backtest_v01/report.md",
+      "sha256": "014488aabcbdf0ba8b9e57b1ed2b62a179a56a6b5a7fc35c1816a653093a3fce"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_1_ma60_vs_bullish_alignment_simple_backtest_v01/preflight.json",
+      "sha256": "baab75d3dc84d061b5395a4802e470d5e1b9647ebdfb0917bdbcdfc77289bb21"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_1_ma60_vs_bullish_alignment_simple_backtest_v01/p3_1_execution_audit.json",
+      "sha256": "d2372aad12b950704cbb5e47d33da409dacea246e469bbb26efe3cc828d0f9b4"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_1_ma60_vs_bullish_alignment_simple_backtest_v01/p3_1_control_trades.csv",
+      "sha256": "d23f1722af9e0307995b1f7af95e25f4f05e8b4bd9a9959d16179fb2409e49bd"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_1_ma60_vs_bullish_alignment_simple_backtest_v01/p3_1_alignment_trades.csv",
+      "sha256": "53fa605b56244b9963742221bfafe8f59e0a781f1d7103f0af50ad1c83020018"
+    }
+  ],
+  "prior_trade_files_used_as_p3_1_metrics": false,
+  "p3_2_metrics_or_trades_reused": false
+}

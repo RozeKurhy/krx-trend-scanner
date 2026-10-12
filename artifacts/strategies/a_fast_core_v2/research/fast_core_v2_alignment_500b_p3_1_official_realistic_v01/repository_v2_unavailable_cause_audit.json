@@ -1,0 +1,36 @@
+{
+  "schema": "fast_core_v2_alignment_500b_p3_1_repository_v2_unavailable_cause_audit_v01",
+  "scope": "Read-only local RepositoryV2 diagnosis of ticker outcomes already returned DATA_UNAVAILABLE by the single P3-1 full run; no signal generation, portfolio replay, network, or alternate source.",
+  "unavailable_ticker_count_from_full_run": 117,
+  "rechecked_ticker_count": 117,
+  "reason_counts": {
+    "UNCLASSIFIED_RAW_ONLY_SESSION": 117
+  },
+  "failed_raw_placeholder_predicate_field_counts": {
+    "high_zero": 45268,
+    "low_zero": 45268,
+    "open_zero": 45268,
+    "trading_value_zero": 45272,
+    "volume_zero": 45272
+  },
+  "session_projection_totals_across_tickers": {
+    "adjusted_rows": 171128,
+    "raw_rows": 228160,
+    "adjusted_only_count": 0,
+    "unexplained_adjusted_only_count": 0,
+    "raw_only_count": 57032,
+    "rejected_raw_only_count": 45272,
+    "unclassified_raw_only_row_count": 45272,
+    "unclassified_raw_only_dates_inside_p3_1_pit": 0,
+    "unclassified_raw_only_dates_inside_ma60_warmup_pit": 0,
+    "unclassified_raw_only_dates_inside_p3_1_pit_or_ma_warmup": 0,
+    "accepted_nontrading_placeholder_count": 11760,
+    "known_adjusted_gap_count": 0,
+    "outside_identity_lifecycle_count": 0,
+    "adjusted_source_nonusable_count": 0
+  },
+  "unexpected_recheck_error_count": 0,
+  "all_unavailable_tickers_classified": true,
+  "session_projection_detail_audit_complete": true,
+  "ticker_audit_csv": "repository_v2_unavailable_cause_audit.csv"
+}

@@ -1,0 +1,339 @@
+{
+  "schema": "fast_core_v2_alignment_500b_source_manifest_v02",
+  "task_id": "FAST_CORE_V2_ALIGNMENT_500B_P3_1_OFFICIAL_REALISTIC_PORTFOLIO_V01",
+  "plan_commit": "adf4e7e69907cc9b13cafb941a5c3aecde924181",
+  "plan_sha256": "cdf315e2482d5d7c4e11f536f8ee33e0399c624be0ef806fb803912bd406b806",
+  "initial_head": "adf4e7e69907cc9b13cafb941a5c3aecde924181",
+  "initial_origin_main": "adf4e7e69907cc9b13cafb941a5c3aecde924181",
+  "execution_base_head": "adf4e7e69907cc9b13cafb941a5c3aecde924181",
+  "execution_settings": {
+    "worker_count": 10,
+    "portfolio_event_workers": 1,
+    "external_api_requests": 0
+  },
+  "source_files": [
+    {
+      "path": "docs/validation/official_strategy_adoption_criteria.md",
+      "sha256": "380f34cd7e24fd9881d7a154000d9b51512d905d7c7ef24b1940f5fa4e22cb88"
+    },
+    {
+      "path": "docs/validation/backtest_common_rules.md",
+      "sha256": "e8783958064ddfc54f57bef3500ad41de6d3b6bc853fce2464845f9c4cc4d06b"
+    },
+    {
+      "path": "docs/strategies/strategy_lifecycle.md",
+      "sha256": "c89bad3f56b95a9bac3284fb9817067940534b52c87c29f57f3009ea5a1e25e8"
+    },
+    {
+      "path": "docs/patterns/pattern_a_fast/strategy/version_02/README.md",
+      "sha256": "d353afec7e26ad4adb296dc14e337a78c88466d3ddcee887932ef1fd58f295ef"
+    },
+    {
+      "path": "docs/patterns/pattern_a_fast/strategy/version_02/OFFICIAL_ADOPTION_REVALIDATION_PLAN_V02.md",
+      "sha256": "84f7c7ab2dfd3f3af049dc876925f103d1e8d04e391248a780cd9d0537c1501c"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/plan.md",
+      "sha256": "056f3f2d2b542343fe366f80b1a796aad57428dab0ad076207c1f9912b123efe"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/execution_contract.json",
+      "sha256": "fdf30f484575a7e4ea383d1db6ba289e49325d456e98d0a01e7aad8afd45728c"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/run_official_realistic_replay.py",
+      "sha256": "5fe187dedb2b5b856792d498e31070db6ff7ed9e844f933a606b4dc424bcd446"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/finalize_research_artifacts.py",
+      "sha256": "8bdf6050615338e9d225038964707bb2b23ae7cfdbb07f120ea18e90e006d5b3"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01/report.md",
+      "sha256": "8ddb43a2955647128ba9901c4292ba9b5a7407f54726a5b3927c68a6d985cd61"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/report.md",
+      "sha256": "b7c2d7eb93185ebc8d556fd8da8d27621e4462e89a31e79113b22d2a93c32d3c"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/price_input_124_audit.csv",
+      "sha256": "d2745d88d6014bdfa7226d2e44900e21cb70494e18a4f2eea1ed885de4475855"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/integrity_validation.json",
+      "sha256": "ae94bb8ba1a6db336cf0fa90fc682db4a7e6499efeb45ea715631cd30cda30b0"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/corporate_action_audit.md",
+      "sha256": "7a103b3c2c3e700f8a3a304b5e38bfe3e345bc083edd1767cb9da55fc25b5020"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_1_ma60_vs_bullish_alignment_simple_backtest_v01/report.md",
+      "sha256": "014488aabcbdf0ba8b9e57b1ed2b62a179a56a6b5a7fc35c1816a653093a3fce"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_1_ma60_vs_bullish_alignment_simple_backtest_v01/preflight.json",
+      "sha256": "baab75d3dc84d061b5395a4802e470d5e1b9647ebdfb0917bdbcdfc77289bb21"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_1_ma60_vs_bullish_alignment_simple_backtest_v01/p3_1_execution_audit.json",
+      "sha256": "d2372aad12b950704cbb5e47d33da409dacea246e469bbb26efe3cc828d0f9b4"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_1_ma60_vs_bullish_alignment_simple_backtest_v01/p3_1_control_trades.csv",
+      "sha256": "d23f1722af9e0307995b1f7af95e25f4f05e8b4bd9a9959d16179fb2409e49bd"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_1_ma60_vs_bullish_alignment_simple_backtest_v01/p3_1_alignment_trades.csv",
+      "sha256": "53fa605b56244b9963742221bfafe8f59e0a781f1d7103f0af50ad1c83020018"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/audit_unavailable_repository_v2.py",
+      "sha256": "44ed309bbf72cb65abc95098e1932190439d0df8691bea58bbfe9f1e5c983424"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/audit_corporate_action.py",
+      "sha256": "052e88bc3706dd2e70904e74b90ee9e4759d9bff6f81cca01de62ca79c922730"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/audit_p3_2_policy_consistency.py",
+      "sha256": "a3cf8505847e3d2efc82b2cfa4d577fdc51ec13a4e96f0011854adae9eeda198"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_380440_single_period_exclusion_v01/report.md",
+      "sha256": "6da9088313a3d8b1f8242095cfa9a6b7332c5189b37e07bdd16780daa15d3f20"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_380440_single_period_exclusion_v01/scope_decision.json",
+      "sha256": "806d16881ceccbd22f54ff10cbac783bab446056dd623150c04e4fa8f580a4db"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_380440_single_period_exclusion_v01/gate_results.json",
+      "sha256": "d7a3b4d5eb6f557741f29d9f6142b1c0fdc7b0a63b8b3f4b83ebbbe52555213d"
+    },
+    {
+      "path": "src/trend_scanner/universe/permanent_identity_exclusions.py",
+      "sha256": "1c7cb7512024130f1ab0efa0ceb9f48ae0017a51af7f6db3f74d87b141a7d6ae"
+    },
+    {
+      "path": "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py",
+      "sha256": "f045750c5fb5afcf0b8c132151ed7b8f387865f7653beb4e5b849c79b50f0dc1"
+    },
+    {
+      "path": "scripts/run_v2_official_adoption_revalidation_v02.py",
+      "sha256": "ef3d33e03290feb36af5aec671aa63a91ec3dc552f72c83f40aaae99970a6639"
+    },
+    {
+      "path": "scripts/run_fastcore_neg40_weak_protect_p2_1.py",
+      "sha256": "9c95e482f5ca7d216c4f608d98dfaeb11b54d4abc9445b432f99fcc1df91a4f0"
+    },
+    {
+      "path": "src/trend_scanner/data/repository_v2.py",
+      "sha256": "c252835604b0fd8f2e839d438052670d9700e773f1c34cb83582c5c29a198215"
+    },
+    {
+      "path": "src/trend_scanner/data/repository_v2_loader.py",
+      "sha256": "d5c2333022acf5b777f38bfd024c7540aaae8bc16f455c1a7e779c60c510a97d"
+    },
+    {
+      "path": "src/trend_scanner/data/market_calendar.py",
+      "sha256": "1bade7125bd6c503f0a0f0ccafc1a82a931e867edbfd2ffbc9f16cf1ade72b7e"
+    },
+    {
+      "path": "src/trend_scanner/data/rolling_market_data_refresh.py",
+      "sha256": "80270ab3efb0d906b1161410cc1756a613df8d7aa930c63415dcd7ba8bf94c87"
+    },
+    {
+      "path": "src/trend_scanner/data/krx_raw_stock_store.py",
+      "sha256": "43b491cf74d6b3c41d02f7877d006199a9e5419901f0b8e8a6a50d1c5ad6e95e"
+    },
+    {
+      "path": "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_score_prototype_v01.json",
+      "sha256": "be0dc21c3764aeb147a3565e65850fc179ecc91e5700e8221932f12ce28ae501"
+    },
+    {
+      "path": "artifacts/patterns/pattern_a_fast/production/contract_prototype/pattern_a_fast_stage_prototype_v01.json",
+      "sha256": "231cb43e2830017a72a9e8ba8d29296749f8a323e211266035d80cf841b70cf7"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/run_official_realistic_replay.py",
+      "sha256": "3d7f573bb908b904758427e59967d698fc471cf3af0de699815aa5516ab9705b"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/finalize_research_artifacts.py",
+      "sha256": "93031b15a15d535240f34bd486ddb413c6cf404dce87ac59c9e764c10ef7ca4e"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/seal_preflight.py",
+      "sha256": "2f096a2a7fa258c06e3d8fcea942d84ea5be99288e2ee9ed35685fbd196cd4c3"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/audit_p3_2_policy_consistency.py",
+      "sha256": "a3cf8505847e3d2efc82b2cfa4d577fdc51ec13a4e96f0011854adae9eeda198"
+    },
+    {
+      "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/audit_corporate_action.py",
+      "sha256": "052e88bc3706dd2e70904e74b90ee9e4759d9bff6f81cca01de62ca79c922730"
+    }
+  ],
+  "authority_data_files": [
+    {
+      "path": "data/market/rolling_authority/manifest.json",
+      "sha256": "5c4a9e346d7460c4a28b30a3cd9ab19c9c17527f1c4409282206e8ec2a731570"
+    },
+    {
+      "path": "data/market/rolling_authority/merged_pit_intervals.json",
+      "sha256": "d93a958d7bbae9142ef1fa5aded36080d1d107739e777eb4ec3b6566fea90654"
+    },
+    {
+      "path": "data/market/rolling_authority/merged_trading_calendar.json",
+      "sha256": "ab7635de160e06d538d9d0dc7225c8e1b307f191f54f2584d4c79e47a94a7480"
+    },
+    {
+      "path": "data/market/raw/krx_stocks/v01/manifest.sqlite3",
+      "sha256": "ee0c5beac81f8cdfbe0751803ed2f171607e0c24da59660e3d9137104229a103"
+    }
+  ],
+  "repository_v2_adjusted_price_hashes_path": "repository_v2_adjusted_price_file_hashes.csv",
+  "repository_v2_adjusted_price_hashes_file_sha256": "ce0f347ee26c26650b06f227ca4ad230fb2630712065184af4e4a14af37c4fcb",
+  "ticker_price_source_audit_path": "ticker_price_source_audit.csv",
+  "ticker_price_source_audit_file_sha256": "0762af59dcd1c604a40ad87633acf8e520d7fda6e7372da027027c7f4f497d52",
+  "repository_v2_unavailable_reason_diagnostic_path": "repository_v2_unavailable_reason_diagnostic.json",
+  "repository_v2_unavailable_reason_diagnostic_sha256": "23cb2561d1b508af0f2a398289f3cee5e89c8aff7306d05d7225c60bbfa08ba4",
+  "krx_signal_partition_hashes_path": "signal_date_krx_partition_hashes.csv",
+  "krx_signal_partition_hashes_file_sha256": "2b693864fe73c605f805a65d610d714dbda57a6de6b39cacfd469f7dbab0b07e",
+  "krx_signal_partition_count": 342,
+  "exact_signal_candidate_audit_file_sha256": "a48c5a24ec6a8fac645801110e7a7c27edd99962711998e81c90749ef444edc9",
+  "excluded_identity_pair_count": 182,
+  "excluded_identity_pair_canonical_sha256": "9091a40d5dfc3dc115e00166ea3ef806ef5a4ca3b595d76864598ec050904b12",
+  "excluded_identity_pair_hash_scheme": "sorted_exact_pair_json_v01",
+  "price_source_unavailable_tickers": [
+    "182360",
+    "184230",
+    "187790",
+    "192250",
+    "198440",
+    "200130",
+    "203650",
+    "203690",
+    "204620",
+    "204630",
+    "204840",
+    "205100",
+    "205470",
+    "205500",
+    "206400",
+    "206640",
+    "207760",
+    "208140",
+    "208350",
+    "208370",
+    "208640",
+    "208710",
+    "214150",
+    "214270",
+    "214680",
+    "215090",
+    "215100",
+    "215380",
+    "215480",
+    "215790",
+    "217270",
+    "217500",
+    "217600",
+    "217620",
+    "218150",
+    "218410",
+    "219550",
+    "220260",
+    "220630",
+    "222080",
+    "222420",
+    "222810",
+    "225430",
+    "225570",
+    "225590",
+    "226340",
+    "226360",
+    "226440",
+    "227950",
+    "230240",
+    "230980",
+    "232140",
+    "239340",
+    "242040",
+    "250060",
+    "250930",
+    "252500",
+    "253590",
+    "254120",
+    "256630",
+    "256840",
+    "258790",
+    "261200",
+    "263770",
+    "264850",
+    "267320",
+    "270520",
+    "273060",
+    "277410",
+    "281740",
+    "284620",
+    "287410",
+    "291230",
+    "297570",
+    "299170",
+    "303030",
+    "306620",
+    "307180",
+    "307280",
+    "307750",
+    "307870",
+    "309930",
+    "310200",
+    "310870",
+    "317240",
+    "319400",
+    "320000",
+    "321260",
+    "322780",
+    "323230",
+    "323280",
+    "328380",
+    "331380",
+    "331520",
+    "332290",
+    "333050",
+    "333430",
+    "335870",
+    "336060",
+    "336570",
+    "339950",
+    "340360",
+    "340440",
+    "351320",
+    "353190",
+    "355150",
+    "359090",
+    "363260",
+    "365590",
+    "368770",
+    "369370",
+    "373200",
+    "388790",
+    "391710",
+    "408920",
+    "413630",
+    "424760"
+  ],
+  "price_source_unavailable_reason_counts": {
+    "UNCLASSIFIED_RAW_ONLY_SESSION": 117
+  },
+  "price_source_runner_reported_unavailable_reason_counts": {
+    "REPOSITORY_V2_ADJUSTED_OR_RAW_UNAVAILABLE": 117
+  },
+  "p3_2_policy_consistency_audit_sha256": "ca2b7e1c6c789aa337dcbff7e4e0ec42efc72835aa212a68d537f24f6462e9f5",
+  "corporate_action_audit_sha256": "59f020cccf8368338bfda18cd48f1fe9fc538d730a27cca297dc54727215da52",
+  "provenance_contract": "RepositoryV2 adjusted prices; rolling merged PIT/calendar; verified exact signal-date KRX raw MKTCAP partitions; no API/fallback/current survivor roster"
+}

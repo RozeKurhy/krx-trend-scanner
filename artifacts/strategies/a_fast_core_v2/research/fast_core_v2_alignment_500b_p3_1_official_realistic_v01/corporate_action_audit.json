@@ -1,0 +1,59 @@
+{
+  "schema": "fast_core_v2_alignment_500b_p3_1_corporate_action_audit_v01",
+  "target_identity": {
+    "ticker": "029960",
+    "isu_cd": "KR7029960002",
+    "name": "Koentec"
+  },
+  "official_evidence": {
+    "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01/corporate_action_audit.md",
+    "sha256": "7a103b3c2c3e700f8a3a304b5e38bfe3e345bc083edd1767cb9da55fc25b5020",
+    "cash_exchange_effective_date": "2025-05-30",
+    "documented_consideration_krw_per_share": 9000,
+    "delisting_date": "2025-06-16",
+    "payment_date_status": "2025-06-20 was scheduled; actual account receipt was not evidenced",
+    "cash_tax_fee_and_receivable_contract": "UNDEFINED_BY_P3_1_PORTFOLIO_CONTRACT"
+  },
+  "portfolio_exposure_method": "Match exact ticker+ISU in the executed portfolio event ledger; identify positions entered by the effective date without an exit before that date, positions remaining at cutoff, and cutoff exits executed on support day.",
+  "input_event_scan_complete": true,
+  "control": {
+    "group": "CONTROL",
+    "exact_identity_trade_rows": 1,
+    "exact_identity_portfolio_events": 1,
+    "exact_pair_columns_scanned": true,
+    "executed_entry_count": 1,
+    "cash_unavailable_entry_skip_count": 0,
+    "held_at_cutoff_after_cutoff_day_events": 1,
+    "held_at_or_through_cash_exchange_effective_date": 1,
+    "held_at_cutoff_share_count": 558,
+    "held_at_or_through_effective_date_share_count": 558,
+    "support_day_exit_count": 0,
+    "open_at_cutoff_candidate_ids": [
+      "029960|KR7029960002|2024-11-15|2024-11-18"
+    ],
+    "support_exit_candidate_ids": []
+  },
+  "candidate": {
+    "group": "CANDIDATE",
+    "exact_identity_trade_rows": 0,
+    "exact_identity_portfolio_events": 0,
+    "exact_pair_columns_scanned": true,
+    "executed_entry_count": 0,
+    "cash_unavailable_entry_skip_count": 0,
+    "held_at_cutoff_after_cutoff_day_events": 0,
+    "held_at_or_through_cash_exchange_effective_date": 0,
+    "held_at_cutoff_share_count": 0,
+    "held_at_or_through_effective_date_share_count": 0,
+    "support_day_exit_count": 0,
+    "open_at_cutoff_candidate_ids": [],
+    "support_exit_candidate_ids": []
+  },
+  "control_open_at_cutoff_count": 1,
+  "candidate_open_at_cutoff_count": 0,
+  "support_day_exit_count": 0,
+  "status": "CHECK_REQUIRED",
+  "settlement_invented": false,
+  "cash_receivable_or_special_tax_added": false,
+  "p3_1_nav_or_trades_modified": false,
+  "reason": "Exact identity exposure intersects the cash-exchange date/cutoff/support period; actual entitlement and receipt are unresolved, so no settlement is fabricated."
+}
