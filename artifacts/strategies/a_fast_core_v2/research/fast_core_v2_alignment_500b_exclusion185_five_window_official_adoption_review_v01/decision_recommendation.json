@@ -1,0 +1,27 @@
+{
+  "schema": "fast_core_v2_alignment_500b_decision_recommendation_v01",
+  "work_id": "FAST_CORE_V2_ALIGNMENT_500B_185_FIVE_WINDOW_OFFICIAL_ADOPTION_REVIEW_V01",
+  "official_adoption_status": "OFFICIAL_STRATEGY_ADOPTED",
+  "baseline_replacement_recommendation": "교체 권고",
+  "decisions_are_separate": true,
+  "evidence_for_replacement": [
+    "Candidate Observed MDD improves by 17.02–25.07pp in all five windows.",
+    "Total return and CAGR are positive in all periods; candidate total return is higher in 4/5.",
+    "Candidate win rate and mean realized trade return exceed CONTROL in all five windows.",
+    "Average capital utilization is lower in all five; cash shortage remains diagnostic only."
+  ],
+  "counter_evidence": [
+    "P2-1 candidate total return is lower by 9.7924pp and CAGR lower by 1.7551pp.",
+    "Candidate worst single trade is more negative in every period: -44.3903% vs CONTROL -35.0608% to -39.1249%.",
+    "+50%/+100% winner counts fall in most windows; upside preservation has a trade-off.",
+    "Windows overlap and are retrospective; they are not five independent tests or fresh future evidence."
+  ],
+  "basis": "V2 frozen contract prioritizes LARGE_LOSS_MINIMIZATION, then PRESERVE_SUFFICIENT_UPSIDE. This recommendation weighs portfolio MDD improvements against the stated counter-evidence; no new threshold was added.",
+  "implementation": {
+    "default_changed": false,
+    "registry_production_web_changed": false,
+    "current_default": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "user_final_approval_required_before_promotion": true,
+    "candidate_is_independent_new_strategy": false
+  }
+}
