@@ -1,0 +1,39 @@
+{
+  "candidate": {
+    "executed_entries": 0,
+    "executed_exits": 0,
+    "filter_audit_rows": 3,
+    "filter_status_counts": {
+      "REJECT_ALIGNMENT": 2,
+      "REJECT_MCAP_BELOW_500B": 1
+    },
+    "missing_marks": 0,
+    "portfolio_event_rows": 0,
+    "trade_rows": 0
+  },
+  "control": {
+    "cash_delta_on_skips_krw": [
+      0.0,
+      0.0
+    ],
+    "cash_skipped_entries": 2,
+    "entry_events": 2,
+    "executed_entries": 0,
+    "executed_exits": 0,
+    "missing_marks": 0,
+    "trade_rows": 2
+  },
+  "final_status": "NO_EXECUTED_KOENTEC_EXPOSURE_IN_EITHER_GROUP",
+  "identity": {
+    "isu_cd": "KR7029960002",
+    "ticker": "029960"
+  },
+  "portfolio_effect": {
+    "cash_proceeds_or_fees_from_position": false,
+    "cutoff_open_position_any_group": false,
+    "executed_share_exposure_any_group": false,
+    "target_identity_trade_or_mark_leakage": false
+  },
+  "replay_scope": "P2-2 full chronological replay under changed cash path; no cash-skip ledger reuse as evidence of position status",
+  "schema": "fast_core_v2_alignment_500b_exclusion184_koentec_audit_v01"
+}

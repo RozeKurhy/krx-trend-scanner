@@ -1,0 +1,68 @@
+{
+  "artificial_position_cap": null,
+  "baseline_head": "29ac6c85af0524c279a41cb0d820b9b646671a91",
+  "baseline_origin_main": "29ac6c85af0524c279a41cb0d820b9b646671a91",
+  "candidate_promotion": "NOT_EVALUATED",
+  "commission_each_side": 0.00015,
+  "cutoff": "2026-08-31",
+  "cutoff_open_hypothetical_liquidation": false,
+  "five_window_adoption": "NOT_FINAL_5WINDOW",
+  "initial_capital_krw": 200000000,
+  "integer_shares": true,
+  "not_run": [
+    "P1",
+    "P2-1",
+    "P3 replay/signal evaluation",
+    "web or production changes"
+  ],
+  "official_default": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+  "official_gates": {
+    "A": "PIT, identity, lifecycle, cash and event integrity",
+    "B": "filled-side costs and cash conservation",
+    "C": "positive total return and CAGR",
+    "D": "MDD >= -40%; candidate relative degradation < +5 percentage points",
+    "E": "valid full-portfolio NAV coverage >= 90%; below 90% is CHECK_REQUIRED",
+    "cash shortage rate": "diagnostic only"
+  },
+  "partial_fills": false,
+  "per_position_inclusive_buy_budget_krw": 5000000,
+  "permanent_exclusion_policy": {
+    "additions_only": [
+      [
+        "003410",
+        "KR7003410008"
+      ],
+      [
+        "138580",
+        "KR7138580006"
+      ]
+    ],
+    "canonical_hash_scheme": "sorted_exact_pair_json_v01",
+    "canonical_sha256": "5d3bd9a1e27e7e558235f0fba211263cdc90eb0b477978c8338eb019b1a6ec2e",
+    "pair_count": 184
+  },
+  "sale_proceeds_settlement": "T+1",
+  "same_open_sale_proceeds_reuse": false,
+  "schema": "fast_core_v2_alignment_500b_p2_2_execution_contract_exclusion_184_v01",
+  "sell_tax": 0,
+  "sessions": 1387,
+  "signal_reuse": {
+    "removed_exact_pairs": [
+      [
+        "003410",
+        "KR7003410008"
+      ],
+      [
+        "138580",
+        "KR7138580006"
+      ]
+    ],
+    "signal_evaluation_run_count": 0,
+    "source": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p2_2_official_full_run_v02"
+  },
+  "slippage_each_side": 0.001,
+  "start": "2021-01-04",
+  "support_date": "2026-09-01",
+  "support_date_in_nav": false,
+  "window": "P2-2"
+}

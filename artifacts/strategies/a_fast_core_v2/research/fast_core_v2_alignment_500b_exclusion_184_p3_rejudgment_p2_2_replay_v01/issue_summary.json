@@ -1,0 +1,69 @@
+{
+  "affected_group_day_count": 12,
+  "counting_basis": "independent identity/source root causes, not affected sessions",
+  "issues": [
+    {
+      "affected_group_day_count": 4,
+      "carry_or_imputation": false,
+      "dates": [
+        "2023-04-25",
+        "2023-06-28",
+        "2024-02-16",
+        "2024-06-27"
+      ],
+      "decision_effect": "Isolated daily mark remains UNRESOLVED and excluded from whole-day NAV; official coverage remains >=90%, so criteria permit OBSERVED MDD. No value was imputed.",
+      "groups": [
+        "ALIGNMENT_MCAP_500B"
+      ],
+      "identity": "003690 / KR7003690005",
+      "issue_type": "ADJUSTED_SOURCE_HIGH_LT_CLOSE",
+      "severity": "MINOR",
+      "source_hashes_match_current_run": true
+    },
+    {
+      "affected_group_day_count": 4,
+      "carry_or_imputation": false,
+      "dates": [
+        "2022-01-20",
+        "2022-01-28"
+      ],
+      "decision_effect": "Isolated daily mark remains UNRESOLVED and excluded from whole-day NAV; official coverage remains >=90%, so criteria permit OBSERVED MDD. No value was imputed.",
+      "groups": [
+        "ALIGNMENT_MCAP_500B",
+        "CONTROL"
+      ],
+      "identity": "068240 / KR7068240001",
+      "issue_type": "ADJUSTED_SOURCE_HIGH_LT_CLOSE",
+      "severity": "MINOR",
+      "source_hashes_match_current_run": true
+    },
+    {
+      "affected_group_day_count": 4,
+      "carry_or_imputation": false,
+      "dates": [
+        "2022-02-25",
+        "2022-05-13",
+        "2024-10-31",
+        "2024-11-25"
+      ],
+      "decision_effect": "Isolated daily mark remains UNRESOLVED and excluded from whole-day NAV; official coverage remains >=90%, so criteria permit OBSERVED MDD. No value was imputed.",
+      "groups": [
+        "ALIGNMENT_MCAP_500B"
+      ],
+      "identity": "085660 / KR7085660009",
+      "issue_type": "ADJUSTED_SOURCE_HIGH_LT_CLOSE",
+      "severity": "MINOR",
+      "source_hashes_match_current_run": true
+    }
+  ],
+  "non_issue_diagnostics": [
+    "cash-shortage entry skips are reported but are not an official gate",
+    "cutoff-open positions are marked at cutoff without hypothetical exit costs"
+  ],
+  "schema": "fast_core_v2_alignment_500b_exclusion184_issue_summary_v01",
+  "severity_counts": {
+    "CRITICAL": 0,
+    "MAJOR": 0,
+    "MINOR": 3
+  }
+}

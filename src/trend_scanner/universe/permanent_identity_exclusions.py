@@ -1278,6 +1278,20 @@ PERMANENT_IDENTITY_EXCLUSIONS: dict[tuple[str, str], dict[str, str]] = {
         "approved_date": "2026-10-12",
         "policy_version": "permanent_identity_exclusions_v01",
     },
+    ("138580", "KR7138580006"): {
+        "reason": "user-approved global permanent exclusion for unresolved share-exchange and cash-settlement accounting and long-term valuation; generic lifecycle implementation is not economically justified, not performance-based",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "failure_class": "CORPORATE_ACTION_SETTLEMENT_UNRESOLVED",
+        "approved_date": "2026-10-12",
+        "policy_version": "permanent_identity_exclusions_v02",
+    },
+    ("003410", "KR7003410008"): {
+        "reason": "user-approved global permanent exclusion for unresolved share-exchange and cash-settlement accounting and long-term valuation; generic lifecycle implementation is not economically justified, not performance-based",
+        "approval_scope": "GLOBAL permanent identity exclusion",
+        "failure_class": "CORPORATE_ACTION_SETTLEMENT_UNRESOLVED",
+        "approved_date": "2026-10-12",
+        "policy_version": "permanent_identity_exclusions_v02",
+    },
 
 }
 
