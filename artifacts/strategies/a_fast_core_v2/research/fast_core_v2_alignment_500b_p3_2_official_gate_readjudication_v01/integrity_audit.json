@@ -1,0 +1,314 @@
+{
+  "schema": "fast_core_v2_alignment_500b_p3_2_official_gate_readjudication_integrity_v01",
+  "work_id": "FAST_CORE_V2_ALIGNMENT_500B_P3_2_OFFICIAL_GATE_READJUDICATION_V01",
+  "assessment": "PASS_WITH_TWO_MINOR_OBSERVED_NAV_LIMITATIONS",
+  "severity_counts": {
+    "CRITICAL": 0,
+    "MAJOR": 0,
+    "MINOR": 2,
+    "counting_basis": "current P3-2 result limitations by affected group/root-cause class; four candidate dates are one issue, not four"
+  },
+  "checks": [
+    {
+      "id": "baseline_and_scope",
+      "status": "PASS",
+      "details": {
+        "branch": "main",
+        "HEAD": "ccf150e2f92e22effb122496de3c4fed418e2f93",
+        "origin_main": "ccf150e2f92e22effb122496de3c4fed418e2f93",
+        "working_tree_tracked_changes_at_start": 0,
+        "existing_untracked_preserved": true,
+        "p3_2_rerun": false,
+        "p2_2_run": false,
+        "prior_outputs_overwritten": false
+      }
+    },
+    {
+      "id": "official_authority_hashes",
+      "status": "PASS",
+      "details": {
+        "files": [
+          {
+            "path": "docs/validation/backtest_common_rules.md",
+            "sha256": "e8783958064ddfc54f57bef3500ad41de6d3b6bc853fce2464845f9c4cc4d06b",
+            "bytes": 24228
+          },
+          {
+            "path": "docs/validation/official_strategy_adoption_criteria.md",
+            "sha256": "380f34cd7e24fd9881d7a154000d9b51512d905d7c7ef24b1940f5fa4e22cb88",
+            "bytes": 11128
+          },
+          {
+            "path": "docs/strategies/strategy_lifecycle.md",
+            "sha256": "c89bad3f56b95a9bac3284fb9817067940534b52c87c29f57f3009ea5a1e25e8",
+            "bytes": 10562
+          },
+          {
+            "path": "docs/patterns/pattern_a_fast/strategy/version_02/README.md",
+            "sha256": "d353afec7e26ad4adb296dc14e337a78c88466d3ddcee887932ef1fd58f295ef",
+            "bytes": 16798
+          }
+        ]
+      }
+    },
+    {
+      "id": "permanent_exclusion_transition",
+      "status": "PASS",
+      "details": {
+        "baseline_head": "cbef18c7eed1d7002b16751b1000df2ce9851061",
+        "prior_pair_count": 181,
+        "prior_source_sha256": "858ec93e656bea5aa9ad036f7bd8e129253b4f682d062e7fb9350ad5eea1cffa",
+        "current_pair_count": 182,
+        "current_source_sha256": "1c7cb7512024130f1ab0efa0ceb9f48ae0017a51af7f6db3f74d87b141a7d6ae",
+        "current_canonical_scheme": "sorted_exact_pair_json_v01",
+        "current_canonical_sha256": "9091a40d5dfc3dc115e00166ea3ef806ef5a4ca3b595d76864598ec050904b12",
+        "current_canonical_matches_requested_sha256": true,
+        "added_exact_pairs": [
+          [
+            "380440",
+            "KR7380440008"
+          ]
+        ],
+        "removed_exact_pairs": [],
+        "old_hash_note": "The prior P3-2 preflight canonical value is retained as recorded. Its serializer schema is not asserted to match the current schema. The old source file SHA matches the P3-2 baseline, and exact source pair-set comparison establishes the one-pair delta.",
+        "prior_recorded_canonical_sha256": "3420a34f41ffa9029fe1869ad80a98f0096b13e74139b413e50a0ad661187f57"
+      }
+    },
+    {
+      "id": "common_pre_signal_application",
+      "status": "PASS",
+      "details": {
+        "runner_path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01/run_official_realistic_replay.py",
+        "runner_sha256": "3d7f573bb908b904758427e59967d698fc471cf3af0de699815aa5516ab9705b",
+        "implementation": "build_authority filters exact (ticker, ISU_CD) against the permanent registry before returning the shared PIT universe; both groups use this common authority before group split",
+        "target_in_current_registry": true
+      }
+    },
+    {
+      "id": "source_and_artifact_hashes",
+      "status": "PASS",
+      "details": {
+        "p3_2_v01_artifacts": {
+          "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_official_realistic_v01",
+          "manifest_sha256": "0144a50dd68c4f31dd17f1ea10483ac29d0855d347eb519a1403f93726440823",
+          "listed_files": 52,
+          "matched_files": 52,
+          "mismatched_or_missing": []
+        },
+        "p3_2_closure_artifacts": {
+          "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_2_data_nav_closure_v01",
+          "manifest_sha256": "827328c5fcd625dfc96b8ae3cf67b9cfc01e3e70534ad6c0e50178940baa687c",
+          "listed_files": 33,
+          "matched_files": 33,
+          "mismatched_or_missing": []
+        },
+        "380440_exclusion_audit_artifacts": {
+          "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_p3_2_380440_single_period_exclusion_v01",
+          "manifest_sha256": "42c8e37bd098ca7ee7377c4f36f992e816dc95821779b121e8ded343394ae02e",
+          "listed_files": 8,
+          "matched_files": 8,
+          "mismatched_or_missing": []
+        },
+        "p3_1_policy_audit_artifacts": {
+          "path": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p3_1_official_realistic_v01",
+          "manifest_sha256": "8eada84f736b1c6b11b50cf82afede927f1011f12389db185fe3514027407c0c",
+          "listed_files": 62,
+          "matched_files": 62,
+          "mismatched_or_missing": []
+        },
+        "historical_closure_input_files": {
+          "checked": 26,
+          "matched_baseline": 26,
+          "mismatches": []
+        },
+        "closure_source_snapshots": {
+          "checked": 2,
+          "matched": 2,
+          "mismatches": []
+        }
+      }
+    },
+    {
+      "id": "bounded_price_inputs",
+      "status": "PASS",
+      "details": {
+        "identities": 123,
+        "adjusted_price_file_hash_matches": 123,
+        "load_success": 123,
+        "load_errors": 0,
+        "in_pit_session_mismatch_count": 0,
+        "price_input_audit_rows": 124,
+        "bounded_price_issue_tickers": []
+      }
+    },
+    {
+      "id": "380440_global_exclusion_and_output_invariance",
+      "status": "PASS_FOR_CURRENT_OFFICIAL_UNIVERSE",
+      "details": {
+        "identity": [
+          "380440",
+          "KR7380440008"
+        ],
+        "adjusted_file_present": false,
+        "target_data_status": "NOT_EVALUATED",
+        "hypothetical_complete_data_signal_effect": "UNKNOWN_NOT_EVALUATED",
+        "must_not_be_interpreted_as_zero_signals": true,
+        "invariance_artifacts_checked": 55,
+        "invariance_hash_matches": 55,
+        "missing_or_hash_mismatches": [],
+        "event_portfolio_artifacts_checked": 38,
+        "exact_pair_rows_in_event_portfolio_artifacts": 0,
+        "diagnostic_only_exact_pair_rows": 1,
+        "metric_rows_compared": 61,
+        "metric_differences": [],
+        "saved_metrics_changed": false,
+        "scope_filter_shared_pre_signal_in_both_groups": true,
+        "diagnostic_ticker_only_rows_without_ISU": 1
+      }
+    },
+    {
+      "id": "event_ledger_cash_and_lifecycle_recalculation",
+      "status": "PASS",
+      "details": {
+        "groups": {
+          "control": {
+            "event_rows": 1957,
+            "entry_attempts": 1694,
+            "cash_skipped_entries": 1388,
+            "executed_entries": 306,
+            "realized_exits_through_cutoff": 263,
+            "post_cutoff_support_exits": 0,
+            "open_positions_at_cutoff": 43,
+            "nav_rows": 1139,
+            "valid_nav_rows": 1138,
+            "coverage_pct": 99.91220368744513,
+            "total_return_pct_recomputed": 31.781515409339956,
+            "cagr_pct_recomputed": 6.105025110145501,
+            "observed_mdd_pct_recomputed": -38.70371641131746,
+            "commission_krw_recomputed": 430518.33832034975,
+            "slippage_impact_krw_recomputed": 2869953.8429998355,
+            "maximum_concurrent_positions": 48,
+            "max_daily_cash_rollforward_abs_error_krw": 0.0,
+            "max_daily_pending_sale_rollforward_abs_error_krw": 0.0,
+            "max_daily_position_count_error": 0,
+            "errors": []
+          },
+          "candidate": {
+            "event_rows": 460,
+            "entry_attempts": 251,
+            "cash_skipped_entries": 25,
+            "executed_entries": 226,
+            "realized_exits_through_cutoff": 208,
+            "post_cutoff_support_exits": 1,
+            "open_positions_at_cutoff": 18,
+            "nav_rows": 1139,
+            "valid_nav_rows": 1135,
+            "coverage_pct": 99.64881474978051,
+            "total_return_pct_recomputed": 108.2343651626457,
+            "cagr_pct_recomputed": 17.058157620153636,
+            "observed_mdd_pct_recomputed": -13.63701338545491,
+            "commission_krw_recomputed": 350607.0947088,
+            "slippage_impact_krw_recomputed": 2337480.5799998697,
+            "maximum_concurrent_positions": 52,
+            "max_daily_cash_rollforward_abs_error_krw": 0.0,
+            "max_daily_pending_sale_rollforward_abs_error_krw": 0.0,
+            "max_daily_position_count_error": 0,
+            "errors": []
+          }
+        },
+        "position_overlap_or_lifecycle_errors": {
+          "control": [],
+          "candidate": []
+        },
+        "t_plus_1_daily_cash_and_pending_proceeds_rollforward_checked": true,
+        "every_day_open_position_count_matched": true,
+        "whole_share_formula_entry_fills_checked": 532,
+        "metric_event_and_daily_reconciliation_passed": true
+      }
+    },
+    {
+      "id": "koentec_current_closure_exposure",
+      "status": "PASS_NO_EXECUTED_EXPOSURE",
+      "details": {
+        "identity": [
+          "029960",
+          "KR7029960002"
+        ],
+        "event_rows": [
+          {
+            "group": "control",
+            "event_type": "ENTRY",
+            "event_status": "SKIPPED_CASH_UNAVAILABLE",
+            "reason": "INSUFFICIENT_AVAILABLE_CASH",
+            "execution_date": "2024-11-18",
+            "shares": "558.0"
+          }
+        ],
+        "executed_entry_count": 0,
+        "historical_v01_settlement_accounting_gap_preserved": true,
+        "new_replay_special_settlement_inserted": false
+      }
+    },
+    {
+      "id": "observed_nav_gaps",
+      "status": "OBSERVED_NONBLOCKING",
+      "details": {
+        "CONTROL": {
+          "missing_marks": 1,
+          "ticker": "128940",
+          "isu_cd": "KR7128940004",
+          "date": "2022-07-05",
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER",
+          "carry_applied": false
+        },
+        "ALIGNMENT_MCAP_500B": {
+          "missing_marks": 4,
+          "ticker": "003690",
+          "isu_cd": "KR7003690005",
+          "dates": [
+            "2023-04-25",
+            "2023-06-28",
+            "2024-02-16",
+            "2024-06-27"
+          ],
+          "evidence_state": "RAW_ROW_NOT_PLACEHOLDER",
+          "carry_applied": false
+        },
+        "internal_composed_mark_root_cause": "UNRESOLVED; no missing mark was filled or synthesized"
+      }
+    },
+    {
+      "id": "worker_and_scope_errors",
+      "status": "PASS",
+      "details": {
+        "targeted_signal_workers": 10,
+        "targeted_signal_worker_errors": 0,
+        "portfolio_replay_worker_errors": 0,
+        "portfolio_scope_issues": 0,
+        "control_cash_conservation_pass": true,
+        "candidate_cash_conservation_pass": true
+      }
+    }
+  ],
+  "limitations_and_historical_notes": [
+    {
+      "identity": [
+        "380440",
+        "KR7380440008"
+      ],
+      "status": "ADJUSTED_MISSING; hypothetical signal effect remains UNKNOWN_NOT_EVALUATED; current global permanent exclusion makes it outside the official evaluation universe."
+    },
+    {
+      "identity": [
+        "029960",
+        "KR7029960002"
+      ],
+      "status": "Original V01 payment/settlement contract remains undefined; latest closure has no executed exposure (one CONTROL entry was cash-skipped)."
+    },
+    {
+      "status": "NAV is OBSERVED rather than exact: retain one CONTROL missing mark and four candidate missing marks; do not impute prices."
+    }
+  ],
+  "no_full_replay": true,
+  "no_p2_2": true
+}
