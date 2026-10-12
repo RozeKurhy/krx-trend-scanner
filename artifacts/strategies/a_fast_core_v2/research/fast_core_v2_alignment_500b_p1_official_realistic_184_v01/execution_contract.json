@@ -1,0 +1,121 @@
+{
+  "schema": "fast_core_v2_alignment_500b_p1_official_realistic_184_v01",
+  "task_id": "FAST_CORE_V2_ALIGNMENT_500B_P1_OFFICIAL_REALISTIC_184_V01",
+  "status": "SEALED_BEFORE_PREFLIGHT_EXECUTION",
+  "baseline": {
+    "branch": "main",
+    "head": "d2b9dd6a6ae7ee3eee4e1840c3b41068d72237c6",
+    "origin_main": "d2b9dd6a6ae7ee3eee4e1840c3b41068d72237c6",
+    "tracked_tree_clean": true,
+    "existing_untracked_research_preserved": true
+  },
+  "directive": {
+    "path": "/Users/june/Documents/projects/w.md",
+    "sha256": "9a42618dcd1ad1109549bf6a45e953a9b6d3aba137ecc60b67c0e225710b0e2b"
+  },
+  "window": {
+    "calendar_start": "2014-01-01",
+    "calendar_end": "2026-08-31",
+    "evaluation_start_rule": "first exact normal KRX session on or after 2014-01-01",
+    "evaluation_start": "2014-01-02",
+    "signal_and_nav_cutoff": "2026-08-31",
+    "execution_support_end": "2026-09-01",
+    "expected_evaluation_sessions": 3107,
+    "post_cutoff_new_entries": false,
+    "support_day_exit_only": true,
+    "support_day_pnl_costs_and_nav_excluded": true,
+    "initial_completed_ma60_months_available_from_validated_repository_calendar": 48,
+    "initial_completed_ma60_months_required": 60,
+    "initial_ma60_unavailable_signal_months": "reject only the affected candidate signal; do not shift P1 start",
+    "first_calendar_month_with_60_prior_completed_months": "2015-01",
+    "start_date_must_not_be_silently_shifted": true
+  },
+  "universe": {
+    "authority": "validated rolling merged PIT COMMON intervals, exact signal-date ticker + standard ISU_CD + market",
+    "permanent_exclusion_pair_count": 184,
+    "permanent_exclusion_hash_scheme": "sorted_exact_pair_json_v01",
+    "permanent_exclusion_canonical_sha256": "5d3bd9a1e27e7e558235f0fba211263cdc90eb0b477978c8338eb019b1a6ec2e",
+    "exclude_at_shared_universe_construction": true,
+    "ticker_only_exclusion": false,
+    "current_survivor_roster_substitution": false,
+    "performance_based_exclusion": false
+  },
+  "strategies": {
+    "control": "PATTERN_A_FAST_FINAL_STRATEGY_V02 unchanged",
+    "candidate": "same frozen V2; add signal-date prior-completed-month alignment and exact signal-date PIT KRX market-cap gate only",
+    "candidate_alignment": {
+      "signal_day_adjusted_close": ">",
+      "ma20": ">",
+      "ma60": true,
+      "input_window": "20 and 60 prior completed monthly closes; signal month excluded",
+      "strict_inequality": true,
+      "insufficient_or_missing_months": "REJECT_MA_UNAVAILABLE for that signal only"
+    },
+    "candidate_market_cap": {
+      "source": "immutable KRX raw daily market cap partition",
+      "identity": "exact signal-date PIT ticker + standard ISU_CD + market",
+      "date": "exact signal date",
+      "threshold_krw": 500000000000,
+      "comparison": ">=",
+      "unresolved_source": "REJECT_MCAP_UNRESOLVED"
+    },
+    "control_new_filters": []
+  },
+  "portfolio": {
+    "initial_capital_krw": 200000000,
+    "position_budget_krw_including_buy_commission": 5000000,
+    "position_cap": null,
+    "buy_slippage_rate": 0.001,
+    "sell_slippage_rate": 0.001,
+    "buy_commission_rate": 0.00015,
+    "sell_commission_rate": 0.00015,
+    "transaction_tax_in_official_returns": false,
+    "share_quantity": "floor(budget / (buy_fill_price * (1 + buy_commission_rate)))",
+    "cash_shortage": "skip entire entry as SKIPPED_CASH_UNAVAILABLE; no partial purchase",
+    "sale_proceeds_available": "next normal KRX session (T+1); not reused at same opening price",
+    "same_open_exit_then_entry_same_identity": false,
+    "replay_order": "deterministic sequential chronological portfolio replay, exact fixed order for simultaneous entry events",
+    "groups_independent": true
+  },
+  "valuation": {
+    "daily_nav": "available cash + pending sale proceeds + evidenced receivables + integer shares times exact evaluation-date adjusted close",
+    "unresolved_mark": "whole portfolio NAV date UNRESOLVED; exclude whole date from observed MDD, never substitute or partially omit holdings",
+    "authorized_placeholder_carry": "only source-confirmed non-trading placeholders and only for daily valuation/MDD; full identity/date/evidence audit required",
+    "cutoff_open_positions": "mark at valid cutoff close only; no hypothetical exit, fee, tax, or liquidation"
+  },
+  "official_gates": {
+    "A": "PIT/lifecycle/future-information/identity/duplicates/cash/T+1/strategy integrity; material range uncertainty CHECK_REQUIRED",
+    "B": "all actual buy/sell fills include 0.015% commission and 0.1% adverse slippage per side; official tax 0",
+    "C": "total_return_pct > 0 and CAGR > 0 for each group",
+    "D": {
+      "P1_absolute_mdd_floor_pct": -55,
+      "candidate_relative_formula_pp": "CONTROL MDD - candidate MDD",
+      "candidate_relative_fail_if_gte_pp": 5.0,
+      "observed_mdd_permitted_when_nav_coverage_pct_gte": 90
+    },
+    "E": {
+      "exact_nav_coverage_pct": 100,
+      "observed_nav_coverage_min_pct": 90,
+      "below_90_status": "CHECK_REQUIRED",
+      "material_cutoff_nav_or_mark_problem": "CHECK_REQUIRED"
+    },
+    "cash_shortage_rate_is_diagnostic_not_gate": true,
+    "p1_gate_result_separate_from_five_window_adoption": true,
+    "five_window_adoption": "NOT_EVALUATED",
+    "baseline_promotion": "NOT_EVALUATED",
+    "default_strategy": "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+  },
+  "execution": {
+    "workers": 10,
+    "sample_before_full": true,
+    "sample_target_tickers": 30,
+    "maximum_estimated_full_runtime_hours_before_full_replay": 2,
+    "runtime_gate_authority": "docs/strategies/strategy_lifecycle.md; docs/validation/backtest_common_rules.md",
+    "signal_worker_execution": "10 forked processes inheriting immutable Repository V2/PIT/calendar context copy-on-write; no fallback; portfolio replay remains single-threaded",
+    "full_group_replays": 2,
+    "automatic_full_replay_after_failure": false,
+    "external_api_requests": 0,
+    "source_manifest_hash_verification_required": true
+  },
+  "output_directory": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_p1_official_realistic_184_v01/"
+}
