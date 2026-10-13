@@ -402,10 +402,13 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert strategy_html.count("web-strategy-layout-v05") == 2
-    assert 'src="./js/strategy.js?v=web-strategy-open-37-v01"' in strategy_html
-    assert '<label for="strategy-fundamental-filter">진입 펀더멘탈</label>' in strategy_html
-    assert '<label for="history-fundamental-filter">진입 펀더멘탈</label>' in strategy_html
+    strategy_asset_version = "web-strategy-price-order-history-age-v01"
+    assert strategy_html.count(strategy_asset_version) == 3
+    assert f'src="./js/strategy.js?v={strategy_asset_version}"' in strategy_html
+    assert '<label id="strategy-fundamental-filter-label">진입 펀더멘탈</label>' in strategy_html
+    assert '<details id="strategy-fundamental-filter" class="strategy-multi-select" aria-labelledby="strategy-fundamental-filter-label">' in strategy_html
+    assert '<label id="history-fundamental-filter-label">진입 펀더멘탈</label>' in strategy_html
+    assert '<details id="history-fundamental-filter" class="strategy-multi-select" aria-labelledby="history-fundamental-filter-label">' in strategy_html
     assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in index_html
     assert 'href="./css/app.css?v=web-ui-chevron-v03"' in report_html
     for html in (index_html, report_html):
@@ -417,7 +420,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
         if urlsplit(url).path == "./js/strategy.js"
     ]
     assert len(strategy_scripts) == 1
-    assert strategy_scripts[0].query == "v=web-strategy-open-37-v01"
+    assert strategy_scripts[0].query == f"v={strategy_asset_version}"
     assert (ROOT / "web" / strategy_scripts[0].path.removeprefix("./")).is_file()
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert 'EXIT: "다음 시가 청산 대기"' in strategy_js
@@ -485,7 +488,7 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     assert "item.entry_previous_pattern_a_stage" in strategy_js
     assert "item.entry_pattern_a_stage" in strategy_js
     assert 'createMultilineField("Pattern A", [stageLabel(previousPatternAStage), `→ ${stageLabel(currentPatternAStage)}`], "strategy-item-pattern-a")' in strategy_js
-    assert 'createField("Pattern B", patternBLabel(item.pattern_b_state))' in strategy_js
+    assert 'createField("Pattern B", patternBLabel(item.pattern_b_state), "strategy-item-pattern-b")' in strategy_js
     assert 'function stageLabel(value) { return STAGE_LABELS[value] || "확인 필요"; }' in strategy_js
     assert 'function patternBLabel(value) { return PATTERN_B_LABELS[value] || (value ? "확인 필요" : "확인 필요"); }' in strategy_js
     b_select_fields = strategy_js[strategy_js.index("if (isBSelectLineageId(strategyId))"):strategy_js.index('} else if (strategyId === "JULIA_ETF_STRATEGY_V01")')]
@@ -534,7 +537,11 @@ def test_strategy_layout_alignment_and_spacing_contract_v05():
     assert ".strategy-item-list .strategy-item-field { display: contents; }" not in css
     assert 'const displayedExitReason = bSelect ? exitReason.replace(/^Pattern B\\s+/u, "") : exitReason;' in strategy_js
     assert 'createField("청산 사유", displayedExitReason, "strategy-item-exit-reason")' in strategy_js
-    assert ".strategy-trade-row-b-select .strategy-item-exit-reason { margin-inline-end: 20px; }" in history_css
+    exit_reason_selector = ".strategy-trade-row .strategy-item-exit-reason .strategy-item-value {"
+    exit_reason_rule = history_css.split(exit_reason_selector, 1)[1].split("}", 1)[0]
+    assert "display: -webkit-box;" in exit_reason_rule
+    assert "overflow: hidden;" in exit_reason_rule
+    assert "-webkit-line-clamp: 2;" in exit_reason_rule
     assert ".strategy-history-controls > .strategy-filter-toolbar { margin-top: 2px; }" in history_css
     assert ".strategy-trade-row .strategy-item-field { align-self: center; justify-content: center;" in history_css
     assert "-webkit-line-clamp: 2;" in history_css
@@ -606,7 +613,7 @@ def test_b_select_trade_history_sort_reuses_hold_sort_contract_and_filters():
     assert 'entry_execution_date: a.date, return_pct: a.trade_return_pct' in strategy_js
     assert 'historySortSelect.addEventListener("change"' in strategy_js
     assert 'historyMatches(trade)' in strategy_js
-    assert 'historyFundamentalFilterActive() && fundamentalStatus(trade) !== historyFundamentalFilter' in strategy_js
+    assert 'historyFundamentalFilterActive() && !historyFundamentalFilters.has(fundamentalStatus(trade))' in strategy_js
 
 
 def test_strategy_ui_polish_uses_representative_source_returns_and_split_dates():
@@ -629,7 +636,7 @@ def test_strategy_ui_polish_uses_representative_source_returns_and_split_dates()
     assert 'Number(trade.return_pct) < 0 ? "detail-value-negative"' in strategy_js
     assert 'createPriceDateField("현재가"' in strategy_js
     assert 'createPriceDateField("진입가"' in strategy_js
-    assert 'createField("진입가", "—")' in strategy_js
+    assert 'createField("진입가", "—", "strategy-item-entry-price")' in strategy_js
     assert "white-space: normal" in css
     assert "text-overflow: clip" in css
 
