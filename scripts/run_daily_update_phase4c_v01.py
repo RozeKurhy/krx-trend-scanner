@@ -45,6 +45,8 @@ FAST_STRATEGY_IDS = {
     "PATTERN_A_FAST_FINAL_STRATEGY_V02",
     "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
 }
+PROMOTED_FAST_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+FULL_HISTORY_ALIGNMENT_WEB = "FULL_HISTORY_ALIGNMENT_WEB"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("run_daily_update_phase4c_v01")
@@ -99,10 +101,31 @@ def _validate_fast_strategy_monitor(
     fast_strategy_id = fast_rows[0]["id"]
     fast_gate_status = fast_rows[0].get("promotion_gate_status")
     fast_effective_signal_date = fast_rows[0].get("effective_signal_date")
-    if fast_gate_status is None and fast_strategy_id == "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B":
-        raise Phase4CError("PHASE4C_FAST_PROMOTION_GATE_STATUS_MISSING")
-    if fast_strategy_id == "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B" and fast_gate_status != "ACTIVE":
-        raise Phase4CError("PHASE4C_FAST_PROMOTED_ID_NOT_ACTIVE")
+    historical_replay = strategy_monitor.get("strategy_replay_mode") == FULL_HISTORY_ALIGNMENT_WEB
+    if historical_replay:
+        digest = strategy_monitor.get("strategy_replay_digest")
+        scope = strategy_monitor.get("strategy_replay_scope")
+        if (
+            fast_strategy_id != PROMOTED_FAST_STRATEGY_ID
+            or not isinstance(digest, str)
+            or len(digest) != 64
+            or any(character not in "0123456789abcdef" for character in digest)
+            or not isinstance(scope, dict)
+            or fast_rows[0].get("strategy_replay_mode") != FULL_HISTORY_ALIGNMENT_WEB
+            or fast_rows[0].get("strategy_replay_digest") != digest
+            or fast_rows[0].get("strategy_replay_scope") != scope
+            or scope.get("report_count") != report_json_count
+            or scope.get("output_strategy_id") != PROMOTED_FAST_STRATEGY_ID
+            or fast_gate_status is not None
+            or fast_effective_signal_date is not None
+            or fast_rows[0].get("activation_intervals") is not None
+        ):
+            raise Phase4CError("PHASE4C_FAST_FULL_HISTORY_REPLAY_PROVENANCE_INVALID")
+    else:
+        if fast_gate_status is None and fast_strategy_id == PROMOTED_FAST_STRATEGY_ID:
+            raise Phase4CError("PHASE4C_FAST_PROMOTION_GATE_STATUS_MISSING")
+        if fast_strategy_id == PROMOTED_FAST_STRATEGY_ID and fast_gate_status != "ACTIVE":
+            raise Phase4CError("PHASE4C_FAST_PROMOTED_ID_NOT_ACTIVE")
     if fast_gate_status is not None and fast_gate_status not in {"INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"}:
         raise Phase4CError("PHASE4C_FAST_PROMOTION_GATE_STATUS_INVALID")
     if fast_gate_status == "ACTIVE":
@@ -130,6 +153,106 @@ def _validate_fast_strategy_monitor(
             f"{fast_row['scope'].get('report_count')} != {report_json_count}"
         )
     return fast_strategy_id, strategy_by_id
+
+
+def validate_fast_full_history_projection(
+    reports: dict[str, dict[str, Any]],
+    strategy_monitor: dict[str, Any],
+    fast_strategy_id: str,
+) -> dict[str, int]:
+    """Compare every source trade and OPEN position with the monitor projection."""
+    if strategy_monitor.get("strategy_replay_mode") != FULL_HISTORY_ALIGNMENT_WEB:
+        return {"source_trade_count": 0, "monitor_trade_count": 0, "trade_mismatch_count": 0, "open_mismatch_count": 0}
+    row = next(
+        item for item in strategy_monitor.get("strategies", [])
+        if isinstance(item, dict) and item.get("id") == fast_strategy_id
+    )
+    source_trades: dict[tuple[Any, ...], dict[str, Any]] = {}
+    source_open: dict[str, dict[str, Any]] = {}
+    for ticker, report in reports.items():
+        if (report.get("identity") or {}).get("asset_type") != "COMMON":
+            continue
+        strategy = report.get("strategy") or {}
+        if (
+            strategy.get("strategy_replay_mode") != FULL_HISTORY_ALIGNMENT_WEB
+            or strategy.get("strategy_id") != fast_strategy_id
+            or strategy.get("strategy_replay_digest") != strategy_monitor.get("strategy_replay_digest")
+            or strategy.get("strategy_replay_scope") != strategy_monitor.get("strategy_replay_scope")
+        ):
+            raise Phase4CError(f"PHASE4C_FAST_SOURCE_MONITOR_PROVENANCE_MISMATCH: {ticker}")
+        for trade in strategy.get("history") or []:
+            key = (
+                str(ticker).zfill(6), int(trade.get("trade_sequence")),
+                str(trade.get("entry_signal_date") or ""), str(trade.get("entry_execution_date") or ""),
+            )
+            if key in source_trades:
+                raise Phase4CError("PHASE4C_FAST_SOURCE_DUPLICATE_TRADE_KEY")
+            source_trades[key] = {
+                "trade_id": trade.get("trade_id"),
+                "strategy_id": trade.get("strategy_id"),
+                "entry_strategy_id": trade.get("entry_strategy_id"),
+                "exit_strategy_id": trade.get("exit_strategy_id"),
+                "entry_price": trade.get("entry_open"),
+                "exit_reason": trade.get("exit_type"),
+                "exit_signal_date": trade.get("exit_signal_date"),
+                "exit_execution_date": trade.get("exit_execution_date"),
+                "exit_price": trade.get("exit_price"),
+                "return_pct": trade.get("return_pct"),
+                "trade_status": trade.get("trade_status"),
+            }
+            if trade.get("trade_status") == "OPEN_AT_CUTOFF":
+                source_open[str(ticker).zfill(6)] = trade
+
+    monitor_trades: dict[tuple[Any, ...], dict[str, Any]] = {}
+    for trade in row.get("trade_history") or []:
+        key = (
+            str(trade.get("ticker") or "").zfill(6), int(trade.get("trade_sequence")),
+            str(trade.get("entry_signal_date") or ""), str(trade.get("entry_execution_date") or ""),
+        )
+        if key in monitor_trades:
+            raise Phase4CError("PHASE4C_FAST_MONITOR_DUPLICATE_TRADE_KEY")
+        monitor_trades[key] = {
+            field: trade.get(field)
+            for field in (
+                "trade_id", "strategy_id", "entry_strategy_id", "exit_strategy_id",
+                "entry_price", "exit_reason", "exit_signal_date", "exit_execution_date",
+                "exit_price", "return_pct", "trade_status",
+            )
+        }
+    trade_mismatches = sum(source_trades.get(key) != monitor_trades.get(key) for key in source_trades.keys() | monitor_trades.keys())
+    monitor_items = {str(item.get("ticker") or "").zfill(6): item for item in row.get("items") or []}
+    open_mismatches = 0
+    for ticker in set(source_open) | {
+        key for key, item in monitor_items.items() if item.get("canonical_position") == "OPEN"
+    }:
+        trade = source_open.get(ticker)
+        item = monitor_items.get(ticker) or {}
+        current = item.get("current_trade")
+        if trade is None or not isinstance(current, dict) or any(
+            current.get(field) != expected
+            for field, expected in (
+                ("trade_sequence", trade.get("trade_sequence")),
+                ("entry_execution_date", trade.get("entry_execution_date")),
+                ("entry_open", trade.get("entry_open")),
+                ("trade_status", trade.get("trade_status")),
+                ("strategy_id", fast_strategy_id),
+                ("entry_strategy_id", fast_strategy_id),
+                ("exit_strategy_id", fast_strategy_id),
+            )
+        ):
+            open_mismatches += 1
+    if trade_mismatches or open_mismatches:
+        raise Phase4CError(
+            "PHASE4C_FAST_SOURCE_MONITOR_PARITY_MISMATCH: "
+            f"trades={trade_mismatches}, open={open_mismatches}"
+        )
+    return {
+        "source_trade_count": len(source_trades),
+        "monitor_trade_count": len(monitor_trades),
+        "trade_mismatch_count": trade_mismatches,
+        "source_open_position_count": len(source_open),
+        "open_mismatch_count": open_mismatches,
+    }
 
 
 def require_web_data_unchanged(
@@ -339,6 +462,11 @@ def run_phase4c(
         )
         strategy_rows = strategy_monitor["strategies"]
         fast_strategy_id, strategy_by_id = _validate_fast_strategy_monitor(strategy_monitor, report_json_count)
+        fast_replay_projection = validate_fast_full_history_projection(
+            reports,
+            strategy_monitor,
+            fast_strategy_id,
+        )
         strategy_monitor_tickers = {
             str(item["ticker"])
             for item in strategy_by_id[fast_strategy_id]["items"]
@@ -486,6 +614,7 @@ def run_phase4c(
         "strategy_monitor": {
             "strategy_count": len(strategy_rows),
             "common_report_count": strategy_by_id[fast_strategy_id]["scope"]["report_count"],
+            "fast_replay_projection": fast_replay_projection,
             "strategies": [
                 {
                     "id": strategy["id"],

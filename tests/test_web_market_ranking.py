@@ -190,7 +190,11 @@ def test_market_page_keeps_navigation_and_old_release_cache_out_of_all_pages():
     page_versions = {
         ROOT / "web/index.html": ("web-dual-strategy-report-v1", "app", "web-fear-fix02-4"),
         ROOT / "web/report.html": ("web-ui-chevron-v03", "report", "web-ui-chevron-v03"),
-        ROOT / "web/strategy.html": ("web-ui-chevron-v03", "strategy", "web-ui-chevron-v03"),
+        ROOT / "web/strategy.html": (
+            "web-strategy-price-order-history-age-v01",
+            "strategy",
+            "web-strategy-price-order-history-age-v01",
+        ),
         ROOT / "web/market.html": ("web-ui-chevron-v03", "market", "web-ui-chevron-v03"),
         ROOT / "web/etf.html": ("web-ui-chevron-v03", "etf", "web-ui-chevron-v03"),
         ROOT / "web/foreign.html": ("web-ui-chevron-v03", "foreign", "web-ui-chevron-v03"),

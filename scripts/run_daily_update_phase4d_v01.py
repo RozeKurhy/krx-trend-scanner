@@ -404,13 +404,34 @@ def validate_staging(
     if report_fast_strategy_ids and report_fast_strategy_ids != {fast_strategy_id}:
         raise Phase4DError("PHASE4D_FAST_REPORT_MONITOR_STRATEGY_MISMATCH")
     fast_row = fast_rows[0]
+    historical_alignment_replay = strategy.get("strategy_replay_mode") == "FULL_HISTORY_ALIGNMENT_WEB"
     gate_status = fast_row.get("promotion_gate_status")
     effective_signal_date = fast_row.get("effective_signal_date")
     if gate_status is not None and gate_status not in {
         "INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"
     }:
         raise Phase4DError("PHASE4D_FAST_PROMOTION_GATE_STATUS_INVALID")
-    if fast_strategy_id == PROMOTED_STRATEGY_ID and gate_status != "ACTIVE":
+    if historical_alignment_replay:
+        replay_digest = strategy.get("strategy_replay_digest")
+        replay_scope = strategy.get("strategy_replay_scope")
+        if (
+            fast_strategy_id != PROMOTED_STRATEGY_ID
+            or not isinstance(replay_digest, str)
+            or not re.fullmatch(r"[0-9a-f]{64}", replay_digest)
+            or not isinstance(replay_scope, dict)
+            or fast_row.get("strategy_replay_mode") != "FULL_HISTORY_ALIGNMENT_WEB"
+            or fast_row.get("strategy_replay_digest") != replay_digest
+            or fast_row.get("strategy_replay_scope") != replay_scope
+            or replay_scope.get("report_count") != len(common_tickers)
+            or replay_scope.get("requested_as_of") != target_as_of
+            or replay_scope.get("reference_market_date") != reference_market_date
+            or replay_scope.get("output_strategy_id") != PROMOTED_STRATEGY_ID
+            or gate_status is not None
+            or effective_signal_date is not None
+            or fast_row.get("activation_intervals") is not None
+        ):
+            raise Phase4DError("PHASE4D_FAST_FULL_HISTORY_REPLAY_PROVENANCE_INVALID")
+    elif fast_strategy_id == PROMOTED_STRATEGY_ID and gate_status != "ACTIVE":
         raise Phase4DError("PHASE4D_FAST_PROMOTED_ID_NOT_ACTIVE")
     if gate_status == "ACTIVE" and (
         fast_strategy_id != PROMOTED_STRATEGY_ID
@@ -443,6 +464,14 @@ def validate_staging(
     if not isinstance(strategy_rows, list) or [row.get("id") for row in strategy_rows] != [fast_strategy_id, B_SELECT_ID, JULIA_ID]:
         raise Phase4DError("PHASE4D_STRATEGY_SET_INVALID")
     strategy_by_id = {row["id"]: row for row in strategy_rows}
+    fast_replay_projection: dict[str, int] | None = None
+    if historical_alignment_replay:
+        try:
+            from scripts.run_daily_update_phase4c_v01 import validate_fast_full_history_projection
+
+            fast_replay_projection = validate_fast_full_history_projection(stocks, strategy, fast_strategy_id)
+        except Exception as exc:  # noqa: BLE001 -- staging must fail closed on parity errors
+            raise Phase4DError(f"PHASE4D_FAST_FULL_HISTORY_SOURCE_MONITOR_PARITY_INVALID: {exc}") from exc
     expected_strategy_scopes = {
         fast_strategy_id: ("COMMON", common_tickers),
         B_SELECT_ID: ("COMMON", common_tickers),
@@ -893,6 +922,7 @@ def validate_staging(
         "strategy_monitor_strategy_count": len(strategy_rows),
         "b_select_status_count": b_status.get("count"),
         "b_select_canonical_trade_history_row_count": b_status.get("canonical_trade_history_row_count"),
+        "fast_replay_projection": fast_replay_projection,
         "b_select_canonical_current_open_position_count": b_status.get("canonical_current_open_position_count"),
         "b_select_published_item_open_position_count": sum(
             item.get("canonical_position") == "OPEN" for item in b_status.get("items", [])

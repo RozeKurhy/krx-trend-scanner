@@ -125,6 +125,110 @@ def test_operational_config_stays_disabled_pending_approval(tmp_path):
     assert unapproved.active is False
 
 
+def test_historical_alignment_replay_gate_is_separate_from_operational_activation(tmp_path):
+    config = PromotionConfig()
+    gate = AlignmentMcap500BGate(
+        tmp_path,
+        config,
+        identity_resolver=lambda _ticker, market, _day: ("KR7999997003", market),
+        market_cap_resolver=lambda *_args: MARKET_CAP_THRESHOLD_KRW,
+        activation_intervals=(),
+        historical_replay_mode=True,
+    )
+    replayed = gate.evaluate_historical_alignment("999997", "KOSPI", _daily_prices(), SIGNAL_DATE)
+    operational = gate.evaluate("999997", "KOSPI", _daily_prices(), SIGNAL_DATE)
+    assert replayed.allowed is True
+    assert replayed.reason_code == "PASS_ALIGNMENT_MCAP_500B"
+    assert replayed.details["market_cap_partition"] == {"market": "KOSPI", "date": "2025-01-15"}
+    assert operational.reason_code == "PASS_V2_INACTIVE_OR_PRE_CUTOVER"
+    assert gate.config == config
+    assert gate.activation_intervals == ()
+
+    inactive_gate = AlignmentMcap500BGate(
+        tmp_path,
+        config,
+        identity_resolver=lambda *_args: ("KR7999997003", "KOSPI"),
+        market_cap_resolver=lambda *_args: MARKET_CAP_THRESHOLD_KRW,
+        activation_intervals=(),
+    )
+    with pytest.raises(AlignmentGateIntegrityError, match="HISTORICAL_REPLAY_MODE_NOT_ENABLED"):
+        inactive_gate.evaluate_historical_alignment("999997", "KOSPI", _daily_prices(), SIGNAL_DATE)
+
+    active_config = PromotionConfig(enabled=True, effective_signal_date=EFFECTIVE_DATE, operational_activation_approved=True)
+    with pytest.raises(AlignmentGateIntegrityError, match="HISTORICAL_REPLAY_REQUIRES_INACTIVE_OPERATIONAL_CONFIG"):
+        AlignmentMcap500BGate(tmp_path, active_config, activation_intervals=_activation_history(), historical_replay_mode=True)
+
+
+def test_historical_alignment_resolves_the_pit_market_before_exact_raw_lookup(tmp_path):
+    gate = AlignmentMcap500BGate(
+        tmp_path,
+        PromotionConfig(),
+        identity_resolver=lambda _ticker, market, _day: ("KR7999997003", market),
+        market_cap_resolver=lambda *_args: MARKET_CAP_THRESHOLD_KRW,
+        activation_intervals=(),
+        historical_replay_mode=True,
+    )
+    gate._identity_resolver = None
+    gate._pit_frontier = "2026-10-08"
+    gate._pit_by_ticker = {
+        "999997": [{
+            "ticker": "999997",
+            "isu_cd": "KR7999997003",
+            "market": "KOSDAQ",
+            "effective_from": "2010-01-01",
+            "effective_to": "2026-10-08",
+        }],
+    }
+    gate._historical_adjusted_price_store = SimpleNamespace(
+        load_daily=lambda *_args, **_kwargs: _daily_prices(),
+    )
+    raw_lookup_calls = []
+    gate._market_cap_resolver = lambda ticker, market, day: (
+        raw_lookup_calls.append((ticker, market, day)) or MARKET_CAP_THRESHOLD_KRW
+    )
+
+    decision = gate.evaluate_historical_alignment("999997", "KOSPI", _daily_prices(), SIGNAL_DATE)
+
+    assert decision.allowed is True
+    assert decision.details["market"] == "KOSDAQ"
+    assert decision.details["market_cap_partition"] == {"market": "KOSDAQ", "date": "2025-01-15"}
+    assert raw_lookup_calls == [("999997", "KOSDAQ", "2025-01-15")]
+
+
+def test_historical_market_transition_uses_adjusted_authority_for_monthly_alignment(tmp_path):
+    class FakeAdjustedPriceStore:
+        def __init__(self):
+            self.calls = []
+
+        def load_daily(self, ticker, *, end):
+            self.calls.append((ticker, end))
+            return _daily_prices(monthly_values=[float(value) for value in range(60, 0, -1)])
+
+    adjusted_store = FakeAdjustedPriceStore()
+    gate = AlignmentMcap500BGate(
+        tmp_path,
+        PromotionConfig(),
+        identity_resolver=lambda _ticker, _market, _day: ("KR7999997003", "KOSDAQ"),
+        market_cap_resolver=lambda _ticker, market, _day: (
+            MARKET_CAP_THRESHOLD_KRW if market == "KOSDAQ" else None
+        ),
+        activation_intervals=(),
+        historical_replay_mode=True,
+        historical_adjusted_price_store=adjusted_store,
+    )
+
+    decision = gate.evaluate_historical_alignment("999997", "KOSPI", _daily_prices(), SIGNAL_DATE)
+
+    assert decision.allowed is False
+    assert decision.reason_code == "REJECT_MA_ALIGNMENT"
+    assert decision.details["ma20_prior_completed_months"] == 10.5
+    assert decision.details["ma60_prior_completed_months"] == 30.5
+    assert adjusted_store.calls == [("999997", "2025-01-15")]
+    # The transition authority is memoized for subsequent candidate signals.
+    gate.evaluate_historical_alignment("999997", "KOSPI", _daily_prices(), SIGNAL_DATE)
+    assert adjusted_store.calls == [("999997", "2025-01-15")]
+
+
 def test_approved_activation_history_is_immutable_and_rollback_end_is_exclusive(tmp_path):
     production_root = Path(__file__).resolve().parents[1]
     config = load_promotion_config(production_root)
@@ -566,3 +670,56 @@ def test_rejected_gate_keeps_current_report_action_from_entering(monkeypatch):
     assert section.entry_conditions.all_conditions_met is False
     assert section.entry_conditions.alignment_mcap_500b_status == "REJECT_MCAP_BELOW_500B"
     assert section.promotion_gate_audit[0]["reason_code"] == "REJECT_MCAP_BELOW_500B"
+
+
+def test_full_history_report_mode_replays_candidates_while_operations_are_disabled(monkeypatch, tmp_path):
+    gate = AlignmentMcap500BGate(
+        tmp_path,
+        PromotionConfig(),
+        identity_resolver=lambda _ticker, market, _day: ("KR7999997003", market),
+        market_cap_resolver=lambda *_args: MARKET_CAP_THRESHOLD_KRW,
+        activation_intervals=(),
+        historical_replay_mode=True,
+    )
+    monkeypatch.setattr(
+        a_fast_core_report,
+        "to_weekly",
+        lambda _daily: pd.DataFrame(index=pd.DatetimeIndex([SIGNAL_DATE])),
+    )
+    monkeypatch.setattr(
+        a_fast_core_report,
+        "evaluate_pattern_a_fast",
+        lambda *_args, **_kwargs: {
+            "pattern_a_stage": "TRANSITION",
+            "fast_machine_stage": "TRIGGER",
+            "fast_machine_stage_status": "READY",
+            "fast_monthly_permission_state": "PERMITTED_REGIME",
+            "fast_daily_risk_state": "NORMAL",
+            "fast_score_status": "READY",
+        },
+    )
+
+    def fake_simulator(*, entry_signal_filter, strict_errors, **_kwargs):
+        assert strict_errors is True
+        assert entry_signal_filter(SIGNAL_DATE, {}) is True
+        return []
+
+    monkeypatch.setattr(a_fast_core_report, "simulate_ticker_core_v02_reentry", fake_simulator)
+    section = a_fast_core_report.build_a_fast_core_section(
+        ticker="999997",
+        name="synthetic",
+        market="KOSPI",
+        daily=_daily_prices(),
+        requested_as_of=SIGNAL_DATE,
+        score_contract={"frozen": True},
+        stage_contract={"frozen": True},
+        metadata_provenance_mode="CURRENT_VERIFIED",
+        promotion_gate=gate,
+        replay_mode=a_fast_core_report.HISTORICAL_ALIGNMENT_REPLAY_MODE,
+    )
+    assert section.strategy_id == PROMOTED_STRATEGY_ID
+    assert section.strategy_replay_mode == "FULL_HISTORY_ALIGNMENT_WEB"
+    assert section.promotion_gate_status is None
+    assert section.effective_signal_date is None
+    assert section.activation_intervals == []
+    assert section.promotion_gate_audit[0]["reason_code"] == "PASS_ALIGNMENT_MCAP_500B"

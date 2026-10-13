@@ -75,8 +75,8 @@ def test_sector_ranking_page_and_all_ranking_tabs_are_connected():
     assert html.count('aria-current="page"') == 2  # primary menu and the single active ranking tab
     assert 'id="market-select"' not in html
     assert 'type="search"' not in html
-    assert 'href="./css/app.css?v=web-sector-ranking-v2"' in html
-    assert 'src="./js/sector-ranking.js?v=web-sector-ranking-v2"' in html
+    assert 'href="./css/app.css?v=web-ui-chevron-v03"' in html
+    assert 'src="./js/sector-ranking.js?v=web-ui-chevron-v03"' in html
 
 
 def test_page_exposes_five_horizons_with_two_weeks_as_default():

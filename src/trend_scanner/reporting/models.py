@@ -560,6 +560,9 @@ class AFastCoreSection:
     effective_signal_date: str | None = None
     activation_intervals: list[dict[str, Any]] = field(default_factory=list)
     promotion_gate_audit: list[dict[str, Any]] = field(default_factory=list)
+    strategy_replay_mode: str | None = None
+    strategy_replay_scope: dict[str, Any] | None = None
+    strategy_replay_digest: str | None = None
 
 
 @dataclass
@@ -597,9 +600,25 @@ class StockReport:
         if self.pattern_b is None:
             payload.pop("pattern_b", None)
         core = payload.get("a_fast_core")
+        if isinstance(core, dict) and self.a_fast_core.strategy_replay_mode == "FULL_HISTORY_ALIGNMENT_WEB":
+            # The web lineage is not an operational activation. Keep the
+            # public payload free of activation fields even when their
+            # dataclass values are None or an empty list.
+            for key in ("activation_intervals", "promotion_gate_status", "effective_signal_date"):
+                core.pop(key, None)
+        if isinstance(core, dict) and self.a_fast_core.strategy_replay_mode is None:
+            core.pop("strategy_replay_mode", None)
+        if isinstance(core, dict) and self.a_fast_core.strategy_replay_scope is None:
+            core.pop("strategy_replay_scope", None)
+        if isinstance(core, dict) and self.a_fast_core.strategy_replay_digest is None:
+            core.pop("strategy_replay_digest", None)
         if isinstance(core, dict) and not self.a_fast_core.activation_intervals:
             core.pop("activation_intervals", None)
-        if isinstance(core, dict) and self.a_fast_core.promotion_gate_status is None:
+        if (
+            isinstance(core, dict)
+            and self.a_fast_core.promotion_gate_status is None
+            and self.a_fast_core.strategy_replay_mode is None
+        ):
             # Preserve the published V2 report payload exactly while the
             # promotion is inactive or the requested date precedes cutover.
             for key in (

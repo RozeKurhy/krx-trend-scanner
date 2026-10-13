@@ -23,8 +23,17 @@ v0.2에서 정한 사항은 다음과 같다.
 - 공식 FAST 전략 ID `PATTERN_A_FAST_FINAL_STRATEGY_V02` 또는
   `PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B`의 현재 상태, 가상 전략 포지션, 다음 거래일 행동, 진입 조건 점검표,
   보호 상태, 재진입 상태, 전략 이력을 최상위 섹션 `a_fast_core`로 제공한다.
+- 웹 전체 재생 결과에는 `strategy_replay_mode=FULL_HISTORY_ALIGNMENT_WEB`,
+  `strategy_replay_scope`, `strategy_replay_digest`를 함께 제공한다. 이 명시적
+  웹 lineage는 전 기간 Alignment 전용 재생을 뜻하며 운영 activation history나
+  적용일을 대체하지 않는다. 그 모드에서는 모든 거래의 strategy/entry/exit ID가
+  Alignment ID여야 하고 activation metadata는 비어 있어야 한다.
 - 리포트 노출 상태를 의사결정 지원 운영 상태(`PRODUCTION_DECISION_SUPPORT`)로
   정한다. 자동 매매가 아니라 의사결정을 돕는 리포트다.
+
+운영 보고서는 승인된 운영 activation history에 따라 전략 ID를 정한다. 별도
+staging의 웹 전체 재생은 위 `FULL_HISTORY_ALIGNMENT_WEB` lineage를 사용하며,
+운영 설정·canonical 보고서·`web/data/`를 변경하지 않는 한 공개 출력이 아니다.
 
 ## 2. 핵심 원칙
 

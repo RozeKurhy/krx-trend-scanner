@@ -258,6 +258,7 @@ def _phase4b_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
         and corpus["report_version_mismatch_count"] == 0
         and corpus["strategy_id_mismatch_count"] == 0
         and corpus["date_mismatch_count"] == 0
+        and corpus.get("full_history_alignment_replay_valid") is True
     )
     if not valid:
         # A stale or partial canonical corpus is a regeneration signal, not a
@@ -276,9 +277,74 @@ def _phase4b_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
     }
 
 
+def _canonical_fast_replay_provenance(
+    target_as_of: str,
+    reference_market_date: str,
+    *,
+    root: Path,
+) -> dict[str, Any] | None:
+    report_dir = root / "artifacts/reporting/stock_reports" / target_as_of.replace("-", "")
+    common_tickers: set[str] = set()
+    for path in sorted((report_dir / "json").glob("*.json")):
+        payload = phase4b.json.loads(path.read_text(encoding="utf-8"))
+        if payload.get("asset_type") == "COMMON":
+            common_tickers.add(str(payload.get("ticker") or "").zfill(6))
+    if not common_tickers:
+        return None
+    try:
+        validation = phase4b.validate_full_history_alignment_corpus(
+            report_dir,
+            target_as_of,
+            reference_market_date,
+            common_tickers,
+        )
+    except (OSError, UnicodeError, ValueError, phase4b.Phase4BError):
+        return None
+    return validation if validation.get("valid") is True else None
+
+
+def _published_monitor_matches_canonical_fast_replay(
+    target_as_of: str,
+    reference_market_date: str,
+    *,
+    root: Path,
+) -> bool:
+    canonical = _canonical_fast_replay_provenance(target_as_of, reference_market_date, root=root)
+    if canonical is None:
+        return False
+    monitor_path = root / "web/data/strategy-monitor.json"
+    try:
+        monitor = phase4b.json.loads(monitor_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError):
+        return False
+    fast_rows = [
+        row for row in monitor.get("strategies", [])
+        if isinstance(row, dict) and row.get("id") == phase4b.PROMOTED_STRATEGY_ID
+    ]
+    scope = canonical.get("strategy_replay_scope")
+    digest = canonical.get("strategy_replay_digest")
+    return bool(
+        monitor.get("strategy_replay_mode") == phase4b.FULL_HISTORY_ALIGNMENT_WEB
+        and monitor.get("strategy_replay_digest") == digest
+        and monitor.get("strategy_replay_scope") == scope
+        and len(fast_rows) == 1
+        and fast_rows[0].get("strategy_replay_mode") == phase4b.FULL_HISTORY_ALIGNMENT_WEB
+        and fast_rows[0].get("strategy_replay_digest") == digest
+        and fast_rows[0].get("strategy_replay_scope") == scope
+        and monitor.get("requested_as_of") == target_as_of
+        and monitor.get("reference_market_date") == reference_market_date
+    )
+
+
 def _phase4c_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] | None:
     published = phase4d.inspect_published_payload(root, target_as_of)
     if published is None:
+        return None
+    if not _published_monitor_matches_canonical_fast_replay(
+        target_as_of,
+        str(published["reference_market_date"]),
+        root=root,
+    ):
         return None
     return {
         "status": NOOP_ALREADY_COMPLETE,
@@ -295,6 +361,12 @@ def _phase4c_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
 def _phase4d_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] | None:
     published = phase4d.inspect_published_payload(root, target_as_of, require_etf_source=True)
     if published is None:
+        return None
+    if not _published_monitor_matches_canonical_fast_replay(
+        target_as_of,
+        str(published["reference_market_date"]),
+        root=root,
+    ):
         return None
     return {
         "status": NOOP_ALREADY_COMPLETE,

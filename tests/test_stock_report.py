@@ -39,6 +39,7 @@ from trend_scanner.reporting.models import (
     TradingValueFlowSection,
     TradingValueState,
 )
+from trend_scanner.reporting import stock_report as stock_report_module
 from trend_scanner.reporting.stock_report import (
     _calculate_trading_value_window_averages,
     _determine_trading_value_state_and_explanation,
@@ -303,7 +304,7 @@ def test_stock_report_foreign_flow_parity(report_001540_20260814: StockReport):
     assert flow.foreign_flow_intensity_5d == pytest.approx(0.0665, abs=1e-4)
 
 
-def test_stock_report_foreign_flow_uses_reference_market_date_for_non_trading_target():
+def test_stock_report_foreign_flow_uses_reference_market_date_for_non_trading_target(monkeypatch: pytest.MonkeyPatch):
     requested_as_of = "2026-09-25"
     reference_market_date = "2026-09-23"
     flow_path = REPO_ROOT / "artifacts/patterns/pattern_a/production/flow/source/foreign_flow_daily_20260925.parquet"
@@ -318,6 +319,15 @@ def test_stock_report_foreign_flow_uses_reference_market_date_for_non_trading_ta
     assert expected.data_status == FlowDataStatus.READY
     assert expected.foreign_flow_last_observation_date == reference_market_date
 
+    investability_calls = []
+    original_evaluate_investability = stock_report_module.evaluate_investability
+
+    def spy_evaluate_investability(**kwargs):
+        investability_calls.append((kwargs["as_of"], kwargs["daily"].index.max()))
+        return original_evaluate_investability(**kwargs)
+
+    monkeypatch.setattr(stock_report_module, "evaluate_investability", spy_evaluate_investability)
+
     report, _, _ = generate_stock_report(
         ticker="005930",
         as_of=requested_as_of,
@@ -328,6 +338,9 @@ def test_stock_report_foreign_flow_uses_reference_market_date_for_non_trading_ta
     )
     assert report.header.requested_as_of == requested_as_of
     assert report.header.reference_market_date == reference_market_date
+    assert len(investability_calls) == 1
+    assert str(investability_calls[0][0])[:10] == reference_market_date
+    assert str(investability_calls[0][1])[:10] <= reference_market_date
     flow = report.foreign_flow
     assert flow.data_status == "READY"
     assert flow.flow_state != FlowState.FLOW_UNAVAILABLE

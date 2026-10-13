@@ -42,6 +42,7 @@ from trend_scanner.validation.pattern_a_fast_alignment_mcap_500b import (
     PROMOTED_STRATEGY_ID,
     PROMOTED_STRATEGY_NAME,
     V2_STRATEGY_ID,
+    get_historical_alignment_replay_gate,
     get_production_alignment_gate,
 )
 
@@ -49,6 +50,8 @@ logger = logging.getLogger(__name__)
 
 
 _VALID_METADATA_PROVENANCE_MODES = ("CURRENT_VERIFIED", "HISTORICAL_LEGACY_RESEARCH", "DATA_UNAVAILABLE")
+OPERATIONAL_REPLAY_MODE = "OPERATIONAL"
+HISTORICAL_ALIGNMENT_REPLAY_MODE = "FULL_HISTORY_ALIGNMENT_WEB"
 
 
 def build_a_fast_core_section(
@@ -69,6 +72,7 @@ def build_a_fast_core_section(
     market_calendar: MarketCalendarAuthority | None = None,
     repo_root: Path | None = None,
     promotion_gate: AlignmentMcap500BGate | None = None,
+    replay_mode: str = OPERATIONAL_REPLAY_MODE,
 ) -> AFastCoreSection:
     """단일 종목에 대해 requested_as_of 시점의 A FAST Core V2 전략 상태 섹션을 생성한다.
 
@@ -92,7 +96,17 @@ def build_a_fast_core_section(
     if metadata_provenance_mode not in _VALID_METADATA_PROVENANCE_MODES:
         raise ValueError(f"Unknown metadata_provenance_mode: {metadata_provenance_mode!r}")
 
-    gate = promotion_gate or get_production_alignment_gate(str(Path(repo_root or Path.cwd()).resolve()))
+    if replay_mode not in {OPERATIONAL_REPLAY_MODE, HISTORICAL_ALIGNMENT_REPLAY_MODE}:
+        raise ValueError(f"Unknown A FAST replay mode: {replay_mode!r}")
+    resolved_root = str(Path(repo_root or Path.cwd()).resolve())
+    gate = promotion_gate or (
+        get_historical_alignment_replay_gate(resolved_root)
+        if replay_mode == HISTORICAL_ALIGNMENT_REPLAY_MODE
+        else get_production_alignment_gate(resolved_root)
+    )
+    historical_alignment_replay = replay_mode == HISTORICAL_ALIGNMENT_REPLAY_MODE
+    if historical_alignment_replay and not gate.historical_replay_mode:
+        raise AlignmentGateIntegrityError("HISTORICAL_REPLAY_GATE_REQUIRED")
     section = _build_a_fast_core_section_impl(
         ticker=ticker,
         name=name,
@@ -109,16 +123,19 @@ def build_a_fast_core_section(
         metadata_trusted=(metadata_provenance_mode != "DATA_UNAVAILABLE"),
         market_calendar=market_calendar,
         promotion_gate=gate,
+        historical_alignment_replay=historical_alignment_replay,
     )
     section.metadata_provenance_mode = metadata_provenance_mode
-    section.strategy_id = gate.strategy_id_for_as_of(requested_as_of)
-    section.activation_intervals = gate.public_activation_intervals()
+    section.strategy_replay_mode = replay_mode if historical_alignment_replay else None
+    section.strategy_id = PROMOTED_STRATEGY_ID if historical_alignment_replay else gate.strategy_id_for_as_of(requested_as_of)
+    section.activation_intervals = [] if historical_alignment_replay else gate.public_activation_intervals()
     if section.strategy_id == PROMOTED_STRATEGY_ID:
         section.strategy_version = "V02_ALIGNMENT_MCAP_500B"
         section.strategy_alias = PROMOTED_STRATEGY_NAME
         section.research_group_id = "ALIGNMENT_MCAP_500B"
-        section.promotion_gate_status = "ACTIVE"
-        section.effective_signal_date = gate.effective_signal_date_for_signal(requested_as_of)
+        if not historical_alignment_replay:
+            section.promotion_gate_status = "ACTIVE"
+            section.effective_signal_date = gate.effective_signal_date_for_signal(requested_as_of)
         section.provenance.strategy_contract = PROMOTED_STRATEGY_ID
         section.provenance.strategy_contract_path = (
             "docs/patterns/pattern_a_fast/strategy/version_02_alignment_mcap_500b/README.md"
@@ -147,6 +164,7 @@ def _build_a_fast_core_section_impl(
     metadata_trusted: bool,
     market_calendar: MarketCalendarAuthority | None = None,
     promotion_gate: AlignmentMcap500BGate,
+    historical_alignment_replay: bool = False,
 ) -> AFastCoreSection:
     as_of_str = requested_as_of.strftime("%Y-%m-%d")
 
@@ -251,13 +269,17 @@ def _build_a_fast_core_section_impl(
 
     def entry_signal_allowed(signal_date: pd.Timestamp, _signal_result: Any) -> bool:
         signal = pd.Timestamp(signal_date).normalize()
-        if not promotion_gate.is_promoted_signal(signal):
+        if not historical_alignment_replay and not promotion_gate.is_promoted_signal(signal):
             return True
-        decision = promotion_gate.evaluate(ticker, market, daily_as_of, signal)
+        decision = (
+            promotion_gate.evaluate_historical_alignment(ticker, market, daily_as_of, signal)
+            if historical_alignment_replay
+            else promotion_gate.evaluate(ticker, market, daily_as_of, signal)
+        )
         alignment_gate_audit[signal.strftime("%Y-%m-%d")] = decision.to_dict(signal)
         return decision.allowed
 
-    promotion_filter_active = promotion_gate.has_promoted_signal_on_or_before(requested_as_of)
+    promotion_filter_active = historical_alignment_replay or promotion_gate.has_promoted_signal_on_or_before(requested_as_of)
 
     try:
         trades = simulate_ticker_core_v02_reentry(
@@ -269,8 +291,7 @@ def _build_a_fast_core_section_impl(
             stage_contract=stage_contract,
             cutoff_date=requested_as_of,
             market_calendar=market_calendar,
-            # Keep the frozen default/pre-cutover path byte-for-byte equivalent
-            # by omitting the hook entirely until the promotion can apply.
+            strict_errors=historical_alignment_replay,
             entry_signal_filter=entry_signal_allowed if promotion_filter_active else None,
         )
     except AlignmentGateIntegrityError:
@@ -310,9 +331,9 @@ def _build_a_fast_core_section_impl(
                 return_pct=ret,
                 previous_exit_type=tr.previous_exit_type,
                 lifecycle_class=tr.lifecycle_class,
-                strategy_id=promotion_gate.strategy_id_for_signal(tr.entry_signal_date),
-                entry_strategy_id=promotion_gate.strategy_id_for_signal(tr.entry_signal_date),
-                exit_strategy_id=promotion_gate.strategy_id_for_signal(tr.entry_signal_date),
+                strategy_id=(PROMOTED_STRATEGY_ID if historical_alignment_replay else promotion_gate.strategy_id_for_signal(tr.entry_signal_date)),
+                entry_strategy_id=(PROMOTED_STRATEGY_ID if historical_alignment_replay else promotion_gate.strategy_id_for_signal(tr.entry_signal_date)),
+                exit_strategy_id=(PROMOTED_STRATEGY_ID if historical_alignment_replay else promotion_gate.strategy_id_for_signal(tr.entry_signal_date)),
             )
         )
 
@@ -420,9 +441,9 @@ def _build_a_fast_core_section_impl(
             trade_status="OPEN",
             pending_exit_type=active_trade.exit_type if active_trade.exit_signal_date else None,
             pending_exit_signal_date=active_trade.exit_signal_date,
-            strategy_id=promotion_gate.strategy_id_for_signal(active_trade.entry_signal_date),
-            entry_strategy_id=promotion_gate.strategy_id_for_signal(active_trade.entry_signal_date),
-            exit_strategy_id=promotion_gate.strategy_id_for_signal(active_trade.entry_signal_date),
+            strategy_id=(PROMOTED_STRATEGY_ID if historical_alignment_replay else promotion_gate.strategy_id_for_signal(active_trade.entry_signal_date)),
+            entry_strategy_id=(PROMOTED_STRATEGY_ID if historical_alignment_replay else promotion_gate.strategy_id_for_signal(active_trade.entry_signal_date)),
+            exit_strategy_id=(PROMOTED_STRATEGY_ID if historical_alignment_replay else promotion_gate.strategy_id_for_signal(active_trade.entry_signal_date)),
         )
 
         # Check pending exit
@@ -471,7 +492,10 @@ def _build_a_fast_core_section_impl(
 
         entry_conditions = AFastCoreEntryConditions(
             instrument_eligible=is_common_stock,
-            investability_pass=(inv_status_str == "INVESTABLE"),
+            # Entry checks describe opening a new position. While one is
+            # already open, a passing current investability snapshot cannot
+            # make another entry eligible.
+            investability_pass=False,
             pattern_a_stage_eligible=False,
             fast_trigger_ready=False,
             monthly_regime_permitted=False,
@@ -628,9 +652,13 @@ def _build_a_fast_core_section_impl(
         alignment_gate_decision = None
         if (
             base_conditions_met
-            and promotion_gate.is_promoted_signal(latest_w)
+            and (historical_alignment_replay or promotion_gate.is_promoted_signal(latest_w))
         ):
-            alignment_gate_decision = promotion_gate.evaluate(ticker, market, daily_as_of, latest_w)
+            alignment_gate_decision = (
+                promotion_gate.evaluate_historical_alignment(ticker, market, daily_as_of, latest_w)
+                if historical_alignment_replay
+                else promotion_gate.evaluate(ticker, market, daily_as_of, latest_w)
+            )
             alignment_gate_audit[pd.Timestamp(latest_w).strftime("%Y-%m-%d")] = alignment_gate_decision.to_dict(latest_w)
             if not alignment_gate_decision.allowed:
                 failed_conds.append(alignment_gate_decision.reason_code)
@@ -664,7 +692,7 @@ def _build_a_fast_core_section_impl(
             action_reason = "ALL_ENTRY_CONDITIONS_MET"
             execution_timing = "NEXT_LOCAL_TRADING_DAY_OPEN"
             interp = (
-                f"{PROMOTED_STRATEGY_NAME} 전략의 기존 V2 진입 조건과 승인 gate가 충족되었습니다. "
+                f"{PROMOTED_STRATEGY_NAME} 전략의 기존 V2 진입 조건과 역사적 Alignment gate가 충족되었습니다. "
                 f"다음 로컬 거래일 시가에 진입합니다 (Trade #{next_seq})."
                 if alignment_gate_decision is not None
                 else f"패스트 코어 V2 전략의 모든 8대 진입 조건이 충족되었습니다. 다음 로컬 거래일 시가에 진입합니다 (Trade #{next_seq})."
@@ -687,9 +715,9 @@ def _build_a_fast_core_section_impl(
                 interp = f"패스트 코어 V2 관망(WAIT) 상태입니다. 진입 미충족 조건: {', '.join(failed_conds)}."
 
     return AFastCoreSection(
-        strategy_id=promotion_gate.strategy_id_for_as_of(requested_as_of),
-        strategy_version=("V02_ALIGNMENT_MCAP_500B" if promotion_gate.strategy_id_for_as_of(requested_as_of) == PROMOTED_STRATEGY_ID else "V02"),
-        strategy_alias=(PROMOTED_STRATEGY_NAME if promotion_gate.strategy_id_for_as_of(requested_as_of) == PROMOTED_STRATEGY_ID else "A FAST Core V2"),
+        strategy_id=(PROMOTED_STRATEGY_ID if historical_alignment_replay else promotion_gate.strategy_id_for_as_of(requested_as_of)),
+        strategy_version=("V02_ALIGNMENT_MCAP_500B" if historical_alignment_replay or promotion_gate.strategy_id_for_as_of(requested_as_of) == PROMOTED_STRATEGY_ID else "V02"),
+        strategy_alias=(PROMOTED_STRATEGY_NAME if historical_alignment_replay or promotion_gate.strategy_id_for_as_of(requested_as_of) == PROMOTED_STRATEGY_ID else "A FAST Core V2"),
         strategy_status="FINAL_STRATEGY_FROZEN",
         production_status="PRODUCTION_DECISION_SUPPORT",
         fresh_oos_status="NOT_EXECUTED",
@@ -706,12 +734,13 @@ def _build_a_fast_core_section_impl(
         reentry_state=reentry_state,
         trade_history=trade_history_items,
         promotion_gate_audit=sorted(alignment_gate_audit.values(), key=lambda item: item["signal_date"]),
+        strategy_replay_mode=(HISTORICAL_ALIGNMENT_REPLAY_MODE if historical_alignment_replay else None),
         interpretation=interp,
         provenance=AFastCoreProvenance(
-            strategy_contract=(PROMOTED_STRATEGY_ID if promotion_gate.strategy_id_for_as_of(requested_as_of) == PROMOTED_STRATEGY_ID else V2_STRATEGY_ID),
+            strategy_contract=(PROMOTED_STRATEGY_ID if historical_alignment_replay or promotion_gate.strategy_id_for_as_of(requested_as_of) == PROMOTED_STRATEGY_ID else V2_STRATEGY_ID),
             strategy_contract_path=(
                 "docs/patterns/pattern_a_fast/strategy/version_02_alignment_mcap_500b/README.md"
-                if promotion_gate.strategy_id_for_as_of(requested_as_of) == PROMOTED_STRATEGY_ID
+                if historical_alignment_replay or promotion_gate.strategy_id_for_as_of(requested_as_of) == PROMOTED_STRATEGY_ID
                 else "docs/patterns/pattern_a_fast/strategy/version_02/README.md"
             ),
         ),

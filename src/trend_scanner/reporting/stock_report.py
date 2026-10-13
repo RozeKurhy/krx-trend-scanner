@@ -34,7 +34,11 @@ from trend_scanner.patterns.pattern_a_evaluator import (
     evaluate_pattern_a,
 )
 from trend_scanner.patterns.pattern_a_feature_set import PatternAStage
-from trend_scanner.reporting.a_fast_core_report import build_a_fast_core_section
+from trend_scanner.reporting.a_fast_core_report import (
+    HISTORICAL_ALIGNMENT_REPLAY_MODE,
+    OPERATIONAL_REPLAY_MODE,
+    build_a_fast_core_section,
+)
 from trend_scanner.reporting.fundamentals_report import (
     build_fundamentals_section,
     fundamentals_executive_bullet,
@@ -71,6 +75,10 @@ from trend_scanner.validation.historical_snapshot import build_historical_snapsh
 from trend_scanner.backtest.snapshot_context import (
     build_historical_snapshot_from_context,
     build_precomputed_ticker_context,
+)
+from trend_scanner.validation.pattern_a_fast_alignment_mcap_500b import (
+    AlignmentMcap500BGate,
+    get_historical_alignment_replay_gate,
 )
 
 
@@ -856,6 +864,8 @@ def generate_stock_report(
     reference_market_date: str | None = None,
     instrument_metadata_resolver: Callable[..., Any] | None = None,
     daily_override: pd.DataFrame | None = None,
+    a_fast_replay_mode: str = OPERATIONAL_REPLAY_MODE,
+    promotion_gate: AlignmentMcap500BGate | None = None,
 ) -> tuple[StockReport, Path | None, Path | None]:
     """단일 종목 리포트를 생성한다.
 
@@ -865,11 +875,9 @@ def generate_stock_report(
     Pattern B; non-COMMON reports retain v0.5. Explicit ``None`` creates a safe
     unavailable fundamentals section without provider hydration.
 
-    ``reference_market_date``: 시장 거래일 표기(freshness 등)에 쓰는 별도 기준일.
-    생략하면(``None``) 기존처럼 ``canonical_as_of``를 그대로 사용한다(하위 호환).
-    Phase 4B production 호출은 이 값을 4A Scanner summary의 ``reference_market_date``로
-    명시 전달해 비거래일 target_as_of에서 재계산하지 않는다. identity/metadata/전략
-    기준(``canonical_as_of``/``req_as_of_ts``)에는 영향을 주지 않는다.
+    ``reference_market_date`` is the exact market-data cutoff. The report keeps
+    the requested date separately, while prices, current investability, and the
+    FAST replay use no observations after the resolved market date.
 
     ``daily_override``: 명시적으로 주입된 exact local daily frame을 공통 리포트
     계산에 사용한다. ETF v0.6에서만 raw KRX OHLCV를 주입해 조정/원시 세션 집합이
@@ -880,6 +888,8 @@ def generate_stock_report(
     root_path = Path(repo_root) if repo_root else Path(__file__).resolve().parent.parent.parent.parent
     clean_ticker = _format_ticker(ticker)
     production_market_calendar = load_rolling_production_market_calendar(root_path)
+    if a_fast_replay_mode not in {OPERATIONAL_REPLAY_MODE, HISTORICAL_ALIGNMENT_REPLAY_MODE}:
+        raise ValueError(f"Unknown A FAST replay mode: {a_fast_replay_mode!r}")
 
     # 1. As-Of 및 Reference Market Date 결정
     if as_of is None:
@@ -889,6 +899,14 @@ def generate_stock_report(
 
     req_as_of_ts = pd.Timestamp(canonical_as_of)
     ref_market_date = str(reference_market_date).strip()[:10] if reference_market_date else canonical_as_of
+    ref_market_ts = pd.Timestamp(ref_market_date)
+    if ref_market_ts > req_as_of_ts:
+        raise ValueError("REFERENCE_MARKET_DATE_AFTER_REQUESTED_AS_OF")
+    market_data_end = min(req_as_of_ts, ref_market_ts)
+    if a_fast_replay_mode == HISTORICAL_ALIGNMENT_REPLAY_MODE:
+        promotion_gate = promotion_gate or get_historical_alignment_replay_gate(str(root_path.resolve()))
+        if repository is None and daily_override is None:
+            raise ValueError("FAST_ALIGNMENT_REPLAY_REPOSITORY_REQUIRED")
 
     # 2. 로컬 Universe 및 종목 메타데이터 로드 (Formal Authority, Zero-Network)
     price_source = (
@@ -900,19 +918,21 @@ def generate_stock_report(
         daily = daily_override.copy()
         daily.index = pd.DatetimeIndex(pd.to_datetime(daily.index)).normalize()
         daily = daily[~daily.index.duplicated(keep="last")].sort_index()
-        data_end = min(req_as_of_ts, pd.Timestamp(ref_market_date))
+        data_end = market_data_end
         daily = daily.loc[daily.index <= data_end]
         required_override_columns = {"open", "high", "low", "close", "volume", "trading_value"}
         if not required_override_columns.issubset(daily.columns):
             missing_columns = sorted(required_override_columns - set(daily.columns))
             raise ValueError(f"DAILY_OVERRIDE_REQUIRED_COLUMNS_MISSING:{','.join(missing_columns)}")
     elif repository is not None:
-        daily = RepositoryV2DailyLoader(repository, end=canonical_as_of).load(clean_ticker)
+        daily = RepositoryV2DailyLoader(repository, end=market_data_end).load(clean_ticker)
     else:
         # Explicit legacy cache mode is retained for isolated historical test
         # fixtures. Production entrypoints pass a Repository V2 instance.
         cache = ParquetCache(base_dir=root_path / "data/raw/stocks")
         daily = cache.load(clean_ticker)
+        if daily is not None and not daily.empty:
+            daily = daily.loc[daily.index <= market_data_end].copy()
     has_cache = daily is not None and not daily.empty
 
     metadata_resolver = instrument_metadata_resolver or resolve_instrument_metadata
@@ -955,11 +975,24 @@ def generate_stock_report(
     mcap_val = None
     mcap_eff_date = None
     mcap_source = None
-    dt_clean = canonical_as_of.replace("-", "")
+    dt_clean = ref_market_date.replace("-", "")
 
-    # 4a. Exact date match in source
+    if a_fast_replay_mode == HISTORICAL_ALIGNMENT_REPLAY_MODE:
+        assert promotion_gate is not None
+        mcap_val, _resolved_market = promotion_gate.resolve_exact_pit_market_cap(
+            clean_ticker,
+            market,
+            ref_market_date,
+        )
+        if mcap_val is not None:
+            mcap_eff_date = ref_market_date
+            mcap_source = "KRX_RAW_STOCK_SNAPSHOT"
+
+    # Historical web replay requires the exact PIT market and exact raw
+    # partition. Operational callers retain the existing normalized snapshot
+    # fallback, now bounded by the resolved reference market date.
     mcap_csv = root_path / "artifacts/patterns/pattern_a/production/investability/source" / f"krx_market_cap_{dt_clean}.csv"
-    if mcap_csv.exists():
+    if a_fast_replay_mode != HISTORICAL_ALIGNMENT_REPLAY_MODE and mcap_csv.exists():
         try:
             df_mcap_snap = pd.read_csv(mcap_csv, dtype={"ticker": str})
             df_mcap_snap["ticker"] = df_mcap_snap["ticker"].astype(str).str.zfill(6)
@@ -972,7 +1005,7 @@ def generate_stock_report(
             logger.warning("Failed reading local market cap file %s: %s", mcap_csv, exc)
 
     # 4b. Historical normalized PIT market cap snapshots (STRICT PIT: only files <= requested_as_of)
-    if mcap_val is None:
+    if a_fast_replay_mode != HISTORICAL_ALIGNMENT_REPLAY_MODE and mcap_val is None:
         norm_dir = root_path / "artifacts/patterns/pattern_a/validation/investability_history/normalized"
         if norm_dir.exists():
             norm_files = sorted(norm_dir.glob("krx_market_cap_*.csv"))
@@ -992,7 +1025,7 @@ def generate_stock_report(
                     logger.warning("Failed reading normalized market cap file %s: %s", best_f, exc)
 
     # 4c. Universe file fallback (STRICT PIT: only universe files <= requested_as_of)
-    if mcap_val is None:
+    if a_fast_replay_mode != HISTORICAL_ALIGNMENT_REPLAY_MODE and mcap_val is None:
         univ_files = sorted((root_path / "artifacts/patterns/pattern_a/production/investability").glob("pattern_a_investability_universe_*.csv"))
         past_univ_files = [f for f in univ_files if f.stem.split("_")[-1] <= dt_clean]
         if past_univ_files:
@@ -1011,8 +1044,8 @@ def generate_stock_report(
 
     inv_eval = evaluate_investability(
         ticker=clean_ticker,
-        as_of=req_as_of_ts,
-        daily=daily_slice if not daily_slice.empty else None,
+        as_of=ref_market_ts,
+        daily=(daily_slice.loc[daily_slice.index <= ref_market_ts] if not daily_slice.empty else None),
         market_cap=mcap_val,
         market_cap_effective_date=mcap_eff_date,
     )
@@ -1343,11 +1376,20 @@ def generate_stock_report(
     score_contract = json.loads(score_contract_path.read_text(encoding="utf-8")) if score_contract_path.exists() else {}
     stage_contract = json.loads(stage_contract_path.read_text(encoding="utf-8")) if stage_contract_path.exists() else {}
 
+    a_fast_daily = daily
+    if a_fast_replay_mode == HISTORICAL_ALIGNMENT_REPLAY_MODE and repository is not None and daily_override is None:
+        historical_daily = RepositoryV2DailyLoader(
+            repository,
+            end=market_data_end,
+            historical_identity=True,
+        ).load(clean_ticker)
+        a_fast_daily = historical_daily if historical_daily is not None else pd.DataFrame()
+
     a_fast_core_section = build_a_fast_core_section(
         ticker=clean_ticker,
         name=name,
         market=market,
-        daily=daily,
+        daily=a_fast_daily,
         requested_as_of=req_as_of_ts,
         score_contract=score_contract,
         stage_contract=stage_contract,
@@ -1359,6 +1401,8 @@ def generate_stock_report(
         metadata_provenance_mode=metadata_provenance_mode,
         market_calendar=production_market_calendar,
         repo_root=root_path,
+        promotion_gate=promotion_gate,
+        replay_mode=a_fast_replay_mode,
     )
 
     pattern_b_section = None
@@ -1414,22 +1458,23 @@ def generate_stock_report(
 
     # Prepend Strategy Bullet Point in Executive Summary
     st_state = a_fast_core_section.strategy_state
+    strategy_bullet_prefix = "A FAST Core V2 Alignment 500B" if a_fast_replay_mode == HISTORICAL_ALIGNMENT_REPLAY_MODE else "패스트 코어 V2"
     if st_state == "HOLD_PROGRESSED":
         seq_num = a_fast_core_section.current_trade.trade_sequence if a_fast_core_section.current_trade else ""
-        strat_bullet = f"패스트 코어 V2: HOLD_PROGRESSED · 현재 {seq_num}번째 전략 포지션 보유 중"
+        strat_bullet = f"{strategy_bullet_prefix}: HOLD_PROGRESSED · 현재 {seq_num}번째 전략 포지션 보유 중"
     elif st_state == "HOLD_PRE_PROGRESSED":
         seq_num = a_fast_core_section.current_trade.trade_sequence if a_fast_core_section.current_trade else ""
-        strat_bullet = f"패스트 코어 V2: HOLD_PRE_PROGRESSED · 현재 {seq_num}번째 전략 포지션 보유 중 (Loss Guard 활성)"
+        strat_bullet = f"{strategy_bullet_prefix}: HOLD_PRE_PROGRESSED · 현재 {seq_num}번째 전략 포지션 보유 중 (Loss Guard 활성)"
     elif st_state == "ENTRY":
-        strat_bullet = "패스트 코어 V2: 신규 진입 조건 충족 · 다음 거래일 시가 진입 신호"
+        strat_bullet = f"{strategy_bullet_prefix}: 신규 진입 조건 충족 · 다음 거래일 시가 진입 신호"
     elif st_state == "EXIT":
-        strat_bullet = f"패스트 코어 V2: 청산 신호 발생({a_fast_core_section.action_reason}) · 다음 거래일 시가 청산"
+        strat_bullet = f"{strategy_bullet_prefix}: 청산 신호 발생({a_fast_core_section.action_reason}) · 다음 거래일 시가 청산"
     elif st_state == "WAIT":
-        strat_bullet = "패스트 코어 V2: 관망 · 현재 신규 진입 조건 미충족"
+        strat_bullet = f"{strategy_bullet_prefix}: 관망 · 현재 신규 진입 조건 미충족"
     elif st_state == "NOT_APPLICABLE":
-        strat_bullet = "패스트 코어 V2: 전략 적용 대상 아님"
+        strat_bullet = f"{strategy_bullet_prefix}: 전략 적용 대상 아님"
     else:
-        strat_bullet = "패스트 코어 V2: 데이터 부족으로 판정 불가"
+        strat_bullet = f"{strategy_bullet_prefix}: 데이터 부족으로 판정 불가"
 
     bullet_points.insert(0, strat_bullet)
     fundamentals_bullet = fundamentals_executive_bullet(fundamentals_section)

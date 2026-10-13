@@ -64,7 +64,7 @@
 
   const byId = (id) => document.getElementById(id);
   let monitor = null;
-  let activeStrategyId = "PATTERN_A_FAST_FINAL_STRATEGY_V02";
+  let activeStrategyId = "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B";
   let activeFilter = "all";
   let searchQuery = "";
   let activeView = "current";
@@ -875,6 +875,7 @@
       || !/^\d{4}-\d{2}-\d{2}$/.test(value.reference_market_date || "")
       || value.reference_market_date > value.requested_as_of
       || !Array.isArray(value.strategies)
+      || (value.strategy_replay_mode != null && value.strategy_replay_mode !== "FULL_HISTORY_ALIGNMENT_WEB")
     ) return false;
     const byId = new Map(value.strategies.map((strategy) => [strategy && strategy.id, strategy]));
     const fastIds = Array.from(FAST_STRATEGY_IDS).filter((id) => byId.has(id));
@@ -909,6 +910,8 @@
         const gateStatus = strategy.promotion_gate_status;
         const effectiveDate = strategy.effective_signal_date;
         const activationIntervals = strategy.activation_intervals == null ? [] : strategy.activation_intervals;
+        const replayMode = strategy.strategy_replay_mode;
+        const historicalAlignmentReplay = replayMode === "FULL_HISTORY_ALIGNMENT_WEB";
         if (!Array.isArray(activationIntervals)) return false;
         const activationIds = new Set();
         let previousEnd = null;
@@ -928,8 +931,23 @@
           activationIds.add(interval.activation_id);
           previousEnd = interval.rollback_effective_signal_date;
         }
-        if (
-          (gateStatus != null && !["INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"].includes(gateStatus))
+        if (historicalAlignmentReplay) {
+          const scope = strategy.strategy_replay_scope;
+          if (
+            id !== "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+            || gateStatus != null || effectiveDate != null || activationIntervals.length !== 0
+            || !/^[0-9a-f]{64}$/.test(strategy.strategy_replay_digest || "")
+            || value.strategy_replay_mode !== replayMode
+            || value.strategy_replay_digest !== strategy.strategy_replay_digest
+            || JSON.stringify(value.strategy_replay_scope) !== JSON.stringify(scope)
+            || !scope || scope.type !== "PUBLISHED_COMMON_REPORTS"
+            || scope.report_count !== strategy.scope.report_count
+            || scope.requested_as_of !== value.requested_as_of
+            || scope.reference_market_date !== value.reference_market_date
+          ) return false;
+        } else if (
+          (replayMode != null)
+          || (gateStatus != null && !["INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"].includes(gateStatus))
           || (id === "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B" && gateStatus !== "ACTIVE")
           || (id === "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B" && activationIntervals.length === 0)
           || (gateStatus === "ACTIVE" && (
@@ -942,7 +960,7 @@
             || parseSortableDate(effectiveDate) == null
           ))
         ) return false;
-        if (activationIntervals.length > 0 && value.requested_as_of) {
+        if (!historicalAlignmentReplay && activationIntervals.length > 0 && value.requested_as_of) {
           const asOf = parseSortableDate(value.requested_as_of);
           if (asOf == null) return false;
           const activeAtAsOf = activationIntervals.some((interval) => (
@@ -977,12 +995,20 @@
         ) return false;
         const sourceId = trade.strategy_id || id;
         const activationIntervals = strategy.activation_intervals || [];
+        const historicalAlignmentReplay = strategy.strategy_replay_mode === "FULL_HISTORY_ALIGNMENT_WEB";
         const allowedSourceIds = FAST_STRATEGY_IDS.has(id) && activationIntervals.length > 0
           ? FAST_STRATEGY_IDS
           : new Set([id]);
         const entrySourceId = trade.entry_strategy_id || sourceId;
         const exitSourceId = trade.exit_strategy_id || entrySourceId;
         if (!allowedSourceIds.has(sourceId) || entrySourceId !== sourceId || exitSourceId !== entrySourceId) return false;
+        if (historicalAlignmentReplay && (
+          id !== "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+          || sourceId !== id || trade.strategy_id !== id
+          || trade.entry_strategy_id !== id || trade.exit_strategy_id !== id
+          || parseSortableDate(trade.entry_signal_date) == null
+          || trade.trade_id !== `${String(trade.ticker).padStart(6, "0")}_${String(Number(trade.trade_sequence)).padStart(2, "0")}`
+        )) return false;
         if (FAST_STRATEGY_IDS.has(id) && activationIntervals.length > 0) {
           const signalDate = parseSortableDate(trade.entry_signal_date);
           if (

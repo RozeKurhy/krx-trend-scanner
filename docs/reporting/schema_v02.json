@@ -107,6 +107,24 @@
         "strategy_version": { "type": "string", "enum": ["V02", "V02_ALIGNMENT_MCAP_500B"] },
         "strategy_alias": { "type": "string" },
         "research_group_id": { "type": "string", "enum": ["ALIGNMENT_MCAP_500B"] },
+        "strategy_replay_mode": { "type": "string", "enum": ["FULL_HISTORY_ALIGNMENT_WEB"] },
+        "strategy_replay_scope": {
+          "type": "object",
+          "required": ["type", "report_count", "requested_as_of", "reference_market_date", "first_v2_candidate_signal_date", "last_v2_candidate_signal_date", "first_alignment_gate_pass_signal_date", "base_candidate_signal_count", "alignment_gate_pass_count", "output_strategy_id"],
+          "properties": {
+            "type": { "const": "PUBLISHED_COMMON_REPORTS" },
+            "report_count": { "type": "integer", "minimum": 1 },
+            "requested_as_of": { "type": "string", "format": "date" },
+            "reference_market_date": { "type": "string", "format": "date" },
+            "first_v2_candidate_signal_date": { "type": ["string", "null"], "format": "date" },
+            "last_v2_candidate_signal_date": { "type": ["string", "null"], "format": "date" },
+            "first_alignment_gate_pass_signal_date": { "type": ["string", "null"], "format": "date" },
+            "base_candidate_signal_count": { "type": "integer", "minimum": 0 },
+            "alignment_gate_pass_count": { "type": "integer", "minimum": 0 },
+            "output_strategy_id": { "const": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B" }
+          }
+        },
+        "strategy_replay_digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
         "promotion_gate_status": { "type": "string", "enum": ["INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"] },
         "effective_signal_date": { "type": "string" },
         "activation_intervals": {
@@ -330,7 +348,29 @@
             "network_requests": { "type": "integer", "enum": [0] }
           }
         }
-      }
+      },
+      "allOf": [{
+        "if": {
+          "required": ["strategy_replay_mode"],
+          "properties": {"strategy_replay_mode": {"const": "FULL_HISTORY_ALIGNMENT_WEB"}}
+        },
+        "then": {
+          "required": ["strategy_replay_scope", "strategy_replay_digest"],
+          "properties": {
+            "strategy_id": {"const": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"},
+            "activation_intervals": {"type": "array", "maxItems": 0},
+            "trade_history": {"items": {
+              "required": ["entry_signal_date", "strategy_id", "entry_strategy_id", "exit_strategy_id"],
+              "properties": {
+                "strategy_id": {"const": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"},
+                "entry_strategy_id": {"const": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"},
+                "exit_strategy_id": {"const": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"}
+              }
+            }}
+          },
+          "not": {"anyOf": [{"required": ["promotion_gate_status"]}, {"required": ["effective_signal_date"]}]}
+        }
+      }]
     },
     
     "pattern_a_fast": {

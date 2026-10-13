@@ -281,13 +281,19 @@ def _compact_trade_history(strategy: dict[str, Any]) -> list[dict[str, Any]]:
     result = []
     default_strategy_id = str(strategy.get("strategy_id") or strategy.get("id") or "PATTERN_A_FAST_FINAL_STRATEGY_V02")
     promoted = default_strategy_id == "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+    replay_mode = strategy.get("strategy_replay_mode")
+    full_history_alignment = replay_mode == "FULL_HISTORY_ALIGNMENT_WEB"
+    if full_history_alignment and not promoted:
+        raise ValueError("historical Alignment replay must use the promoted A FAST strategy ID")
     activation_intervals = strategy.get("activation_intervals") or []
     if not isinstance(activation_intervals, list):
         raise ValueError("A FAST activation history must be a list")
     has_activation_history = bool(activation_intervals)
-    if promoted and not has_activation_history:
+    if promoted and not has_activation_history and not full_history_alignment:
         raise ValueError("promoted A FAST history requires the immutable activation interval ledger")
-    if has_activation_history:
+    if full_history_alignment and has_activation_history:
+        raise ValueError("historical Alignment replay cannot use operational activation intervals")
+    if has_activation_history or full_history_alignment:
         fields = ("trade_id", "strategy_id", "entry_strategy_id", "exit_strategy_id", *fields[1:])
     previous_end: str | None = None
     seen_activation_ids: set[str] = set()
@@ -332,16 +338,14 @@ def _compact_trade_history(strategy: dict[str, Any]) -> list[dict[str, Any]]:
         ]
         if sum(matches) > 1:
             raise ValueError("A FAST activation history overlaps at entry_signal_date")
-        return (
-            "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
-            if any(matches)
-            else "PATTERN_A_FAST_FINAL_STRATEGY_V02"
-        )
+        if full_history_alignment:
+            return "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+        return "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B" if any(matches) else "PATTERN_A_FAST_FINAL_STRATEGY_V02"
     for trade in history:
         if not isinstance(trade, dict):
             continue
         compact = {field: trade.get(field) for field in fields}
-        if has_activation_history:
+        if has_activation_history or full_history_alignment:
             signal_date = str(trade.get("entry_signal_date") or "")[:10]
             expected_trade_strategy_id = expected_strategy_id(signal_date)
             if any(
@@ -491,16 +495,29 @@ def _compact_report(
                 "strategy_name": strategy.get("strategy_alias"),
                 "activation_intervals": copy.deepcopy(strategy.get("activation_intervals")),
             })
+        if strategy.get("strategy_replay_mode") == "FULL_HISTORY_ALIGNMENT_WEB":
+            strategy_public.update({
+                "id": strategy.get("strategy_id"),
+                "strategy_id": strategy.get("strategy_id"),
+                "strategy_name": strategy.get("strategy_alias"),
+                "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+                "strategy_replay_scope": copy.deepcopy(strategy.get("strategy_replay_scope")),
+                "strategy_replay_digest": strategy.get("strategy_replay_digest"),
+                "research_group_id": strategy.get("research_group_id") or "ALIGNMENT_MCAP_500B",
+            })
         if strategy.get("strategy_id") == "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B":
             strategy_public.update({
                 "id": strategy.get("strategy_id"),
                 "strategy_id": strategy.get("strategy_id"),
                 "strategy_name": strategy.get("strategy_alias"),
                 "research_group_id": strategy.get("research_group_id"),
-                "promotion_gate_status": strategy.get("promotion_gate_status"),
-                "effective_signal_date": strategy.get("effective_signal_date"),
                 "promotion_gate_audit": copy.deepcopy(strategy.get("promotion_gate_audit") or []),
             })
+            if strategy.get("strategy_replay_mode") != "FULL_HISTORY_ALIGNMENT_WEB":
+                strategy_public.update({
+                    "promotion_gate_status": strategy.get("promotion_gate_status"),
+                    "effective_signal_date": strategy.get("effective_signal_date"),
+                })
 
     return {
         "schema_version": 1,
@@ -630,6 +647,7 @@ def build_web_payload(
     target_as_of: str | None = None,
     reference_market_date: str | None = None,
     include_etf: bool = False,
+    source_report_directory: Path | None = None,
 ) -> tuple[dict[str, Any], dict[str, dict[str, Any]], dict[str, Any]]:
     """``target_as_of``(선택, PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01)를 명시하면
     최신 디렉터리 자동 선택 대신 그 날짜의 exact 디렉터리만 사용하고,
@@ -638,7 +656,20 @@ def build_web_payload(
     경로를 그대로 쓴다(하위 호환)."""
     if repo_root != ROOT:
         raise ValueError("stock report web exporter is bound to the repository root")
-    if target_as_of is not None:
+    if source_report_directory is not None:
+        if target_as_of is None:
+            raise ValueError("source_report_directory requires an exact target_as_of")
+        report_dir = Path(source_report_directory)
+        if not report_dir.is_absolute():
+            report_dir = (repo_root / report_dir).resolve()
+        if (
+            report_dir.name != target_as_of.replace("-", "")
+            or not report_dir.is_dir()
+            or not (report_dir / "json").is_dir()
+        ):
+            raise FileNotFoundError(f"historical staging report directory is invalid: {report_dir}")
+        requested_as_of = target_as_of
+    elif target_as_of is not None:
         report_dir, requested_as_of = _resolve_exact_report_directory(target_as_of)
     else:
         report_dir, requested_as_of = _resolve_report_directory()
@@ -763,11 +794,13 @@ def export_stock_reports(
     target_as_of: str | None = None,
     reference_market_date: str | None = None,
     include_etf: bool = False,
+    source_report_directory: Path | None = None,
 ) -> dict[str, Any]:
     index, reports, stats = build_web_payload(
         target_as_of=target_as_of,
         reference_market_date=reference_market_date,
         include_etf=include_etf,
+        source_report_directory=source_report_directory,
     )
     _write_json(output_dir / "stock-index.json", index)
     stock_dir = output_dir / "stocks"
@@ -783,12 +816,14 @@ def main() -> int:
     parser.add_argument("--target-as-of", help="exact YYYY-MM-DD Stock Report target")
     parser.add_argument("--reference-market-date", help="exact YYYY-MM-DD market-data date")
     parser.add_argument("--include-etf", action="store_true", help="include exact frozen ETF36 v0.6 corpus")
+    parser.add_argument("--source-report-directory", type=Path, help="exact report directory used for isolated staging")
     args = parser.parse_args()
     stats = export_stock_reports(
         args.output,
         target_as_of=args.target_as_of,
         reference_market_date=args.reference_market_date,
         include_etf=args.include_etf,
+        source_report_directory=args.source_report_directory,
     )
     print(json.dumps(stats, ensure_ascii=False, sort_keys=True))
     return 0

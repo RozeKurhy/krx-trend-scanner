@@ -49,7 +49,8 @@ B_SELECT_LABEL = "B Select Core V2"
 LEGACY_B_SELECT_ID = "PATTERN_B_SELECT_CORE_V01"
 JULIA_ID = "JULIA_ETF_STRATEGY_V01"
 JULIA_LABEL = "Julia V1"
-DEFAULT_STRATEGY_ID = STRATEGY_ID
+DEFAULT_STRATEGY_ID = PROMOTED_STRATEGY_ID
+FULL_HISTORY_ALIGNMENT_WEB = "FULL_HISTORY_ALIGNMENT_WEB"
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -621,6 +622,7 @@ def _normalize_trade(
     name: str,
     market: str,
     asset_type: str,
+    preserve_cutoff_exit_reason: bool = False,
 ) -> dict[str, Any]:
     """Normalize an authoritative source trade without recalculating it."""
     sequence = _first_value(trade, "trade_sequence", "sequence")
@@ -649,9 +651,9 @@ def _normalize_trade(
     exit_execution_date = str(exit_date)[:10] if exit_date else None
     if trade_status == "REALIZED" and (not exit_execution_date or exit_price is None or return_pct is None):
         raise ValueError(f"incomplete realized {strategy_id} trade: {ticker}")
-    exit_reason = None
-    if exit_execution_date:
-        exit_reason = _first_value(trade, "exit_type", "exit_reason")
+    exit_reason = _first_value(trade, "exit_type", "exit_reason")
+    if not preserve_cutoff_exit_reason and not exit_execution_date:
+        exit_reason = None
     source_strategy_id = str(trade.get("strategy_id") or strategy_id)
     entry_strategy_id = str(trade.get("entry_strategy_id") or source_strategy_id)
     exit_strategy_id = str(trade.get("exit_strategy_id")) if trade.get("exit_strategy_id") is not None else None
@@ -685,7 +687,15 @@ def _validate_history_identities(
     allowed_source_ids: set[str] | None = None,
     effective_signal_date: str | None = None,
     activation_intervals: list[dict[str, Any]] | None = None,
+    strategy_replay_mode: str | None = None,
 ) -> None:
+    historical_alignment_replay = strategy_replay_mode == FULL_HISTORY_ALIGNMENT_WEB
+    if strategy_replay_mode is not None and not historical_alignment_replay:
+        raise ValueError(f"unsupported A FAST strategy replay mode: {strategy_replay_mode}")
+    if historical_alignment_replay and (
+        strategy_id != PROMOTED_STRATEGY_ID or activation_intervals not in (None, [])
+    ):
+        raise ValueError("historical Alignment replay must be a single promoted row without activation intervals")
     if allowed_source_ids is None:
         allowed_source_ids = (
             FAST_STRATEGY_IDS
@@ -693,7 +703,7 @@ def _validate_history_identities(
             else {strategy_id}
         )
     effective_date: date | None = None
-    if strategy_id == PROMOTED_STRATEGY_ID and activation_intervals is None:
+    if strategy_id == PROMOTED_STRATEGY_ID and activation_intervals is None and not historical_alignment_replay:
         try:
             effective_date = date.fromisoformat(str(effective_signal_date))
             if effective_date.isoformat() != effective_signal_date:
@@ -708,7 +718,24 @@ def _validate_history_identities(
         exit_id = str(trade.get("exit_strategy_id") or entry_id)
         if entry_id != source_id or exit_id != entry_id:
             raise ValueError(f"inconsistent {strategy_id} entry/exit strategy lineage")
-        if strategy_id == STRATEGY_ID and activation_intervals is None:
+        if historical_alignment_replay:
+            if (
+                source_id != PROMOTED_STRATEGY_ID
+                or trade.get("strategy_id") != PROMOTED_STRATEGY_ID
+                or trade.get("entry_strategy_id") != PROMOTED_STRATEGY_ID
+                or trade.get("exit_strategy_id") != PROMOTED_STRATEGY_ID
+            ):
+                raise ValueError("historical Alignment replay contains non-Alignment trade lineage")
+            try:
+                signal_date = date.fromisoformat(str(trade.get("entry_signal_date") or ""))
+                if signal_date.isoformat() != trade.get("entry_signal_date"):
+                    raise ValueError
+            except ValueError as exc:
+                raise ValueError("historical Alignment replay requires an exact entry_signal_date") from exc
+            expected_trade_id = f"{str(trade.get('ticker') or '').zfill(6)}_{int(trade.get('trade_sequence', 0)):02d}"
+            if trade.get("trade_id") != expected_trade_id:
+                raise ValueError("historical Alignment replay trade ID does not match ticker/sequence")
+        elif strategy_id == STRATEGY_ID and activation_intervals is None:
             if source_id != STRATEGY_ID:
                 raise ValueError("V2 A FAST history contains a promoted strategy lineage")
         elif strategy_id in FAST_STRATEGY_IDS:
@@ -881,6 +908,7 @@ def build_strategy_monitor(
     target_as_of: str | None = None,
     reference_market_date: str | None = None,
     b_select_status: dict[str, Any] | None = None,
+    source_report_path: str | None = None,
 ) -> dict[str, Any]:
     """``index_path``/``stocks_path``(선택, PHASE4C_MANDATORY_ANALYSIS_DISPLAY_V01)를
     명시하면 ``web/data/`` 대신 그 exact-target 소스를 읽는다. 생략하면 기존과
@@ -910,6 +938,9 @@ def build_strategy_monitor(
     fast_gate_statuses: set[str] = set()
     fast_effective_signal_dates: set[str] = set()
     fast_activation_history_json: set[str] = set()
+    fast_replay_modes: set[str] = set()
+    fast_replay_digests: set[str] = set()
+    fast_replay_scopes_json: set[str] = set()
     julia_history: list[dict[str, Any]] = []
     as_of_values: set[str] = set()
     reference_market_date_values: set[str] = set()
@@ -930,12 +961,31 @@ def build_strategy_monitor(
             if source_fast_id not in FAST_STRATEGY_IDS:
                 raise ValueError(f"unexpected A FAST strategy ID: {source_fast_id}")
             fast_strategy_ids.add(source_fast_id)
-            gate_status = str(fast_source.get("promotion_gate_status") or "INACTIVE_PENDING_USER_APPROVAL")
-            effective_signal_date = str(fast_source.get("effective_signal_date") or "PENDING_USER_APPROVAL")
-            if gate_status not in {"INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"}:
-                raise ValueError(f"invalid A FAST promotion gate status: {gate_status}")
-            fast_gate_statuses.add(gate_status)
-            fast_effective_signal_dates.add(effective_signal_date)
+            replay_mode = fast_source.get("strategy_replay_mode")
+            if replay_mode is None:
+                fast_replay_modes.add("OPERATIONAL_ACTIVATION_HISTORY")
+                gate_status = str(fast_source.get("promotion_gate_status") or "INACTIVE_PENDING_USER_APPROVAL")
+                effective_signal_date = str(fast_source.get("effective_signal_date") or "PENDING_USER_APPROVAL")
+                if gate_status not in {"INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"}:
+                    raise ValueError(f"invalid A FAST promotion gate status: {gate_status}")
+                fast_gate_statuses.add(gate_status)
+                fast_effective_signal_dates.add(effective_signal_date)
+            elif replay_mode == FULL_HISTORY_ALIGNMENT_WEB:
+                fast_replay_modes.add(replay_mode)
+                digest = fast_source.get("strategy_replay_digest")
+                scope = fast_source.get("strategy_replay_scope")
+                if (
+                    source_fast_id != PROMOTED_STRATEGY_ID
+                    or not isinstance(digest, str)
+                    or len(digest) != 64
+                    or any(character not in "0123456789abcdef" for character in digest)
+                    or not isinstance(scope, dict)
+                ):
+                    raise ValueError(f"A FAST historical replay provenance is invalid: {ticker}")
+                fast_replay_digests.add(digest)
+                fast_replay_scopes_json.add(json.dumps(scope, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+            else:
+                raise ValueError(f"unsupported A FAST strategy replay mode: {replay_mode}")
             activation_intervals = _validate_fast_activation_intervals(
                 fast_source.get("activation_intervals") or []
             )
@@ -945,14 +995,21 @@ def build_strategy_monitor(
             for trade in fast_source.get("history") or []:
                 if not isinstance(trade, dict):
                     raise ValueError(f"invalid A FAST trade history row: {ticker}")
-                fast_history.append(_normalize_trade(
+                normalized_trade = _normalize_trade(
                     source_fast_id,
                     trade,
                     ticker=ticker,
                     name=str(index_item.get("name") or ticker),
                     market=str(index_item.get("market") or ""),
                     asset_type="COMMON",
-                ))
+                    preserve_cutoff_exit_reason=(replay_mode == FULL_HISTORY_ALIGNMENT_WEB),
+                )
+                if replay_mode == FULL_HISTORY_ALIGNMENT_WEB:
+                    expected_trade_id = f"{ticker}_{int(normalized_trade['trade_sequence']):02d}"
+                    if trade.get("trade_id") != expected_trade_id:
+                        raise ValueError(f"A FAST replay trade ID does not match ticker/sequence: {ticker}")
+                    normalized_trade["trade_id"] = expected_trade_id
+                fast_history.append(normalized_trade)
         elif index_item.get("asset_type") == "ETF":
             strategy = report.get("strategy") or {}
             if (
@@ -1109,9 +1166,11 @@ def build_strategy_monitor(
     if len(fast_strategy_ids) > 1:
         raise ValueError(f"mixed top-level A FAST strategy IDs in report corpus: {sorted(fast_strategy_ids)}")
     fast_strategy_id = next(iter(fast_strategy_ids), STRATEGY_ID)
-    if (
-        len(fast_gate_statuses) > 1
-        or len(fast_effective_signal_dates) > 1
+    if len(fast_replay_modes) > 1:
+        raise ValueError("mixed A FAST operational and historical replay modes in report corpus")
+    historical_alignment_replay = fast_replay_modes == {FULL_HISTORY_ALIGNMENT_WEB}
+    if not historical_alignment_replay and (
+        len(fast_gate_statuses) > 1 or len(fast_effective_signal_dates) > 1
         or len(fast_activation_history_json) > 1
     ):
         raise ValueError("mixed A FAST promotion gate status/effective date in report corpus")
@@ -1120,33 +1179,55 @@ def build_strategy_monitor(
     fast_activation_intervals = (
         json.loads(next(iter(fast_activation_history_json))) if fast_activation_history_json else []
     )
-    if fast_strategy_id == PROMOTED_STRATEGY_ID and not fast_activation_intervals:
-        raise ValueError("promoted A FAST strategy requires its immutable activation interval history")
-    if fast_strategy_id == PROMOTED_STRATEGY_ID:
-        if fast_gate_status != "ACTIVE":
-            raise ValueError("promoted A FAST strategy ID requires ACTIVE promotion gate status")
-        try:
-            if date.fromisoformat(fast_effective_signal_date).isoformat() != fast_effective_signal_date:
-                raise ValueError
-        except ValueError as exc:
-            raise ValueError("promoted A FAST strategy requires an exact effective_signal_date") from exc
-    elif fast_gate_status == "ACTIVE":
-        raise ValueError("ACTIVE promotion gate must use the promoted A FAST strategy ID")
-    elif fast_gate_status == "INACTIVE_PENDING_USER_APPROVAL" and fast_effective_signal_date != "PENDING_USER_APPROVAL":
-        raise ValueError("pending A FAST promotion must retain PENDING_USER_APPROVAL date")
-    if resolved_as_of != "MIXED":
-        expected_current_id = STRATEGY_ID
-        for interval in fast_activation_intervals:
-            if (
-                str(interval.get("effective_signal_date", "")) <= resolved_as_of
-                and (
-                    interval.get("rollback_effective_signal_date") is None
-                    or resolved_as_of < str(interval.get("rollback_effective_signal_date"))
-                )
-            ):
-                expected_current_id = PROMOTED_STRATEGY_ID
-        if fast_strategy_id != expected_current_id:
-            raise ValueError("A FAST top-level strategy ID does not match requested_as_of activation history")
+    fast_replay_digest = None
+    fast_replay_scope = None
+    if historical_alignment_replay:
+        if (
+            fast_strategy_id != PROMOTED_STRATEGY_ID
+            or fast_activation_intervals
+            or fast_gate_statuses
+            or fast_effective_signal_dates
+            or len(fast_replay_digests) != 1
+            or len(fast_replay_scopes_json) != 1
+        ):
+            raise ValueError("A FAST historical replay must be a single Alignment lineage without activation metadata")
+        fast_replay_digest = next(iter(fast_replay_digests))
+        fast_replay_scope = json.loads(next(iter(fast_replay_scopes_json)))
+        if (
+            fast_replay_scope.get("type") != "PUBLISHED_COMMON_REPORTS"
+            or fast_replay_scope.get("report_count") != len(common_items)
+            or fast_replay_scope.get("requested_as_of") != resolved_as_of
+            or fast_replay_scope.get("reference_market_date") != resolved_reference
+        ):
+            raise ValueError("A FAST historical replay scope does not match the source report corpus")
+    else:
+        if fast_strategy_id == PROMOTED_STRATEGY_ID and not fast_activation_intervals:
+            raise ValueError("promoted A FAST strategy requires its immutable activation interval history")
+        if fast_strategy_id == PROMOTED_STRATEGY_ID:
+            if fast_gate_status != "ACTIVE":
+                raise ValueError("promoted A FAST strategy ID requires ACTIVE promotion gate status")
+            try:
+                if date.fromisoformat(fast_effective_signal_date).isoformat() != fast_effective_signal_date:
+                    raise ValueError
+            except ValueError as exc:
+                raise ValueError("promoted A FAST strategy requires an exact effective_signal_date") from exc
+        elif fast_gate_status == "ACTIVE":
+            raise ValueError("ACTIVE promotion gate must use the promoted A FAST strategy ID")
+        elif fast_gate_status == "INACTIVE_PENDING_USER_APPROVAL" and fast_effective_signal_date != "PENDING_USER_APPROVAL":
+            raise ValueError("pending A FAST promotion must retain PENDING_USER_APPROVAL date")
+        if resolved_as_of != "MIXED":
+            expected_current_id = STRATEGY_ID
+            for interval in fast_activation_intervals:
+                if (
+                    str(interval.get("effective_signal_date", "")) <= resolved_as_of
+                    and (
+                        interval.get("rollback_effective_signal_date") is None
+                        or resolved_as_of < str(interval.get("rollback_effective_signal_date"))
+                    )
+                ):
+                    expected_current_id = PROMOTED_STRATEGY_ID
+            if fast_strategy_id != expected_current_id:
+                raise ValueError("A FAST top-level strategy ID does not match requested_as_of activation history")
     fast_strategy_label = PROMOTED_STRATEGY_LABEL if fast_strategy_id == PROMOTED_STRATEGY_ID else STRATEGY_LABEL
     _validate_history_identities(
         fast_strategy_id,
@@ -1154,6 +1235,7 @@ def build_strategy_monitor(
         allowed_source_ids=(FAST_STRATEGY_IDS if fast_activation_intervals or fast_strategy_id == PROMOTED_STRATEGY_ID else {STRATEGY_ID}),
         effective_signal_date=(fast_effective_signal_date if fast_strategy_id == PROMOTED_STRATEGY_ID else None),
         activation_intervals=fast_activation_intervals,
+        strategy_replay_mode=(FULL_HISTORY_ALIGNMENT_WEB if historical_alignment_replay else None),
     )
     _validate_history_identities(
         b_select_strategy_id,
@@ -1242,7 +1324,16 @@ def build_strategy_monitor(
                     "promotion_gate_status": fast_gate_status,
                     "effective_signal_date": fast_effective_signal_date,
                 }
-                if fast_strategy_id == PROMOTED_STRATEGY_ID else {}
+                if fast_strategy_id == PROMOTED_STRATEGY_ID and not historical_alignment_replay else {}
+            ),
+            **(
+                {
+                    "research_group_id": "ALIGNMENT_MCAP_500B",
+                    "strategy_replay_mode": FULL_HISTORY_ALIGNMENT_WEB,
+                    "strategy_replay_digest": fast_replay_digest,
+                    "strategy_replay_scope": fast_replay_scope,
+                }
+                if historical_alignment_replay else {}
             ),
             "asset_scope": "COMMON",
             "scope": {
@@ -1293,9 +1384,17 @@ def build_strategy_monitor(
         "schema_version": 2,
         "source": {
             "type": "PUBLISHED_STOCK_REPORTS",
-            "path": "web/data/stocks/*.json",
+            "path": source_report_path or "web/data/stocks/*.json",
         },
         "default_strategy_id": fast_strategy_id,
+        **(
+            {
+                "strategy_replay_mode": FULL_HISTORY_ALIGNMENT_WEB,
+                "strategy_replay_digest": fast_replay_digest,
+                "strategy_replay_scope": fast_replay_scope,
+            }
+            if historical_alignment_replay else {}
+        ),
         "requested_as_of": resolved_as_of,
         "reference_market_date": resolved_reference,
         "as_of": resolved_as_of,

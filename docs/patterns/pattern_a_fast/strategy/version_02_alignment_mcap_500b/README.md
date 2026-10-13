@@ -78,6 +78,20 @@ rollback 뒤면 FAST top-level ID는 V2이고, monitor의 한 FAST 행은 과거
 초기 원장은 `intervals: []`이며 현재 운영 설정은 계속 비활성이다. 테스트는
 운영 설정과 분리된 임시 원장만 사용한다.
 
+## 웹 전 기간 재생
+
+웹 canonical 후보는 `FULL_HISTORY_ALIGNMENT_WEB` 재생 모드로 대상 COMMON 종목
+보고서를 각각 처음부터 다시 계산한다. 각 종목의 최초 유효 V2 진입 후보부터
+정확한 scanner 기준일까지 모든 후보에 Alignment 500B 진입 gate를 적용하고,
+통과한 진입만으로 V2 lifecycle을 재생성한다. 이 모드의 웹 FAST 단일 행과 모든
+거래·OPEN·상태는 Alignment ID를 사용하며, 동일 replay digest와 공개 COMMON
+scope를 가져야 한다.
+
+이 재생은 운영 활성화가 아니며 운영 config나 activation history를 변경하지
+않는다. 기존 V2 공식 백테스트, V2 연구 자료와 운영 거래 계보도 다시 쓰지 않는다.
+재생 결과는 별도 staging 검증·사용자 리뷰·후속 발행 승인 전까지 운영 canonical
+출력으로 취급하지 않는다.
+
 보조 runner의 1조원 threshold는 이 전략의 운영 근거가 아니며 수정하지 않는다.
 공식 다섯 기간은 과거 비교 자료다. P2-1에서 총수익률은 31.1454%로 CONTROL의
 40.9378%보다 낮았고 CAGR도 6.3564% 대 8.1115%였다. 후보의 최악 단일 거래는

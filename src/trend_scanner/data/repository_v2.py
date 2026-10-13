@@ -837,6 +837,20 @@ class MarketDataRepositoryV2:
     def get_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
         end = self._clamp_to_certified_boundary(end)
         start, end = self._clamp_to_identity_bounds(ticker, start, end)
+        return self._get_daily_for_ticker(ticker, start, end)
+
+    def get_daily_historical_identity(self, ticker: str, start: str, end: str) -> pd.DataFrame:
+        """Read the certified range without applying today's identity lower bound.
+
+        The rolling certified-through boundary still applies. This narrow read
+        path is for historical strategy replay, where PIT identity is resolved
+        separately for each signal date and current-identity clipping would
+        discard valid pre-transfer price history.
+        """
+        end = self._clamp_to_certified_boundary(end)
+        return self._get_daily_for_ticker(ticker, str(start)[:10], str(end)[:10])
+
+    def _get_daily_for_ticker(self, ticker: str, start: str, end: str) -> pd.DataFrame:
         key = str(ticker).zfill(6)
         try:
             result = self._get_daily(key, start, end)

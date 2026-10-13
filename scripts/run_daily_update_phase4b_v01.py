@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import inspect
 import json
 import logging
@@ -52,6 +53,11 @@ from typing import Any
 from uuid import uuid4
 
 from trend_scanner.data.repository_v2_loader import build_production_repository_v2
+from trend_scanner.data.rolling_market_data_refresh import (
+    DEFAULT_ROLLING_AUTHORITY_DIR,
+    load_rolling_authority,
+    validate_merged_authority_coherence,
+)
 from trend_scanner.patterns.pattern_a_evaluator import PatternACandidateState
 from trend_scanner.reporting.fundamentals_report import (
     FundamentalsArtifactUnavailable,
@@ -59,6 +65,11 @@ from trend_scanner.reporting.fundamentals_report import (
 )
 from trend_scanner.reporting.stock_report import generate_stock_report
 from trend_scanner.universe.instrument_metadata import resolve_target_instrument_metadata
+from trend_scanner.validation.pattern_a_fast_alignment_mcap_500b import (
+    HISTORICAL_ALIGNMENT_REPLAY_MODE,
+    AlignmentMcap500BGate,
+    get_historical_alignment_replay_gate,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("run_daily_update_phase4b_v01")
@@ -67,6 +78,7 @@ ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
 PROMOTED_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
 ALLOWED_FAST_STRATEGY_IDS = {EXPECTED_STRATEGY_ID, PROMOTED_STRATEGY_ID}
+FULL_HISTORY_ALIGNMENT_WEB = HISTORICAL_ALIGNMENT_REPLAY_MODE
 EXPECTED_REPORT_VERSION = "0.7"
 SUPPORTED_PREVIOUS_REPORT_VERSIONS = {"0.5", EXPECTED_REPORT_VERSION}
 LATEST_QUARTER_OPERATING_PROFIT_POSITIVE = "POSITIVE"
@@ -76,6 +88,248 @@ LATEST_QUARTER_OPERATING_PROFIT_UNAVAILABLE = "UNAVAILABLE"
 
 class Phase4BError(RuntimeError):
     """Phase 4B fail-closed error (Scanner input validation, corpus validation)."""
+
+
+def validate_replay_reference_authority(root: Path, reference_market_date: str) -> None:
+    """Require the exact replay cutoff to be an exact certified KRX session."""
+    authority_dir = Path(root) / DEFAULT_ROLLING_AUTHORITY_DIR
+    try:
+        manifest = load_rolling_authority(authority_dir)
+        pit_payload, calendar_payload = validate_merged_authority_coherence(manifest, authority_dir)
+    except Exception as exc:  # noqa: BLE001 -- authority failures stop generation
+        raise Phase4BError(f"PHASE4B_ROLLING_AUTHORITY_INVALID: {exc}") from exc
+    if (
+        reference_market_date > manifest.certified_through
+        or reference_market_date > str(pit_payload.get("pit_frontier") or "")[:10]
+        or reference_market_date > str(manifest.merged_calendar_frontier or "")[:10]
+        or reference_market_date not in set(calendar_payload.get("trading_dates") or [])
+    ):
+        raise Phase4BError(
+            "PHASE4B_REFERENCE_MARKET_DATE_NOT_CERTIFIED_EXACT_SESSION: "
+            f"{reference_market_date}"
+        )
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+
+def _canonical_replay_core(core: dict[str, Any]) -> dict[str, Any]:
+    """Normalize report serialization to the V02 replay digest contract."""
+    normalized = dict(core)
+    normalized.pop("strategy_replay_scope", None)
+    normalized.pop("strategy_replay_digest", None)
+    # Preserve the explicit empty dataclass values used by the V02 digest.
+    normalized.setdefault("activation_intervals", [])
+    normalized.setdefault("promotion_gate_status", None)
+    normalized.setdefault("effective_signal_date", None)
+    return normalized
+
+
+def _full_history_replay_scope(
+    common_reports: list[tuple[str, Path, dict[str, Any]]],
+    requested_as_of: str,
+    reference_market_date: str,
+) -> dict[str, Any]:
+    audit_rows: list[dict[str, Any]] = []
+    for ticker, _path, report in common_reports:
+        core = report.get("a_fast_core") or {}
+        if core.get("strategy_id") != PROMOTED_STRATEGY_ID or core.get("strategy_replay_mode") != FULL_HISTORY_ALIGNMENT_WEB:
+            raise Phase4BError(f"PHASE4B_FAST_REPLAY_MODE_OR_STRATEGY_MISMATCH: {ticker}")
+        if core.get("activation_intervals") or core.get("promotion_gate_status") not in (None, "") or core.get("effective_signal_date") not in (None, ""):
+            raise Phase4BError(f"PHASE4B_FAST_REPLAY_OPERATIONAL_METADATA_PRESENT: {ticker}")
+        history = core.get("trade_history") or []
+        if not isinstance(history, list):
+            raise Phase4BError(f"PHASE4B_FAST_REPLAY_HISTORY_INVALID: {ticker}")
+        for trade in history:
+            if not isinstance(trade, dict):
+                raise Phase4BError(f"PHASE4B_FAST_REPLAY_HISTORY_ROW_INVALID: {ticker}")
+            if any(trade.get(field) != PROMOTED_STRATEGY_ID for field in (
+                "strategy_id", "entry_strategy_id", "exit_strategy_id",
+            )):
+                raise Phase4BError(f"PHASE4B_FAST_REPLAY_MIXED_TRADE_LINEAGE: {ticker}")
+        audits = core.get("promotion_gate_audit") or []
+        if not isinstance(audits, list):
+            raise Phase4BError(f"PHASE4B_FAST_REPLAY_GATE_AUDIT_INVALID: {ticker}")
+        if any(not isinstance(row, dict) for row in audits):
+            raise Phase4BError(f"PHASE4B_FAST_REPLAY_GATE_AUDIT_ROW_INVALID: {ticker}")
+        audit_rows.extend(audits)
+
+    signal_dates = [str(row.get("signal_date") or "")[:10] for row in audit_rows]
+    signal_dates = [value for value in signal_dates if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value)]
+    passed_dates = [
+        str(row.get("signal_date") or "")[:10]
+        for row in audit_rows
+        if row.get("allowed") is True
+        and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(row.get("signal_date") or "")[:10])
+    ]
+    return {
+        "type": "PUBLISHED_COMMON_REPORTS",
+        "report_count": len(common_reports),
+        "requested_as_of": requested_as_of,
+        "reference_market_date": reference_market_date,
+        "first_v2_candidate_signal_date": min(signal_dates) if signal_dates else None,
+        "last_v2_candidate_signal_date": max(signal_dates) if signal_dates else None,
+        "first_alignment_gate_pass_signal_date": min(passed_dates) if passed_dates else None,
+        "base_candidate_signal_count": len(audit_rows),
+        "alignment_gate_pass_count": sum(row.get("reason_code") == "PASS_ALIGNMENT_MCAP_500B" for row in audit_rows),
+        "output_strategy_id": PROMOTED_STRATEGY_ID,
+    }
+
+
+def finalize_full_history_alignment_reports(
+    staging_dir: Path,
+    common_tickers: set[str],
+    requested_as_of: str,
+    reference_market_date: str,
+) -> dict[str, Any]:
+    """Attach one corpus-wide replay digest/scope after all 4B reports exist."""
+    common_reports: list[tuple[str, Path, dict[str, Any]]] = []
+    seen: set[str] = set()
+    for path in sorted((Path(staging_dir) / "json").glob("*.json")):
+        report = json.loads(path.read_text(encoding="utf-8"))
+        ticker = str(report.get("ticker") or "").strip().upper().zfill(6)
+        if report.get("asset_type") != "COMMON":
+            continue
+        if ticker in seen:
+            raise Phase4BError(f"PHASE4B_FAST_REPLAY_DUPLICATE_TICKER: {ticker}")
+        seen.add(ticker)
+        if ticker not in {str(value).zfill(6) for value in common_tickers}:
+            raise Phase4BError(f"PHASE4B_FAST_REPLAY_OUTSIDE_COMMON_SCOPE: {ticker}")
+        if report.get("requested_as_of") != requested_as_of or report.get("reference_market_date") != reference_market_date:
+            raise Phase4BError(f"PHASE4B_FAST_REPLAY_DATE_MISMATCH: {ticker}")
+        common_reports.append((ticker, path, report))
+    if seen != {str(value).zfill(6) for value in common_tickers}:
+        raise Phase4BError("PHASE4B_FAST_REPLAY_COMMON_SCOPE_MISMATCH")
+
+    scope = _full_history_replay_scope(common_reports, requested_as_of, reference_market_date)
+    material = "".join(
+        _canonical_json({"ticker": ticker, "a_fast_core": _canonical_replay_core(report["a_fast_core"])}) + "\n"
+        for ticker, _path, report in sorted(common_reports)
+    )
+    digest = hashlib.sha256(material.encode("utf-8")).hexdigest()
+    for _ticker, path, report in common_reports:
+        core = report["a_fast_core"]
+        core.pop("activation_intervals", None)
+        core.pop("promotion_gate_status", None)
+        core.pop("effective_signal_date", None)
+        core["strategy_replay_scope"] = scope
+        core["strategy_replay_digest"] = digest
+        path.write_text(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8")
+    return {
+        "valid": True,
+        "strategy_replay_mode": FULL_HISTORY_ALIGNMENT_WEB,
+        "strategy_id": PROMOTED_STRATEGY_ID,
+        "strategy_replay_digest": digest,
+        "strategy_replay_scope": scope,
+    }
+
+
+def validate_full_history_alignment_corpus(
+    staging_dir: Path,
+    requested_as_of: str,
+    reference_market_date: str,
+    expected_common_tickers: set[str] | None = None,
+) -> dict[str, Any]:
+    """Verify one digest/scope, one Alignment lineage, and OPEN projection per COMMON report."""
+    common_reports: list[tuple[str, Path, dict[str, Any]]] = []
+    seen: set[str] = set()
+    reasons: list[str] = []
+    reported_digests: set[str] = set()
+    reported_scopes: list[dict[str, Any]] = []
+    trade_count = 0
+    open_count = 0
+    for path in sorted((Path(staging_dir) / "json").glob("*.json")):
+        try:
+            report = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError):
+            reasons.append("REPORT_JSON_INVALID")
+            continue
+        if report.get("asset_type") != "COMMON":
+            continue
+        ticker = str(report.get("ticker") or "").strip().upper().zfill(6)
+        if not ticker or ticker in seen:
+            reasons.append("COMMON_TICKER_DUPLICATE_OR_MISSING")
+            continue
+        seen.add(ticker)
+        if report.get("requested_as_of") != requested_as_of or report.get("reference_market_date") != reference_market_date:
+            reasons.append("REPORT_DATE_MISMATCH")
+        core = report.get("a_fast_core") or {}
+        if core.get("strategy_id") != PROMOTED_STRATEGY_ID or core.get("strategy_replay_mode") != FULL_HISTORY_ALIGNMENT_WEB:
+            reasons.append("STRATEGY_ID_OR_REPLAY_MODE_MISMATCH")
+        if core.get("activation_intervals") or core.get("promotion_gate_status") not in (None, "") or core.get("effective_signal_date") not in (None, ""):
+            reasons.append("OPERATIONAL_ACTIVATION_METADATA_PRESENT")
+        digest = core.get("strategy_replay_digest")
+        scope = core.get("strategy_replay_scope")
+        if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest) or not isinstance(scope, dict):
+            reasons.append("REPLAY_PROVENANCE_MISSING_OR_INVALID")
+        else:
+            reported_digests.add(digest)
+            reported_scopes.append(scope)
+        history = core.get("trade_history") or []
+        if not isinstance(history, list):
+            reasons.append("TRADE_HISTORY_INVALID")
+            history = []
+        trade_count += len(history)
+        current = core.get("current_trade")
+        open_history = [row for row in history if isinstance(row, dict) and row.get("trade_status") == "OPEN_AT_CUTOFF"]
+        if core.get("canonical_position") == "OPEN":
+            open_count += 1
+            if (
+                not isinstance(current, dict)
+                or current.get("trade_status") != "OPEN"
+                or len(open_history) != 1
+                or current.get("trade_id") != open_history[0].get("trade_id")
+            ):
+                reasons.append("OPEN_CURRENT_HISTORY_MISMATCH")
+        elif current is not None or open_history:
+            reasons.append("FLAT_CURRENT_HISTORY_MISMATCH")
+        for trade in [*history, *([current] if isinstance(current, dict) else [])]:
+            if any(trade.get(field) != PROMOTED_STRATEGY_ID for field in (
+                "strategy_id", "entry_strategy_id", "exit_strategy_id",
+            )):
+                reasons.append("MIXED_TRADE_LINEAGE")
+                break
+        common_reports.append((ticker, path, report))
+
+    if expected_common_tickers is not None and seen != {str(value).zfill(6) for value in expected_common_tickers}:
+        reasons.append("COMMON_SCOPE_MISMATCH")
+    if not common_reports:
+        reasons.append("COMMON_REPORTS_MISSING")
+    if len(reported_digests) != 1:
+        reasons.append("REPLAY_DIGEST_INCONSISTENT")
+    if reported_scopes and any(scope != reported_scopes[0] for scope in reported_scopes[1:]):
+        reasons.append("REPLAY_SCOPE_INCONSISTENT")
+
+    computed_digest = None
+    computed_scope = None
+    if common_reports:
+        try:
+            computed_scope = _full_history_replay_scope(common_reports, requested_as_of, reference_market_date)
+            material = "".join(
+                _canonical_json({"ticker": ticker, "a_fast_core": _canonical_replay_core(report["a_fast_core"])}) + "\n"
+                for ticker, _path, report in sorted(common_reports)
+            )
+            computed_digest = hashlib.sha256(material.encode("utf-8")).hexdigest()
+            if reported_digests != {computed_digest}:
+                reasons.append("REPLAY_DIGEST_RECOMPUTE_MISMATCH")
+            if reported_scopes and any(scope != computed_scope for scope in reported_scopes):
+                reasons.append("REPLAY_SCOPE_RECOMPUTE_MISMATCH")
+        except (KeyError, TypeError, ValueError, Phase4BError):
+            reasons.append("REPLAY_SCOPE_OR_DIGEST_CANNOT_RECOMPUTE")
+
+    return {
+        "valid": not reasons,
+        "reason_codes": sorted(set(reasons)),
+        "common_report_count": len(common_reports),
+        "strategy_id": PROMOTED_STRATEGY_ID if common_reports else None,
+        "strategy_replay_mode": FULL_HISTORY_ALIGNMENT_WEB if common_reports else None,
+        "strategy_replay_digest": next(iter(reported_digests)) if len(reported_digests) == 1 else None,
+        "computed_strategy_replay_digest": computed_digest,
+        "strategy_replay_scope": computed_scope,
+        "trade_count": trade_count,
+        "current_open_position_count": open_count,
+    }
 
 
 def _scanner_paths(root: Path, target_as_of: str) -> tuple[Path, Path]:
@@ -479,6 +733,7 @@ class GenerationOutcome:
 def _generate_one(
     ticker: str, *, target_as_of: str, reference_market_date: str, repository: Any, root: Path, staging_dir: Path,
     instrument_metadata_resolver: Any | None = None,
+    promotion_gate: AlignmentMcap500BGate | None = None,
 ) -> GenerationOutcome:
     try:
         fundamentals_section = load_fundamentals_section_from_production_artifact(
@@ -493,6 +748,8 @@ def _generate_one(
             "reference_market_date": reference_market_date,
             "output_dir": staging_dir,
             "save_artifacts": True,
+            "a_fast_replay_mode": FULL_HISTORY_ALIGNMENT_WEB,
+            "promotion_gate": promotion_gate,
         }
         if (
             instrument_metadata_resolver is not None
@@ -524,6 +781,7 @@ def _pool_worker_init(root_str: str, target_as_of: str, staging_dir_str: str) ->
     _POOL_STATE["root"] = root
     _POOL_STATE["staging_dir"] = Path(staging_dir_str)
     _POOL_STATE["repository"] = build_production_repository_v2(root, end=target_as_of)
+    _POOL_STATE["promotion_gate"] = get_historical_alignment_replay_gate(str(root.resolve()))
 
 
 def _pool_worker_generate(ticker: str, target_as_of: str, reference_market_date: str) -> GenerationOutcome:
@@ -535,6 +793,7 @@ def _pool_worker_generate(ticker: str, target_as_of: str, reference_market_date:
         root=_POOL_STATE["root"],
         staging_dir=_POOL_STATE["staging_dir"],
         instrument_metadata_resolver=resolve_target_instrument_metadata,
+        promotion_gate=_POOL_STATE["promotion_gate"],
     )
 
 
@@ -548,6 +807,7 @@ def generate_candidate_reports(
     staging_dir: Path,
     max_workers: int = 1,
     instrument_metadata_resolver: Any | None = None,
+    promotion_gate: AlignmentMcap500BGate | None = None,
 ) -> list[GenerationOutcome]:
     """staging_dir에 후보별 COMMON Stock Report v0.7을 생성한다. 개별 실패는 수집해 계속 진행하고
     (전체 생성 -> 전체 검증 -> promote 흐름을 위해), 최종 승격 여부는 호출자가 판단한다.
@@ -567,6 +827,7 @@ def generate_candidate_reports(
                     ticker, target_as_of=target_as_of, reference_market_date=reference_market_date,
                     repository=repository, root=root, staging_dir=staging_dir,
                     instrument_metadata_resolver=instrument_metadata_resolver,
+                    promotion_gate=promotion_gate,
                 )
             )
             if i % 25 == 0 or i == total:
@@ -631,6 +892,12 @@ def validate_corpus(
     if len(strategy_ids_seen) > 1:
         strategy_id_mismatches.extend(sorted(json_tickers))
 
+    replay_validation = validate_full_history_alignment_corpus(
+        staging_dir,
+        target_as_of,
+        reference_market_date,
+        candidate_tickers,
+    )
     return {
         "json_count": len(json_paths),
         "markdown_count": len(md_paths),
@@ -644,6 +911,8 @@ def validate_corpus(
         "strategy_id_mismatch_count": len(strategy_id_mismatches),
         "strategy_ids": sorted(strategy_ids_seen),
         "date_mismatch_count": len(date_mismatches),
+        "full_history_alignment_replay_valid": replay_validation["valid"],
+        "full_history_alignment_replay": replay_validation,
     }
 
 
@@ -672,6 +941,8 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
     phase4b_started = time.perf_counter()
     rows, summary = load_and_validate_scanner_input(root, target_as_of)
     reference_market_date = str(summary["reference_market_date"])
+    validate_replay_reference_authority(root, reference_market_date)
+    promotion_gate = get_historical_alignment_replay_gate(str(Path(root).resolve()))
     current_common = compute_current_common(rows)
     current_candidates = set(select_candidate_tickers(rows))
 
@@ -733,8 +1004,23 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
             staging_dir=staging_dir,
             max_workers=max_workers,
             instrument_metadata_resolver=resolve_target_instrument_metadata,
+            promotion_gate=promotion_gate,
         )
         errors = [o for o in outcomes if o.status == "ERROR"]
+
+        replay_finalization: dict[str, Any] | None = None
+        if not errors:
+            try:
+                replay_finalization = finalize_full_history_alignment_reports(
+                    staging_dir,
+                    target_ticker_set,
+                    target_as_of,
+                    reference_market_date,
+                )
+            except Exception as exc:  # noqa: BLE001 -- no promotion without complete provenance
+                errors.append(GenerationOutcome(
+                    ticker="*", status="ERROR", error=f"FAST_REPLAY_FINALIZATION_FAILED: {exc}",
+                ))
 
         corpus = validate_corpus(staging_dir, target_ticker_set, target_as_of, reference_market_date)
         positions = summarize_corpus_positions(staging_dir)
@@ -753,6 +1039,8 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
             and corpus["report_version_mismatch_count"] == 0
             and corpus["strategy_id_mismatch_count"] == 0
             and corpus["date_mismatch_count"] == 0
+            and corpus["full_history_alignment_replay_valid"] is True
+            and replay_finalization is not None
         )
         if success:
             promote_staging(staging_dir, canonical_dir)
@@ -790,6 +1078,8 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
         ),
         "promoted": promoted,
         "canonical_dir": str(canonical_dir) if promoted else None,
+        "full_history_alignment_replay_finalization": replay_finalization,
+        "full_history_alignment_replay": corpus["full_history_alignment_replay"],
     }
     return result
 

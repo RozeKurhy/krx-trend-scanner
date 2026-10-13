@@ -243,6 +243,69 @@ def _write_reports(path: Path, target: str, tickers: set[str]) -> None:
         _write_report(path, target, ticker)
 
 
+def _write_full_history_reports(
+    path: Path,
+    target: str,
+    tickers: set[str],
+    *,
+    open_tickers: set[str] | None = None,
+) -> None:
+    open_tickers = open_tickers or set()
+    json_dir = path / "json"
+    json_dir.mkdir(parents=True, exist_ok=True)
+    for ticker in sorted(tickers):
+        strategy_id = phase4b.PROMOTED_STRATEGY_ID
+        history = []
+        current_trade = None
+        position = "FLAT"
+        if ticker in open_tickers:
+            trade_id = f"{ticker.zfill(6)}_01"
+            history = [{
+                "trade_id": trade_id,
+                "trade_sequence": 1,
+                "entry_signal_date": "2026-09-15",
+                "entry_execution_date": "2026-09-16",
+                "entry_open": 10.0,
+                "trade_status": "OPEN_AT_CUTOFF",
+                "strategy_id": strategy_id,
+                "entry_strategy_id": strategy_id,
+                "exit_strategy_id": strategy_id,
+            }]
+            current_trade = {
+                "trade_id": trade_id,
+                "trade_sequence": 1,
+                "entry_signal_date": "2026-09-15",
+                "entry_execution_date": "2026-09-16",
+                "entry_open": 10.0,
+                "trade_status": "OPEN",
+                "strategy_id": strategy_id,
+                "entry_strategy_id": strategy_id,
+                "exit_strategy_id": strategy_id,
+            }
+            position = "OPEN"
+        report = {
+            "ticker": ticker,
+            "asset_type": "COMMON",
+            "report_version": "0.7",
+            "requested_as_of": target,
+            "reference_market_date": target,
+            "a_fast_core": {
+                "strategy_id": strategy_id,
+                "strategy_replay_mode": phase4b.FULL_HISTORY_ALIGNMENT_WEB,
+                "promotion_gate_audit": [],
+                "trade_history": history,
+                "current_trade": current_trade,
+                "canonical_position": position,
+                "activation_intervals": [],
+                "promotion_gate_status": None,
+                "effective_signal_date": None,
+            },
+        }
+        (json_dir / f"{ticker}_stock_report.json").write_text(json.dumps(report), encoding="utf-8")
+        (path / f"{ticker}_stock_report.md").write_text("# report\n", encoding="utf-8")
+    phase4b.finalize_full_history_alignment_reports(path, tickers, target, target)
+
+
 def _write_positive_fundamentals(root: Path, target: str, ticker: str = "000001") -> None:
     fundamentals_dir = root / "artifacts/fundamentals/production" / target.replace("-", "") / "tickers"
     fundamentals_dir.mkdir(parents=True, exist_ok=True)
@@ -302,7 +365,7 @@ def _patch_phase4b_target_inputs(
 def test_phase4b_noop_precheck_applies_fundamentals_filter(monkeypatch, tmp_path):
     target = "2026-09-17"
     canonical = tmp_path / "artifacts/reporting/stock_reports/20260917"
-    _write_reports(canonical, target, {"A", "B"})
+    _write_full_history_reports(canonical, target, {"A", "B"})
     _patch_phase4b_target_inputs(monkeypatch, tmp_path, {"A", "B", "C"})
     statuses = {
         "A": phase4b.LatestQuarterOperatingProfit("POSITIVE", value=1),
@@ -365,7 +428,7 @@ def test_phase4b_noop_precheck_regenerates_malformed_canonical(monkeypatch, tmp_
 def test_phase4b_noop_precheck_rescues_previous_open(monkeypatch, tmp_path):
     target = "2026-09-17"
     canonical = tmp_path / "artifacts/reporting/stock_reports/20260917"
-    _write_reports(canonical, target, {"A", "C"})
+    _write_full_history_reports(canonical, target, {"A", "C"}, open_tickers={"C"})
     _patch_phase4b_target_inputs(monkeypatch, tmp_path, {"A", "B", "C"}, {"C"})
     statuses = {
         "A": phase4b.LatestQuarterOperatingProfit("POSITIVE", value=1),
@@ -487,7 +550,7 @@ def test_phase4b_valid_exact_corpus_skips_runner(monkeypatch: pytest.MonkeyPatch
     _patch_calendar(monkeypatch, "2026-09-17")
     reports = tmp_path / "artifacts/reporting/stock_reports"
     _write_report(reports / "20260916", "2026-09-16")
-    _write_report(reports / "20260917", "2026-09-17")
+    _write_full_history_reports(reports / "20260917", "2026-09-17", {"000001"})
     _write_positive_fundamentals(tmp_path, "2026-09-17")
     monkeypatch.setattr(
         phase4e,
@@ -503,12 +566,50 @@ def test_phase4b_valid_exact_corpus_skips_runner(monkeypatch: pytest.MonkeyPatch
     assert result["phases"]["4B"]["status"] == "NOOP_ALREADY_COMPLETE"
 
 
+def test_phase4b_rebuilds_exact_date_v2_canonical_without_full_history_mode(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    target = "2026-09-17"
+    _write_scanner_fixture(tmp_path)
+    _patch_calendar(monkeypatch, target)
+    reports = tmp_path / "artifacts/reporting/stock_reports"
+    _write_report(reports / "20260916", "2026-09-16")
+    _write_report(reports / "20260917", target)
+    _write_positive_fundamentals(tmp_path, target)
+    result = phase4e._phase4b_noop_precheck(target, root=tmp_path)
+    assert result is None
+
+
+def test_phase4c_and_phase4d_stale_v2_monitor_are_not_noop(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    target = "2026-09-17"
+    _write_full_history_reports(
+        tmp_path / "artifacts/reporting/stock_reports" / target.replace("-", ""),
+        target,
+        {"000001"},
+    )
+    monitor_path = tmp_path / "web/data/strategy-monitor.json"
+    monitor_path.parent.mkdir(parents=True)
+    monitor_path.write_text(json.dumps({
+        "requested_as_of": target,
+        "reference_market_date": target,
+        "default_strategy_id": phase4b.EXPECTED_STRATEGY_ID,
+        "strategies": [{"id": phase4b.EXPECTED_STRATEGY_ID}],
+    }), encoding="utf-8")
+    published = {"reference_market_date": target, "validation": {}}
+    monkeypatch.setattr(phase4d, "inspect_published_payload", lambda *args, **kwargs: published)
+
+    assert phase4e._phase4c_noop_precheck(target, root=tmp_path) is None
+    assert phase4e._phase4d_noop_precheck(target, root=tmp_path) is None
+
+
 def test_common_only_publication_cannot_be_treated_as_complete_phase4d_noop(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _write_scanner_fixture(tmp_path)
     _patch_calendar(monkeypatch, "2026-09-17")
     reports = tmp_path / "artifacts/reporting/stock_reports"
     _write_report(reports / "20260916", "2026-09-16")
-    _write_report(reports / "20260917", "2026-09-17")
+    _write_full_history_reports(reports / "20260917", "2026-09-17", {"000001"})
     _write_positive_fundamentals(tmp_path, "2026-09-17")
     _write_web_fixture(tmp_path)
     monkeypatch.setattr(phase4e, "run_phase4a", lambda *args, **kwargs: pytest.fail("4A ran"))

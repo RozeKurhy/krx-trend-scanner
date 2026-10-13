@@ -163,6 +163,7 @@ def _default_previous_corpus(root: Path, previous_date: str = PREVIOUS) -> Path:
 
 def _fake_generate_stock_report(
     *, ticker, as_of, repo_root, repository, fundamentals_section, reference_market_date, output_dir, save_artifacts,
+    a_fast_replay_mode, promotion_gate,
 ):
     json_dir = Path(output_dir) / "json"
     json_dir.mkdir(parents=True, exist_ok=True)
@@ -170,7 +171,19 @@ def _fake_generate_stock_report(
         "report_version": "0.7",
         "requested_as_of": as_of,
         "reference_market_date": reference_market_date,
-        "a_fast_core": {"strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02"},
+        "asset_type": "COMMON",
+        "ticker": ticker,
+        "a_fast_core": {
+            "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+            "strategy_replay_mode": a_fast_replay_mode,
+            "promotion_gate_audit": [],
+            "trade_history": [],
+            "current_trade": None,
+            "canonical_position": "FLAT",
+            "activation_intervals": [],
+            "promotion_gate_status": None,
+            "effective_signal_date": None,
+        },
     }
     json_path = json_dir / f"{ticker}.json"
     json_path.write_text(json.dumps(payload), encoding="utf-8")
@@ -178,7 +191,7 @@ def _fake_generate_stock_report(
     md_path.write_text(f"# {ticker}", encoding="utf-8")
     fake_report = SimpleNamespace(
         report_version="0.7",
-        a_fast_core=SimpleNamespace(strategy_id="PATTERN_A_FAST_FINAL_STRATEGY_V02"),
+        a_fast_core=SimpleNamespace(strategy_id="PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"),
         requested_as_of=as_of,
         reference_market_date=reference_market_date,
     )
@@ -191,6 +204,8 @@ def patched_runner(monkeypatch):
     orchestration만 빠르게 검증한다."""
     monkeypatch.setattr(phase4b, "generate_stock_report", _fake_generate_stock_report)
     monkeypatch.setattr(phase4b, "build_production_repository_v2", lambda root, end: "FAKE_REPOSITORY_V2")
+    monkeypatch.setattr(phase4b, "validate_replay_reference_authority", lambda root, reference: None)
+    monkeypatch.setattr(phase4b, "get_historical_alignment_replay_gate", lambda root: "FAKE_ALIGNMENT_GATE")
     return monkeypatch
 
 

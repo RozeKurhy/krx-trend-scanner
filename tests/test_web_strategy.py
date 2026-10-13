@@ -14,7 +14,9 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPORTER_PATH = ROOT / "scripts/export_strategy_monitor_web.py"
+STOCK_EXPORTER_PATH = ROOT / "scripts/export_stock_report_web.py"
 MONITOR_PATH = ROOT / "web/data/strategy-monitor.json"
+REPLAY_RUNNER_PATH = ROOT / "scripts/rebuild_fast_web_canonical_alignment_staging_v01.py"
 
 
 def _load_exporter():
@@ -25,8 +27,35 @@ def _load_exporter():
     return module
 
 
+def _load_stock_exporter():
+    spec = importlib.util.spec_from_file_location("export_stock_report_web", STOCK_EXPORTER_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _load_replay_runner():
+    spec = importlib.util.spec_from_file_location("rebuild_fast_web_canonical_alignment_staging_v01", REPLAY_RUNNER_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def _load_monitor() -> dict:
     return json.loads(MONITOR_PATH.read_text(encoding="utf-8"))
+
+
+def test_full_history_open_current_projection_uses_open_status_and_history_cutoff_status():
+    runner = _load_replay_runner()
+    runner._validate_open_trade_status_pair(
+        {"trade_status": "OPEN"}, {"trade_status": "OPEN_AT_CUTOFF"},
+    )
+    with pytest.raises(ValueError, match="statuses are inconsistent"):
+        runner._validate_open_trade_status_pair(
+            {"trade_status": "OPEN_AT_CUTOFF"}, {"trade_status": "OPEN_AT_CUTOFF"},
+        )
 
 
 def _source_projection(ticker: str, exporter=None) -> dict:
@@ -712,6 +741,35 @@ def test_b_select_exporter_rejects_v1_rows_from_current_v2_history():
         )
 
 
+def test_fast_open_trade_preserves_no_exit_before_cutoff_reason():
+    exporter = _load_exporter()
+    trade = exporter._normalize_trade(
+        exporter.PROMOTED_STRATEGY_ID,
+        {
+            "strategy_id": exporter.PROMOTED_STRATEGY_ID,
+            "entry_strategy_id": exporter.PROMOTED_STRATEGY_ID,
+            "exit_strategy_id": exporter.PROMOTED_STRATEGY_ID,
+            "trade_sequence": 2,
+            "entry_signal_date": "2026-08-31",
+            "entry_execution_date": "2026-09-01",
+            "entry_open": 100.0,
+            "exit_type": "NO_EXIT_BEFORE_CUTOFF",
+            "exit_signal_date": None,
+            "exit_execution_date": None,
+            "exit_price": None,
+            "return_pct": 12.5,
+            "trade_status": "OPEN_AT_CUTOFF",
+        },
+        ticker="001800",
+        name="오리온홀딩스",
+        market="KOSPI",
+        asset_type="COMMON",
+        preserve_cutoff_exit_reason=True,
+    )
+
+    assert trade["exit_reason"] == "NO_EXIT_BEFORE_CUTOFF"
+
+
 def test_fast_promoted_history_lineage_uses_entry_signal_date():
     exporter = _load_exporter()
     promoted = exporter.PROMOTED_STRATEGY_ID
@@ -747,6 +805,69 @@ def test_fast_promoted_history_lineage_uses_entry_signal_date():
             [wrong_lineage],
             allowed_source_ids=exporter.FAST_STRATEGY_IDS,
             effective_signal_date="2025-01-01",
+        )
+
+
+def test_full_history_alignment_web_projection_requires_one_alignment_lineage():
+    stock_exporter = _load_stock_exporter()
+    monitor_exporter = _load_exporter()
+    promoted = monitor_exporter.PROMOTED_STRATEGY_ID
+    trade = {
+        "trade_id": "000001_01",
+        "ticker": "000001",
+        "trade_sequence": 1,
+        "strategy_id": promoted,
+        "entry_strategy_id": promoted,
+        "exit_strategy_id": promoted,
+        "entry_signal_date": "2020-01-31",
+        "entry_execution_date": "2020-02-03",
+        "entry_open": 100.0,
+        "entry_pattern_a_stage": "TRANSITION",
+        "exit_type": "LOSS_GUARD_CLOSE_LE_NEG_15",
+        "exit_signal_date": "2020-02-10",
+        "exit_execution_date": "2020-02-11",
+        "exit_price": 84.0,
+        "trade_status": "REALIZED",
+        "return_pct": -16.0,
+        "lifecycle_class": "NORMAL_EARLY_TREND_HANDOFF",
+    }
+    compact = stock_exporter._compact_trade_history({
+        "strategy_id": promoted,
+        "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+        "trade_history": [trade],
+    })
+    assert len(compact) == 1
+    assert compact[0]["strategy_id"] == promoted
+    assert compact[0]["entry_strategy_id"] == promoted
+    assert compact[0]["exit_strategy_id"] == promoted
+
+    mixed = dict(
+        trade,
+        strategy_id=monitor_exporter.STRATEGY_ID,
+        entry_strategy_id=monitor_exporter.STRATEGY_ID,
+        exit_strategy_id=monitor_exporter.STRATEGY_ID,
+    )
+    with pytest.raises(ValueError, match="strategy IDs do not match"):
+        stock_exporter._compact_trade_history({
+            "strategy_id": promoted,
+            "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+            "trade_history": [mixed],
+        })
+
+    monitor_exporter._validate_history_identities(
+        promoted,
+        [trade],
+        allowed_source_ids={promoted},
+        activation_intervals=[],
+        strategy_replay_mode="FULL_HISTORY_ALIGNMENT_WEB",
+    )
+    with pytest.raises(ValueError, match="non-Alignment"):
+        monitor_exporter._validate_history_identities(
+            promoted,
+            [mixed],
+            allowed_source_ids={monitor_exporter.STRATEGY_ID, promoted},
+            activation_intervals=[],
+            strategy_replay_mode="FULL_HISTORY_ALIGNMENT_WEB",
         )
 
 
@@ -824,6 +945,9 @@ def test_strategy_browser_validator_enforces_promoted_entry_date_lineage():
     assert "const expectedSourceId = activationIntervals.some" in source
     assert "parseSortableDate(effectiveDate) == null" in source
     assert 'gateStatus !== "ACTIVE"' in source
+    assert 'replayMode === "FULL_HISTORY_ALIGNMENT_WEB"' in source
+    assert 'trade.entry_strategy_id !== id' in source
+    assert 'trade.trade_id !== `${String(trade.ticker).padStart(6, "0")}' in source
 
 
 def test_three_strategy_trade_history_counts_identity_and_source_parity():

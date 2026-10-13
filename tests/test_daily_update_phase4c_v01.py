@@ -83,6 +83,141 @@ def test_phase4c_fast_monitor_rejects_invalid_or_missing_promotion_metadata():
         )
 
 
+def test_phase4c_fast_monitor_accepts_inactive_operational_historical_replay():
+    strategy_id = phase4c.PROMOTED_FAST_STRATEGY_ID
+    digest = "a" * 64
+    scope = {
+        "type": "PUBLISHED_COMMON_REPORTS",
+        "report_count": 2,
+        "requested_as_of": "2026-10-11",
+        "reference_market_date": "2026-10-08",
+        "output_strategy_id": strategy_id,
+    }
+    row = {
+        "id": strategy_id,
+        "scope": {"report_count": 2},
+        "items": [{"ticker": "000001"}, {"ticker": "000002"}],
+        "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+        "strategy_replay_digest": digest,
+        "strategy_replay_scope": scope,
+    }
+    monitor = {
+        "default_strategy_id": strategy_id,
+        "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+        "strategy_replay_digest": digest,
+        "strategy_replay_scope": scope,
+        "strategies": [row],
+    }
+
+    fast_id, by_id = phase4c._validate_fast_strategy_monitor(monitor, report_json_count=2)
+
+    assert fast_id == strategy_id
+    assert by_id[fast_id].get("promotion_gate_status") is None
+
+    row["strategy_replay_digest"] = "b" * 64
+    with pytest.raises(phase4c.Phase4CError, match="PHASE4C_FAST_FULL_HISTORY_REPLAY_PROVENANCE_INVALID"):
+        phase4c._validate_fast_strategy_monitor(monitor, report_json_count=2)
+
+
+def test_phase4c_fast_full_history_projection_checks_all_trades_and_open_items():
+    strategy_id = phase4c.PROMOTED_FAST_STRATEGY_ID
+    digest = "c" * 64
+    scope = {
+        "type": "PUBLISHED_COMMON_REPORTS",
+        "report_count": 2,
+        "requested_as_of": "2026-10-11",
+        "reference_market_date": "2026-10-08",
+        "output_strategy_id": strategy_id,
+    }
+    trade = {
+        "trade_id": "000001_01",
+        "trade_sequence": 1,
+        "entry_signal_date": "2026-09-15",
+        "entry_execution_date": "2026-09-16",
+        "entry_open": 10.0,
+        "exit_type": None,
+        "exit_signal_date": None,
+        "exit_execution_date": None,
+        "exit_price": None,
+        "return_pct": None,
+        "trade_status": "OPEN_AT_CUTOFF",
+        "strategy_id": strategy_id,
+        "entry_strategy_id": strategy_id,
+        "exit_strategy_id": strategy_id,
+    }
+    provenance = {
+        "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+        "strategy_replay_digest": digest,
+        "strategy_replay_scope": scope,
+        "strategy_id": strategy_id,
+    }
+    reports = {
+        "000001": {
+            "identity": {"asset_type": "COMMON"},
+            "strategy": {**provenance, "history": [trade]},
+        },
+        "000002": {
+            "identity": {"asset_type": "COMMON"},
+            "strategy": {**provenance, "history": []},
+        },
+    }
+    monitor_trade = {
+        "trade_id": "000001_01",
+        "ticker": "000001",
+        "trade_sequence": 1,
+        "entry_signal_date": "2026-09-15",
+        "entry_execution_date": "2026-09-16",
+        "entry_price": 10.0,
+        "exit_reason": None,
+        "exit_signal_date": None,
+        "exit_execution_date": None,
+        "exit_price": None,
+        "return_pct": None,
+        "trade_status": "OPEN_AT_CUTOFF",
+        "strategy_id": strategy_id,
+        "entry_strategy_id": strategy_id,
+        "exit_strategy_id": strategy_id,
+    }
+    monitor = {
+        "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+        "strategy_replay_digest": digest,
+        "strategy_replay_scope": scope,
+        "strategies": [{
+            "id": strategy_id,
+            "trade_history": [monitor_trade],
+            "items": [
+                {
+                    "ticker": "000001",
+                    "canonical_position": "OPEN",
+                    "current_trade": {
+                        "trade_sequence": 1,
+                        "entry_execution_date": "2026-09-16",
+                        "entry_open": 10.0,
+                        "trade_status": "OPEN_AT_CUTOFF",
+                        "strategy_id": strategy_id,
+                        "entry_strategy_id": strategy_id,
+                        "exit_strategy_id": strategy_id,
+                    },
+                },
+                {"ticker": "000002", "canonical_position": "FLAT", "current_trade": None},
+            ],
+        }],
+    }
+
+    result = phase4c.validate_fast_full_history_projection(reports, monitor, strategy_id)
+
+    assert result == {
+        "source_trade_count": 1,
+        "monitor_trade_count": 1,
+        "trade_mismatch_count": 0,
+        "source_open_position_count": 1,
+        "open_mismatch_count": 0,
+    }
+    monitor["strategies"][0]["items"][0]["current_trade"]["entry_open"] = 11.0
+    with pytest.raises(phase4c.Phase4CError, match="PHASE4C_FAST_SOURCE_MONITOR_PARITY_MISMATCH"):
+        phase4c.validate_fast_full_history_projection(reports, monitor, strategy_id)
+
+
 def _write_scanner_summary(
     root: Path,
     target_as_of: str,

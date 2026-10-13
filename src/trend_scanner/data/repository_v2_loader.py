@@ -42,16 +42,24 @@ class RepositoryV2DailyLoader:
         *,
         start: str = "1900-01-01",
         end: str | pd.Timestamp,
+        historical_identity: bool = False,
     ) -> None:
         self.repository = repository
         self.start = str(start)[:10]
         self.end = pd.Timestamp(end).strftime("%Y-%m-%d")
+        self.historical_identity = bool(historical_identity)
         self.load_count = 0
 
     def load(self, ticker: str) -> pd.DataFrame | None:
         self.load_count += 1
         try:
-            frame = self.repository.get_daily(str(ticker).zfill(6), self.start, self.end)
+            if self.historical_identity:
+                historical_reader = getattr(self.repository, "get_daily_historical_identity", None)
+                if historical_reader is None:
+                    raise MarketDataError("REPOSITORY_V2_HISTORICAL_IDENTITY_UNSUPPORTED")
+                frame = historical_reader(str(ticker).zfill(6), self.start, self.end)
+            else:
+                frame = self.repository.get_daily(str(ticker).zfill(6), self.start, self.end)
         except MarketDataError as exc:
             if str(exc) in EXPECTED_DATA_UNAVAILABLE:
                 return None

@@ -148,7 +148,9 @@ def test_exporter_writes_valid_compact_public_health_json(tmp_path, exporter, he
 
 def test_health_uses_actual_resolved_authority_values(health, exporter):
     requested_as_of, reference_market_date = exporter._load_as_of()
-    assert (requested_as_of, reference_market_date) == ("2026-09-25", "2026-09-23")
+    resolved_summary = exporter._read_json(exporter._resolve_scanner_summary())
+    assert requested_as_of == resolved_summary["requested_as_of"]
+    assert reference_market_date == resolved_summary["reference_market_date"]
     assert health["requested_as_of"] == requested_as_of
     assert health["reference_market_date"] == reference_market_date
     resolved_tickers, _, _ = exporter._load_universe(requested_as_of)
@@ -214,12 +216,15 @@ def test_health_uses_actual_resolved_authority_values(health, exporter):
     assert "backtest" not in health
 
 
-def test_current_repository_latest_resolver_selects_20260925(exporter):
-    assert exporter._resolve_scanner_summary().name == (
-        "pattern_a_universe_scan_20260925_summary.json"
-    )
-    assert exporter._load_as_of() == ("2026-09-25", "2026-09-23")
-    assert exporter._load_exact_as_of("2026-09-25") == "2026-09-23"
+def test_current_repository_latest_resolver_selects_latest_authority(exporter):
+    summary_path = exporter._resolve_scanner_summary()
+    summary = exporter._read_json(summary_path)
+    requested_as_of = summary["requested_as_of"]
+    reference_market_date = summary["reference_market_date"]
+
+    assert summary_path.name == f"pattern_a_universe_scan_{requested_as_of.replace('-', '')}_summary.json"
+    assert exporter._load_as_of() == (requested_as_of, reference_market_date)
+    assert exporter._load_exact_as_of(requested_as_of) == reference_market_date
 
 
 def test_market_data_accepts_distinct_certification_and_market_frontiers(exporter, monkeypatch):
@@ -513,7 +518,7 @@ def test_static_frontend_uses_relative_assets_and_required_dom():
     js = (ROOT / "web/js/app.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    assert 'href="./css/app.css?v=web-pattern-card-cleanup-14"' in html
+    assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in html
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in html
     assert 'const HEALTH_URL = "./data/health.json";' in js
     assert 'href="/css/app.css"' not in html

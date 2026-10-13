@@ -289,6 +289,53 @@ def test_validate_staging_accepts_promoted_fast_row_and_matching_report_id(monke
     assert result["stock_report_count"] == 1
 
 
+def test_validate_staging_accepts_inactive_full_history_replay_and_rejects_mismatched_digest(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+):
+    stage, documents = _health_validation_fixture(tmp_path)
+    promoted_id = phase4d.PROMOTED_STRATEGY_ID
+    digest = "d" * 64
+    scope = {
+        "type": "PUBLISHED_COMMON_REPORTS",
+        "report_count": 1,
+        "requested_as_of": "2026-09-17",
+        "reference_market_date": "2026-09-17",
+        "output_strategy_id": promoted_id,
+    }
+    monitor = documents["strategy-monitor.json"]
+    monitor.update({
+        "default_strategy_id": promoted_id,
+        "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+        "strategy_replay_digest": digest,
+        "strategy_replay_scope": scope,
+    })
+    monitor["strategies"][0].update({
+        "id": promoted_id,
+        "label": "A FAST Core V2 Alignment 500B",
+        "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+        "strategy_replay_digest": digest,
+        "strategy_replay_scope": scope,
+    })
+    documents["stocks/000001.json"]["strategy"].update({
+        "id": promoted_id,
+        "strategy_id": promoted_id,
+        "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+        "strategy_replay_digest": digest,
+        "strategy_replay_scope": scope,
+        "history": [],
+    })
+    monkeypatch.setattr(phase4d, "_read_json", lambda path: documents[path.relative_to(stage).as_posix()])
+
+    result = phase4d.validate_staging(stage, "2026-09-17", "2026-09-17")
+
+    assert result["fast_replay_projection"]["trade_mismatch_count"] == 0
+    assert result["fast_replay_projection"]["open_mismatch_count"] == 0
+
+    monitor["strategies"][0]["strategy_replay_digest"] = "e" * 64
+    with pytest.raises(phase4d.Phase4DError, match="PHASE4D_FAST_FULL_HISTORY_REPLAY_PROVENANCE_INVALID"):
+        phase4d.validate_staging(stage, "2026-09-17", "2026-09-17")
+
+
 def test_validate_staging_rejects_mismatched_promoted_report_and_monitor_ids(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     stage, documents = _health_validation_fixture(tmp_path)
     promoted_id = phase4d.PROMOTED_STRATEGY_ID

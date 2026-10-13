@@ -137,7 +137,7 @@
   let strategyMonitorPromise = null;
   let identityRoutesPromise = null;
   let strategyMonitorData = null;
-  let activeCommonStrategyId = "PATTERN_A_FAST_FINAL_STRATEGY_V02";
+  let activeCommonStrategyId = "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B";
 
   function readStoredTheme() {
     try {
@@ -384,8 +384,53 @@
     return Boolean(value && typeof value === "object" && Array.isArray(value.items) && Number.isInteger(value.count));
   }
 
+  function isExactIsoDate(value) {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const parsed = new Date(`${value}T00:00:00Z`);
+    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+  }
+
+  function validateFullHistoryAlignmentStrategy(value, ticker) {
+    const strategy = value.strategy;
+    if (strategy.strategy_replay_mode == null) return true;
+    if (strategy.strategy_replay_mode !== "FULL_HISTORY_ALIGNMENT_WEB") return false;
+
+    const strategyId = "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B";
+    const scope = strategy.strategy_replay_scope;
+    const technical = value.technical_details;
+    if (
+      value.identity.asset_type !== "COMMON" ||
+      strategy.id !== strategyId || strategy.strategy_id !== strategyId ||
+      !/^[0-9a-f]{64}$/.test(strategy.strategy_replay_digest || "") ||
+      !scope || typeof scope !== "object" || Array.isArray(scope) ||
+      scope.type !== "PUBLISHED_COMMON_REPORTS" ||
+      !Number.isInteger(scope.report_count) || scope.report_count <= 0 ||
+      !Number.isInteger(scope.base_candidate_signal_count) || scope.base_candidate_signal_count < 0 ||
+      !Number.isInteger(scope.alignment_gate_pass_count) || scope.alignment_gate_pass_count < 0 ||
+      scope.alignment_gate_pass_count > scope.base_candidate_signal_count ||
+      scope.output_strategy_id !== strategyId ||
+      scope.requested_as_of !== technical.requested_as_of ||
+      scope.reference_market_date !== technical.reference_market_date ||
+      !isExactIsoDate(scope.requested_as_of) || !isExactIsoDate(scope.reference_market_date) ||
+      Object.prototype.hasOwnProperty.call(strategy, "activation_intervals") ||
+      Object.prototype.hasOwnProperty.call(strategy, "promotion_gate_status") ||
+      Object.prototype.hasOwnProperty.call(strategy, "effective_signal_date") ||
+      !Array.isArray(strategy.history)
+    ) return false;
+
+    return strategy.history.every((trade) => (
+      trade && typeof trade === "object" &&
+      Number.isInteger(trade.trade_sequence) && trade.trade_sequence > 0 &&
+      trade.trade_id === `${ticker}_${String(trade.trade_sequence).padStart(2, "0")}` &&
+      isExactIsoDate(trade.entry_signal_date) &&
+      trade.strategy_id === strategyId &&
+      trade.entry_strategy_id === strategyId &&
+      trade.exit_strategy_id === strategyId
+    ));
+  }
+
   function validateReport(value, ticker, isuCd = null) {
-    return Boolean(
+    const validBase = Boolean(
       value && typeof value === "object" && value.identity && value.identity.ticker === ticker &&
       (!isuCd || value.identity.isu_cd === isuCd) &&
       value.decision && value.summary && value.price_trend && value.pattern && value.market_strength &&
@@ -393,6 +438,7 @@
       Array.isArray(value.fundamentals.quarterly) && Array.isArray(value.fundamentals.annual) &&
       value.fundamentals.summary && value.strategy && value.technical_details
     );
+    return validBase && validateFullHistoryAlignmentStrategy(value, ticker);
   }
 
   function loadStrategyMonitorOnce() {
@@ -461,7 +507,7 @@
 
   function commonStrategyActions(report, bSelectItem, bSelectStrategyId) {
     const aFast = report.strategy || {};
-    const aFastId = aFast.strategy_id || aFast.id || "PATTERN_A_FAST_FINAL_STRATEGY_V02";
+    const aFastId = aFast.strategy_id || aFast.id || "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B";
     return [
       {
         name: aFast.strategy_name || (aFastId === "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
@@ -1486,7 +1532,7 @@
     const bSelectId = monitorBSelectId(strategyMonitorData);
     const bSelectLabel = bSelectId === "PATTERN_B_SELECT_CORE_V01" ? "B Select Core V1" : "B Select Core V2";
     const aFast = report.strategy || {};
-    const aFastId = aFast.strategy_id || aFast.id || "PATTERN_A_FAST_FINAL_STRATEGY_V02";
+    const aFastId = aFast.strategy_id || aFast.id || "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B";
     const aFastLabel = aFast.strategy_name || (aFastId === "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
       ? "A FAST Core V2 Alignment 500B" : "A FAST Core V2");
     const tabs = [
@@ -1688,7 +1734,7 @@
     setText("report-availability", availabilityMessage);
     setHidden("report-availability", !availabilityMessage);
     const fastStrategy = report.strategy || {};
-    activeCommonStrategyId = fastStrategy.strategy_id || fastStrategy.id || "PATTERN_A_FAST_FINAL_STRATEGY_V02";
+    activeCommonStrategyId = fastStrategy.strategy_id || fastStrategy.id || "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B";
     renderStrategySummary(report);
     setText("decision-summary", buildSummary(report));
     if (identity.asset_type === "COMMON") {

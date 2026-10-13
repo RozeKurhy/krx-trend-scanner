@@ -26,9 +26,9 @@ def _load_payload() -> dict:
 def test_sector_page_activates_only_sector_rs_and_exposes_accessible_controls():
     html = _read(SECTOR_PAGE)
 
-    assert 'href="./css/app.css?v=web-dual-strategy-report-v1"' in html
+    assert 'href="./css/app.css?v=web-ui-chevron-v03"' in html
     assert '<a class="ranking-tab" href="./etf.html">ETF</a>' in html
-    assert 'src="./js/sector.js?v=web-sector-rs-cta-v2"' in html
+    assert 'src="./js/sector.js?v=web-ui-chevron-v03"' in html
     assert '<section class="page-intro"' not in html
     assert 'id="page-title"' not in html
     assert '<a class="ranking-tab" href="./market.html">마켓 RS</a>' in html
@@ -147,8 +147,8 @@ def test_sector_payload_report_availability_has_a_safe_non_link_branch():
     )
 
     script = _read(SECTOR_SCRIPT)
-    assert 'createElement("a", "sector-ranking-report ranking-report-link", "리포트 보기 ›")' in script
-    assert 'createElement("span", "sector-ranking-report ranking-report-link is-disabled", "리포트 준비 중")' in script
+    assert 'createElement("a", "row-chevron sector-ranking-report ranking-report-link", ">")' in script
+    assert 'createElement("span", "row-chevron sector-ranking-report ranking-report-link is-disabled", ">")' in script
 
 
 def test_sector_js_rank_helpers_use_real_javascript_null_semantics():

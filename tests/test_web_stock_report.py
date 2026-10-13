@@ -424,6 +424,13 @@ def test_report_frontend_has_safe_states_and_relative_assets():
     assert (ROOT / "web/favicon.svg").exists()
     assert '#9f1d2f' in favicon
     assert 'src="./js/report.js?v=web-ui-chevron-v03"' in html
+    assert 'function validateFullHistoryAlignmentStrategy(value, ticker)' in js
+    assert 'strategy.strategy_replay_mode !== "FULL_HISTORY_ALIGNMENT_WEB"' in js
+    assert 'strategy.strategy_replay_digest || ""' in js
+    assert 'scope.output_strategy_id !== strategyId' in js
+    assert 'Object.prototype.hasOwnProperty.call(strategy, "activation_intervals")' in js
+    assert 'trade.entry_strategy_id === strategyId' in js
+    assert 'return validBase && validateFullHistoryAlignmentStrategy(value, ticker);' in js
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert html.count("web-ui-chevron-v03") == 2
     assert index_html.count("web-dual-strategy-report-v1") == 1

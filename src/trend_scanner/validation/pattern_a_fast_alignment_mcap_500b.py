@@ -19,6 +19,7 @@ from typing import Any, Callable, Mapping
 
 import pandas as pd
 
+from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.krx_raw_stock_store import (
     DEFAULT_RAW_STOCK_ROOT,
     KrxRawStockStore,
@@ -34,6 +35,7 @@ from trend_scanner.universe.permanent_identity_exclusions import PERMANENT_IDENT
 V2_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
 PROMOTED_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
 PROMOTED_STRATEGY_NAME = "A FAST Core V2 Alignment 500B"
+HISTORICAL_ALIGNMENT_REPLAY_MODE = "FULL_HISTORY_ALIGNMENT_WEB"
 RESEARCH_GROUP_ID = "ALIGNMENT_MCAP_500B"
 PENDING_USER_APPROVAL = "PENDING_USER_APPROVAL"
 MARKET_CAP_THRESHOLD_KRW = 500_000_000_000
@@ -300,9 +302,14 @@ class AlignmentMcap500BGate:
         identity_resolver: Callable[[str, str, str], tuple[str, str] | None] | None = None,
         market_cap_resolver: Callable[[str, str, str], int | None] | None = None,
         activation_intervals: tuple[ActivationInterval, ...] | None = None,
+        historical_replay_mode: bool = False,
+        historical_adjusted_price_store: Any | None = None,
     ) -> None:
         self.repo_root = Path(repo_root)
         self.config = config
+        self.historical_replay_mode = bool(historical_replay_mode)
+        if self.historical_replay_mode and config.active:
+            raise AlignmentGateIntegrityError("HISTORICAL_REPLAY_REQUIRES_INACTIVE_OPERATIONAL_CONFIG")
         if activation_intervals is None and config.active:
             raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_REQUIRED")
         self.activation_intervals = activation_intervals if activation_intervals is not None else ()
@@ -315,12 +322,14 @@ class AlignmentMcap500BGate:
             raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_OPEN_WHILE_CONFIG_INACTIVE")
         self._identity_resolver = identity_resolver
         self._market_cap_resolver = market_cap_resolver
+        self._historical_adjusted_price_store = historical_adjusted_price_store
+        self._historical_adjusted_daily: dict[tuple[str, str], pd.DataFrame] = {}
         self._pit_by_ticker: dict[str, list[dict[str, Any]]] = {}
         self._pit_frontier: str | None = None
         self._raw_partitions: dict[tuple[str, str], pd.DataFrame | None] = {}
         self._decision_cache: dict[tuple[str, str, str], GateDecision] = {}
         self.registry_audit: dict[str, Any] | None = None
-        if config.active or self.activation_intervals:
+        if config.active or self.activation_intervals or self.historical_replay_mode:
             self.registry_audit = verify_permanent_exclusion_registry()
             if identity_resolver is None:
                 self._load_validated_pit()
@@ -404,6 +413,57 @@ class AlignmentMcap500BGate:
             return None
         return matches[0]["isu_cd"], matches[0]["market"]
 
+    def _resolve_pit_identity_by_date(self, ticker: str, signal_date: str) -> tuple[str, str] | None:
+        """Resolve a historical COMMON identity without assuming today's market.
+
+        Published Stock Reports carry the ticker's current market. A ticker can
+        have moved between KOSDAQ and KOSPI since an older signal date, so the
+        historical replay must take the market from the PIT interval active on
+        that signal date before it opens the exact-date raw partition.
+        """
+        if self._pit_frontier is not None and signal_date > self._pit_frontier:
+            return None
+        matches = [
+            row for row in self._pit_by_ticker.get(ticker, [])
+            if row["effective_from"] <= signal_date <= row["effective_to"]
+        ]
+        if len(matches) > 1:
+            raise AlignmentGateIntegrityError(f"PIT_IDENTITY_OVERLAP:{ticker}:{signal_date}")
+        if not matches:
+            return None
+        return matches[0]["isu_cd"], matches[0]["market"]
+
+    def _load_historical_transition_daily(
+        self,
+        ticker: str,
+        daily: pd.DataFrame,
+        signal_date: str,
+    ) -> pd.DataFrame:
+        """Load the adjusted analytical series for a PIT market transition."""
+        if daily is not None and not daily.empty:
+            index = pd.DatetimeIndex(pd.to_datetime(daily.index, errors="coerce"))
+            if index.isna().any():
+                raise AlignmentGateIntegrityError("HISTORICAL_TRANSITION_DAILY_INDEX_INVALID")
+            end = index.max().normalize()
+        else:
+            end = pd.Timestamp(signal_date).normalize()
+        end_str = end.strftime("%Y-%m-%d")
+        key = (ticker, end_str)
+        if key not in self._historical_adjusted_daily:
+            store = self._historical_adjusted_price_store
+            if store is None:
+                store = AdjustedPriceStore(self.repo_root / "data/market/adjusted/stocks")
+                self._historical_adjusted_price_store = store
+            try:
+                # Match the V02 historical identity correction authority while
+                # bounding the read to the report's certified market cutoff.
+                self._historical_adjusted_daily[key] = store.load_daily(ticker, end=end_str)
+            except Exception as exc:  # noqa: BLE001 -- invalid/missing authority fails replay closed
+                raise AlignmentGateIntegrityError(
+                    f"HISTORICAL_TRANSITION_ADJUSTED_SERIES_UNAVAILABLE:{ticker}:{end_str}"
+                ) from exc
+        return self._historical_adjusted_daily[key]
+
     def _load_raw_partition(self, market: str, signal_date: str) -> pd.DataFrame | None:
         key = (market, signal_date)
         if key in self._raw_partitions:
@@ -460,6 +520,36 @@ class AlignmentMcap500BGate:
             return None
         return int(amount)
 
+    def resolve_exact_pit_market_cap(
+        self,
+        ticker: str,
+        fallback_market: str,
+        as_of: Any,
+    ) -> tuple[int | None, str | None]:
+        """Resolve the exact raw KRX cap using the COMMON market active on ``as_of``.
+
+        This supports the historical web replay's current investability snapshot.
+        It never carries a prior cap forward or assumes the report's current
+        market was also active on an earlier reference date.
+        """
+        day = pd.Timestamp(as_of).normalize().strftime("%Y-%m-%d")
+        normalized_ticker = str(ticker).strip().zfill(6)
+        if self._identity_resolver is None:
+            identity = self._resolve_pit_identity_by_date(normalized_ticker, day)
+        else:
+            identity = self._identity_resolver(
+                normalized_ticker,
+                str(fallback_market).strip().upper(),
+                day,
+            )
+        if identity is None:
+            return None, None
+        _isu_cd, resolved_market = identity
+        resolved_market = str(resolved_market).strip().upper()
+        if not resolved_market:
+            return None, None
+        return self._resolve_market_cap(normalized_ticker, resolved_market, day), resolved_market
+
     def evaluate(
         self,
         ticker: str,
@@ -468,16 +558,53 @@ class AlignmentMcap500BGate:
         signal_date: Any,
     ) -> GateDecision:
         signal = pd.Timestamp(signal_date).normalize()
-        signal_str = signal.strftime("%Y-%m-%d")
         ticker = str(ticker).strip().zfill(6)
         market = str(market).strip().upper()
         if not self.is_promoted_signal(signal):
             return GateDecision(True, "PASS_V2_INACTIVE_OR_PRE_CUTOVER", {"strategy_id": V2_STRATEGY_ID})
+        return self._evaluate_alignment(ticker, market, daily, signal)
+
+    def evaluate_historical_alignment(
+        self,
+        ticker: str,
+        market: str,
+        daily: pd.DataFrame,
+        signal_date: Any,
+    ) -> GateDecision:
+        """Apply the exact Alignment entry gate to a historical web replay.
+
+        This mode is deliberately separate from operational activation history:
+        it never changes or fabricates activation intervals, and it is available
+        only while the operational config remains inactive.
+        """
+        if not self.historical_replay_mode:
+            raise AlignmentGateIntegrityError("HISTORICAL_REPLAY_MODE_NOT_ENABLED")
+        signal = pd.Timestamp(signal_date).normalize()
+        return self._evaluate_alignment(ticker, market, daily, signal, historical_market_resolution=True)
+
+    def _evaluate_alignment(
+        self,
+        ticker: str,
+        market: str,
+        daily: pd.DataFrame,
+        signal: pd.Timestamp,
+        *,
+        historical_market_resolution: bool = False,
+    ) -> GateDecision:
+        signal = pd.Timestamp(signal).normalize()
+        signal_str = signal.strftime("%Y-%m-%d")
+        ticker = str(ticker).strip().zfill(6)
+        market = str(market).strip().upper()
+        requested_market = market
         cache_key = (ticker, market, signal_str)
         if cache_key in self._decision_cache:
             return self._decision_cache[cache_key]
         if self._identity_resolver is None:
-            identity = self._resolve_pit_identity(ticker, market, signal_str)
+            identity = (
+                self._resolve_pit_identity_by_date(ticker, signal_str)
+                if historical_market_resolution
+                else self._resolve_pit_identity(ticker, market, signal_str)
+            )
         else:
             identity = self._identity_resolver(ticker, market, signal_str)
         if identity is None:
@@ -485,17 +612,22 @@ class AlignmentMcap500BGate:
             self._decision_cache[cache_key] = decision
             return decision
         isu_cd, identity_market = str(identity[0]).strip().upper(), str(identity[1]).strip().upper()
-        if not isu_cd or identity_market != market:
+        if not isu_cd or (identity_market != market and not historical_market_resolution):
             decision = GateDecision(False, "REJECT_IDENTITY_UNRESOLVED", {
                 "market": market, "resolved_market": identity_market, "signal_date": signal_str,
             })
             self._decision_cache[cache_key] = decision
             return decision
+        if historical_market_resolution:
+            market = identity_market
         if (ticker, isu_cd) in PERMANENT_IDENTITY_EXCLUSIONS:
             decision = GateDecision(False, "REJECT_PERMANENT_EXCLUSION", {"ticker": ticker, "isu_cd": isu_cd})
             self._decision_cache[cache_key] = decision
             return decision
-        alignment = monthly_alignment_decision(daily, signal)
+        alignment_daily = daily
+        if historical_market_resolution and identity_market != requested_market:
+            alignment_daily = self._load_historical_transition_daily(ticker, daily, signal_str)
+        alignment = monthly_alignment_decision(alignment_daily, signal)
         if not alignment.allowed:
             self._decision_cache[cache_key] = alignment
             return alignment
@@ -527,3 +659,19 @@ def get_production_alignment_gate(repo_root: str) -> AlignmentMcap500BGate:
     config = load_promotion_config(root)
     history = load_activation_history(root, config)
     return AlignmentMcap500BGate(root, config, activation_intervals=history)
+
+
+@lru_cache(maxsize=8)
+def get_historical_alignment_replay_gate(repo_root: str) -> AlignmentMcap500BGate:
+    """Create the explicit non-operational gate used by the full-history web replay."""
+    root = Path(repo_root).resolve()
+    config = load_promotion_config(root)
+    history = load_activation_history(root, config)
+    if config.active:
+        raise AlignmentGateIntegrityError("HISTORICAL_REPLAY_REQUIRES_INACTIVE_OPERATIONAL_CONFIG")
+    return AlignmentMcap500BGate(
+        root,
+        config,
+        activation_intervals=history,
+        historical_replay_mode=True,
+    )
