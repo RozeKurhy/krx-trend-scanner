@@ -281,40 +281,74 @@ def _compact_trade_history(strategy: dict[str, Any]) -> list[dict[str, Any]]:
     result = []
     default_strategy_id = str(strategy.get("strategy_id") or strategy.get("id") or "PATTERN_A_FAST_FINAL_STRATEGY_V02")
     promoted = default_strategy_id == "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
-    if promoted:
+    activation_intervals = strategy.get("activation_intervals") or []
+    if not isinstance(activation_intervals, list):
+        raise ValueError("A FAST activation history must be a list")
+    has_activation_history = bool(activation_intervals)
+    if promoted and not has_activation_history:
+        raise ValueError("promoted A FAST history requires the immutable activation interval ledger")
+    if has_activation_history:
         fields = ("trade_id", "strategy_id", "entry_strategy_id", "exit_strategy_id", *fields[1:])
-    effective_date = str(strategy.get("effective_signal_date") or "")
-    if promoted:
+    previous_end: str | None = None
+    seen_activation_ids: set[str] = set()
+    normalized_intervals: list[tuple[str, str | None]] = []
+    for interval in activation_intervals:
+        if not isinstance(interval, dict):
+            raise ValueError("A FAST activation history interval is invalid")
+        activation_id = interval.get("activation_id")
+        start = interval.get("effective_signal_date")
+        end = interval.get("rollback_effective_signal_date")
+        if (
+            not isinstance(activation_id, str) or not activation_id
+            or activation_id in seen_activation_ids
+            or not isinstance(start, str)
+            or (end is not None and not isinstance(end, str))
+        ):
+            raise ValueError("A FAST activation history interval fields are invalid")
         try:
-            if date.fromisoformat(effective_date).isoformat() != effective_date:
+            if date.fromisoformat(start).isoformat() != start:
+                raise ValueError
+            if end is not None and date.fromisoformat(end).isoformat() != end:
                 raise ValueError
         except ValueError as exc:
-            raise ValueError("promoted A FAST history requires an exact effective_signal_date") from exc
+            raise ValueError("A FAST activation history date is invalid") from exc
+        if (end is not None and end <= start) or (previous_end is None and normalized_intervals):
+            raise ValueError("A FAST activation history interval ordering is invalid")
+        if previous_end is not None and start < previous_end:
+            raise ValueError("A FAST activation history intervals overlap")
+        normalized_intervals.append((start, end))
+        previous_end = end
+        seen_activation_ids.add(activation_id)
+
+    def expected_strategy_id(signal_date: str) -> str:
+        try:
+            if date.fromisoformat(signal_date).isoformat() != signal_date:
+                raise ValueError
+        except ValueError as exc:
+            raise ValueError("A FAST history requires an exact entry_signal_date") from exc
+        matches = [
+            start <= signal_date and (end is None or signal_date < end)
+            for start, end in normalized_intervals
+        ]
+        if sum(matches) > 1:
+            raise ValueError("A FAST activation history overlaps at entry_signal_date")
+        return (
+            "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+            if any(matches)
+            else "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+        )
     for trade in history:
         if not isinstance(trade, dict):
             continue
         compact = {field: trade.get(field) for field in fields}
-        signal_date = str(trade.get("entry_signal_date") or "")[:10]
-        if promoted:
-            try:
-                if date.fromisoformat(signal_date).isoformat() != signal_date:
-                    raise ValueError
-            except ValueError as exc:
-                raise ValueError("promoted A FAST history requires an exact entry_signal_date") from exc
-            expected_trade_strategy_id = (
-                "PATTERN_A_FAST_FINAL_STRATEGY_V02"
-                if signal_date < effective_date
-                else "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
-            )
-            if compact["strategy_id"] not in {None, expected_trade_strategy_id}:
-                raise ValueError("A FAST history strategy ID does not match entry_signal_date lineage")
-            if compact["entry_strategy_id"] not in {None, expected_trade_strategy_id}:
-                raise ValueError("A FAST entry strategy ID does not match entry_signal_date lineage")
-            if compact["exit_strategy_id"] not in {None, expected_trade_strategy_id}:
-                raise ValueError("A FAST exit strategy ID does not match entry_signal_date lineage")
-            compact["strategy_id"] = expected_trade_strategy_id
-            compact["entry_strategy_id"] = compact["entry_strategy_id"] or compact["strategy_id"]
-            compact["exit_strategy_id"] = compact["exit_strategy_id"] or compact["entry_strategy_id"]
+        if has_activation_history:
+            signal_date = str(trade.get("entry_signal_date") or "")[:10]
+            expected_trade_strategy_id = expected_strategy_id(signal_date)
+            if any(
+                compact[key] != expected_trade_strategy_id
+                for key in ("strategy_id", "entry_strategy_id", "exit_strategy_id")
+            ):
+                raise ValueError("A FAST history strategy IDs do not match immutable entry-date lineage")
         result.append(compact)
     return result
 
@@ -450,6 +484,13 @@ def _compact_report(
             "interpretation": strategy.get("interpretation"),
             "history": _compact_trade_history(strategy),
         }
+        if strategy.get("activation_intervals"):
+            strategy_public.update({
+                "id": strategy.get("strategy_id"),
+                "strategy_id": strategy.get("strategy_id"),
+                "strategy_name": strategy.get("strategy_alias"),
+                "activation_intervals": copy.deepcopy(strategy.get("activation_intervals")),
+            })
         if strategy.get("strategy_id") == "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B":
             strategy_public.update({
                 "id": strategy.get("strategy_id"),

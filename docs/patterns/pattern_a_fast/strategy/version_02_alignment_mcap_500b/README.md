@@ -63,8 +63,20 @@ enabled를 켜려면 사용자 승인, 유효한 정확한 신호일, operationa
 
 실제 전환 전에는 shadow staging에서 source hash, exact PIT identity, 500B
 경계, 월봉 가용성, report/simulator/action/monitor 일치와 기존 V2 golden을
-확인해야 한다. rollback은 이후 신규 신호만 기존 V2로 돌린다. 이미 생성된
-거래 ID, 열린 포지션, 청산·공식 연구 기록은 재작성하지 않는다.
+확인해야 한다. 운영 적용 구간은
+`artifacts/patterns/pattern_a_fast/production/alignment_mcap_500b_activation_history.json`
+에 append-only로 기록한다. 시작일은 포함하고 `rollback_effective_signal_date`는
+V2 복귀일로 제외한다. 각 구간에는 승인 상태와 참조를 보존한다. 현재 enabled
+설정은 원장의 유일한 열린 구간과 시작일이 일치해야 하며, 비활성 설정에는 열린
+구간이 없어야 한다. 모순되면 재생과 발행을 fail-closed 한다.
+
+rollback 뒤에도 과거 승인 구간의 동일한 alignment·정확 PIT 시총 gate와 V2
+lifecycle을 재생한다. rollback일 이후 신규 신호만 V2로 진입한다. 요청일이
+rollback 뒤면 FAST top-level ID는 V2이고, monitor의 한 FAST 행은 과거 개선판
+거래와 신규 V2 거래를 함께 보존한다. 거래 ID, 순서, 신호·체결일, OPEN/EXIT,
+손익 및 진입·청산 전략 ID가 원장 기준과 다르면 추정으로 복구하지 않고 중단한다.
+초기 원장은 `intervals: []`이며 현재 운영 설정은 계속 비활성이다. 테스트는
+운영 설정과 분리된 임시 원장만 사용한다.
 
 보조 runner의 1조원 threshold는 이 전략의 운영 근거가 아니며 수정하지 않는다.
 공식 다섯 기간은 과거 비교 자료다. P2-1에서 총수익률은 31.1454%로 CONTROL의

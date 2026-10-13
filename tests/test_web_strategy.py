@@ -750,9 +750,78 @@ def test_fast_promoted_history_lineage_uses_entry_signal_date():
         )
 
 
+def test_fast_rollback_keeps_mixed_trade_lineage_in_one_v2_monitor_row():
+    exporter = _load_exporter()
+    intervals = [{
+        "activation_id": "fixture-activation-001",
+        "effective_signal_date": "2025-01-01",
+        "rollback_effective_signal_date": "2025-01-10",
+    }]
+    history = [
+        {
+            "strategy_id": exporter.STRATEGY_ID,
+            "entry_strategy_id": exporter.STRATEGY_ID,
+            "exit_strategy_id": exporter.STRATEGY_ID,
+            "ticker": "000001", "trade_sequence": 1,
+            "entry_signal_date": "2024-12-31", "entry_execution_date": "2025-01-02",
+        },
+        {
+            "strategy_id": exporter.PROMOTED_STRATEGY_ID,
+            "entry_strategy_id": exporter.PROMOTED_STRATEGY_ID,
+            "exit_strategy_id": exporter.PROMOTED_STRATEGY_ID,
+            "ticker": "000002", "trade_sequence": 1,
+            "entry_signal_date": "2025-01-01", "entry_execution_date": "2025-01-02",
+        },
+        {
+            "strategy_id": exporter.STRATEGY_ID,
+            "entry_strategy_id": exporter.STRATEGY_ID,
+            "exit_strategy_id": exporter.STRATEGY_ID,
+            "ticker": "000003", "trade_sequence": 1,
+            "entry_signal_date": "2025-01-10", "entry_execution_date": "2025-01-13",
+        },
+    ]
+    exporter._validate_history_identities(
+        exporter.STRATEGY_ID,
+        history,
+        allowed_source_ids=exporter.FAST_STRATEGY_IDS,
+        activation_intervals=intervals,
+    )
+
+    wrong_date_lineage = [dict(trade) for trade in history]
+    wrong_date_lineage[1]["entry_strategy_id"] = exporter.STRATEGY_ID
+    with pytest.raises(ValueError, match="inconsistent.*lineage"):
+        exporter._validate_history_identities(
+            exporter.STRATEGY_ID,
+            wrong_date_lineage,
+            allowed_source_ids=exporter.FAST_STRATEGY_IDS,
+            activation_intervals=intervals,
+        )
+
+    corrupted_interval_lineage = [dict(trade) for trade in history]
+    corrupted_interval_lineage[2]["strategy_id"] = exporter.PROMOTED_STRATEGY_ID
+    corrupted_interval_lineage[2]["entry_strategy_id"] = exporter.PROMOTED_STRATEGY_ID
+    corrupted_interval_lineage[2]["exit_strategy_id"] = exporter.PROMOTED_STRATEGY_ID
+    with pytest.raises(ValueError, match="does not match entry_signal_date"):
+        exporter._validate_history_identities(
+            exporter.STRATEGY_ID,
+            corrupted_interval_lineage,
+            allowed_source_ids=exporter.FAST_STRATEGY_IDS,
+            activation_intervals=intervals,
+        )
+
+    with pytest.raises(ValueError, match="duplicate"):
+        exporter._validate_history_identities(
+            exporter.STRATEGY_ID,
+            [history[0], dict(history[0])],
+            allowed_source_ids=exporter.FAST_STRATEGY_IDS,
+            activation_intervals=intervals,
+        )
+
+
 def test_strategy_browser_validator_enforces_promoted_entry_date_lineage():
     source = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
-    assert "const expectedSourceId = signalDate >= effectiveDate" in source
+    assert "const activationIntervals = strategy.activation_intervals" in source
+    assert "const expectedSourceId = activationIntervals.some" in source
     assert "parseSortableDate(effectiveDate) == null" in source
     assert 'gateStatus !== "ACTIVE"' in source
 

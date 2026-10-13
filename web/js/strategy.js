@@ -908,9 +908,30 @@
       if (FAST_STRATEGY_IDS.has(id)) {
         const gateStatus = strategy.promotion_gate_status;
         const effectiveDate = strategy.effective_signal_date;
+        const activationIntervals = strategy.activation_intervals == null ? [] : strategy.activation_intervals;
+        if (!Array.isArray(activationIntervals)) return false;
+        const activationIds = new Set();
+        let previousEnd = null;
+        for (let index = 0; index < activationIntervals.length; index += 1) {
+          const interval = activationIntervals[index];
+          if (
+            !interval || typeof interval.activation_id !== "string" || !interval.activation_id
+            || activationIds.has(interval.activation_id)
+            || parseSortableDate(interval.effective_signal_date) == null
+            || (interval.rollback_effective_signal_date != null
+              && parseSortableDate(interval.rollback_effective_signal_date) == null)
+            || (interval.rollback_effective_signal_date != null
+              && interval.rollback_effective_signal_date <= interval.effective_signal_date)
+            || (previousEnd == null && index > 0)
+            || (previousEnd != null && interval.effective_signal_date < previousEnd)
+          ) return false;
+          activationIds.add(interval.activation_id);
+          previousEnd = interval.rollback_effective_signal_date;
+        }
         if (
           (gateStatus != null && !["INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"].includes(gateStatus))
           || (id === "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B" && gateStatus !== "ACTIVE")
+          || (id === "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B" && activationIntervals.length === 0)
           || (gateStatus === "ACTIVE" && (
             id !== "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
             || parseSortableDate(effectiveDate) == null
@@ -921,6 +942,25 @@
             || parseSortableDate(effectiveDate) == null
           ))
         ) return false;
+        if (activationIntervals.length > 0 && value.requested_as_of) {
+          const asOf = parseSortableDate(value.requested_as_of);
+          if (asOf == null) return false;
+          const activeAtAsOf = activationIntervals.some((interval) => (
+            interval.effective_signal_date <= asOf
+            && (interval.rollback_effective_signal_date == null || asOf < interval.rollback_effective_signal_date)
+          ));
+          const expectedId = activeAtAsOf
+            ? "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+            : "PATTERN_A_FAST_FINAL_STRATEGY_V02";
+          if (id !== expectedId) return false;
+          if (gateStatus === "ACTIVE") {
+            const activeInterval = activationIntervals.find((interval) => (
+              interval.effective_signal_date <= asOf
+              && (interval.rollback_effective_signal_date == null || asOf < interval.rollback_effective_signal_date)
+            ));
+            if (!activeInterval || activeInterval.effective_signal_date !== effectiveDate) return false;
+          }
+        }
       }
       const seen = new Set();
       const counts = { entry: 0, hold: 0, exit: 0, watch: 0, unavailable: 0 };
@@ -936,17 +976,25 @@
           || (trade.return_pct != null && !Number.isFinite(Number(trade.return_pct)))
         ) return false;
         const sourceId = trade.strategy_id || id;
-        const allowedSourceIds = id === "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+        const activationIntervals = strategy.activation_intervals || [];
+        const allowedSourceIds = FAST_STRATEGY_IDS.has(id) && activationIntervals.length > 0
           ? FAST_STRATEGY_IDS
           : new Set([id]);
         const entrySourceId = trade.entry_strategy_id || sourceId;
         const exitSourceId = trade.exit_strategy_id || entrySourceId;
         if (!allowedSourceIds.has(sourceId) || entrySourceId !== sourceId || exitSourceId !== entrySourceId) return false;
-        if (id === "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B") {
+        if (FAST_STRATEGY_IDS.has(id) && activationIntervals.length > 0) {
           const signalDate = parseSortableDate(trade.entry_signal_date);
-          const effectiveDate = parseSortableDate(strategy.effective_signal_date);
-          if (signalDate == null || effectiveDate == null) return false;
-          const expectedSourceId = signalDate >= effectiveDate
+          if (
+            signalDate == null
+            || !trade.strategy_id
+            || !trade.entry_strategy_id
+            || !trade.exit_strategy_id
+          ) return false;
+          const expectedSourceId = activationIntervals.some((interval) => (
+            interval.effective_signal_date <= signalDate
+            && (interval.rollback_effective_signal_date == null || signalDate < interval.rollback_effective_signal_date)
+          ))
             ? "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
             : "PATTERN_A_FAST_FINAL_STRATEGY_V02";
           if (sourceId !== expectedSourceId) return false;

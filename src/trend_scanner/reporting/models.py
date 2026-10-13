@@ -558,6 +558,7 @@ class AFastCoreSection:
     research_group_id: str | None = None
     promotion_gate_status: str | None = None
     effective_signal_date: str | None = None
+    activation_intervals: list[dict[str, Any]] = field(default_factory=list)
     promotion_gate_audit: list[dict[str, Any]] = field(default_factory=list)
 
 
@@ -596,6 +597,8 @@ class StockReport:
         if self.pattern_b is None:
             payload.pop("pattern_b", None)
         core = payload.get("a_fast_core")
+        if isinstance(core, dict) and not self.a_fast_core.activation_intervals:
+            core.pop("activation_intervals", None)
         if isinstance(core, dict) and self.a_fast_core.promotion_gate_status is None:
             # Preserve the published V2 report payload exactly while the
             # promotion is inactive or the requested date precedes cutover.
@@ -611,10 +614,11 @@ class StockReport:
                     "alignment_mcap_500b_details",
                 ):
                     entry_conditions.pop(key, None)
-            for trade in [core.get("current_trade"), *(core.get("trade_history") or [])]:
-                if isinstance(trade, dict):
-                    for key in ("strategy_id", "entry_strategy_id", "exit_strategy_id"):
-                        trade.pop(key, None)
+            if not self.a_fast_core.activation_intervals:
+                for trade in [core.get("current_trade"), *(core.get("trade_history") or [])]:
+                    if isinstance(trade, dict):
+                        for key in ("strategy_id", "entry_strategy_id", "exit_strategy_id"):
+                            trade.pop(key, None)
         if self.report_version != "0.7":
             # v0.4 and v0.5 source contracts remain byte-compatible; the 24M
             # projection is an additive v0.7 COMMON display field. ETF v0.6

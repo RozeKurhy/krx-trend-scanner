@@ -112,12 +112,13 @@ def build_a_fast_core_section(
     )
     section.metadata_provenance_mode = metadata_provenance_mode
     section.strategy_id = gate.strategy_id_for_as_of(requested_as_of)
+    section.activation_intervals = gate.public_activation_intervals()
     if section.strategy_id == PROMOTED_STRATEGY_ID:
         section.strategy_version = "V02_ALIGNMENT_MCAP_500B"
         section.strategy_alias = PROMOTED_STRATEGY_NAME
         section.research_group_id = "ALIGNMENT_MCAP_500B"
         section.promotion_gate_status = "ACTIVE"
-        section.effective_signal_date = gate.config.effective_signal_date
+        section.effective_signal_date = gate.effective_signal_date_for_signal(requested_as_of)
         section.provenance.strategy_contract = PROMOTED_STRATEGY_ID
         section.provenance.strategy_contract_path = (
             "docs/patterns/pattern_a_fast/strategy/version_02_alignment_mcap_500b/README.md"
@@ -250,19 +251,13 @@ def _build_a_fast_core_section_impl(
 
     def entry_signal_allowed(signal_date: pd.Timestamp, _signal_result: Any) -> bool:
         signal = pd.Timestamp(signal_date).normalize()
-        effective = promotion_gate.config.effective_date
-        if not promotion_gate.config.active or effective is None or signal < effective:
+        if not promotion_gate.is_promoted_signal(signal):
             return True
         decision = promotion_gate.evaluate(ticker, market, daily_as_of, signal)
         alignment_gate_audit[signal.strftime("%Y-%m-%d")] = decision.to_dict(signal)
         return decision.allowed
 
-    effective_signal_date = promotion_gate.config.effective_date
-    promotion_filter_active = bool(
-        promotion_gate.config.active
-        and effective_signal_date is not None
-        and requested_as_of.normalize() >= effective_signal_date
-    )
+    promotion_filter_active = promotion_gate.has_promoted_signal_on_or_before(requested_as_of)
 
     try:
         trades = simulate_ticker_core_v02_reentry(
@@ -631,12 +626,9 @@ def _build_a_fast_core_section_impl(
             inst_ok and inv_ok and pa_ok and fast_trig_ok and m_reg_ok and d_risk_ok and sc_stat_ok and no_pos_ok
         )
         alignment_gate_decision = None
-        effective_signal_date = promotion_gate.config.effective_date
         if (
             base_conditions_met
-            and promotion_gate.config.active
-            and effective_signal_date is not None
-            and pd.Timestamp(latest_w).normalize() >= effective_signal_date
+            and promotion_gate.is_promoted_signal(latest_w)
         ):
             alignment_gate_decision = promotion_gate.evaluate(ticker, market, daily_as_of, latest_w)
             alignment_gate_audit[pd.Timestamp(latest_w).strftime("%Y-%m-%d")] = alignment_gate_decision.to_dict(latest_w)

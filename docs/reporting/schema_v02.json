@@ -109,6 +109,18 @@
         "research_group_id": { "type": "string", "enum": ["ALIGNMENT_MCAP_500B"] },
         "promotion_gate_status": { "type": "string", "enum": ["INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"] },
         "effective_signal_date": { "type": "string" },
+        "activation_intervals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["activation_id", "effective_signal_date", "rollback_effective_signal_date"],
+            "properties": {
+              "activation_id": { "type": "string" },
+              "effective_signal_date": { "type": "string", "format": "date" },
+              "rollback_effective_signal_date": { "type": ["string", "null"], "format": "date" }
+            }
+          }
+        },
         "promotion_gate_audit": { "type": "array", "items": { "type": "object" } },
         "strategy_status": { "type": "string" },
         "production_status": { "type": "string" },

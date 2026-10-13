@@ -76,9 +76,19 @@ def test_promoted_fast_trade_compaction_assigns_signal_date_lineage(exporter):
     strategy = {
         "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
         "effective_signal_date": "2025-01-01",
+        "activation_intervals": [{
+            "activation_id": "fixture-activation-001",
+            "effective_signal_date": "2025-01-01",
+            "rollback_effective_signal_date": None,
+        }],
         "trade_history": [
-            {"trade_id": "000001_01", "entry_signal_date": "2024-12-31", "entry_execution_date": "2025-01-02"},
-            {"trade_id": "000002_01", "entry_signal_date": "2025-01-01", "entry_execution_date": "2025-01-02"},
+            {"trade_id": "000001_01", "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+             "entry_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02", "exit_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+             "entry_signal_date": "2024-12-31", "entry_execution_date": "2025-01-02"},
+            {"trade_id": "000002_01", "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+             "entry_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+             "exit_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+             "entry_signal_date": "2025-01-01", "entry_execution_date": "2025-01-02"},
         ],
     }
     history = exporter._compact_trade_history(strategy)
@@ -93,14 +103,49 @@ def test_promoted_fast_trade_compaction_rejects_wrong_explicit_lineage(exporter)
     strategy = {
         "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
         "effective_signal_date": "2025-01-01",
+        "activation_intervals": [{
+            "activation_id": "fixture-activation-001",
+            "effective_signal_date": "2025-01-01",
+            "rollback_effective_signal_date": "2025-01-10",
+        }],
         "trade_history": [{
             "trade_id": "000001_01",
             "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
             "entry_signal_date": "2024-12-31",
         }],
     }
-    with pytest.raises(ValueError, match="does not match entry_signal_date lineage"):
+    with pytest.raises(ValueError, match="immutable entry-date lineage"):
         exporter._compact_trade_history(strategy)
+
+
+def test_rolled_back_v2_compaction_preserves_mixed_per_trade_ids(exporter):
+    strategy = {
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        "activation_intervals": [{
+            "activation_id": "fixture-activation-001",
+            "effective_signal_date": "2025-01-01",
+            "rollback_effective_signal_date": "2025-01-10",
+        }],
+        "trade_history": [
+            {"trade_id": "000001_01", "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+             "entry_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02", "exit_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+             "entry_signal_date": "2024-12-31", "entry_execution_date": "2025-01-02"},
+            {"trade_id": "000002_01", "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+             "entry_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+             "exit_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+             "entry_signal_date": "2025-01-01", "entry_execution_date": "2025-01-02"},
+            {"trade_id": "000003_01", "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+             "entry_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02", "exit_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+             "entry_signal_date": "2025-01-10", "entry_execution_date": "2025-01-13"},
+        ],
+    }
+
+    history = exporter._compact_trade_history(strategy)
+    assert [row["strategy_id"] for row in history] == [
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    ]
 
 
 def test_all_published_compact_reports_have_ticker_bound_naver_chart(payload):

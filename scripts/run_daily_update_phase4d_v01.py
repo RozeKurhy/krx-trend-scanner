@@ -8,6 +8,8 @@ no network path and never treats the prior web payload as an input authority.
 from __future__ import annotations
 
 import argparse
+import fcntl
+import hashlib
 import json
 import math
 import os
@@ -17,7 +19,8 @@ import re
 import shutil
 import sys
 import tempfile
-from typing import Any
+import uuid
+from typing import Any, Callable
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,6 +58,7 @@ FAST_STRATEGY_IDS = {STRATEGY_ID, PROMOTED_STRATEGY_ID}
 B_SELECT_ID = "PATTERN_B_SELECT_CORE_V02"
 JULIA_ID = "JULIA_ETF_STRATEGY_V01"
 B_SELECT_STATUS_STAGING_NAME = "b-select-status.json"
+PHASE4D_PUBLISH_JOURNAL = ".phase4d-publish-transaction.json"
 
 
 def _b_select_status_path(root: Path, target_as_of: str) -> Path:
@@ -911,39 +915,386 @@ def validate_staging(
     }
 
 
-def promote(stage_data: Path, web_data: Path, *, target_as_of: str) -> Path:
-    backup = web_data.parent / f".phase4d-stocks-backup-{os.getpid()}"
-    staged_stocks = stage_data / "stocks"
-    destination_stocks = web_data / "stocks"
-    status_source = stage_data / B_SELECT_STATUS_STAGING_NAME
-    status_destination = _b_select_status_path(web_data.parent.parent, target_as_of)
-    status_backup = status_destination.with_name(f".status-backup-{os.getpid()}.json")
-    status_destination.parent.mkdir(parents=True, exist_ok=True)
-    if backup.exists():
-        raise Phase4DError(f"PHASE4D_BACKUP_PATH_EXISTS: {backup}")
-    if status_backup.exists():
-        raise Phase4DError(f"PHASE4D_BACKUP_PATH_EXISTS: {status_backup}")
+def _phase4d_checkpoint(_name: str) -> None:
+    """Fault-injection seam; production execution intentionally does nothing."""
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _tree_manifest(path: Path) -> dict[str, Any] | None:
+    if not path.exists():
+        return None
+    if not path.is_dir():
+        raise Phase4DError(f"PHASE4D_PUBLISH_PATH_NOT_DIRECTORY: {path}")
+    directories = sorted(
+        item.relative_to(path).as_posix()
+        for item in path.rglob("*")
+        if item.is_dir()
+    )
+    files = {
+        item.relative_to(path).as_posix(): _sha256_file(item)
+        for item in sorted(path.rglob("*"))
+        if item.is_file()
+    }
+    return {"directories": directories, "files": files}
+
+
+def _path_is_within(path: Path, root: Path) -> bool:
     try:
-        if destination_stocks.exists():
-            destination_stocks.replace(backup)
-        staged_stocks.replace(destination_stocks)
-        for name in REQUIRED_FILES:
-            (stage_data / name).replace(web_data / name)
-        if status_destination.exists():
-            status_destination.replace(status_backup)
-        status_source.replace(status_destination)
-    except Exception:
-        if not destination_stocks.exists() and backup.exists():
-            backup.replace(destination_stocks)
-        if not status_destination.exists() and status_backup.exists():
-            status_backup.replace(status_destination)
-        raise
+        path.resolve().relative_to(root.resolve())
+    except ValueError:
+        return False
+    return True
+
+
+def _relative_to_root(path: Path, root: Path) -> str:
+    resolved = path.resolve()
+    try:
+        return resolved.relative_to(root.resolve()).as_posix()
+    except ValueError as exc:
+        raise Phase4DError(f"PHASE4D_TRANSACTION_PATH_OUTSIDE_ROOT: {path}") from exc
+
+
+def _transaction_path(root: Path, value: Any, field: str) -> Path:
+    if not isinstance(value, str) or not value:
+        raise Phase4DError(f"PHASE4D_TRANSACTION_PATH_INVALID:{field}")
+    path = (root / value).resolve()
+    if not _path_is_within(path, root):
+        raise Phase4DError(f"PHASE4D_TRANSACTION_PATH_OUTSIDE_ROOT:{field}")
+    return path
+
+
+def _write_transaction_journal(path: Path, payload: dict[str, Any]) -> None:
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        with temporary.open("w", encoding="utf-8") as stream:
+            json.dump(payload, stream, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False)
+            stream.write("\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+        try:
+            directory_fd = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+        except OSError:
+            pass
     finally:
-        if backup.exists():
-            shutil.rmtree(backup)
-        if status_backup.exists():
-            status_backup.unlink()
-    return status_destination
+        temporary.unlink(missing_ok=True)
+
+
+def _read_transaction_journal(path: Path) -> dict[str, Any]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise Phase4DError(f"PHASE4D_TRANSACTION_JOURNAL_INVALID:{path}") from exc
+    if not isinstance(payload, dict) or payload.get("schema") != "phase4d_publish_transaction_v02":
+        raise Phase4DError(f"PHASE4D_TRANSACTION_JOURNAL_SCHEMA_INVALID:{path}")
+    return payload
+
+
+def _status_digest(path: Path) -> str | None:
+    return _sha256_file(path) if path.is_file() else None
+
+
+def _remove_path(path: Path) -> None:
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink(missing_ok=True)
+
+
+def _restore_web_data(
+    web_data: Path,
+    backup_web_data: Path,
+    expected_manifest: dict[str, Any] | None,
+    restore_temporary: Path,
+) -> None:
+    current_manifest = _tree_manifest(web_data)
+    if current_manifest == expected_manifest:
+        return
+    if expected_manifest is None:
+        _remove_path(web_data)
+        return
+    if _tree_manifest(backup_web_data) != expected_manifest:
+        raise Phase4DError(f"PHASE4D_RECOVERY_WEB_DATA_BACKUP_MISSING_OR_CORRUPT: {backup_web_data}")
+    _remove_path(restore_temporary)
+    shutil.copytree(backup_web_data, restore_temporary)
+    if _tree_manifest(restore_temporary) != expected_manifest:
+        raise Phase4DError(f"PHASE4D_RECOVERY_WEB_DATA_COPY_MISMATCH: {restore_temporary}")
+    _remove_path(web_data)
+    os.replace(restore_temporary, web_data)
+    if _tree_manifest(web_data) != expected_manifest:
+        raise Phase4DError(f"PHASE4D_RECOVERY_WEB_DATA_READBACK_MISMATCH: {web_data}")
+
+
+def _restore_status(
+    status_destination: Path,
+    backup_status: Path,
+    expected_digest: str | None,
+    temporary: Path,
+) -> None:
+    if _status_digest(status_destination) == expected_digest:
+        return
+    if expected_digest is None:
+        status_destination.unlink(missing_ok=True)
+        return
+    if _status_digest(backup_status) != expected_digest:
+        raise Phase4DError(f"PHASE4D_RECOVERY_STATUS_BACKUP_MISSING_OR_CORRUPT: {backup_status}")
+    status_destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(backup_status, temporary)
+    if _status_digest(temporary) != expected_digest:
+        raise Phase4DError(f"PHASE4D_RECOVERY_STATUS_COPY_MISMATCH: {temporary}")
+    os.replace(temporary, status_destination)
+    if _status_digest(status_destination) != expected_digest:
+        raise Phase4DError(f"PHASE4D_RECOVERY_STATUS_READBACK_MISMATCH: {status_destination}")
+
+
+def _recover_pending_promotion(web_data: Path) -> dict[str, Any]:
+    root = web_data.parent.parent.resolve()
+    journal_path = web_data.parent / PHASE4D_PUBLISH_JOURNAL
+    if not journal_path.is_file():
+        orphan_transactions = sorted(web_data.parent.glob(".phase4d-publish-txn-*"))
+        if orphan_transactions:
+            exposed_backups = [
+                path for path in orphan_transactions
+                if (path / "previous-web-data").exists()
+                or (path / "previous-b-select-status.json").exists()
+            ]
+            if exposed_backups:
+                raise Phase4DError(
+                    "PHASE4D_ORPHAN_TRANSACTION_BACKUP_REQUIRES_REVIEW: "
+                    + ", ".join(str(path) for path in exposed_backups)
+                )
+            for path in orphan_transactions:
+                shutil.rmtree(path, ignore_errors=False)
+            return {"status": "UNPUBLISHED_STAGING_CLEANED"}
+        return {"status": "NO_PENDING_TRANSACTION"}
+
+    journal = _read_transaction_journal(journal_path)
+    tx_dir = _transaction_path(root, journal.get("transaction_dir"), "transaction_dir")
+    backup_web_data = _transaction_path(root, journal.get("backup_web_data"), "backup_web_data")
+    restore_web_data = _transaction_path(root, journal.get("restore_web_data"), "restore_web_data")
+    backup_status = _transaction_path(root, journal.get("backup_status"), "backup_status")
+    status_destination = _transaction_path(root, journal.get("status_destination"), "status_destination")
+    restore_status = _transaction_path(root, journal.get("restore_status"), "restore_status")
+    status_temporary = _transaction_path(root, journal.get("status_temporary"), "status_temporary")
+    old_manifest = journal.get("old_web_data_manifest")
+    old_status_digest = journal.get("old_status_sha256")
+
+    if journal.get("phase") == "COMMITTED":
+        if (
+            _tree_manifest(web_data) != journal.get("new_web_data_manifest")
+            or _status_digest(status_destination) != journal.get("new_status_sha256")
+        ):
+            raise Phase4DError(
+                f"PHASE4D_COMMITTED_SNAPSHOT_MISMATCH_BACKUPS_PRESERVED: {tx_dir}"
+            )
+        if tx_dir.exists():
+            shutil.rmtree(tx_dir, ignore_errors=True)
+        if tx_dir.exists():
+            raise Phase4DError(f"PHASE4D_COMMITTED_BACKUP_CLEANUP_CHECK_REQUIRED: {tx_dir}")
+        journal_path.unlink(missing_ok=True)
+        return {"status": "COMMITTED_TRANSACTION_FINALIZED", "transaction_id": journal.get("transaction_id")}
+
+    try:
+        _restore_web_data(web_data, backup_web_data, old_manifest, restore_web_data)
+        _restore_status(status_destination, backup_status, old_status_digest, restore_status)
+        if (
+            _tree_manifest(web_data) != old_manifest
+            or _status_digest(status_destination) != old_status_digest
+        ):
+            raise Phase4DError("PHASE4D_RECOVERY_OLD_SNAPSHOT_READBACK_MISMATCH")
+        status_temporary.unlink(missing_ok=True)
+    except Exception as exc:
+        raise Phase4DError(
+            f"PHASE4D_RECOVERY_FAILED_BACKUPS_PRESERVED:{tx_dir}: {exc}"
+        ) from exc
+    if tx_dir.exists():
+        shutil.rmtree(tx_dir, ignore_errors=True)
+    if tx_dir.exists():
+        raise Phase4DError(f"PHASE4D_RECOVERY_BACKUP_CLEANUP_FAILED_BACKUPS_PRESERVED: {tx_dir}")
+    journal_path.unlink(missing_ok=True)
+    return {
+        "status": "OLD_SNAPSHOT_RESTORED",
+        "transaction_id": journal.get("transaction_id"),
+        "restored_web_data_sha256": hashlib.sha256(
+            json.dumps(old_manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        ).hexdigest() if old_manifest is not None else None,
+    }
+
+
+def promote(
+    stage_data: Path,
+    web_data: Path,
+    *,
+    target_as_of: str,
+    post_publish_validate: Callable[[Path], Any] | None = None,
+) -> dict[str, Any]:
+    """Publish one complete web/data directory plus B Select status with recoverable rollback.
+
+    The web/data directory rename is atomic on its filesystem. B Select status
+    lives elsewhere and is replaced in a separate operation, so the cross-path
+    transaction is recoverable but not globally atomic; readers can briefly see
+    a missing web/data path or mismatched status while publication is in flight.
+    """
+    stage_data = Path(stage_data)
+    web_data = Path(web_data)
+    root = web_data.parent.parent.resolve()
+    status_source = stage_data / B_SELECT_STATUS_STAGING_NAME
+    status_destination = _b_select_status_path(root, target_as_of)
+    journal_path = web_data.parent / PHASE4D_PUBLISH_JOURNAL
+    lock_key = hashlib.sha256(str(root).encode("utf-8")).hexdigest()[:24]
+    lock_path = Path(tempfile.gettempdir()) / f"phase4d-publish-{lock_key}.lock"
+
+    if not (stage_data / "stocks").is_dir() or any(not (stage_data / name).is_file() for name in REQUIRED_FILES):
+        raise Phase4DError("PHASE4D_PROMOTION_STAGE_INCOMPLETE")
+    if not status_source.is_file():
+        raise Phase4DError("PHASE4D_PROMOTION_B_SELECT_STATUS_MISSING")
+    if not _path_is_within(stage_data, root) or not _path_is_within(status_destination, root):
+        raise Phase4DError("PHASE4D_PROMOTION_PATH_OUTSIDE_ROOT")
+
+    with lock_path.open("a+b") as lock_stream:
+        try:
+            fcntl.flock(lock_stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise Phase4DError("PHASE4D_PUBLICATION_ALREADY_IN_PROGRESS") from exc
+        try:
+            recovery = _recover_pending_promotion(web_data)
+            tx_id = uuid.uuid4().hex
+            tx_dir = web_data.parent / f".phase4d-publish-txn-{tx_id}"
+            tx_dir.mkdir()
+            new_snapshot = tx_dir / "new-web-data"
+            backup_web_data = tx_dir / "previous-web-data"
+            restore_web_data = tx_dir / "restore-web-data"
+            backup_status = tx_dir / "previous-b-select-status.json"
+            restore_status = tx_dir / "restore-b-select-status.json"
+            status_temporary = status_destination.with_name(f".{status_destination.name}.{tx_id}.tmp")
+            status_destination.parent.mkdir(parents=True, exist_ok=True)
+
+            old_manifest = _tree_manifest(web_data)
+            if web_data.exists():
+                shutil.copytree(web_data, new_snapshot)
+            else:
+                new_snapshot.mkdir()
+            staged_stocks = stage_data / "stocks"
+            new_stocks = new_snapshot / "stocks"
+            _remove_path(new_stocks)
+            shutil.copytree(staged_stocks, new_stocks)
+            _phase4d_checkpoint("after_stocks_stage_copy")
+            for name in REQUIRED_FILES:
+                temporary = new_snapshot / f".{name}.{tx_id}.tmp"
+                _phase4d_checkpoint(f"before_json_replace:{name}")
+                shutil.copy2(stage_data / name, temporary)
+                os.replace(temporary, new_snapshot / name)
+                _phase4d_checkpoint(f"after_json_replace:{name}")
+            new_manifest = _tree_manifest(new_snapshot)
+            new_status_digest = _sha256_file(status_source)
+            old_status_digest = _status_digest(status_destination)
+            journal = {
+                "schema": "phase4d_publish_transaction_v02",
+                "transaction_id": tx_id,
+                "target_as_of": target_as_of,
+                "phase": "PREPARED",
+                "transaction_dir": _relative_to_root(tx_dir, root),
+                "backup_web_data": _relative_to_root(backup_web_data, root),
+                "restore_web_data": _relative_to_root(restore_web_data, root),
+                "status_destination": _relative_to_root(status_destination, root),
+                "backup_status": _relative_to_root(backup_status, root),
+                "restore_status": _relative_to_root(restore_status, root),
+                "status_temporary": _relative_to_root(status_temporary, root),
+                "old_web_data_manifest": old_manifest,
+                "new_web_data_manifest": new_manifest,
+                "old_status_sha256": old_status_digest,
+                "new_status_sha256": new_status_digest,
+            }
+            _write_transaction_journal(journal_path, journal)
+
+            try:
+                if old_status_digest is not None:
+                    _phase4d_checkpoint("before_status_backup")
+                    shutil.copy2(status_destination, backup_status)
+                    if _status_digest(backup_status) != old_status_digest:
+                        raise Phase4DError("PHASE4D_STATUS_BACKUP_HASH_MISMATCH")
+                    _phase4d_checkpoint("after_status_backup")
+                shutil.copy2(status_source, status_temporary)
+                if _status_digest(status_temporary) != new_status_digest:
+                    raise Phase4DError("PHASE4D_STATUS_STAGE_COPY_HASH_MISMATCH")
+
+                _phase4d_checkpoint("before_stocks_backup")
+                if web_data.exists():
+                    os.replace(web_data, backup_web_data)
+                _phase4d_checkpoint("after_stocks_backup")
+                journal["phase"] = "WEB_DATA_BACKED_UP"
+                _write_transaction_journal(journal_path, journal)
+
+                _phase4d_checkpoint("before_stocks_promote")
+                os.replace(new_snapshot, web_data)
+                _phase4d_checkpoint("after_stocks_promote")
+                journal["phase"] = "WEB_DATA_PROMOTED"
+                _write_transaction_journal(journal_path, journal)
+
+                _phase4d_checkpoint("before_status_promote")
+                os.replace(status_temporary, status_destination)
+                _phase4d_checkpoint("after_status_promote")
+                journal["phase"] = "STATUS_PROMOTED"
+                _write_transaction_journal(journal_path, journal)
+
+                if _tree_manifest(web_data) != new_manifest or _status_digest(status_destination) != new_status_digest:
+                    raise Phase4DError("PHASE4D_PROMOTED_SNAPSHOT_HASH_MISMATCH")
+                _phase4d_checkpoint("before_post_readback")
+                readback = post_publish_validate(status_destination) if post_publish_validate is not None else None
+                _phase4d_checkpoint("after_post_readback")
+                journal["phase"] = "COMMITTED"
+                _write_transaction_journal(journal_path, journal)
+            except Exception as exc:
+                try:
+                    rollback = _recover_pending_promotion(web_data)
+                except Exception as recovery_exc:
+                    raise Phase4DError(
+                        f"PHASE4D_PROMOTION_FAILED_RECOVERY_CHECK_REQUIRED:{tx_dir}: "
+                        f"cause={exc}; recovery={recovery_exc}"
+                    ) from recovery_exc
+                if isinstance(exc, Phase4DError):
+                    raise Phase4DError(
+                        f"{exc}; rollback={rollback.get('status')}; transaction={tx_id}"
+                    ) from exc
+                raise Phase4DError(
+                    f"PHASE4D_PROMOTION_FAILED_ROLLED_BACK:{exc}; rollback={rollback.get('status')}; "
+                    f"transaction={tx_id}"
+                ) from exc
+
+            shutil.rmtree(tx_dir, ignore_errors=True)
+            if tx_dir.exists():
+                raise Phase4DError(f"PHASE4D_COMMITTED_BACKUP_CLEANUP_CHECK_REQUIRED: {tx_dir}")
+            journal_path.unlink(missing_ok=True)
+            return {
+                "status_path": status_destination,
+                "post_publish_readback": readback,
+                "publication": {
+                    "transaction_id": tx_id,
+                    "status": "COMMITTED_AND_READ_BACK",
+                    "consistency_boundary": "COMPLETE_WEB_DATA_DIRECTORY_PLUS_SEPARATE_B_SELECT_STATUS_REPLACE",
+                    "cross_path_atomicity": False,
+                    "temporary_exposure": "web/data may be briefly absent during directory rename; B Select status is replaced separately",
+                    "failure_recovery": "FULL_OLD_SNAPSHOT_RESTORED_BEFORE_BACKUP_CLEANUP",
+                    "prior_transaction_recovery": recovery.get("status"),
+                },
+            }
+        finally:
+            if "status_temporary" in locals():
+                status_temporary.unlink(missing_ok=True)
+            if "tx_dir" in locals() and tx_dir.exists() and not journal_path.exists():
+                shutil.rmtree(tx_dir, ignore_errors=True)
+            fcntl.flock(lock_stream.fileno(), fcntl.LOCK_UN)
 
 
 def run_phase4d(
@@ -955,6 +1306,12 @@ def run_phase4d(
 ) -> dict[str, Any]:
     if root != ROOT:
         raise Phase4DError("PHASE4D_REPOSITORY_ROOT_MISMATCH")
+    web_data = root / "web/data"
+    journal_path = web_data.parent / PHASE4D_PUBLISH_JOURNAL
+    if journal_path.exists():
+        if not execute_live:
+            raise Phase4DError("PHASE4D_PENDING_PUBLISH_RECOVERY_REQUIRES_EXECUTE_LIVE")
+        _recover_pending_promotion(web_data)
     published = (
         inspect_published_payload(root, target_as_of, require_etf_source=True)
         if phase4c_result is None
@@ -971,7 +1328,6 @@ def run_phase4d(
             "web_data_writes": 0,
             "published": published["validation"],
         }
-    web_data = root / "web/data"
     stage_root = Path(tempfile.mkdtemp(prefix=".phase4d-stage-", dir=web_data.parent))
     try:
         stage_data = stage_root / "data"
@@ -981,14 +1337,19 @@ def run_phase4d(
             stage_data, target_as_of, context["reference_market_date"], require_etf36=True,
         )
         if execute_live:
-            status_path = promote(stage_data, web_data, target_as_of=target_as_of)
-            readback = validate_staging(
+            promotion = promote(
+                stage_data,
                 web_data,
-                target_as_of,
-                context["reference_market_date"],
-                require_etf36=True,
-                b_select_status_path=status_path,
+                target_as_of=target_as_of,
+                post_publish_validate=lambda status_path: validate_staging(
+                    web_data,
+                    target_as_of,
+                    context["reference_market_date"],
+                    require_etf36=True,
+                    b_select_status_path=status_path,
+                ),
             )
+            readback = promotion["post_publish_readback"]
         else:
             readback = None
         return {
@@ -1001,6 +1362,7 @@ def run_phase4d(
             "sector_membership": context["sector_membership"],
             "staging": validation,
             "post_promote_readback": readback,
+            "publication": promotion["publication"] if execute_live else None,
         }
     finally:
         shutil.rmtree(stage_root, ignore_errors=True)

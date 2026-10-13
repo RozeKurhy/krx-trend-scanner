@@ -42,6 +42,10 @@ EXPECTED_EXCLUSION_SHA256 = "c0089f72ed390a2a1df9048d0dac1f309259422e3ff9e77c4f6
 DEFAULT_CONFIG_RELATIVE_PATH = Path(
     "artifacts/patterns/pattern_a_fast/production/alignment_mcap_500b_operational_config.json"
 )
+DEFAULT_ACTIVATION_HISTORY_RELATIVE_PATH = Path(
+    "artifacts/patterns/pattern_a_fast/production/alignment_mcap_500b_activation_history.json"
+)
+ACTIVATION_HISTORY_SCHEMA = "a_fast_core_alignment_mcap_500b_activation_history_v01"
 
 
 class AlignmentGateIntegrityError(RuntimeError):
@@ -67,6 +71,35 @@ class PromotionConfig:
         if not self.active:
             return None
         return pd.Timestamp(date.fromisoformat(self.effective_signal_date)).normalize()
+
+
+@dataclass(frozen=True)
+class ActivationInterval:
+    """An approved, immutable signal-date interval for the promoted entry gate.
+
+    ``rollback_effective_signal_date`` is exclusive: that signal date and later
+    dates use V2.  Closed intervals are append-only history; an open interval
+    must agree with the currently enabled operational config.
+    """
+
+    activation_id: str
+    effective_signal_date: str
+    rollback_effective_signal_date: str | None
+    approval_reference: str
+
+    def contains(self, signal_date: Any) -> bool:
+        value = pd.Timestamp(signal_date).strftime("%Y-%m-%d")
+        return (
+            value >= self.effective_signal_date
+            and (self.rollback_effective_signal_date is None or value < self.rollback_effective_signal_date)
+        )
+
+    def to_public_dict(self) -> dict[str, Any]:
+        return {
+            "activation_id": self.activation_id,
+            "effective_signal_date": self.effective_signal_date,
+            "rollback_effective_signal_date": self.rollback_effective_signal_date,
+        }
 
 
 @dataclass(frozen=True)
@@ -115,6 +148,81 @@ def load_promotion_config(repo_root: Path) -> PromotionConfig:
     if payload.get("permanent_exclusion_canonical_sha256") != EXPECTED_EXCLUSION_SHA256:
         raise AlignmentGateIntegrityError("PROMOTION_CONFIG_EXCLUSION_HASH_MISMATCH")
     return PromotionConfig(enabled=enabled, effective_signal_date=effective, operational_activation_approved=approved)
+
+
+def load_activation_history(
+    repo_root: Path,
+    config: PromotionConfig,
+) -> tuple[ActivationInterval, ...]:
+    """Load and validate the append-only approved activation/rollback ledger."""
+    path = Path(repo_root) / DEFAULT_ACTIVATION_HISTORY_RELATIVE_PATH
+    if not path.is_file():
+        if config.active:
+            raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_MISSING")
+        return ()
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise AlignmentGateIntegrityError(f"PROMOTION_ACTIVATION_HISTORY_INVALID:{path}") from exc
+    if (
+        not isinstance(payload, dict)
+        or payload.get("schema") != ACTIVATION_HISTORY_SCHEMA
+        or payload.get("strategy_id") != PROMOTED_STRATEGY_ID
+        or not isinstance(payload.get("intervals"), list)
+    ):
+        raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_SCHEMA_INVALID")
+
+    intervals: list[ActivationInterval] = []
+    activation_ids: set[str] = set()
+    previous_end: str | None = None
+    for raw in payload["intervals"]:
+        if not isinstance(raw, dict) or raw.get("approval_status") != "APPROVED":
+            raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_APPROVAL_INVALID")
+        activation_id = raw.get("activation_id")
+        start = raw.get("effective_signal_date")
+        end = raw.get("rollback_effective_signal_date")
+        approval_reference = raw.get("approval_reference")
+        if (
+            not isinstance(activation_id, str) or not activation_id.strip()
+            or activation_id in activation_ids
+            or not isinstance(approval_reference, str) or not approval_reference.strip()
+            or not isinstance(start, str)
+            or (end is not None and not isinstance(end, str))
+        ):
+            raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_FIELDS_INVALID")
+        try:
+            if date.fromisoformat(start).isoformat() != start:
+                raise ValueError
+            if end is not None and date.fromisoformat(end).isoformat() != end:
+                raise ValueError
+        except ValueError as exc:
+            raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_DATE_INVALID") from exc
+        if end is not None and end <= start:
+            raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_INTERVAL_INVALID")
+        if previous_end is None and intervals:
+            raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_OVERLAP_OR_OPEN_INTERVAL_NOT_LAST")
+        if previous_end is not None and start < previous_end:
+            raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_OVERLAP_OR_ORDER_INVALID")
+        interval = ActivationInterval(
+            activation_id=activation_id,
+            effective_signal_date=start,
+            rollback_effective_signal_date=end,
+            approval_reference=approval_reference,
+        )
+        intervals.append(interval)
+        activation_ids.add(activation_id)
+        previous_end = end
+
+    open_intervals = [interval for interval in intervals if interval.rollback_effective_signal_date is None]
+    if config.active:
+        if (
+            len(open_intervals) != 1
+            or open_intervals[0].effective_signal_date != config.effective_signal_date
+        ):
+            raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_CONFIG_MISMATCH")
+    elif open_intervals:
+        raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_OPEN_WHILE_CONFIG_INACTIVE")
+    return tuple(intervals)
 
 
 def canonical_exclusion_sha256(pairs: Any) -> str:
@@ -191,9 +299,20 @@ class AlignmentMcap500BGate:
         *,
         identity_resolver: Callable[[str, str, str], tuple[str, str] | None] | None = None,
         market_cap_resolver: Callable[[str, str, str], int | None] | None = None,
+        activation_intervals: tuple[ActivationInterval, ...] | None = None,
     ) -> None:
         self.repo_root = Path(repo_root)
         self.config = config
+        if activation_intervals is None and config.active:
+            raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_REQUIRED")
+        self.activation_intervals = activation_intervals if activation_intervals is not None else ()
+        self._validate_activation_intervals()
+        open_intervals = [interval for interval in self.activation_intervals if interval.rollback_effective_signal_date is None]
+        if config.active:
+            if len(open_intervals) != 1 or open_intervals[0].effective_signal_date != config.effective_signal_date:
+                raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_CONFIG_MISMATCH")
+        elif open_intervals:
+            raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_OPEN_WHILE_CONFIG_INACTIVE")
         self._identity_resolver = identity_resolver
         self._market_cap_resolver = market_cap_resolver
         self._pit_by_ticker: dict[str, list[dict[str, Any]]] = {}
@@ -201,17 +320,45 @@ class AlignmentMcap500BGate:
         self._raw_partitions: dict[tuple[str, str], pd.DataFrame | None] = {}
         self._decision_cache: dict[tuple[str, str, str], GateDecision] = {}
         self.registry_audit: dict[str, Any] | None = None
-        if config.active:
+        if config.active or self.activation_intervals:
             self.registry_audit = verify_permanent_exclusion_registry()
             if identity_resolver is None:
                 self._load_validated_pit()
 
     def strategy_id_for_signal(self, signal_date: Any) -> str:
-        effective = self.config.effective_date
-        return PROMOTED_STRATEGY_ID if effective is not None and pd.Timestamp(signal_date).normalize() >= effective else V2_STRATEGY_ID
+        return PROMOTED_STRATEGY_ID if self.is_promoted_signal(signal_date) else V2_STRATEGY_ID
+
+    def is_promoted_signal(self, signal_date: Any) -> bool:
+        day = pd.Timestamp(signal_date).normalize()
+        return any(interval.contains(day) for interval in self.activation_intervals)
+
+    def effective_signal_date_for_signal(self, signal_date: Any) -> str | None:
+        day = pd.Timestamp(signal_date).normalize()
+        matches = [interval for interval in self.activation_intervals if interval.contains(day)]
+        if len(matches) > 1:
+            raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_OVERLAP")
+        return matches[0].effective_signal_date if matches else None
+
+    def has_promoted_signal_on_or_before(self, as_of: Any) -> bool:
+        day = pd.Timestamp(as_of).normalize()
+        return any(pd.Timestamp(interval.effective_signal_date) <= day for interval in self.activation_intervals)
+
+    def public_activation_intervals(self) -> list[dict[str, Any]]:
+        return [interval.to_public_dict() for interval in self.activation_intervals]
 
     def strategy_id_for_as_of(self, as_of: Any) -> str:
-        return self.strategy_id_for_signal(as_of) if self.config.active else V2_STRATEGY_ID
+        return self.strategy_id_for_signal(as_of)
+
+    def _validate_activation_intervals(self) -> None:
+        previous_end: str | None = None
+        for index, interval in enumerate(self.activation_intervals):
+            if interval.rollback_effective_signal_date is None and index != len(self.activation_intervals) - 1:
+                raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_OPEN_INTERVAL_NOT_LAST")
+            if previous_end is None and index:
+                raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_OVERLAP")
+            if previous_end is not None and interval.effective_signal_date < previous_end:
+                raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_OVERLAP")
+            previous_end = interval.rollback_effective_signal_date
 
     def _load_validated_pit(self) -> None:
         authority_dir = self.repo_root / DEFAULT_ROLLING_AUTHORITY_DIR
@@ -324,7 +471,7 @@ class AlignmentMcap500BGate:
         signal_str = signal.strftime("%Y-%m-%d")
         ticker = str(ticker).strip().zfill(6)
         market = str(market).strip().upper()
-        if not self.config.active or signal < self.config.effective_date:
+        if not self.is_promoted_signal(signal):
             return GateDecision(True, "PASS_V2_INACTIVE_OR_PRE_CUTOVER", {"strategy_id": V2_STRATEGY_ID})
         cache_key = (ticker, market, signal_str)
         if cache_key in self._decision_cache:
@@ -377,4 +524,6 @@ class AlignmentMcap500BGate:
 @lru_cache(maxsize=8)
 def get_production_alignment_gate(repo_root: str) -> AlignmentMcap500BGate:
     root = Path(repo_root).resolve()
-    return AlignmentMcap500BGate(root, load_promotion_config(root))
+    config = load_promotion_config(root)
+    history = load_activation_history(root, config)
+    return AlignmentMcap500BGate(root, config, activation_intervals=history)

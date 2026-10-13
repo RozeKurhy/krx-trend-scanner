@@ -684,10 +684,16 @@ def _validate_history_identities(
     *,
     allowed_source_ids: set[str] | None = None,
     effective_signal_date: str | None = None,
+    activation_intervals: list[dict[str, Any]] | None = None,
 ) -> None:
-    allowed_source_ids = allowed_source_ids or {strategy_id}
+    if allowed_source_ids is None:
+        allowed_source_ids = (
+            FAST_STRATEGY_IDS
+            if strategy_id == PROMOTED_STRATEGY_ID or activation_intervals is not None
+            else {strategy_id}
+        )
     effective_date: date | None = None
-    if strategy_id == PROMOTED_STRATEGY_ID:
+    if strategy_id == PROMOTED_STRATEGY_ID and activation_intervals is None:
         try:
             effective_date = date.fromisoformat(str(effective_signal_date))
             if effective_date.isoformat() != effective_signal_date:
@@ -702,18 +708,32 @@ def _validate_history_identities(
         exit_id = str(trade.get("exit_strategy_id") or entry_id)
         if entry_id != source_id or exit_id != entry_id:
             raise ValueError(f"inconsistent {strategy_id} entry/exit strategy lineage")
-        if strategy_id == PROMOTED_STRATEGY_ID:
+        if strategy_id == STRATEGY_ID and activation_intervals is None:
+            if source_id != STRATEGY_ID:
+                raise ValueError("V2 A FAST history contains a promoted strategy lineage")
+        elif strategy_id in FAST_STRATEGY_IDS:
             try:
                 signal_date = date.fromisoformat(str(trade.get("entry_signal_date") or ""))
                 if signal_date.isoformat() != trade.get("entry_signal_date"):
                     raise ValueError
             except ValueError as exc:
-                raise ValueError("promoted A FAST trade requires an exact entry_signal_date") from exc
-            expected_id = PROMOTED_STRATEGY_ID if signal_date >= effective_date else STRATEGY_ID
+                raise ValueError("A FAST trade requires an exact entry_signal_date") from exc
+            if activation_intervals is None:
+                expected_id = PROMOTED_STRATEGY_ID if signal_date >= effective_date else STRATEGY_ID
+            else:
+                matches = [
+                    interval for interval in activation_intervals
+                    if str(interval["effective_signal_date"]) <= trade["entry_signal_date"]
+                    and (
+                        interval.get("rollback_effective_signal_date") is None
+                        or trade["entry_signal_date"] < str(interval["rollback_effective_signal_date"])
+                    )
+                ]
+                if len(matches) > 1:
+                    raise ValueError("A FAST activation intervals overlap at entry_signal_date")
+                expected_id = PROMOTED_STRATEGY_ID if matches else STRATEGY_ID
             if source_id != expected_id:
                 raise ValueError(f"A FAST history strategy ID does not match entry_signal_date: {trade.get('ticker')}")
-        elif strategy_id == STRATEGY_ID and source_id != STRATEGY_ID:
-            raise ValueError("V2 A FAST history contains a promoted strategy lineage")
     identities = [
         (
             str(trade.get("strategy_id") or strategy_id),
@@ -725,6 +745,48 @@ def _validate_history_identities(
     ]
     if len(identities) != len(set(identities)):
         raise ValueError(f"duplicate {strategy_id} trade identity")
+
+
+def _validate_fast_activation_intervals(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        raise ValueError("A FAST activation interval history is invalid")
+    normalized: list[dict[str, Any]] = []
+    activation_ids: set[str] = set()
+    previous_end: str | None = None
+    for index, raw in enumerate(value):
+        if not isinstance(raw, dict):
+            raise ValueError("A FAST activation interval row is invalid")
+        activation_id = raw.get("activation_id")
+        start = raw.get("effective_signal_date")
+        end = raw.get("rollback_effective_signal_date")
+        if (
+            not isinstance(activation_id, str) or not activation_id
+            or activation_id in activation_ids
+            or not isinstance(start, str)
+            or (end is not None and not isinstance(end, str))
+        ):
+            raise ValueError("A FAST activation interval fields are invalid")
+        try:
+            if date.fromisoformat(start).isoformat() != start:
+                raise ValueError
+            if end is not None and date.fromisoformat(end).isoformat() != end:
+                raise ValueError
+        except ValueError as exc:
+            raise ValueError("A FAST activation interval date is invalid") from exc
+        if end is not None and end <= start:
+            raise ValueError("A FAST activation interval end must be after its start")
+        if previous_end is None and index:
+            raise ValueError("A FAST open activation interval must be last")
+        if previous_end is not None and start < previous_end:
+            raise ValueError("A FAST activation intervals overlap or are unordered")
+        normalized.append({
+            "activation_id": activation_id,
+            "effective_signal_date": start,
+            "rollback_effective_signal_date": end,
+        })
+        activation_ids.add(activation_id)
+        previous_end = end
+    return normalized
 
 
 def _item_bucket(item: dict[str, Any]) -> str:
@@ -847,6 +909,7 @@ def build_strategy_monitor(
     fast_strategy_ids: set[str] = set()
     fast_gate_statuses: set[str] = set()
     fast_effective_signal_dates: set[str] = set()
+    fast_activation_history_json: set[str] = set()
     julia_history: list[dict[str, Any]] = []
     as_of_values: set[str] = set()
     reference_market_date_values: set[str] = set()
@@ -873,6 +936,12 @@ def build_strategy_monitor(
                 raise ValueError(f"invalid A FAST promotion gate status: {gate_status}")
             fast_gate_statuses.add(gate_status)
             fast_effective_signal_dates.add(effective_signal_date)
+            activation_intervals = _validate_fast_activation_intervals(
+                fast_source.get("activation_intervals") or []
+            )
+            fast_activation_history_json.add(json.dumps(
+                activation_intervals, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+            ))
             for trade in fast_source.get("history") or []:
                 if not isinstance(trade, dict):
                     raise ValueError(f"invalid A FAST trade history row: {ticker}")
@@ -1040,10 +1109,19 @@ def build_strategy_monitor(
     if len(fast_strategy_ids) > 1:
         raise ValueError(f"mixed top-level A FAST strategy IDs in report corpus: {sorted(fast_strategy_ids)}")
     fast_strategy_id = next(iter(fast_strategy_ids), STRATEGY_ID)
-    if len(fast_gate_statuses) > 1 or len(fast_effective_signal_dates) > 1:
+    if (
+        len(fast_gate_statuses) > 1
+        or len(fast_effective_signal_dates) > 1
+        or len(fast_activation_history_json) > 1
+    ):
         raise ValueError("mixed A FAST promotion gate status/effective date in report corpus")
     fast_gate_status = next(iter(fast_gate_statuses), "INACTIVE_PENDING_USER_APPROVAL")
     fast_effective_signal_date = next(iter(fast_effective_signal_dates), "PENDING_USER_APPROVAL")
+    fast_activation_intervals = (
+        json.loads(next(iter(fast_activation_history_json))) if fast_activation_history_json else []
+    )
+    if fast_strategy_id == PROMOTED_STRATEGY_ID and not fast_activation_intervals:
+        raise ValueError("promoted A FAST strategy requires its immutable activation interval history")
     if fast_strategy_id == PROMOTED_STRATEGY_ID:
         if fast_gate_status != "ACTIVE":
             raise ValueError("promoted A FAST strategy ID requires ACTIVE promotion gate status")
@@ -1056,12 +1134,26 @@ def build_strategy_monitor(
         raise ValueError("ACTIVE promotion gate must use the promoted A FAST strategy ID")
     elif fast_gate_status == "INACTIVE_PENDING_USER_APPROVAL" and fast_effective_signal_date != "PENDING_USER_APPROVAL":
         raise ValueError("pending A FAST promotion must retain PENDING_USER_APPROVAL date")
+    if resolved_as_of != "MIXED":
+        expected_current_id = STRATEGY_ID
+        for interval in fast_activation_intervals:
+            if (
+                str(interval.get("effective_signal_date", "")) <= resolved_as_of
+                and (
+                    interval.get("rollback_effective_signal_date") is None
+                    or resolved_as_of < str(interval.get("rollback_effective_signal_date"))
+                )
+            ):
+                expected_current_id = PROMOTED_STRATEGY_ID
+        if fast_strategy_id != expected_current_id:
+            raise ValueError("A FAST top-level strategy ID does not match requested_as_of activation history")
     fast_strategy_label = PROMOTED_STRATEGY_LABEL if fast_strategy_id == PROMOTED_STRATEGY_ID else STRATEGY_LABEL
     _validate_history_identities(
         fast_strategy_id,
         fast_history,
-        allowed_source_ids=(FAST_STRATEGY_IDS if fast_strategy_id == PROMOTED_STRATEGY_ID else {STRATEGY_ID}),
+        allowed_source_ids=(FAST_STRATEGY_IDS if fast_activation_intervals or fast_strategy_id == PROMOTED_STRATEGY_ID else {STRATEGY_ID}),
         effective_signal_date=(fast_effective_signal_date if fast_strategy_id == PROMOTED_STRATEGY_ID else None),
+        activation_intervals=fast_activation_intervals,
     )
     _validate_history_identities(
         b_select_strategy_id,
@@ -1143,6 +1235,7 @@ def build_strategy_monitor(
         {
             "id": fast_strategy_id,
             "label": fast_strategy_label,
+            **({"activation_intervals": fast_activation_intervals} if fast_activation_intervals else {}),
             **(
                 {
                     "research_group_id": "ALIGNMENT_MCAP_500B",

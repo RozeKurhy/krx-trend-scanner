@@ -173,6 +173,19 @@ v0.2에서 정한 사항은 다음과 같다.
         "promotion_gate_status": { "type": "string", "enum": ["INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"] },
         "effective_signal_date": { "type": "string" },
         "promotion_gate_audit": { "type": "array", "items": { "type": "object" } },
+        "activation_intervals": {
+          "type": "array",
+          "description": "Append-only approved A FAST entry-gate intervals; start inclusive, rollback date exclusive.",
+          "items": {
+            "type": "object",
+            "required": ["activation_id", "effective_signal_date", "rollback_effective_signal_date"],
+            "properties": {
+              "activation_id": { "type": "string" },
+              "effective_signal_date": { "type": "string", "format": "date" },
+              "rollback_effective_signal_date": { "type": ["string", "null"], "format": "date" }
+            }
+          }
+        },
         "trade_history": {
           "type": "array",
           "items": {

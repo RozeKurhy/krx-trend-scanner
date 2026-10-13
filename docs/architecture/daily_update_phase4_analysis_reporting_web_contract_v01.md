@@ -148,6 +148,17 @@ Julia의 Official ETF36을 각각 독립 투영한다. B Select current status�
 순매수의 `stock-index.json` 사용은 보통주 모집단을 정하는
 근거가 아니라 `report_available` 표시에만 한정된다.
 
+Phase4D는 검증을 마친 필수 JSON 6종과 `stocks/`를 포함한 `web/data/` 전체
+디렉터리를 같은 파일시스템의 새 디렉터리로 준비한 뒤 디렉터리 rename으로
+교체한다. B Select status는 기존 `artifacts/strategies/b_select_core_v2/production/`
+경로에서 별도 파일로 교체한다. 두 위치 사이에는 단일 원자적 공개 포인터가
+없으므로 전체 경로의 동시 원자성은 보장하지 않는다. `web/data/` 경로가 잠깐
+없거나 status와 정적 데이터가 잠깐 다른 세대일 수 있다. 발행 저널은 이전 전체
+스냅샷과 status를 readback 성공 전까지 보존한다. 예외 시 복구를 검증한 뒤에만
+백업을 정리하고, 프로세스 중단 시 다음 execute-live 재시도가 저널을 읽어 이전
+스냅샷을 복구하거나 검증 완료된 commit을 마무리한다. 복구 검증이 실패하면
+백업과 저널을 보존하고 CHECK_REQUIRED 오류로 중단한다.
+
 대상 입력·출력은 모두 `requested_as_of == target_as_of`와 같은 실행의
 `reference_market_date`를 명시하고, 혼합 날짜를 실패로 처리한다. 비거래일
 target에서 두 날짜가 다른 것은 혼합 날짜가 아니다. `health.json`은
