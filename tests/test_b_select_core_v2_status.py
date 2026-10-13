@@ -33,7 +33,7 @@ def test_fresh_history_replay_is_limited_to_the_approved_reference():
 
 
 def test_permanent_exclusions_block_new_entries():
-    assert len(status_v2.PERMANENT_IDENTITY_EXCLUSIONS) == 181
+    assert len(status_v2.PERMANENT_IDENTITY_EXCLUSIONS) == 185
     assert all(not status_v2._is_new_entry_allowed(*pair) for pair in status_v2.PERMANENT_IDENTITY_EXCLUSIONS)
 
 

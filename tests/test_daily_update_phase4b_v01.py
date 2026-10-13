@@ -18,6 +18,14 @@ import pytest
 
 import scripts.run_daily_update_phase4b_v01 as phase4b
 from trend_scanner.reporting.fundamentals_report import FundamentalsArtifactUnavailable
+from trend_scanner.validation.pattern_a_fast_alignment_mcap_500b import (
+    ACTIVATION_HISTORY_SCHEMA,
+    DEFAULT_ACTIVATION_HISTORY_RELATIVE_PATH,
+    AlignmentMcap500BGate,
+    PENDING_USER_APPROVAL,
+    PROMOTED_STRATEGY_ID,
+    get_historical_alignment_replay_gate,
+)
 
 
 TARGET = "2026-09-17"
@@ -103,6 +111,33 @@ def _write_fundamentals_artifact(
         },
     }
     (fund_dir / f"{ticker}.json").write_text(json.dumps(payload), encoding="utf-8")
+
+
+def _write_alignment_operational_authority(root: Path, *, active: bool) -> None:
+    source_root = Path(__file__).resolve().parents[1]
+    config_path = root / "artifacts/patterns/pattern_a_fast/production/alignment_mcap_500b_operational_config.json"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config = json.loads((source_root / config_path.relative_to(root)).read_text(encoding="utf-8"))
+    effective_date = "2026-10-11"
+    config.update({
+        "enabled": active,
+        "effective_signal_date": effective_date if active else PENDING_USER_APPROVAL,
+        "operational_activation_approved": active,
+    })
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+    history_path = root / DEFAULT_ACTIVATION_HISTORY_RELATIVE_PATH
+    history_path.parent.mkdir(parents=True, exist_ok=True)
+    history_path.write_text(json.dumps({
+        "schema": ACTIVATION_HISTORY_SCHEMA,
+        "strategy_id": PROMOTED_STRATEGY_ID,
+        "intervals": ([{
+            "activation_id": "phase4b-fixture-open-001",
+            "approval_status": "APPROVED",
+            "approval_reference": "PHASE4B_FIXTURE_APPROVAL",
+            "effective_signal_date": effective_date,
+            "rollback_effective_signal_date": None,
+        }] if active else []),
+    }), encoding="utf-8")
 
 
 _VALID_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
@@ -218,6 +253,58 @@ def _rows_with_states(states: dict[str, str]) -> list[dict[str, str]]:
         {"ticker": t, "name": f"종목{t}", "market": "KOSPI", "candidate_state": s}
         for t, s in states.items()
     ]
+
+
+def test_phase4b_sequential_and_worker_initializer_accept_active_and_inactive_web_authority(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(AlignmentMcap500BGate, "_load_validated_pit", lambda _self: None)
+    monkeypatch.setattr(phase4b, "build_production_repository_v2", lambda _root, end: ("FAKE_REPOSITORY_V2", end))
+    target_as_of = "2026-10-11"
+    reference_market_date = "2026-10-08"
+    tickers = ["000050", "000070"]
+    observed: list[tuple[str, bool, str]] = []
+
+    def fake_generate_stock_report(*, ticker, promotion_gate, a_fast_replay_mode, **_kwargs):
+        observed.append((ticker, promotion_gate.config.active, a_fast_replay_mode))
+        assert promotion_gate.historical_replay_mode is True
+
+    monkeypatch.setattr(phase4b, "generate_stock_report", fake_generate_stock_report)
+    for active in (False, True):
+        observed.clear()
+        root = tmp_path / ("active" if active else "inactive")
+        _write_alignment_operational_authority(root, active=active)
+        for ticker in tickers:
+            _write_fundamentals_artifact(root, target_as_of, ticker)
+        get_historical_alignment_replay_gate.cache_clear()
+        gate = get_historical_alignment_replay_gate(str(root.resolve()))
+        outcomes = phase4b.generate_candidate_reports(
+            tickers,
+            target_as_of=target_as_of,
+            reference_market_date=reference_market_date,
+            repository=("SEQUENTIAL_REPOSITORY",),
+            root=root,
+            staging_dir=root / "staging",
+            max_workers=1,
+            promotion_gate=gate,
+        )
+        assert [outcome.status for outcome in outcomes] == ["OK", "OK"]
+        assert observed == [
+            (ticker, active, phase4b.FULL_HISTORY_ALIGNMENT_WEB) for ticker in tickers
+        ]
+
+        observed.clear()
+        phase4b._POOL_STATE.clear()
+        phase4b._pool_worker_init(str(root), target_as_of, str(root / "worker-staging"))
+        worker_outcomes = [
+            phase4b._pool_worker_generate(ticker, target_as_of, reference_market_date)
+            for ticker in tickers
+        ]
+        assert [outcome.status for outcome in worker_outcomes] == ["OK", "OK"]
+        assert observed == [
+            (ticker, active, phase4b.FULL_HISTORY_ALIGNMENT_WEB) for ticker in tickers
+        ]
 
 
 # --- A. exact-target scanner artifact만 사용 -------------------------------------

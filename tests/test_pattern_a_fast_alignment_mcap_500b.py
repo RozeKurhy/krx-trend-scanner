@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
+from dataclasses import asdict
 from types import SimpleNamespace
 from pathlib import Path
 
@@ -27,6 +29,7 @@ from trend_scanner.validation.pattern_a_fast_alignment_mcap_500b import (
     PromotionConfig,
     V2_STRATEGY_ID,
     canonical_exclusion_sha256,
+    get_historical_alignment_replay_gate,
     load_promotion_config,
     load_activation_history,
     monthly_alignment_decision,
@@ -100,6 +103,47 @@ def _raw_snapshot(day: str, ticker: str = "999997", market_cap: int = MARKET_CAP
     }], columns=list(RAW_COLUMNS))
 
 
+def _write_replay_authorities(
+    root: Path,
+    *,
+    active: bool,
+    effective_signal_date: str = "2025-02-01",
+    intervals: list[dict] | None = None,
+    include_history: bool = True,
+    config_overrides: dict | None = None,
+) -> None:
+    source_root = Path(__file__).resolve().parents[1]
+    config_path = root / "artifacts/patterns/pattern_a_fast/production/alignment_mcap_500b_operational_config.json"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_payload = json.loads(config_path.read_text(encoding="utf-8")) if config_path.exists() else json.loads(
+        (source_root / "artifacts/patterns/pattern_a_fast/production/alignment_mcap_500b_operational_config.json").read_text(encoding="utf-8")
+    )
+    config_payload.update({
+        "enabled": active,
+        "effective_signal_date": effective_signal_date if active else PENDING_USER_APPROVAL,
+        "operational_activation_approved": active,
+    })
+    config_payload.update(config_overrides or {})
+    config_path.write_text(json.dumps(config_payload), encoding="utf-8")
+
+    if include_history:
+        history_path = root / DEFAULT_ACTIVATION_HISTORY_RELATIVE_PATH
+        history_path.parent.mkdir(parents=True, exist_ok=True)
+        if intervals is None:
+            intervals = ([{
+                "activation_id": "fixture-open-001",
+                "approval_status": "APPROVED",
+                "approval_reference": "FIXTURE_APPROVAL",
+                "effective_signal_date": effective_signal_date,
+                "rollback_effective_signal_date": None,
+            }] if active else [])
+        history_path.write_text(json.dumps({
+            "schema": ACTIVATION_HISTORY_SCHEMA,
+            "strategy_id": PROMOTED_STRATEGY_ID,
+            "intervals": intervals,
+        }), encoding="utf-8")
+
+
 def test_operational_config_stays_disabled_pending_approval(tmp_path):
     absent = load_promotion_config(tmp_path)
     assert absent.enabled is False
@@ -154,9 +198,207 @@ def test_historical_alignment_replay_gate_is_separate_from_operational_activatio
     with pytest.raises(AlignmentGateIntegrityError, match="HISTORICAL_REPLAY_MODE_NOT_ENABLED"):
         inactive_gate.evaluate_historical_alignment("999997", "KOSPI", _daily_prices(), SIGNAL_DATE)
 
-    active_config = PromotionConfig(enabled=True, effective_signal_date=EFFECTIVE_DATE, operational_activation_approved=True)
-    with pytest.raises(AlignmentGateIntegrityError, match="HISTORICAL_REPLAY_REQUIRES_INACTIVE_OPERATIONAL_CONFIG"):
-        AlignmentMcap500BGate(tmp_path, active_config, activation_intervals=_activation_history(), historical_replay_mode=True)
+    active_config = PromotionConfig(
+        enabled=True,
+        effective_signal_date="2025-01-16",
+        operational_activation_approved=True,
+    )
+    active_gate = AlignmentMcap500BGate(
+        tmp_path,
+        active_config,
+        identity_resolver=lambda _ticker, market, _day: ("KR7999997003", market),
+        market_cap_resolver=lambda *_args: MARKET_CAP_THRESHOLD_KRW,
+        activation_intervals=_activation_history("2025-01-16"),
+        historical_replay_mode=True,
+    )
+    assert active_gate.is_promoted_signal(SIGNAL_DATE) is False
+    assert active_gate.evaluate("999997", "KOSPI", _daily_prices(), SIGNAL_DATE).reason_code.startswith("PASS_V2")
+    assert active_gate.evaluate_historical_alignment(
+        "999997", "KOSPI", _daily_prices(), SIGNAL_DATE,
+    ).reason_code == "PASS_ALIGNMENT_MCAP_500B"
+
+
+def test_historical_web_replay_gate_accepts_valid_active_authority_and_matches_inactive_report(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+):
+    monkeypatch.setattr(AlignmentMcap500BGate, "_load_validated_pit", lambda _self: None)
+    get_historical_alignment_replay_gate.cache_clear()
+    inactive_root = tmp_path / "inactive"
+    active_root = tmp_path / "active"
+    _write_replay_authorities(inactive_root, active=False)
+    _write_replay_authorities(active_root, active=True, effective_signal_date="2025-02-01")
+
+    gates = [
+        get_historical_alignment_replay_gate(str(root.resolve()))
+        for root in (inactive_root, active_root)
+    ]
+    for gate in gates:
+        gate._identity_resolver = lambda _ticker, market, _day: ("KR7999997003", market)
+        gate._market_cap_resolver = lambda *_args: MARKET_CAP_THRESHOLD_KRW
+
+    daily = _daily_prices()
+    extra = pd.DataFrame(
+        {"close": [101.0, 102.0]},
+        index=pd.to_datetime(["2025-01-13", "2025-01-14"]),
+    )
+    daily = pd.concat([daily, extra]).sort_index()
+
+    def make_trade(
+        trade_id: str,
+        sequence: int,
+        signal: str,
+        execution: str,
+        status: str,
+        *,
+        exit_signal: str | None = None,
+        exit_execution: str | None = None,
+    ):
+        return SimpleNamespace(
+            trade_id=trade_id,
+            trade_sequence=sequence,
+            entry_signal_date=pd.Timestamp(signal),
+            entry_execution_date=pd.Timestamp(execution),
+            entry_open=100.0,
+            entry_pattern_a_stage="EARLY_TREND",
+            exit_type="TEST_EXIT" if exit_signal else None,
+            exit_signal_date=pd.Timestamp(exit_signal) if exit_signal else None,
+            exit_execution_date=pd.Timestamp(exit_execution) if exit_execution else None,
+            exit_price=102.0 if exit_signal else None,
+            trade_status=status,
+            terminal_return=2.0 if exit_signal else 0.0,
+            previous_exit_type=None,
+            previous_exit_execution_date=None,
+            lifecycle_class="NORMAL_EARLY_TREND_HANDOFF",
+            first_progressed_date=None,
+            first_progressed_effective_trading_date=None,
+            loss_guard_triggered=False,
+        )
+
+    candidates = [
+        (pd.Timestamp("2025-01-13"), make_trade(
+            "FIXTURE_REALIZED", 1, "2025-01-13", "2025-01-14", "REALIZED",
+            exit_signal="2025-01-14", exit_execution="2025-01-15",
+        )),
+        (pd.Timestamp("2025-01-14"), make_trade(
+            "FIXTURE_OPEN", 2, "2025-01-14", "2025-01-15", "OPEN_AT_CUTOFF",
+        )),
+    ]
+
+    def fake_simulator(*, entry_signal_filter, strict_errors, cutoff_date, **_kwargs):
+        assert strict_errors is True
+        selected = []
+        for signal, trade in candidates:
+            if signal <= pd.Timestamp(cutoff_date).normalize() and entry_signal_filter(signal, {}):
+                selected.append(trade)
+        return selected
+
+    monkeypatch.setattr(a_fast_core_report, "to_weekly", lambda _daily: pd.DataFrame(
+        index=pd.DatetimeIndex([SIGNAL_DATE]),
+    ))
+    monkeypatch.setattr(a_fast_core_report, "evaluate_pattern_a_fast", lambda *_args, **_kwargs: {
+        "pattern_a_stage": "TRANSITION",
+        "fast_machine_stage": "TRIGGER",
+        "fast_machine_stage_status": "READY",
+        "fast_monthly_permission_state": "PERMITTED_REGIME",
+        "fast_daily_risk_state": "NORMAL",
+        "fast_score_status": "READY",
+    })
+    monkeypatch.setattr(a_fast_core_report, "simulate_ticker_core_v02_reentry", fake_simulator)
+    monkeypatch.setattr(a_fast_core_report, "build_historical_snapshot", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(a_fast_core_report, "evaluate_pattern_a", lambda *_args, **_kwargs: SimpleNamespace(score=10.0))
+
+    sections = [a_fast_core_report.build_a_fast_core_section(
+        ticker="999997",
+        name="synthetic",
+        market="KOSPI",
+        daily=daily,
+        requested_as_of=SIGNAL_DATE,
+        score_contract={"frozen": True},
+        stage_contract={"frozen": True},
+        metadata_provenance_mode="CURRENT_VERIFIED",
+        promotion_gate=gate,
+        replay_mode=a_fast_core_report.HISTORICAL_ALIGNMENT_REPLAY_MODE,
+    ) for gate in gates]
+
+    serialized = [asdict(section) for section in sections]
+    encoded = [json.dumps(value, sort_keys=True, separators=(",", ":"), default=str) for value in serialized]
+    digests = [hashlib.sha256(value.encode("utf-8")).hexdigest() for value in encoded]
+    assert serialized[0] == serialized[1]
+    assert digests[0] == digests[1]
+    assert [trade["trade_id"] for trade in serialized[0]["trade_history"]] == [
+        "FIXTURE_REALIZED", "FIXTURE_OPEN",
+    ]
+    assert [trade["trade_status"] for trade in serialized[0]["trade_history"]] == [
+        "REALIZED", "OPEN_AT_CUTOFF",
+    ]
+    assert all(trade["strategy_id"] == PROMOTED_STRATEGY_ID for trade in serialized[0]["trade_history"])
+    assert gates[1].config.active
+    assert gates[1].is_promoted_signal("2025-01-14") is False
+
+
+@pytest.mark.parametrize(
+    ("case", "expected_error"),
+    [
+        ("missing_history", "PROMOTION_ACTIVATION_HISTORY_MISSING"),
+        ("config_date_mismatch", "PROMOTION_ACTIVATION_HISTORY_CONFIG_MISMATCH"),
+        ("overlapping_history", "PROMOTION_ACTIVATION_HISTORY_OVERLAP_OR_ORDER_INVALID"),
+        ("unapproved_history", "PROMOTION_ACTIVATION_HISTORY_APPROVAL_INVALID"),
+        ("strategy_mismatch", "PROMOTION_ACTIVATION_HISTORY_SCHEMA_INVALID"),
+        ("exclusion_hash_mismatch", "PROMOTION_CONFIG_EXCLUSION_HASH_MISMATCH"),
+    ],
+)
+def test_historical_web_replay_fails_closed_on_invalid_active_authority(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    case: str,
+    expected_error: str,
+):
+    monkeypatch.setattr(AlignmentMcap500BGate, "_load_validated_pit", lambda _self: None)
+    get_historical_alignment_replay_gate.cache_clear()
+    root = tmp_path / case
+    if case == "missing_history":
+        _write_replay_authorities(root, active=True, include_history=False)
+    elif case == "config_date_mismatch":
+        _write_replay_authorities(root, active=True, intervals=[{
+            "activation_id": "fixture-open-001",
+            "approval_status": "APPROVED",
+            "approval_reference": "FIXTURE_APPROVAL",
+            "effective_signal_date": "2025-01-31",
+            "rollback_effective_signal_date": None,
+        }])
+    elif case == "overlapping_history":
+        _write_replay_authorities(root, active=True, intervals=[
+            {"activation_id": "closed-1", "approval_status": "APPROVED", "approval_reference": "A",
+             "effective_signal_date": "2025-01-01", "rollback_effective_signal_date": "2025-02-10"},
+            {"activation_id": "closed-2", "approval_status": "APPROVED", "approval_reference": "B",
+             "effective_signal_date": "2025-02-01", "rollback_effective_signal_date": "2025-02-20"},
+            {"activation_id": "fixture-open-001", "approval_status": "APPROVED", "approval_reference": "C",
+             "effective_signal_date": "2025-02-01", "rollback_effective_signal_date": None},
+        ])
+    elif case == "unapproved_history":
+        _write_replay_authorities(root, active=True, intervals=[{
+            "activation_id": "fixture-open-001",
+            "approval_status": "PENDING",
+            "approval_reference": "FIXTURE_APPROVAL",
+            "effective_signal_date": "2025-02-01",
+            "rollback_effective_signal_date": None,
+        }])
+    elif case == "strategy_mismatch":
+        _write_replay_authorities(root, active=True)
+        history_path = root / DEFAULT_ACTIVATION_HISTORY_RELATIVE_PATH
+        payload = json.loads(history_path.read_text(encoding="utf-8"))
+        payload["strategy_id"] = "UNEXPECTED_STRATEGY"
+        history_path.write_text(json.dumps(payload), encoding="utf-8")
+    else:
+        _write_replay_authorities(
+            root,
+            active=True,
+            config_overrides={"permanent_exclusion_canonical_sha256": "0" * 64},
+        )
+
+    with pytest.raises(AlignmentGateIntegrityError, match=expected_error):
+        get_historical_alignment_replay_gate(str(root.resolve()))
 
 
 def test_historical_alignment_resolves_the_pit_market_before_exact_raw_lookup(tmp_path):

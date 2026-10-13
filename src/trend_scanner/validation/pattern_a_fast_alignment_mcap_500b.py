@@ -308,8 +308,6 @@ class AlignmentMcap500BGate:
         self.repo_root = Path(repo_root)
         self.config = config
         self.historical_replay_mode = bool(historical_replay_mode)
-        if self.historical_replay_mode and config.active:
-            raise AlignmentGateIntegrityError("HISTORICAL_REPLAY_REQUIRES_INACTIVE_OPERATIONAL_CONFIG")
         if activation_intervals is None and config.active:
             raise AlignmentGateIntegrityError("PROMOTION_ACTIVATION_HISTORY_REQUIRED")
         self.activation_intervals = activation_intervals if activation_intervals is not None else ()
@@ -573,9 +571,10 @@ class AlignmentMcap500BGate:
     ) -> GateDecision:
         """Apply the exact Alignment entry gate to a historical web replay.
 
-        This mode is deliberately separate from operational activation history:
-        it never changes or fabricates activation intervals, and it is available
-        only while the operational config remains inactive.
+        The operational config and activation ledger are still loaded and
+        validated by the factory, but their effective dates do not select the
+        historical web replay's entry gate. This mode applies Alignment to all
+        historical candidate signals without changing operational state.
         """
         if not self.historical_replay_mode:
             raise AlignmentGateIntegrityError("HISTORICAL_REPLAY_MODE_NOT_ENABLED")
@@ -663,12 +662,14 @@ def get_production_alignment_gate(repo_root: str) -> AlignmentMcap500BGate:
 
 @lru_cache(maxsize=8)
 def get_historical_alignment_replay_gate(repo_root: str) -> AlignmentMcap500BGate:
-    """Create the explicit non-operational gate used by the full-history web replay."""
+    """Create the web replay gate after validating current operational authority.
+
+    The operational activation ledger remains fail-closed, while its intervals
+    do not limit the full-history web replay to a cutover date.
+    """
     root = Path(repo_root).resolve()
     config = load_promotion_config(root)
     history = load_activation_history(root, config)
-    if config.active:
-        raise AlignmentGateIntegrityError("HISTORICAL_REPLAY_REQUIRES_INACTIVE_OPERATIONAL_CONFIG")
     return AlignmentMcap500BGate(
         root,
         config,
