@@ -9,6 +9,8 @@ from collections import Counter
 from pathlib import Path
 from urllib.parse import urlsplit
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPORTER_PATH = ROOT / "scripts/export_strategy_monitor_web.py"
@@ -676,7 +678,7 @@ def test_b_select_exporter_rejects_v1_rows_from_current_v2_history():
         exporter.B_SELECT_ID,
         {
             "strategy_id": exporter.LEGACY_B_SELECT_ID,
-            "exit_strategy_id": exporter.B_SELECT_ID,
+            "exit_strategy_id": exporter.LEGACY_B_SELECT_ID,
             "trade_sequence": 2,
             "entry_signal_date": "2025-06-30",
             "entry_execution_date": "2025-07-01",
@@ -701,6 +703,51 @@ def test_b_select_exporter_rejects_v1_rows_from_current_v2_history():
             [trade],
             allowed_source_ids={exporter.B_SELECT_ID},
         )
+
+
+def test_fast_promoted_history_lineage_uses_entry_signal_date():
+    exporter = _load_exporter()
+    promoted = exporter.PROMOTED_STRATEGY_ID
+    legacy_trade = {
+        "strategy_id": exporter.STRATEGY_ID,
+        "entry_strategy_id": exporter.STRATEGY_ID,
+        "exit_strategy_id": exporter.STRATEGY_ID,
+        "ticker": "000001",
+        "trade_sequence": 1,
+        "entry_signal_date": "2024-12-31",
+        "entry_execution_date": "2025-01-02",
+    }
+    promoted_trade = {
+        "strategy_id": promoted,
+        "entry_strategy_id": promoted,
+        "exit_strategy_id": promoted,
+        "ticker": "000002",
+        "trade_sequence": 1,
+        "entry_signal_date": "2025-01-01",
+        "entry_execution_date": "2025-01-02",
+    }
+    exporter._validate_history_identities(
+        promoted,
+        [legacy_trade, promoted_trade],
+        allowed_source_ids=exporter.FAST_STRATEGY_IDS,
+        effective_signal_date="2025-01-01",
+    )
+
+    wrong_lineage = dict(legacy_trade, strategy_id=promoted, entry_strategy_id=promoted, exit_strategy_id=promoted)
+    with pytest.raises(ValueError, match="does not match entry_signal_date"):
+        exporter._validate_history_identities(
+            promoted,
+            [wrong_lineage],
+            allowed_source_ids=exporter.FAST_STRATEGY_IDS,
+            effective_signal_date="2025-01-01",
+        )
+
+
+def test_strategy_browser_validator_enforces_promoted_entry_date_lineage():
+    source = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
+    assert "const expectedSourceId = signalDate >= effectiveDate" in source
+    assert "parseSortableDate(effectiveDate) == null" in source
+    assert 'gateStatus !== "ACTIVE"' in source
 
 
 def test_three_strategy_trade_history_counts_identity_and_source_parity():

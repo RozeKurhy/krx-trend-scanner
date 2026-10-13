@@ -444,6 +444,9 @@ class AFastCoreEntryConditions:
     daily_risk: str | None = None
     fast_score_status: str | None = None
     failed_conditions: list[str] = field(default_factory=list)
+    alignment_mcap_500b_pass: bool | None = None
+    alignment_mcap_500b_status: str | None = None
+    alignment_mcap_500b_details: dict[str, Any] | None = None
 
 
 @dataclass
@@ -464,6 +467,9 @@ class AFastCoreCurrentTrade:
     trade_status: str
     pending_exit_type: str | None = None
     pending_exit_signal_date: str | None = None
+    strategy_id: str | None = None
+    entry_strategy_id: str | None = None
+    exit_strategy_id: str | None = None
 
 
 @dataclass
@@ -510,6 +516,9 @@ class AFastCoreTradeHistoryItem:
     return_pct: float
     previous_exit_type: str | None = None
     lifecycle_class: str | None = None
+    strategy_id: str | None = None
+    entry_strategy_id: str | None = None
+    exit_strategy_id: str | None = None
 
 
 @dataclass
@@ -546,6 +555,10 @@ class AFastCoreSection:
     interpretation: str = ""
     provenance: AFastCoreProvenance = field(default_factory=AFastCoreProvenance)
     metadata_provenance_mode: str = "CURRENT_VERIFIED"
+    research_group_id: str | None = None
+    promotion_gate_status: str | None = None
+    effective_signal_date: str | None = None
+    promotion_gate_audit: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -582,6 +595,26 @@ class StockReport:
             payload.pop("fundamentals", None)
         if self.pattern_b is None:
             payload.pop("pattern_b", None)
+        core = payload.get("a_fast_core")
+        if isinstance(core, dict) and self.a_fast_core.promotion_gate_status is None:
+            # Preserve the published V2 report payload exactly while the
+            # promotion is inactive or the requested date precedes cutover.
+            for key in (
+                "research_group_id", "promotion_gate_status", "effective_signal_date",
+                "promotion_gate_audit",
+            ):
+                core.pop(key, None)
+            entry_conditions = core.get("entry_conditions")
+            if isinstance(entry_conditions, dict):
+                for key in (
+                    "alignment_mcap_500b_pass", "alignment_mcap_500b_status",
+                    "alignment_mcap_500b_details",
+                ):
+                    entry_conditions.pop(key, None)
+            for trade in [core.get("current_trade"), *(core.get("trade_history") or [])]:
+                if isinstance(trade, dict):
+                    for key in ("strategy_id", "entry_strategy_id", "exit_strategy_id"):
+                        trade.pop(key, None)
         if self.report_version != "0.7":
             # v0.4 and v0.5 source contracts remain byte-compatible; the 24M
             # projection is an additive v0.7 COMMON display field. ETF v0.6

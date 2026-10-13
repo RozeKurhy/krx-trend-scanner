@@ -26,6 +26,26 @@
 되지는 않는다. 기존 기본 전략보다 프로젝트 목적에 더 적합하고 전체적으로
 명확한 우위가 있을 때 별도의 승격 절차를 거쳐 변경한다.
 
+### 2026-10-13 A FAST Core V2 Alignment 500B 승격 결정
+
+`PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B`(표시명 `A FAST Core V2
+Alignment 500B`)는 2026-10-13 공식 전략 채택 및 기존 기본 전략 교체 승인을
+받았다. 연구 group ID `ALIGNMENT_MCAP_500B`는 연구 결과의 분류자이며 운영
+Strategy ID가 아니다. 개선은 기존 V2의 신규 진입에만 월봉 alignment와 정확한
+신호일 500B PIT 시가총액 gate를 더하고 185 exact identity 제외를 적용한다.
+V2의 청산·보호·재진입 규칙과 V2 문서·과거 ID·데이터는 유지한다.
+
+승인 근거는 [공식 5기간 재심사 보고서](../../artifacts/strategies/a_fast_core_v2/research/fast_core_v2_alignment_500b_exclusion185_five_window_official_adoption_review_v01/report.md)와
+결정 manifest다. 다섯 기간에서 관측 MDD 개선은 17.02–25.07%p였으나 P2-1
+총수익률/CAGR은 각각 9.7924%p/1.7551%p 낮았고, 후보 최악 거래 손실
+`-44.3903%`는 CONTROL보다 깊었다. NAV 수치는 관측치이며 완전 청산 성과가
+아니다. P2-1/P3-1 등 기간은 P2-2와 겹치므로 독립 표본 다섯 개로 해석하지 않는다.
+
+운영 적용 신호일과 canonical/static 발행 활성화는 별도 승인 대기다. 승인 전
+`effective_signal_date=PENDING_USER_APPROVAL`, 설정 비활성, 기본 전략 V2를
+유지한다. 적용 후 rollback은 이후 신규 진입만 V2로 복귀시키며 이미 생성된
+거래의 진입 ID와 열린 포지션·청산 이력은 다시 쓰지 않는다.
+
 ## 전략 생애주기
 
 각 단계의 목적을 확인하고, 앞 단계의 결론과 기록을 바탕으로 다음 단계로

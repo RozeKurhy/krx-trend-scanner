@@ -200,6 +200,7 @@ def _health_validation_fixture(
         },
     }
     documents["stocks/000001.json"] = {
+        "identity": {"asset_type": "COMMON"},
         "technical_details": {
             "requested_as_of": target,
             "reference_market_date": target,
@@ -268,6 +269,59 @@ def test_validate_staging_accepts_normal_health(monkeypatch: pytest.MonkeyPatch,
 
     assert result["health_overall_status"] == "NORMAL"
     assert result["stock_report_count"] == 1
+
+
+def test_validate_staging_accepts_promoted_fast_row_and_matching_report_id(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    stage, documents = _health_validation_fixture(tmp_path)
+    promoted_id = phase4d.PROMOTED_STRATEGY_ID
+    monitor = documents["strategy-monitor.json"]
+    monitor["default_strategy_id"] = promoted_id
+    monitor["strategies"][0].update({
+        "id": promoted_id,
+        "label": "A FAST Core V2 Alignment 500B",
+        "promotion_gate_status": "ACTIVE",
+        "effective_signal_date": "2026-09-01",
+    })
+    documents["stocks/000001.json"]["strategy"]["id"] = promoted_id
+    monkeypatch.setattr(phase4d, "_read_json", lambda path: documents[path.relative_to(stage).as_posix()])
+
+    result = phase4d.validate_staging(stage, "2026-09-17", "2026-09-17")
+    assert result["stock_report_count"] == 1
+
+
+def test_validate_staging_rejects_mismatched_promoted_report_and_monitor_ids(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    stage, documents = _health_validation_fixture(tmp_path)
+    promoted_id = phase4d.PROMOTED_STRATEGY_ID
+    monitor = documents["strategy-monitor.json"]
+    monitor["default_strategy_id"] = promoted_id
+    monitor["strategies"][0].update({
+        "id": promoted_id,
+        "label": "A FAST Core V2 Alignment 500B",
+        "promotion_gate_status": "ACTIVE",
+        "effective_signal_date": "2026-09-01",
+    })
+    monkeypatch.setattr(phase4d, "_read_json", lambda path: documents[path.relative_to(stage).as_posix()])
+
+    with pytest.raises(phase4d.Phase4DError, match="PHASE4D_FAST_REPORT_MONITOR_STRATEGY_MISMATCH"):
+        phase4d.validate_staging(stage, "2026-09-17", "2026-09-17")
+
+
+def test_validate_staging_rejects_invalid_promoted_effective_date(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    stage, documents = _health_validation_fixture(tmp_path)
+    promoted_id = phase4d.PROMOTED_STRATEGY_ID
+    monitor = documents["strategy-monitor.json"]
+    monitor["default_strategy_id"] = promoted_id
+    monitor["strategies"][0].update({
+        "id": promoted_id,
+        "label": "A FAST Core V2 Alignment 500B",
+        "promotion_gate_status": "ACTIVE",
+        "effective_signal_date": "2026-19-01",
+    })
+    documents["stocks/000001.json"]["strategy"]["id"] = promoted_id
+    monkeypatch.setattr(phase4d, "_read_json", lambda path: documents[path.relative_to(stage).as_posix()])
+
+    with pytest.raises(phase4d.Phase4DError, match="PHASE4D_FAST_ACTIVE_GATE_DATE_INVALID"):
+        phase4d.validate_staging(stage, "2026-09-17", "2026-09-17")
 
 
 def test_phase4d_combined_contract_requires_exact_official_etf36(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):

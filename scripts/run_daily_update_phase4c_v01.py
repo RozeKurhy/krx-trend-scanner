@@ -17,6 +17,7 @@ import json
 import logging
 import sys
 import tempfile
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -39,6 +40,11 @@ from trend_scanner.data.sector_membership import (
 from trend_scanner.universe.historical_authority_reconciliation import (
     DEFAULT_RAW_ROOT as DEFAULT_BASIC_INFO_RAW_ROOT,
 )
+
+FAST_STRATEGY_IDS = {
+    "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+    "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+}
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("run_daily_update_phase4c_v01")
@@ -73,6 +79,57 @@ def require_payload_date(payload: dict[str, Any], field: str, expected: str, err
     actual = payload.get(field)
     if actual != expected:
         raise Phase4CError(f"{error_code}: {actual!r}")
+
+
+def _validate_fast_strategy_monitor(
+    strategy_monitor: dict[str, Any],
+    report_json_count: int,
+) -> tuple[str, dict[str, dict[str, Any]]]:
+    """Validate the single FAST row, default ID, promotion state/date, and scope."""
+    strategy_rows = strategy_monitor.get("strategies")
+    if not isinstance(strategy_rows, list):
+        raise Phase4CError("PHASE4C_FAST_STRATEGY_ID_INVALID")
+    strategy_by_id = {
+        row["id"]: row for row in strategy_rows
+        if isinstance(row, dict) and isinstance(row.get("id"), str)
+    }
+    fast_rows = [row for row in strategy_rows if isinstance(row, dict) and row.get("id") in FAST_STRATEGY_IDS]
+    if len(fast_rows) != 1 or strategy_monitor.get("default_strategy_id") != fast_rows[0]["id"]:
+        raise Phase4CError("PHASE4C_FAST_STRATEGY_ID_INVALID")
+    fast_strategy_id = fast_rows[0]["id"]
+    fast_gate_status = fast_rows[0].get("promotion_gate_status")
+    fast_effective_signal_date = fast_rows[0].get("effective_signal_date")
+    if fast_gate_status is None and fast_strategy_id == "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B":
+        raise Phase4CError("PHASE4C_FAST_PROMOTION_GATE_STATUS_MISSING")
+    if fast_strategy_id == "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B" and fast_gate_status != "ACTIVE":
+        raise Phase4CError("PHASE4C_FAST_PROMOTED_ID_NOT_ACTIVE")
+    if fast_gate_status is not None and fast_gate_status not in {"INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"}:
+        raise Phase4CError("PHASE4C_FAST_PROMOTION_GATE_STATUS_INVALID")
+    if fast_gate_status == "ACTIVE":
+        try:
+            valid_effective_date = date.fromisoformat(str(fast_effective_signal_date)).isoformat() == fast_effective_signal_date
+        except ValueError:
+            valid_effective_date = False
+        if fast_strategy_id != "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B" or not valid_effective_date:
+            raise Phase4CError("PHASE4C_FAST_ACTIVE_GATE_DATE_INVALID")
+    if fast_gate_status == "INACTIVE_PENDING_USER_APPROVAL" and fast_effective_signal_date != "PENDING_USER_APPROVAL":
+        raise Phase4CError("PHASE4C_FAST_PENDING_GATE_DATE_MISMATCH")
+    if fast_gate_status == "SCHEDULED_INACTIVE":
+        try:
+            valid_scheduled_date = date.fromisoformat(str(fast_effective_signal_date)).isoformat() == fast_effective_signal_date
+        except ValueError:
+            valid_scheduled_date = False
+        if fast_strategy_id != "PATTERN_A_FAST_FINAL_STRATEGY_V02" or not valid_scheduled_date:
+            raise Phase4CError("PHASE4C_FAST_SCHEDULED_GATE_DATE_INVALID")
+    fast_row = strategy_by_id[fast_strategy_id]
+    if not isinstance(fast_row.get("items"), list) or not isinstance(fast_row.get("scope"), dict):
+        raise Phase4CError("PHASE4C_FAST_STRATEGY_SCOPE_INVALID")
+    if fast_row["scope"].get("report_count") != report_json_count:
+        raise Phase4CError(
+            f"PHASE4C_STRATEGY_MONITOR_REPORT_COUNT_MISMATCH: "
+            f"{fast_row['scope'].get('report_count')} != {report_json_count}"
+        )
+    return fast_strategy_id, strategy_by_id
 
 
 def require_web_data_unchanged(
@@ -281,21 +338,16 @@ def run_phase4c(
             b_select_status=b_select_status,
         )
         strategy_rows = strategy_monitor["strategies"]
-        strategy_by_id = {row["id"]: row for row in strategy_rows}
+        fast_strategy_id, strategy_by_id = _validate_fast_strategy_monitor(strategy_monitor, report_json_count)
         strategy_monitor_tickers = {
             str(item["ticker"])
-            for item in strategy_by_id["PATTERN_A_FAST_FINAL_STRATEGY_V02"]["items"]
+            for item in strategy_by_id[fast_strategy_id]["items"]
         }
-        if strategy_by_id["PATTERN_A_FAST_FINAL_STRATEGY_V02"]["scope"]["report_count"] != report_json_count:
-            raise Phase4CError(
-                f"PHASE4C_STRATEGY_MONITOR_REPORT_COUNT_MISMATCH: "
-                f"{strategy_by_id['PATTERN_A_FAST_FINAL_STRATEGY_V02']['scope']['report_count']} != {report_json_count}"
-            )
         expected_b_select_id = str(b_select_status.get("strategy_id") or "")
         if expected_b_select_id not in {"PATTERN_B_SELECT_CORE_V01", "PATTERN_B_SELECT_CORE_V02"}:
             raise Phase4CError("PHASE4C_B_SELECT_STRATEGY_ID_INVALID")
         if [row["id"] for row in strategy_rows] != [
-            "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+            fast_strategy_id,
             expected_b_select_id,
             "JULIA_ETF_STRATEGY_V01",
         ]:
@@ -433,7 +485,7 @@ def run_phase4c(
         },
         "strategy_monitor": {
             "strategy_count": len(strategy_rows),
-            "common_report_count": strategy_by_id["PATTERN_A_FAST_FINAL_STRATEGY_V02"]["scope"]["report_count"],
+            "common_report_count": strategy_by_id[fast_strategy_id]["scope"]["report_count"],
             "strategies": [
                 {
                     "id": strategy["id"],

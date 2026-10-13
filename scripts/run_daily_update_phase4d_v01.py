@@ -11,7 +11,9 @@ import argparse
 import json
 import math
 import os
+from datetime import date
 from pathlib import Path
+import re
 import shutil
 import sys
 import tempfile
@@ -48,6 +50,8 @@ REQUIRED_FILES = (
     "health.json",
 )
 STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+PROMOTED_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+FAST_STRATEGY_IDS = {STRATEGY_ID, PROMOTED_STRATEGY_ID}
 B_SELECT_ID = "PATTERN_B_SELECT_CORE_V02"
 JULIA_ID = "JULIA_ETF_STRATEGY_V01"
 B_SELECT_STATUS_STAGING_NAME = "b-select-status.json"
@@ -327,6 +331,7 @@ def validate_staging(
     report_tickers = _report_tickers(index)
     if not report_tickers or report_tickers != set(stocks) or index.get("available_report_count") != len(report_tickers):
         raise Phase4DError("PHASE4D_STOCK_REPORT_SET_MISMATCH")
+    report_fast_strategy_ids: set[str] = set()
     common_tickers = {
         str(item.get("ticker") or "")
         for item in index.get("items", [])
@@ -366,8 +371,10 @@ def validate_staging(
                 or report.get("pattern_b") is not None
             ):
                 raise Phase4DError(f"PHASE4D_ETF_REPORT_CONTRACT_MISMATCH: {ticker}")
-        elif strategy_section.get("id") not in {None, STRATEGY_ID}:
+        elif strategy_section.get("id") is not None and strategy_section.get("id") not in FAST_STRATEGY_IDS:
             raise Phase4DError(f"PHASE4D_STOCK_STRATEGY_MISMATCH: {ticker}")
+        elif asset_type == "COMMON":
+            report_fast_strategy_ids.add(str(strategy_section.get("id") or STRATEGY_ID))
 
     for name in REQUIRED_FILES:
         document = documents[name]
@@ -381,16 +388,59 @@ def validate_staging(
         raise Phase4DError("PHASE4D_MARKET_SET_MISMATCH")
     if market.get("scope", {}).get("report_count") != len(common_tickers):
         raise Phase4DError("PHASE4D_REPORT_COUNT_MISMATCH")
-    if strategy.get("schema_version") != 2 or strategy.get("default_strategy_id") != STRATEGY_ID:
+    strategy_rows = strategy.get("strategies")
+    if not isinstance(strategy_rows, list):
+        raise Phase4DError("PHASE4D_STRATEGY_SET_INVALID")
+    fast_rows = [row for row in strategy_rows if isinstance(row, dict) and row.get("id") in FAST_STRATEGY_IDS]
+    if strategy.get("schema_version") != 2 or len(fast_rows) != 1:
         raise Phase4DError("PHASE4D_STRATEGY_MONITOR_SCHEMA_INVALID")
+    fast_strategy_id = fast_rows[0]["id"]
+    if strategy.get("default_strategy_id") != fast_strategy_id:
+        raise Phase4DError("PHASE4D_FAST_STRATEGY_DEFAULT_MISMATCH")
+    if report_fast_strategy_ids and report_fast_strategy_ids != {fast_strategy_id}:
+        raise Phase4DError("PHASE4D_FAST_REPORT_MONITOR_STRATEGY_MISMATCH")
+    fast_row = fast_rows[0]
+    gate_status = fast_row.get("promotion_gate_status")
+    effective_signal_date = fast_row.get("effective_signal_date")
+    if gate_status is not None and gate_status not in {
+        "INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"
+    }:
+        raise Phase4DError("PHASE4D_FAST_PROMOTION_GATE_STATUS_INVALID")
+    if fast_strategy_id == PROMOTED_STRATEGY_ID and gate_status != "ACTIVE":
+        raise Phase4DError("PHASE4D_FAST_PROMOTED_ID_NOT_ACTIVE")
+    if gate_status == "ACTIVE" and (
+        fast_strategy_id != PROMOTED_STRATEGY_ID
+        or not isinstance(effective_signal_date, str)
+        or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", effective_signal_date)
+    ):
+        raise Phase4DError("PHASE4D_FAST_ACTIVE_GATE_DATE_INVALID")
+    if gate_status == "ACTIVE":
+        try:
+            active_date_valid = date.fromisoformat(effective_signal_date).isoformat() == effective_signal_date
+        except ValueError:
+            active_date_valid = False
+        if not active_date_valid:
+            raise Phase4DError("PHASE4D_FAST_ACTIVE_GATE_DATE_INVALID")
+    if gate_status == "INACTIVE_PENDING_USER_APPROVAL" and effective_signal_date not in {
+        None, "PENDING_USER_APPROVAL"
+    }:
+        raise Phase4DError("PHASE4D_FAST_PENDING_GATE_DATE_MISMATCH")
+    if gate_status == "SCHEDULED_INACTIVE":
+        try:
+            scheduled_date_valid = re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(effective_signal_date)) is not None
+            if scheduled_date_valid:
+                scheduled_date_valid = date.fromisoformat(str(effective_signal_date)).isoformat() == effective_signal_date
+        except ValueError:
+            scheduled_date_valid = False
+        if fast_strategy_id != STRATEGY_ID or not scheduled_date_valid:
+            raise Phase4DError("PHASE4D_FAST_SCHEDULED_GATE_DATE_INVALID")
     if strategy.get("requested_as_of") != target_as_of or strategy.get("reference_market_date") != reference_market_date:
         raise Phase4DError("PHASE4D_STRATEGY_MONITOR_DATE_MISMATCH")
-    strategy_rows = strategy.get("strategies")
-    if not isinstance(strategy_rows, list) or [row.get("id") for row in strategy_rows] != [STRATEGY_ID, B_SELECT_ID, JULIA_ID]:
+    if not isinstance(strategy_rows, list) or [row.get("id") for row in strategy_rows] != [fast_strategy_id, B_SELECT_ID, JULIA_ID]:
         raise Phase4DError("PHASE4D_STRATEGY_SET_INVALID")
     strategy_by_id = {row["id"]: row for row in strategy_rows}
     expected_strategy_scopes = {
-        STRATEGY_ID: ("COMMON", common_tickers),
+        fast_strategy_id: ("COMMON", common_tickers),
         B_SELECT_ID: ("COMMON", common_tickers),
         JULIA_ID: ("OFFICIAL_ETF_36", etf_tickers),
     }
@@ -794,7 +844,7 @@ def validate_staging(
             raise Phase4DError(f"PHASE4D_B_SELECT_PENDING_EVENT_NOT_FILLED:{item.get('ticker')}")
 
     if target_as_of == "2026-09-25" and reference_market_date == "2026-09-23":
-        fast = strategy_by_id[STRATEGY_ID]
+        fast = strategy_by_id[fast_strategy_id]
         if fast.get("scope", {}).get("report_count") != 1451 or fast.get("counts") != {
             "entry": 0, "hold": 241, "exit": 0, "watch": 0, "unavailable": 1210,
         }:

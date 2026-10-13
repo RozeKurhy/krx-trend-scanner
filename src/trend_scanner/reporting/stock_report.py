@@ -1358,6 +1358,7 @@ def generate_stock_report(
         is_common_stock=is_common,
         metadata_provenance_mode=metadata_provenance_mode,
         market_calendar=production_market_calendar,
+        repo_root=root_path,
     )
 
     pattern_b_section = None

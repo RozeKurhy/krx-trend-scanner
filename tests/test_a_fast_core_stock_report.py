@@ -944,7 +944,12 @@ def test_a_fast_core_execution_boundary():
 
 
 def test_a_fast_core_trade_history_matches_official_v02():
-    """공식 정본 trades.csv와 리포트 내역의 모든 필드(trade_id, sequence, dates, open, exits, status, return) 일치성 전수 검증."""
+    """공식 정본의 거래 결과는 엄격 비교하고 lifecycle은 causal time boundary로 별도 검증한다.
+
+    정본 lifecycle은 window cutoff까지의 관찰 라벨로, Loss Guard 종료 뒤의 stage도
+    포함할 수 있다. 운영 재생의 lifecycle은 청산 시점에서 중단하므로 두 메타데이터
+    의미를 섞어 비교하지 않는다. 진입/청산/가격/상태/수익 등 거래 결과 golden은 유지한다.
+    """
     trades_csv = REPO_ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/trades.csv"
     assert trades_csv.exists()
     df_off = pd.read_csv(trades_csv, dtype={"ticker": str})
@@ -972,7 +977,17 @@ def test_a_fast_core_trade_history_matches_official_v02():
             assert rep_tr.trade_status == off_tr["trade_status"]
             if pd.notna(off_tr["terminal_return"]):
                 assert rep_tr.return_pct == pytest.approx(float(off_tr["terminal_return"]), abs=1e-2)
-            assert rep_tr.lifecycle_class == (off_tr["lifecycle_class"] if pd.notna(off_tr["lifecycle_class"]) else None)
+            exit_signal_date = off_tr["exit_signal_date"] if pd.notna(off_tr["exit_signal_date"]) else None
+            first_progressed_date = off_tr["first_progressed_date"] if pd.notna(off_tr["first_progressed_date"]) else None
+            progression_is_after_exit = bool(
+                exit_signal_date and first_progressed_date and first_progressed_date > exit_signal_date
+            )
+            if progression_is_after_exit:
+                assert off_tr["exit_type"] == "LOSS_GUARD_CLOSE_LE_NEG_15"
+                assert off_tr["trade_status"] == "REALIZED"
+                assert rep_tr.lifecycle_class == "NEVER_PROGRESSED"
+            else:
+                assert rep_tr.lifecycle_class == (off_tr["lifecycle_class"] if pd.notna(off_tr["lifecycle_class"]) else None)
             assert rep_tr.previous_exit_type == (off_tr["previous_exit_type"] if pd.notna(off_tr["previous_exit_type"]) else None)
 
 

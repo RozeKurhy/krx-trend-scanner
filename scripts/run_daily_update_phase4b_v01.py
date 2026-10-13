@@ -65,6 +65,8 @@ logger = logging.getLogger("run_daily_update_phase4b_v01")
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPECTED_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+PROMOTED_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+ALLOWED_FAST_STRATEGY_IDS = {EXPECTED_STRATEGY_ID, PROMOTED_STRATEGY_ID}
 EXPECTED_REPORT_VERSION = "0.7"
 SUPPORTED_PREVIOUS_REPORT_VERSIONS = {"0.5", EXPECTED_REPORT_VERSION}
 LATEST_QUARTER_OPERATING_PROFIT_POSITIVE = "POSITIVE"
@@ -195,6 +197,7 @@ def audit_previous_corpus(previous_dir: Path) -> PreviousCorpusAudit:
     non_common: set[str] = set()
     open_tickers: set[str] = set()
     seen_tickers: set[str] = set()
+    strategy_ids_seen: set[str] = set()
     total = 0
     for p in sorted(json_dir.glob("*.json")):
         payload = json.loads(p.read_text(encoding="utf-8"))
@@ -218,11 +221,12 @@ def audit_previous_corpus(previous_dir: Path) -> PreviousCorpusAudit:
                 f"got {payload.get('requested_as_of')!r} in {p}"
             )
         strategy_id = (payload.get("a_fast_core") or {}).get("strategy_id")
-        if strategy_id != EXPECTED_STRATEGY_ID:
+        if strategy_id not in ALLOWED_FAST_STRATEGY_IDS:
             raise Phase4BError(
-                f"PHASE4B_PREVIOUS_CORPUS_STRATEGY_ID_MISMATCH: {raw_ticker} expected {EXPECTED_STRATEGY_ID!r}, "
+                f"PHASE4B_PREVIOUS_CORPUS_STRATEGY_ID_MISMATCH: {raw_ticker} expected one of {sorted(ALLOWED_FAST_STRATEGY_IDS)!r}, "
                 f"got {strategy_id!r} in {p}"
             )
+        strategy_ids_seen.add(str(strategy_id))
 
         ticker = raw_ticker
         asset_type = payload.get("asset_type")
@@ -232,6 +236,10 @@ def audit_previous_corpus(previous_dir: Path) -> PreviousCorpusAudit:
                 open_tickers.add(ticker)
         else:
             non_common.add(ticker)
+    if len(strategy_ids_seen) > 1:
+        raise Phase4BError(
+            f"PHASE4B_PREVIOUS_CORPUS_MIXED_FAST_STRATEGY_IDS: {sorted(strategy_ids_seen)!r} in {previous_dir}"
+        )
     return PreviousCorpusAudit(
         directory=previous_dir, total=total, common=common, non_common=non_common, open_tickers=open_tickers,
     )
@@ -604,6 +612,7 @@ def validate_corpus(
 
     report_version_mismatches: list[str] = []
     strategy_id_mismatches: list[str] = []
+    strategy_ids_seen: set[str] = set()
     date_mismatches: list[str] = []
 
     for p in json_paths:
@@ -614,8 +623,13 @@ def validate_corpus(
         if payload.get("requested_as_of") != target_as_of or payload.get("reference_market_date") != reference_market_date:
             date_mismatches.append(ticker)
         strategy_id = (payload.get("a_fast_core") or {}).get("strategy_id")
-        if strategy_id != EXPECTED_STRATEGY_ID:
+        if strategy_id not in ALLOWED_FAST_STRATEGY_IDS:
             strategy_id_mismatches.append(ticker)
+        elif strategy_id:
+            strategy_ids_seen.add(str(strategy_id))
+
+    if len(strategy_ids_seen) > 1:
+        strategy_id_mismatches.extend(sorted(json_tickers))
 
     return {
         "json_count": len(json_paths),
@@ -628,6 +642,7 @@ def validate_corpus(
         "markdown_extra_tickers": sorted(md_tickers - candidate_tickers),
         "report_version_mismatch_count": len(report_version_mismatches),
         "strategy_id_mismatch_count": len(strategy_id_mismatches),
+        "strategy_ids": sorted(strategy_ids_seen),
         "date_mismatch_count": len(date_mismatches),
     }
 

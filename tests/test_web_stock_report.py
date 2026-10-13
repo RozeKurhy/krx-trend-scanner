@@ -72,6 +72,37 @@ def test_compact_report_preserves_authority_values_without_raw_markdown(payload,
     assert "/Users/" not in json.dumps(report, ensure_ascii=False)
 
 
+def test_promoted_fast_trade_compaction_assigns_signal_date_lineage(exporter):
+    strategy = {
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "effective_signal_date": "2025-01-01",
+        "trade_history": [
+            {"trade_id": "000001_01", "entry_signal_date": "2024-12-31", "entry_execution_date": "2025-01-02"},
+            {"trade_id": "000002_01", "entry_signal_date": "2025-01-01", "entry_execution_date": "2025-01-02"},
+        ],
+    }
+    history = exporter._compact_trade_history(strategy)
+    assert [row["strategy_id"] for row in history] == [
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+    ]
+    assert history[0]["entry_execution_date"] > strategy["effective_signal_date"]
+
+
+def test_promoted_fast_trade_compaction_rejects_wrong_explicit_lineage(exporter):
+    strategy = {
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "effective_signal_date": "2025-01-01",
+        "trade_history": [{
+            "trade_id": "000001_01",
+            "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+            "entry_signal_date": "2024-12-31",
+        }],
+    }
+    with pytest.raises(ValueError, match="does not match entry_signal_date lineage"):
+        exporter._compact_trade_history(strategy)
+
+
 def test_all_published_compact_reports_have_ticker_bound_naver_chart(payload):
     _index, reports, stats = payload
     source_count = len(list((ROOT / stats["source_report_directory"] / "json").glob("*.json")))
@@ -604,7 +635,8 @@ def test_common_report_dual_strategy_ui_reuses_monitor_and_fails_closed():
     assert 'value.schema_version !== 2' in js
     assert 'value.source?.type !== "PUBLISHED_STOCK_REPORTS"' in js
     assert 'item.asset_type === "COMMON" && item.ticker === ticker' in js
-    assert 'name: "A FAST Core V2"' in js
+    assert 'name: aFast.strategy_name || (aFastId === "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"' in js
+    assert 'A FAST Core V2 Alignment 500B" : "A FAST Core V2"' in js
     assert 'name: bSelectStrategyId === "PATTERN_B_SELECT_CORE_V01" ? "B Select Core V1" : "B Select Core V2"' in js
     assert 'action: strategyActionLabel(' in js
     assert 'typeof action !== "string" || typeof state !== "string" || typeof position !== "string"' in js
@@ -615,7 +647,7 @@ def test_common_report_dual_strategy_ui_reuses_monitor_and_fails_closed():
 
     assert 'function monitorTradeHistory(monitor, strategyId, ticker, isuCd)' in js
     assert 'trade && trade.ticker === ticker' in js
-    assert '"PATTERN_A_FAST_FINAL_STRATEGY_V02", "A FAST Core V2"' in js
+    assert 'const aFastLabel = aFast.strategy_name || (aFastId === "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"' in js
     assert 'function monitorBSelectId(monitor)' in js
     assert '(Array.isArray(report.strategy && report.strategy.history) ? report.strategy.history : [])' in js
     assert 'monitorTradeHistory(strategyMonitorData, bSelectId, report.identity.ticker, report.identity.isu_cd)' in js

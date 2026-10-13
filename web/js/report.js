@@ -461,9 +461,11 @@
 
   function commonStrategyActions(report, bSelectItem, bSelectStrategyId) {
     const aFast = report.strategy || {};
+    const aFastId = aFast.strategy_id || aFast.id || "PATTERN_A_FAST_FINAL_STRATEGY_V02";
     return [
       {
-        name: "A FAST Core V2",
+        name: aFast.strategy_name || (aFastId === "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+          ? "A FAST Core V2 Alignment 500B" : "A FAST Core V2"),
         action: strategyActionLabel(aFast.action, aFast.state, aFast.position),
       },
       {
@@ -1483,8 +1485,12 @@
     const historyPanel = createElement("div", "report-strategy-history");
     const bSelectId = monitorBSelectId(strategyMonitorData);
     const bSelectLabel = bSelectId === "PATTERN_B_SELECT_CORE_V01" ? "B Select Core V1" : "B Select Core V2";
+    const aFast = report.strategy || {};
+    const aFastId = aFast.strategy_id || aFast.id || "PATTERN_A_FAST_FINAL_STRATEGY_V02";
+    const aFastLabel = aFast.strategy_name || (aFastId === "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+      ? "A FAST Core V2 Alignment 500B" : "A FAST Core V2");
     const tabs = [
-      ["PATTERN_A_FAST_FINAL_STRATEGY_V02", "A FAST Core V2"],
+      [aFastId, aFastLabel],
       [bSelectId, bSelectLabel],
     ];
     const renderSelectedHistory = () => {
@@ -1681,7 +1687,8 @@
         : "";
     setText("report-availability", availabilityMessage);
     setHidden("report-availability", !availabilityMessage);
-    activeCommonStrategyId = "PATTERN_A_FAST_FINAL_STRATEGY_V02";
+    const fastStrategy = report.strategy || {};
+    activeCommonStrategyId = fastStrategy.strategy_id || fastStrategy.id || "PATTERN_A_FAST_FINAL_STRATEGY_V02";
     renderStrategySummary(report);
     setText("decision-summary", buildSummary(report));
     if (identity.asset_type === "COMMON") {

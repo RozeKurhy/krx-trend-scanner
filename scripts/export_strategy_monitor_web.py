@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+from datetime import date
 import hashlib
 import json
 import math
@@ -40,6 +41,9 @@ ENTRY_STAGE_HISTORY_METADATA_REL = Path(
 ALLOWED_ENTRY_PREVIOUS_STAGES = {"EARLY_TREND", "TRANSITION"}
 STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
 STRATEGY_LABEL = "A FAST Core V2"
+PROMOTED_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+PROMOTED_STRATEGY_LABEL = "A FAST Core V2 Alignment 500B"
+FAST_STRATEGY_IDS = {STRATEGY_ID, PROMOTED_STRATEGY_ID}
 B_SELECT_ID = "PATTERN_B_SELECT_CORE_V02"
 B_SELECT_LABEL = "B Select Core V2"
 LEGACY_B_SELECT_ID = "PATTERN_B_SELECT_CORE_V01"
@@ -178,11 +182,26 @@ def _select_core_history_path_metrics(
         except (FileNotFoundError, MarketDataError, OSError):
             return None
 
-    def frame_covers(frame: Any, required_sessions: list[str], requested_sessions: list[str]) -> bool:
-        if frame is None or frame.empty or "high" not in frame.columns or "low" not in frame.columns:
+    def frame_rows_by_session(frame: Any) -> dict[str, dict[str, Any]]:
+        if frame is None or frame.empty or not frame.index.is_unique:
+            return {}
+        return {
+            value.strftime("%Y-%m-%d"): row
+            for value, row in frame.to_dict(orient="index").items()
+        }
+
+    def frame_covers(
+        frame: Any,
+        frame_rows: dict[str, dict[str, Any]],
+        required_sessions: list[str],
+        requested_sessions: list[str],
+    ) -> bool:
+        if (
+            frame is None or frame.empty or not frame.index.is_unique
+            or "high" not in frame.columns or "low" not in frame.columns
+        ):
             return False
         projection = frame.attrs.get("session_projection_audit", {})
-        frame_rows = {value.strftime("%Y-%m-%d"): frame.loc[value] for value in frame.index}
         frame_dates = set(frame_rows)
         required = set(required_sessions)
         if (
@@ -253,17 +272,19 @@ def _select_core_history_path_metrics(
             calendar_positions[broad_start] : calendar_positions[broad_end] + 1
         ]
         shared_frame = query_frame(ticker, broad_start, broad_end)
+        shared_rows = frame_rows_by_session(shared_frame)
         for index, row_ticker, isu_cd, entry_date, evaluation_date, entry_price in rows:
             start_index = calendar_positions[entry_date]
             end_index = calendar_positions[evaluation_date]
             sessions = calendar_dates[start_index : end_index + 1]
             frame = shared_frame
-            if not frame_covers(frame, sessions, broad_sessions):
+            frame_rows = shared_rows
+            if not frame_covers(frame, frame_rows, sessions, broad_sessions):
                 frame = query_frame(ticker, entry_date, evaluation_date)
+                frame_rows = frame_rows_by_session(frame)
                 frame_sessions = calendar_dates[start_index : end_index + 1]
-                if not frame_covers(frame, sessions, frame_sessions):
+                if not frame_covers(frame, frame_rows, sessions, frame_sessions):
                     continue
-            frame_rows = {value.strftime("%Y-%m-%d"): frame.loc[value] for value in frame.index}
             entry_open = _finite_positive(frame_rows[entry_date].get("open"))
             if (
                 entry_price is None or entry_open is None
@@ -317,24 +338,18 @@ def _select_core_history_path_metrics(
             current_frame = query_frame(
                 ticker, reference_market_date, reference_market_date
             )
+            entry_rows = frame_rows_by_session(entry_frame)
+            current_rows = frame_rows_by_session(current_frame)
             if (
-                not frame_covers(entry_frame, [entry_date], [entry_date])
+                not frame_covers(entry_frame, entry_rows, [entry_date], [entry_date])
                 or not frame_covers(
                     current_frame,
+                    current_rows,
                     [reference_market_date],
                     [reference_market_date],
                 )
             ):
                 continue
-
-            entry_rows = {
-                value.strftime("%Y-%m-%d"): entry_frame.loc[value]
-                for value in entry_frame.index
-            }
-            current_rows = {
-                value.strftime("%Y-%m-%d"): current_frame.loc[value]
-                for value in current_frame.index
-            }
             entry_open = _finite_positive(entry_rows[entry_date].get("open"))
             reference_close = _finite_positive(
                 current_rows[reference_market_date].get("close")
@@ -575,13 +590,20 @@ def _validate_b_select_entry_contexts(
 
 
 def _trade_projection(trade: dict[str, Any]) -> dict[str, Any]:
-    return {
+    result = {
         "trade_sequence": trade.get("trade_sequence"),
         "entry_execution_date": trade.get("entry_execution_date"),
         "entry_open": trade.get("entry_open"),
         "return_pct": trade.get("return_pct"),
         "trade_status": trade.get("trade_status"),
     }
+    lineage = {
+        key: trade.get(key)
+        for key in ("strategy_id", "entry_strategy_id", "exit_strategy_id")
+        if trade.get(key) is not None
+    }
+    result.update(lineage)
+    return result
 
 
 def _first_value(item: dict[str, Any], *keys: str) -> Any:
@@ -630,13 +652,14 @@ def _normalize_trade(
     exit_reason = None
     if exit_execution_date:
         exit_reason = _first_value(trade, "exit_type", "exit_reason")
+    source_strategy_id = str(trade.get("strategy_id") or strategy_id)
+    entry_strategy_id = str(trade.get("entry_strategy_id") or source_strategy_id)
+    exit_strategy_id = str(trade.get("exit_strategy_id")) if trade.get("exit_strategy_id") is not None else None
+    if entry_strategy_id != source_strategy_id or (exit_strategy_id is not None and exit_strategy_id != entry_strategy_id):
+        raise ValueError(f"inconsistent entry/exit strategy lineage: {ticker}")
     return {
-        "strategy_id": str(trade.get("strategy_id") or strategy_id),
-        "exit_strategy_id": (
-            str(trade.get("exit_strategy_id"))
-            if trade.get("exit_strategy_id") is not None
-            else None
-        ),
+        "strategy_id": source_strategy_id,
+        "exit_strategy_id": exit_strategy_id,
         "ticker": ticker,
         "name": name,
         "market": market,
@@ -651,6 +674,7 @@ def _normalize_trade(
         "return_pct": return_pct,
         "trade_status": str(trade_status),
         "exit_reason": str(exit_reason) if exit_reason is not None else None,
+        **({"entry_strategy_id": entry_strategy_id} if trade.get("entry_strategy_id") is not None else {}),
     }
 
 
@@ -659,12 +683,37 @@ def _validate_history_identities(
     trades: list[dict[str, Any]],
     *,
     allowed_source_ids: set[str] | None = None,
+    effective_signal_date: str | None = None,
 ) -> None:
     allowed_source_ids = allowed_source_ids or {strategy_id}
+    effective_date: date | None = None
+    if strategy_id == PROMOTED_STRATEGY_ID:
+        try:
+            effective_date = date.fromisoformat(str(effective_signal_date))
+            if effective_date.isoformat() != effective_signal_date:
+                raise ValueError
+        except ValueError as exc:
+            raise ValueError("promoted A FAST history requires an exact effective_signal_date") from exc
     for trade in trades:
         source_id = str(trade.get("strategy_id") or strategy_id)
         if source_id not in allowed_source_ids:
             raise ValueError(f"unexpected {strategy_id} history source strategy: {source_id}")
+        entry_id = str(trade.get("entry_strategy_id") or source_id)
+        exit_id = str(trade.get("exit_strategy_id") or entry_id)
+        if entry_id != source_id or exit_id != entry_id:
+            raise ValueError(f"inconsistent {strategy_id} entry/exit strategy lineage")
+        if strategy_id == PROMOTED_STRATEGY_ID:
+            try:
+                signal_date = date.fromisoformat(str(trade.get("entry_signal_date") or ""))
+                if signal_date.isoformat() != trade.get("entry_signal_date"):
+                    raise ValueError
+            except ValueError as exc:
+                raise ValueError("promoted A FAST trade requires an exact entry_signal_date") from exc
+            expected_id = PROMOTED_STRATEGY_ID if signal_date >= effective_date else STRATEGY_ID
+            if source_id != expected_id:
+                raise ValueError(f"A FAST history strategy ID does not match entry_signal_date: {trade.get('ticker')}")
+        elif strategy_id == STRATEGY_ID and source_id != STRATEGY_ID:
+            raise ValueError("V2 A FAST history contains a promoted strategy lineage")
     identities = [
         (
             str(trade.get("strategy_id") or strategy_id),
@@ -795,6 +844,9 @@ def build_strategy_monitor(
     common_items: list[dict[str, Any]] = []
     etf_items: list[dict[str, Any]] = []
     fast_history: list[dict[str, Any]] = []
+    fast_strategy_ids: set[str] = set()
+    fast_gate_statuses: set[str] = set()
+    fast_effective_signal_dates: set[str] = set()
     julia_history: list[dict[str, Any]] = []
     as_of_values: set[str] = set()
     reference_market_date_values: set[str] = set()
@@ -810,11 +862,22 @@ def build_strategy_monitor(
             reference_market_date_values.add(ref)
         if index_item.get("asset_type") == "COMMON":
             common_items.append(_project_item(index_item, report))
-            for trade in (report.get("strategy") or {}).get("history") or []:
+            fast_source = report.get("strategy") or {}
+            source_fast_id = str(fast_source.get("strategy_id") or fast_source.get("id") or STRATEGY_ID)
+            if source_fast_id not in FAST_STRATEGY_IDS:
+                raise ValueError(f"unexpected A FAST strategy ID: {source_fast_id}")
+            fast_strategy_ids.add(source_fast_id)
+            gate_status = str(fast_source.get("promotion_gate_status") or "INACTIVE_PENDING_USER_APPROVAL")
+            effective_signal_date = str(fast_source.get("effective_signal_date") or "PENDING_USER_APPROVAL")
+            if gate_status not in {"INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"}:
+                raise ValueError(f"invalid A FAST promotion gate status: {gate_status}")
+            fast_gate_statuses.add(gate_status)
+            fast_effective_signal_dates.add(effective_signal_date)
+            for trade in fast_source.get("history") or []:
                 if not isinstance(trade, dict):
                     raise ValueError(f"invalid A FAST trade history row: {ticker}")
                 fast_history.append(_normalize_trade(
-                    STRATEGY_ID,
+                    source_fast_id,
                     trade,
                     ticker=ticker,
                     name=str(index_item.get("name") or ticker),
@@ -974,7 +1037,32 @@ def build_strategy_monitor(
         )
         normalized["isu_cd"] = str(trade.get("isu_cd") or "").upper()
         b_history.append(normalized)
-    _validate_history_identities(STRATEGY_ID, fast_history)
+    if len(fast_strategy_ids) > 1:
+        raise ValueError(f"mixed top-level A FAST strategy IDs in report corpus: {sorted(fast_strategy_ids)}")
+    fast_strategy_id = next(iter(fast_strategy_ids), STRATEGY_ID)
+    if len(fast_gate_statuses) > 1 or len(fast_effective_signal_dates) > 1:
+        raise ValueError("mixed A FAST promotion gate status/effective date in report corpus")
+    fast_gate_status = next(iter(fast_gate_statuses), "INACTIVE_PENDING_USER_APPROVAL")
+    fast_effective_signal_date = next(iter(fast_effective_signal_dates), "PENDING_USER_APPROVAL")
+    if fast_strategy_id == PROMOTED_STRATEGY_ID:
+        if fast_gate_status != "ACTIVE":
+            raise ValueError("promoted A FAST strategy ID requires ACTIVE promotion gate status")
+        try:
+            if date.fromisoformat(fast_effective_signal_date).isoformat() != fast_effective_signal_date:
+                raise ValueError
+        except ValueError as exc:
+            raise ValueError("promoted A FAST strategy requires an exact effective_signal_date") from exc
+    elif fast_gate_status == "ACTIVE":
+        raise ValueError("ACTIVE promotion gate must use the promoted A FAST strategy ID")
+    elif fast_gate_status == "INACTIVE_PENDING_USER_APPROVAL" and fast_effective_signal_date != "PENDING_USER_APPROVAL":
+        raise ValueError("pending A FAST promotion must retain PENDING_USER_APPROVAL date")
+    fast_strategy_label = PROMOTED_STRATEGY_LABEL if fast_strategy_id == PROMOTED_STRATEGY_ID else STRATEGY_LABEL
+    _validate_history_identities(
+        fast_strategy_id,
+        fast_history,
+        allowed_source_ids=(FAST_STRATEGY_IDS if fast_strategy_id == PROMOTED_STRATEGY_ID else {STRATEGY_ID}),
+        effective_signal_date=(fast_effective_signal_date if fast_strategy_id == PROMOTED_STRATEGY_ID else None),
+    )
     _validate_history_identities(
         b_select_strategy_id,
         b_history,
@@ -1053,8 +1141,16 @@ def build_strategy_monitor(
         raise ValueError("B Select canonical pending event count mismatch")
     strategies = [
         {
-            "id": STRATEGY_ID,
-            "label": STRATEGY_LABEL,
+            "id": fast_strategy_id,
+            "label": fast_strategy_label,
+            **(
+                {
+                    "research_group_id": "ALIGNMENT_MCAP_500B",
+                    "promotion_gate_status": fast_gate_status,
+                    "effective_signal_date": fast_effective_signal_date,
+                }
+                if fast_strategy_id == PROMOTED_STRATEGY_ID else {}
+            ),
             "asset_scope": "COMMON",
             "scope": {
                 "type": "PUBLISHED_COMMON_REPORTS",
@@ -1106,7 +1202,7 @@ def build_strategy_monitor(
             "type": "PUBLISHED_STOCK_REPORTS",
             "path": "web/data/stocks/*.json",
         },
-        "default_strategy_id": DEFAULT_STRATEGY_ID,
+        "default_strategy_id": fast_strategy_id,
         "requested_as_of": resolved_as_of,
         "reference_market_date": resolved_reference,
         "as_of": resolved_as_of,

@@ -938,6 +938,24 @@ def test_g_default_previous_corpus_fixture_passes_audit(tmp_path):
     assert audit.common == {"900000"}
 
 
+def test_previous_corpus_accepts_promoted_id_but_rejects_mixed_top_level_ids(tmp_path):
+    promoted = "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+    corpus_dir = _write_previous_corpus(
+        tmp_path, PREVIOUS,
+        [("900000", "COMMON", "OPEN"), ("900001", "COMMON", "FLAT")],
+        strategy_id=promoted,
+    )
+    audit = phase4b.audit_previous_corpus(corpus_dir)
+    assert audit.common == {"900000", "900001"}
+
+    second_report = corpus_dir / "json/900001.json"
+    payload = json.loads(second_report.read_text(encoding="utf-8"))
+    payload["a_fast_core"]["strategy_id"] = _VALID_STRATEGY_ID
+    second_report.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(phase4b.Phase4BError, match="PHASE4B_PREVIOUS_CORPUS_MIXED_FAST_STRATEGY_IDS"):
+        phase4b.audit_previous_corpus(corpus_dir)
+
+
 def test_g_real_20260904_corpus_passes_audit_read_only():
     """실제 2026-09-04 canonical corpus(운영 previous source)가 신규 fail-closed
     검증을 통과하는지 read-only로 확인한다."""

@@ -10,9 +10,13 @@ status를 frozen input으로 사용한다. 최신 rolling frontier로 과거 fix
 from __future__ import annotations
 
 import json
+import resource
 import shutil
+import sys
 import tempfile
+import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pandas as pd
 import pytest
@@ -34,6 +38,49 @@ def test_phase4c_uses_v1_only_for_pre_v2_historical_replays():
     assert phase4c._b_select_status_builder(REAL_REFERENCE_MARKET_DATE).STRATEGY_ID == "PATTERN_B_SELECT_CORE_V01"
     assert phase4c._b_select_status_builder("2026-10-02").STRATEGY_ID == "PATTERN_B_SELECT_CORE_V02"
     assert phase4c._b_select_status_builder("2026-10-05").STRATEGY_ID == "PATTERN_B_SELECT_CORE_V02"
+
+
+def _fast_strategy_monitor(strategy_id: str, *, gate_status=None, effective_signal_date=None):
+    return {
+        "default_strategy_id": strategy_id,
+        "strategies": [{
+            "id": strategy_id,
+            "promotion_gate_status": gate_status,
+            "effective_signal_date": effective_signal_date,
+            "scope": {"report_count": 2},
+            "items": [{"ticker": "000001"}, {"ticker": "000002"}],
+        }],
+    }
+
+
+def test_phase4c_fast_monitor_accepts_promoted_strategy_and_exact_date():
+    strategy_id = "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+    fast_id, by_id = phase4c._validate_fast_strategy_monitor(
+        _fast_strategy_monitor(strategy_id, gate_status="ACTIVE", effective_signal_date="2026-09-01"),
+        report_json_count=2,
+    )
+    assert fast_id == strategy_id
+    assert by_id[fast_id]["scope"]["report_count"] == 2
+
+
+def test_phase4c_fast_monitor_rejects_invalid_or_missing_promotion_metadata():
+    strategy_id = "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+    with pytest.raises(phase4c.Phase4CError, match="PHASE4C_FAST_ACTIVE_GATE_DATE_INVALID"):
+        phase4c._validate_fast_strategy_monitor(
+            _fast_strategy_monitor(strategy_id, gate_status="ACTIVE", effective_signal_date="2026-19-01"),
+            report_json_count=2,
+        )
+    with pytest.raises(phase4c.Phase4CError, match="PHASE4C_FAST_PROMOTION_GATE_STATUS_MISSING"):
+        phase4c._validate_fast_strategy_monitor(_fast_strategy_monitor(strategy_id), report_json_count=2)
+    with pytest.raises(phase4c.Phase4CError, match="PHASE4C_FAST_PROMOTED_ID_NOT_ACTIVE"):
+        phase4c._validate_fast_strategy_monitor(
+            _fast_strategy_monitor(
+                strategy_id,
+                gate_status="INACTIVE_PENDING_USER_APPROVAL",
+                effective_signal_date="PENDING_USER_APPROVAL",
+            ),
+            report_json_count=2,
+        )
 
 
 def _write_scanner_summary(
@@ -309,15 +356,122 @@ def frozen_historical_market_manifest():
 
 @pytest.fixture(scope="session")
 def real_phase4c_result(frozen_b_select_status, frozen_historical_market_manifest):
-    return phase4c.run_phase4c(
-        REAL_TARGET, root=ROOT, b_select_status_override=frozen_b_select_status,
-    )
+    stage_seconds: dict[str, float] = {}
+    selected_000370: dict[str, str | None] = {}
+    deepcopy_metrics = {"calls": 0, "seconds": 0.0, "max_seconds": 0.0}
+    original_copy = phase4c.stock_report_web.copy
+    original_deepcopy = original_copy.deepcopy
+    original_methods: list[tuple[object, str, object]] = []
+
+    def _timed_deepcopy(value, memo=None):
+        started = time.perf_counter()
+        try:
+            return original_deepcopy(value) if memo is None else original_deepcopy(value, memo)
+        finally:
+            elapsed = time.perf_counter() - started
+            deepcopy_metrics["calls"] += 1
+            deepcopy_metrics["seconds"] += elapsed
+            deepcopy_metrics["max_seconds"] = max(deepcopy_metrics["max_seconds"], elapsed)
+
+    phase4c.stock_report_web.copy = SimpleNamespace(deepcopy=_timed_deepcopy)
+
+    def _measure(owner, name: str, label: str, capture=None):
+        original = getattr(owner, name)
+
+        def _wrapped(*args, **kwargs):
+            started = time.perf_counter()
+            try:
+                value = original(*args, **kwargs)
+                if capture is not None:
+                    capture(value)
+                return value
+            finally:
+                stage_seconds[label] = stage_seconds.get(label, 0.0) + (time.perf_counter() - started)
+
+        setattr(owner, name, _wrapped)
+        original_methods.append((owner, name, original))
+
+    def _capture_stock_payload(value):
+        _index, reports, _stats = value
+        report = reports.get("000370")
+        selected_000370["report_position"] = (
+            str((report.get("decision") or {}).get("canonical_position")) if report else None
+        )
+
+    def _capture_strategy_monitor(value):
+        fast_row = next(
+            row for row in value["strategies"] if row.get("id") in phase4c.FAST_STRATEGY_IDS
+        )
+        item = next(
+            (item for item in fast_row["items"] if str(item.get("ticker")) == "000370"),
+            None,
+        )
+        selected_000370["strategy_id"] = str(fast_row["id"])
+        selected_000370["monitor_position"] = (
+            str(item.get("canonical_position")) if item else None
+        )
+
+    _measure(phase4c.stock_report_web, "build_web_payload", "stock_report_payload", _capture_stock_payload)
+    _measure(phase4c.market_ranking_web, "build_market_ranking", "market_ranking")
+    _measure(phase4c.strategy_monitor_web, "build_strategy_monitor", "strategy_monitor", _capture_strategy_monitor)
+    _measure(phase4c.sector_rs_web, "build_sector_rs_web_payload", "sector_rs")
+    _measure(phase4c.foreign_net_buy_web, "build_foreign_net_buy_ranking", "foreign_net_buy")
+    _measure(phase4c.health_web, "build_health", "health")
+
+    def _peak_rss_mb() -> float:
+        raw = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        divisor = 1024 * 1024 if sys.platform == "darwin" else 1024
+        return round(raw / divisor, 2)
+
+    rss_peak_before_mb = _peak_rss_mb()
+    wall_started = time.perf_counter()
+    try:
+        result = phase4c.run_phase4c(
+            REAL_TARGET, root=ROOT, b_select_status_override=frozen_b_select_status,
+        )
+    except BaseException:
+        partial_diagnostics = {
+            "wall_seconds": round(time.perf_counter() - wall_started, 2),
+            "stage_seconds": {name: round(seconds, 2) for name, seconds in stage_seconds.items()},
+            "deepcopy": {
+                "calls": deepcopy_metrics["calls"],
+                "seconds": round(deepcopy_metrics["seconds"], 2),
+                "max_call_seconds": round(deepcopy_metrics["max_seconds"], 2),
+            },
+            "rss_peak_before_mb": rss_peak_before_mb,
+            "rss_peak_at_interrupt_mb": _peak_rss_mb(),
+        }
+        print("PHASE4C_E2E_PARTIAL_DIAGNOSTICS=" + json.dumps(partial_diagnostics, sort_keys=True))
+        raise
+    finally:
+        for owner, name, original in reversed(original_methods):
+            setattr(owner, name, original)
+        phase4c.stock_report_web.copy = original_copy
+
+    result["_phase4c_test_diagnostics"] = {
+        "wall_seconds": round(time.perf_counter() - wall_started, 2),
+        "stage_seconds": {name: round(seconds, 2) for name, seconds in stage_seconds.items()},
+        "deepcopy": {
+            "calls": deepcopy_metrics["calls"],
+            "seconds": round(deepcopy_metrics["seconds"], 2),
+            "max_call_seconds": round(deepcopy_metrics["max_seconds"], 2),
+        },
+        "rss_peak_before_mb": rss_peak_before_mb,
+        "rss_peak_after_mb": _peak_rss_mb(),
+        "ticker_000370": selected_000370,
+    }
+    return result
 
 
 def test_real_run_status_pass(real_phase4c_result):
     assert real_phase4c_result["status"] == "PASS"
     assert real_phase4c_result["requested_as_of"] == REAL_TARGET
     assert real_phase4c_result["reference_market_date"] == REAL_REFERENCE_MARKET_DATE
+    diagnostics = real_phase4c_result["_phase4c_test_diagnostics"]
+    assert diagnostics["deepcopy"]["calls"] > 0
+    assert diagnostics["ticker_000370"]["report_position"] == "OPEN"
+    assert diagnostics["ticker_000370"]["monitor_position"] == "OPEN"
+    print("PHASE4C_E2E_DIAGNOSTICS=" + json.dumps(diagnostics, sort_keys=True))
 
 
 # --- B. stale web/data가 4C 결과의 authority로 쓰이지 않음 --------------------------
@@ -360,34 +514,10 @@ def test_f_previous_open_non_candidate_ticker_present_in_strategy_monitor(real_p
     """000370은 Phase 4B continuity 감사에서 previous OPEN + current non-CANDIDATE로
     확인된 실제 종목이다 -- strategy monitor에서 canonical_position OPEN으로 계속
     나타나야 한다(candidate 여부로 재필터링되지 않음)."""
-    target_as_of = REAL_TARGET
-    summary = phase4c.load_scanner_summary(ROOT, target_as_of)
-    reference_market_date = str(summary["reference_market_date"])
-    index, reports, _stats = stock_report_web.build_web_payload(
-        ROOT,
-        target_as_of=target_as_of,
-        reference_market_date=reference_market_date,
-        include_etf=True,
-    )
-    assert "000370" in reports
-    assert reports["000370"]["decision"]["canonical_position"] == "OPEN"
-
-    import tempfile
-
-    with tempfile.TemporaryDirectory() as tmp_name:
-        staging_dir = Path(tmp_name)
-        index_path, stocks_dir = phase4c.write_temp_stock_report_payload(staging_dir, index, reports)
-        monitor = strategy_monitor_web.build_strategy_monitor(
-            index_path=index_path, stocks_path=stocks_dir,
-            target_as_of=target_as_of, reference_market_date=reference_market_date,
-            b_select_status=real_phase4c_result["_b_select_status_for_phase4d"],
-        )
-    common_strategy = next(
-        strategy for strategy in monitor["strategies"]
-        if strategy["id"] == "PATTERN_A_FAST_FINAL_STRATEGY_V02"
-    )
-    item = next(item for item in common_strategy["items"] if item["ticker"] == "000370")
-    assert item["canonical_position"] == "OPEN"
+    observed = real_phase4c_result["_phase4c_test_diagnostics"]["ticker_000370"]
+    assert observed["report_position"] == "OPEN"
+    assert observed["strategy_id"] == "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+    assert observed["monitor_position"] == "OPEN"
 
 
 # --- G. Foreign ranking authority: stock-index가 모집단 authority가 아님 -----------

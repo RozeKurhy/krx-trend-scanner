@@ -8,7 +8,7 @@ Markdown으로 함께 제공하기 위한 공통 규약이다. 리포트는 외�
 
 1. 현재 기술적 국면 (Pattern A 점수와 단계)
 2. 투자 유동성 조건 (Phase 10 투자 적격성)
-3. A FAST Core V2 공식 전략의 상태와 행동
+3. A FAST Core 공식 전략의 상태와 행동 (V2 또는 승인된 Alignment 500B 승격판)
 4. Pattern A FAST 주별 조기 신호
 5. 과거 월별 점수·국면 변화
 6. 외국인 수급 확증 (Phase 11)
@@ -20,8 +20,8 @@ Markdown으로 함께 제공하기 위한 공통 규약이다. 리포트는 외�
 
 v0.2에서 정한 사항은 다음과 같다.
 
-- 공식 전략 `PATTERN_A_FAST_FINAL_STRATEGY_V02`(A FAST Core V2, 패스트 코어
-  V2)의 현재 상태, 가상 전략 포지션, 다음 거래일 행동, 진입 조건 점검표,
+- 공식 FAST 전략 ID `PATTERN_A_FAST_FINAL_STRATEGY_V02` 또는
+  `PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B`의 현재 상태, 가상 전략 포지션, 다음 거래일 행동, 진입 조건 점검표,
   보호 상태, 재진입 상태, 전략 이력을 최상위 섹션 `a_fast_core`로 제공한다.
 - 리포트 노출 상태를 의사결정 지원 운영 상태(`PRODUCTION_DECISION_SUPPORT`)로
   정한다. 자동 매매가 아니라 의사결정을 돕는 리포트다.
@@ -150,9 +150,9 @@ v0.2에서 정한 사항은 다음과 같다.
         "metadata_provenance_mode"
       ],
       "properties": {
-        "strategy_id": { "type": "string", "enum": ["PATTERN_A_FAST_FINAL_STRATEGY_V02"] },
-        "strategy_version": { "type": "string", "enum": ["V02"] },
-        "strategy_alias": { "type": "string", "enum": ["A FAST Core"] },
+        "strategy_id": { "type": "string", "enum": ["PATTERN_A_FAST_FINAL_STRATEGY_V02", "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"] },
+        "strategy_version": { "type": "string", "enum": ["V02", "V02_ALIGNMENT_MCAP_500B"] },
+        "strategy_alias": { "type": "string", "enum": ["A FAST Core", "A FAST Core V2 Alignment 500B"] },
         "strategy_status": { "type": "string", "enum": ["FINAL_STRATEGY_FROZEN"] },
         "production_status": { "type": "string", "enum": ["PRODUCTION_DECISION_SUPPORT"] },
         "fresh_oos_status": { "type": "string", "enum": ["NOT_EXECUTED"] },
@@ -169,7 +169,22 @@ v0.2에서 정한 사항은 다음과 같다.
         "protection_state": { "type": ["object", "null"] },
         "reentry_state": { "type": ["object", "null"] },
         "metadata_provenance_mode": { "type": "string", "enum": ["CURRENT_VERIFIED", "HISTORICAL_LEGACY_RESEARCH", "DATA_UNAVAILABLE"] },
-        "trade_history": { "type": "array" },
+        "research_group_id": { "type": "string", "enum": ["ALIGNMENT_MCAP_500B"] },
+        "promotion_gate_status": { "type": "string", "enum": ["INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"] },
+        "effective_signal_date": { "type": "string" },
+        "promotion_gate_audit": { "type": "array", "items": { "type": "object" } },
+        "trade_history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "entry_signal_date": { "type": "string", "format": "date" },
+              "strategy_id": { "type": "string", "enum": ["PATTERN_A_FAST_FINAL_STRATEGY_V02", "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"] },
+              "entry_strategy_id": { "type": "string", "enum": ["PATTERN_A_FAST_FINAL_STRATEGY_V02", "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"] },
+              "exit_strategy_id": { "type": "string", "enum": ["PATTERN_A_FAST_FINAL_STRATEGY_V02", "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"] }
+            }
+          }
+        },
         "provenance": { "type": "object" }
       }
     },

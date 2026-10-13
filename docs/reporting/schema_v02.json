@@ -103,9 +103,13 @@
       ],
       "properties": {
         "metadata_provenance_mode": { "type": "string", "enum": ["CURRENT_VERIFIED", "HISTORICAL_LEGACY_RESEARCH", "DATA_UNAVAILABLE"] },
-        "strategy_id": { "type": "string", "enum": ["PATTERN_A_FAST_FINAL_STRATEGY_V02"] },
-        "strategy_version": { "type": "string", "enum": ["V02"] },
+        "strategy_id": { "type": "string", "enum": ["PATTERN_A_FAST_FINAL_STRATEGY_V02", "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"] },
+        "strategy_version": { "type": "string", "enum": ["V02", "V02_ALIGNMENT_MCAP_500B"] },
         "strategy_alias": { "type": "string" },
+        "research_group_id": { "type": "string", "enum": ["ALIGNMENT_MCAP_500B"] },
+        "promotion_gate_status": { "type": "string", "enum": ["INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"] },
+        "effective_signal_date": { "type": "string" },
+        "promotion_gate_audit": { "type": "array", "items": { "type": "object" } },
         "strategy_status": { "type": "string" },
         "production_status": { "type": "string" },
         "fresh_oos_status": { "type": "string" },
@@ -153,7 +157,10 @@
             "fast_stage_status": { "type": ["string", "null"] },
             "monthly_regime": { "type": ["string", "null"] },
             "daily_risk": { "type": ["string", "null"] },
-            "fast_score_status": { "type": ["string", "null"] }
+            "fast_score_status": { "type": ["string", "null"] },
+            "alignment_mcap_500b_pass": { "type": ["boolean", "null"] },
+            "alignment_mcap_500b_status": { "type": ["string", "null"] },
+            "alignment_mcap_500b_details": { "type": ["object", "null"] }
           }
         },
         "current_trade": {
@@ -271,6 +278,9 @@
             ],
             "properties": {
               "trade_id": { "type": "string" },
+              "strategy_id": { "type": "string", "enum": ["PATTERN_A_FAST_FINAL_STRATEGY_V02", "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"] },
+              "entry_strategy_id": { "type": "string", "enum": ["PATTERN_A_FAST_FINAL_STRATEGY_V02", "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"] },
+              "exit_strategy_id": { "type": "string", "enum": ["PATTERN_A_FAST_FINAL_STRATEGY_V02", "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"] },
               "trade_sequence": { "type": "integer" },
               "entry_signal_date": { "type": "string" },
               "entry_execution_date": { "type": "string" },

@@ -278,11 +278,45 @@ def _compact_trade_history(strategy: dict[str, Any]) -> list[dict[str, Any]]:
         "return_pct",
         "lifecycle_class",
     )
-    return [
-        {field: trade.get(field) for field in fields}
-        for trade in history
-        if isinstance(trade, dict)
-    ]
+    result = []
+    default_strategy_id = str(strategy.get("strategy_id") or strategy.get("id") or "PATTERN_A_FAST_FINAL_STRATEGY_V02")
+    promoted = default_strategy_id == "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+    if promoted:
+        fields = ("trade_id", "strategy_id", "entry_strategy_id", "exit_strategy_id", *fields[1:])
+    effective_date = str(strategy.get("effective_signal_date") or "")
+    if promoted:
+        try:
+            if date.fromisoformat(effective_date).isoformat() != effective_date:
+                raise ValueError
+        except ValueError as exc:
+            raise ValueError("promoted A FAST history requires an exact effective_signal_date") from exc
+    for trade in history:
+        if not isinstance(trade, dict):
+            continue
+        compact = {field: trade.get(field) for field in fields}
+        signal_date = str(trade.get("entry_signal_date") or "")[:10]
+        if promoted:
+            try:
+                if date.fromisoformat(signal_date).isoformat() != signal_date:
+                    raise ValueError
+            except ValueError as exc:
+                raise ValueError("promoted A FAST history requires an exact entry_signal_date") from exc
+            expected_trade_strategy_id = (
+                "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+                if signal_date < effective_date
+                else "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+            )
+            if compact["strategy_id"] not in {None, expected_trade_strategy_id}:
+                raise ValueError("A FAST history strategy ID does not match entry_signal_date lineage")
+            if compact["entry_strategy_id"] not in {None, expected_trade_strategy_id}:
+                raise ValueError("A FAST entry strategy ID does not match entry_signal_date lineage")
+            if compact["exit_strategy_id"] not in {None, expected_trade_strategy_id}:
+                raise ValueError("A FAST exit strategy ID does not match entry_signal_date lineage")
+            compact["strategy_id"] = expected_trade_strategy_id
+            compact["entry_strategy_id"] = compact["entry_strategy_id"] or compact["strategy_id"]
+            compact["exit_strategy_id"] = compact["exit_strategy_id"] or compact["entry_strategy_id"]
+        result.append(compact)
+    return result
 
 
 def validate_exact_etf_report_corpus(
@@ -416,6 +450,16 @@ def _compact_report(
             "interpretation": strategy.get("interpretation"),
             "history": _compact_trade_history(strategy),
         }
+        if strategy.get("strategy_id") == "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B":
+            strategy_public.update({
+                "id": strategy.get("strategy_id"),
+                "strategy_id": strategy.get("strategy_id"),
+                "strategy_name": strategy.get("strategy_alias"),
+                "research_group_id": strategy.get("research_group_id"),
+                "promotion_gate_status": strategy.get("promotion_gate_status"),
+                "effective_signal_date": strategy.get("effective_signal_date"),
+                "promotion_gate_audit": copy.deepcopy(strategy.get("promotion_gate_audit") or []),
+            })
 
     return {
         "schema_version": 1,

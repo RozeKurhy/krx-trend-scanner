@@ -78,6 +78,37 @@ def contracts():
     return sc, st
 
 
+def test_causal_lifecycle_metadata_stops_at_loss_guard_signal_date():
+    """A post-exit PROGRESSED observation cannot revise the stopped trade metadata."""
+    snapshots = [
+        {
+            "date": pd.Timestamp("2020-01-31"),
+            "effective_trading_date": pd.Timestamp("2020-01-31"),
+            "stage": "EARLY_TREND",
+            "score": 54.0,
+        },
+        {
+            "date": pd.Timestamp("2021-03-31"),
+            "effective_trading_date": pd.Timestamp("2021-03-31"),
+            "stage": "PROGRESSED",
+            "score": 71.0,
+        },
+    ]
+
+    stopped = v2._simulate_causal_lifecycle(
+        snapshots,
+        "EARLY_TREND",
+        stop_date=pd.Timestamp("2020-03-19"),
+    )
+    window = v2._simulate_causal_lifecycle(snapshots, "EARLY_TREND")
+
+    assert stopped["first_progressed_date"] is None
+    assert stopped["coverage_path"] == "NEVER_PROGRESSED"
+    assert stopped["exit_signal_date"] is None
+    assert window["first_progressed_date"] == pd.Timestamp("2021-03-31")
+    assert window["coverage_path"] == "NORMAL_EARLY_TREND_HANDOFF"
+
+
 def test_v02_sequence_1_identity_vs_v01_baseline():
     """Section 11: Verify 100% row-level identity between V01 (551) and V02 Sequence 1 (551)."""
     v01_df = pd.read_csv(V01_CSV_PATH, dtype={"ticker": str})

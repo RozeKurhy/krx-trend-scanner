@@ -42,20 +42,15 @@
   };
   const STRATEGY_LABELS = {
     PATTERN_A_FAST_FINAL_STRATEGY_V02: "A FAST Core V2",
+    PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B: "A FAST Core V2 Alignment 500B",
     PATTERN_B_SELECT_CORE_V01: "B Select Core V1",
     PATTERN_B_SELECT_CORE_V02: "B Select Core V2",
     JULIA_ETF_STRATEGY_V01: "Julia V1",
   };
-  const CURRENT_STRATEGY_IDS = [
+  const FAST_STRATEGY_IDS = new Set([
     "PATTERN_A_FAST_FINAL_STRATEGY_V02",
-    "PATTERN_B_SELECT_CORE_V02",
-    "JULIA_ETF_STRATEGY_V01",
-  ];
-  const LEGACY_STRATEGY_IDS = [
-    "PATTERN_A_FAST_FINAL_STRATEGY_V02",
-    "PATTERN_B_SELECT_CORE_V01",
-    "JULIA_ETF_STRATEGY_V01",
-  ];
+    "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+  ]);
   const SECTION_IDS = { hold: "hold", entry: "entry", exit: "exit", watch: "watch", unavailable: "unavailable" };
   const FILTERS = new Set(["all", ...Object.keys(SECTION_IDS)]);
   const B_SELECT_STRATEGY_ID = "PATTERN_B_SELECT_CORE_V02";
@@ -848,6 +843,14 @@
       `기준일 ${formatDate(monitor.requested_as_of || monitor.as_of)} · ${formatNumber(displayCount)}개`
     );
     document.querySelectorAll("[data-strategy-id]").forEach((button) => {
+      if (button.id === "fast-core-option") {
+        const fastStrategy = (monitor.strategies || []).find((strategy) => FAST_STRATEGY_IDS.has(strategy.id));
+        if (fastStrategy) {
+          button.dataset.strategyId = fastStrategy.id;
+          const name = button.querySelector(".strategy-option-name");
+          if (name) name.textContent = STRATEGY_LABELS[fastStrategy.id] || fastStrategy.id;
+        }
+      }
       const available = (monitor.strategies || []).some((strategy) => strategy.id === button.dataset.strategyId);
       const selectedButton = available && button.dataset.strategyId === activeStrategyId;
       button.disabled = !available;
@@ -868,16 +871,21 @@
     }
     if (
       value.schema_version !== 2
-      || value.default_strategy_id !== "PATTERN_A_FAST_FINAL_STRATEGY_V02"
       || !/^\d{4}-\d{2}-\d{2}$/.test(value.requested_as_of || "")
       || !/^\d{4}-\d{2}-\d{2}$/.test(value.reference_market_date || "")
       || value.reference_market_date > value.requested_as_of
       || !Array.isArray(value.strategies)
     ) return false;
     const byId = new Map(value.strategies.map((strategy) => [strategy && strategy.id, strategy]));
-    const expectedIds = byId.has(B_SELECT_STRATEGY_ID)
-      ? CURRENT_STRATEGY_IDS
-      : byId.has(LEGACY_B_SELECT_STRATEGY_ID) ? LEGACY_STRATEGY_IDS : null;
+    const fastIds = Array.from(FAST_STRATEGY_IDS).filter((id) => byId.has(id));
+    if (fastIds.length !== 1 || value.default_strategy_id !== fastIds[0]) return false;
+    const fastStrategyId = fastIds[0];
+    const expectedBSelectId = byId.has(B_SELECT_STRATEGY_ID)
+      ? B_SELECT_STRATEGY_ID
+      : byId.has(LEGACY_B_SELECT_STRATEGY_ID) ? LEGACY_B_SELECT_STRATEGY_ID : null;
+    const expectedIds = expectedBSelectId
+      ? [fastStrategyId, expectedBSelectId, "JULIA_ETF_STRATEGY_V01"]
+      : null;
     if (!expectedIds || value.strategies.length !== expectedIds.length || expectedIds.some((id) => !byId.has(id))) return false;
     for (const id of expectedIds) {
       const strategy = byId.get(id);
@@ -897,6 +905,23 @@
           || strategy.canonical_current_open_position_count !== strategy.canonical_current_open_positions.length
         ))
       ) return false;
+      if (FAST_STRATEGY_IDS.has(id)) {
+        const gateStatus = strategy.promotion_gate_status;
+        const effectiveDate = strategy.effective_signal_date;
+        if (
+          (gateStatus != null && !["INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"].includes(gateStatus))
+          || (id === "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B" && gateStatus !== "ACTIVE")
+          || (gateStatus === "ACTIVE" && (
+            id !== "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+            || parseSortableDate(effectiveDate) == null
+          ))
+          || (gateStatus === "INACTIVE_PENDING_USER_APPROVAL" && effectiveDate != null && effectiveDate !== "PENDING_USER_APPROVAL")
+          || (gateStatus === "SCHEDULED_INACTIVE" && (
+            id !== "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+            || parseSortableDate(effectiveDate) == null
+          ))
+        ) return false;
+      }
       const seen = new Set();
       const counts = { entry: 0, hold: 0, exit: 0, watch: 0, unavailable: 0 };
       const historySeen = new Set();
@@ -906,12 +931,26 @@
           || !/^\d{4}-\d{2}-\d{2}$/.test(trade.entry_execution_date || "")
           || !Number.isFinite(Number(trade.entry_price)) || Number(trade.entry_price) <= 0
           || !trade.trade_status
+          || (trade.entry_signal_date && !/^\d{4}-\d{2}-\d{2}$/.test(trade.entry_signal_date))
           || (trade.exit_execution_date && !/^\d{4}-\d{2}-\d{2}$/.test(trade.exit_execution_date))
           || (trade.return_pct != null && !Number.isFinite(Number(trade.return_pct)))
         ) return false;
         const sourceId = trade.strategy_id || id;
-        const allowedSourceIds = [id];
-        if (!allowedSourceIds.includes(sourceId)) return false;
+        const allowedSourceIds = id === "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+          ? FAST_STRATEGY_IDS
+          : new Set([id]);
+        const entrySourceId = trade.entry_strategy_id || sourceId;
+        const exitSourceId = trade.exit_strategy_id || entrySourceId;
+        if (!allowedSourceIds.has(sourceId) || entrySourceId !== sourceId || exitSourceId !== entrySourceId) return false;
+        if (id === "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B") {
+          const signalDate = parseSortableDate(trade.entry_signal_date);
+          const effectiveDate = parseSortableDate(strategy.effective_signal_date);
+          if (signalDate == null || effectiveDate == null) return false;
+          const expectedSourceId = signalDate >= effectiveDate
+            ? "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+            : "PATTERN_A_FAST_FINAL_STRATEGY_V02";
+          if (sourceId !== expectedSourceId) return false;
+        }
         const identity = `${sourceId}\u0000${trade.ticker}\u0000${trade.trade_sequence}\u0000${trade.entry_execution_date}`;
         if (historySeen.has(identity)) return false;
         historySeen.add(identity);
@@ -949,7 +988,7 @@
       }
       if (Object.keys(counts).some((key) => Number(strategy.counts[key] || 0) !== counts[key])) return false;
     }
-    const commonA = new Set(byId.get("PATTERN_A_FAST_FINAL_STRATEGY_V02").items.map((item) => item.ticker));
+    const commonA = new Set(byId.get(fastStrategyId).items.map((item) => item.ticker));
     const bId = byId.has(B_SELECT_STRATEGY_ID) ? B_SELECT_STRATEGY_ID : LEGACY_B_SELECT_STRATEGY_ID;
     const commonB = new Set(byId.get(bId).items.map((item) => item.ticker));
     return commonA.size === commonB.size && Array.from(commonA).every((ticker) => commonB.has(ticker));

@@ -1,13 +1,14 @@
 # Pattern A FAST 전략 안내
 
 `Pattern A FAST Core`는 Pattern A FAST 패턴을 이용해 진입·보유·청산을 결정하는
-전략이다. 이 문서는 전략 폴더의 입구로, 네 버전의 역할과 현재 상태만 안내한다.
+전략이다. 이 문서는 전략 폴더의 입구로, 버전의 역할과 현재 상태만 안내한다.
 상세 규칙은 각 버전의 README에서 확인할 수 있다.
 
 ## 현재 기준
 
 - **현재 기본 전략**: V2 — `PATTERN_A_FAST_FINAL_STRATEGY_V02`
 - **V2 운영 상태**: 의사결정 지원 운영 — `PRODUCTION_DECISION_SUPPORT`
+- **승격 승인**: V2 Alignment 500B — 공식 채택 및 기본 전략 교체 승인 완료; 운영 적용일/발행은 미승인
 - **V2 개선 연구 상태**: 종료 — `A_FAST_CORE_V2_IMPROVEMENT_RESEARCH_CLOSED`
 - **V1 역할**: 공식 과거 비교 기준선
 - **V3 역할**: 종료된 후보 전략 기록
@@ -25,6 +26,7 @@ Exit4 15pt는 유지·종료, Exit3 Coverage Extension은 비승격·종료했�
 |---|---|---|---|
 | V1 | 공식 과거 비교 기준선 | 역사 기록 | [V1 README](../archive/strategy/version_01/README.md) |
 | V2 | 현재 기본 전략 | 의사결정 지원 운영 | [V2 README](./version_02/README.md) |
+| V2 Alignment 500B | V2 계승 공식 개선판 | 운영 미활성, 적용 신호일 승인 대기 | [Alignment 500B README](./version_02_alignment_mcap_500b/README.md) |
 | V3 | 종료된 후보 전략 | 역사 기록 | [V3 README](../archive/strategy/version_03/README.md) |
 | V4 | 종료된 후보 전략 | 역사 기록 | [V4 README](../archive/strategy/version_04/README.md) |
 
@@ -32,6 +34,7 @@ Exit4 15pt는 유지·종료, Exit3 Coverage Extension은 비승격·종료했�
 
 - [A FAST Core V1](../archive/strategy/version_01/README.md): 최초 1회 진입 기준의 역사적 전략
 - [A FAST Core V2](./version_02/README.md): V1의 진입·보유·청산 규칙을 유지하면서 독립 재진입을 허용한 현재 기본 전략
+- [A FAST Core V2 Alignment 500B](./version_02_alignment_mcap_500b/README.md): 공식 승격 승인된 진입 gate 개선판. 적용일과 운영 발행 승인 전까지 V2 기본값을 유지한다.
 - [A FAST Core V3](../archive/strategy/version_03/README.md): 종료된 후보 전략의 규칙과 판단을 보존하는 기록
 - [A FAST Core V4](../archive/strategy/version_04/README.md): 종료된 후보 전략의 규칙과 판단을 보존하는 기록
 

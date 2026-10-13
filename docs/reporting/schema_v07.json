@@ -15,6 +15,7 @@
     "name": {"type": "string"},
     "market": {"type": "string", "enum": ["KOSPI", "KOSDAQ", "KONEX", "UNKNOWN"]},
     "asset_type": {"const": "COMMON"},
+    "a_fast_core": {"$ref": "#/definitions/aFastCoreSection"},
     "pattern_b": {"$ref": "#/definitions/patternBSection"},
     "monthly_history": {"$ref": "#/definitions/patternAMonthlyHistoryDisplay"},
     "requested_as_of": {"type": "string"},
@@ -159,6 +160,30 @@
         "monthly_history": {"type": "array", "maxItems": 12, "items": {"$ref": "#/definitions/patternBObservation"}},
         "monthly_history_24m": {"type": "array", "maxItems": 25, "items": {"$ref": "#/definitions/patternBObservation"}},
         "provenance": {"$ref": "#/definitions/patternBProvenance"}
+      }
+    },
+    "aFastCoreSection": {
+      "type": "object",
+      "properties": {
+        "strategy_id": {"type": "string", "enum": ["PATTERN_A_FAST_FINAL_STRATEGY_V02", "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"]},
+        "strategy_version": {"type": "string", "enum": ["V02", "V02_ALIGNMENT_MCAP_500B"]},
+        "strategy_alias": {"type": "string", "enum": ["A FAST Core", "A FAST Core V2 Alignment 500B"]},
+        "research_group_id": {"type": "string", "enum": ["ALIGNMENT_MCAP_500B"]},
+        "promotion_gate_status": {"type": "string", "enum": ["INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"]},
+        "effective_signal_date": {"type": "string"},
+        "promotion_gate_audit": {"type": "array", "items": {"type": "object"}},
+        "trade_history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "entry_signal_date": {"type": "string", "format": "date"},
+              "strategy_id": {"type": "string", "enum": ["PATTERN_A_FAST_FINAL_STRATEGY_V02", "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"]},
+              "entry_strategy_id": {"type": "string", "enum": ["PATTERN_A_FAST_FINAL_STRATEGY_V02", "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"]},
+              "exit_strategy_id": {"type": "string", "enum": ["PATTERN_A_FAST_FINAL_STRATEGY_V02", "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"]}
+            }
+          }
+        }
       }
     }
   }

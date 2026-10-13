@@ -36,6 +36,14 @@ from trend_scanner.universe.models import AssetType
 from trend_scanner.data.market_calendar import MarketCalendarAuthority
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 from trend_scanner.validation.pattern_a_fast_core_v02_reentry import simulate_ticker_core_v02_reentry
+from trend_scanner.validation.pattern_a_fast_alignment_mcap_500b import (
+    AlignmentGateIntegrityError,
+    AlignmentMcap500BGate,
+    PROMOTED_STRATEGY_ID,
+    PROMOTED_STRATEGY_NAME,
+    V2_STRATEGY_ID,
+    get_production_alignment_gate,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +67,8 @@ def build_a_fast_core_section(
     *,
     metadata_provenance_mode: str,
     market_calendar: MarketCalendarAuthority | None = None,
+    repo_root: Path | None = None,
+    promotion_gate: AlignmentMcap500BGate | None = None,
 ) -> AFastCoreSection:
     """단일 종목에 대해 requested_as_of 시점의 A FAST Core V2 전략 상태 섹션을 생성한다.
 
@@ -82,6 +92,7 @@ def build_a_fast_core_section(
     if metadata_provenance_mode not in _VALID_METADATA_PROVENANCE_MODES:
         raise ValueError(f"Unknown metadata_provenance_mode: {metadata_provenance_mode!r}")
 
+    gate = promotion_gate or get_production_alignment_gate(str(Path(repo_root or Path.cwd()).resolve()))
     section = _build_a_fast_core_section_impl(
         ticker=ticker,
         name=name,
@@ -97,8 +108,24 @@ def build_a_fast_core_section(
         is_common_stock=is_common_stock,
         metadata_trusted=(metadata_provenance_mode != "DATA_UNAVAILABLE"),
         market_calendar=market_calendar,
+        promotion_gate=gate,
     )
     section.metadata_provenance_mode = metadata_provenance_mode
+    section.strategy_id = gate.strategy_id_for_as_of(requested_as_of)
+    if section.strategy_id == PROMOTED_STRATEGY_ID:
+        section.strategy_version = "V02_ALIGNMENT_MCAP_500B"
+        section.strategy_alias = PROMOTED_STRATEGY_NAME
+        section.research_group_id = "ALIGNMENT_MCAP_500B"
+        section.promotion_gate_status = "ACTIVE"
+        section.effective_signal_date = gate.config.effective_signal_date
+        section.provenance.strategy_contract = PROMOTED_STRATEGY_ID
+        section.provenance.strategy_contract_path = (
+            "docs/patterns/pattern_a_fast/strategy/version_02_alignment_mcap_500b/README.md"
+        )
+    else:
+        section.strategy_version = "V02"
+        section.strategy_alias = "A FAST Core"
+        section.provenance.strategy_contract = V2_STRATEGY_ID
     return section
 
 
@@ -118,6 +145,7 @@ def _build_a_fast_core_section_impl(
     *,
     metadata_trusted: bool,
     market_calendar: MarketCalendarAuthority | None = None,
+    promotion_gate: AlignmentMcap500BGate,
 ) -> AFastCoreSection:
     as_of_str = requested_as_of.strftime("%Y-%m-%d")
 
@@ -217,7 +245,25 @@ def _build_a_fast_core_section_impl(
             provenance=AFastCoreProvenance(),
         )
 
-    # 6. Simulate Frozen V2 Re-entry Trajectory up to requested_as_of
+    # 6. Simulate the frozen V2 lifecycle, filtering only post-cutover entries.
+    alignment_gate_audit: dict[str, dict[str, Any]] = {}
+
+    def entry_signal_allowed(signal_date: pd.Timestamp, _signal_result: Any) -> bool:
+        signal = pd.Timestamp(signal_date).normalize()
+        effective = promotion_gate.config.effective_date
+        if not promotion_gate.config.active or effective is None or signal < effective:
+            return True
+        decision = promotion_gate.evaluate(ticker, market, daily_as_of, signal)
+        alignment_gate_audit[signal.strftime("%Y-%m-%d")] = decision.to_dict(signal)
+        return decision.allowed
+
+    effective_signal_date = promotion_gate.config.effective_date
+    promotion_filter_active = bool(
+        promotion_gate.config.active
+        and effective_signal_date is not None
+        and requested_as_of.normalize() >= effective_signal_date
+    )
+
     try:
         trades = simulate_ticker_core_v02_reentry(
             ticker=ticker,
@@ -228,7 +274,12 @@ def _build_a_fast_core_section_impl(
             stage_contract=stage_contract,
             cutoff_date=requested_as_of,
             market_calendar=market_calendar,
+            # Keep the frozen default/pre-cutover path byte-for-byte equivalent
+            # by omitting the hook entirely until the promotion can apply.
+            entry_signal_filter=entry_signal_allowed if promotion_filter_active else None,
         )
+    except AlignmentGateIntegrityError:
+        raise
     except Exception as exc:
         logger.error("Simulation error for %s on %s: %s", ticker, as_of_str, exc)
         return AFastCoreSection(
@@ -239,6 +290,7 @@ def _build_a_fast_core_section_impl(
             action="NONE",
             action_reason="EVALUATOR_EXECUTION_FAILED",
             execution_timing=None,
+            promotion_gate_audit=list(alignment_gate_audit.values()),
             interpretation=f"패스트 코어 시뮬레이션 실행 중 오류가 발생하여 상태를 판정할 수 없습니다: {exc}",
             provenance=AFastCoreProvenance(),
         )
@@ -263,6 +315,9 @@ def _build_a_fast_core_section_impl(
                 return_pct=ret,
                 previous_exit_type=tr.previous_exit_type,
                 lifecycle_class=tr.lifecycle_class,
+                strategy_id=promotion_gate.strategy_id_for_signal(tr.entry_signal_date),
+                entry_strategy_id=promotion_gate.strategy_id_for_signal(tr.entry_signal_date),
+                exit_strategy_id=promotion_gate.strategy_id_for_signal(tr.entry_signal_date),
             )
         )
 
@@ -370,6 +425,9 @@ def _build_a_fast_core_section_impl(
             trade_status="OPEN",
             pending_exit_type=active_trade.exit_type if active_trade.exit_signal_date else None,
             pending_exit_signal_date=active_trade.exit_signal_date,
+            strategy_id=promotion_gate.strategy_id_for_signal(active_trade.entry_signal_date),
+            entry_strategy_id=promotion_gate.strategy_id_for_signal(active_trade.entry_signal_date),
+            exit_strategy_id=promotion_gate.strategy_id_for_signal(active_trade.entry_signal_date),
         )
 
         # Check pending exit
@@ -475,6 +533,7 @@ def _build_a_fast_core_section_impl(
                 protection_state=None,
                 reentry_state=reentry_state,
                 trade_history=trade_history_items,
+                promotion_gate_audit=list(alignment_gate_audit.values()),
                 interpretation="투자 유동성 및 시가총액 데이터 결측으로 패스트 코어 V2 신규 진입 적격성을 판정할 수 없습니다.",
                 provenance=AFastCoreProvenance(),
             )
@@ -508,6 +567,7 @@ def _build_a_fast_core_section_impl(
                     protection_state=None,
                     reentry_state=reentry_state,
                     trade_history=trade_history_items,
+                    promotion_gate_audit=list(alignment_gate_audit.values()),
                     interpretation=f"패스트 코어 FAST Evaluator 평가 중 오류가 발생했습니다: {exc}",
                     provenance=AFastCoreProvenance(),
                 )
@@ -525,6 +585,7 @@ def _build_a_fast_core_section_impl(
                 protection_state=None,
                 reentry_state=reentry_state,
                 trade_history=trade_history_items,
+                promotion_gate_audit=list(alignment_gate_audit.values()),
                 interpretation="완료된 주봉(completed weekly bar)이 없어 FAST 평가를 진행할 수 없습니다.",
                 provenance=AFastCoreProvenance(),
             )
@@ -566,9 +627,22 @@ def _build_a_fast_core_section_impl(
         if not sc_stat_ok:
             failed_conds.append("FAST_SCORE_STATUS_NOT_ALLOWED")
 
-        all_met = bool(
+        base_conditions_met = bool(
             inst_ok and inv_ok and pa_ok and fast_trig_ok and m_reg_ok and d_risk_ok and sc_stat_ok and no_pos_ok
         )
+        alignment_gate_decision = None
+        effective_signal_date = promotion_gate.config.effective_date
+        if (
+            base_conditions_met
+            and promotion_gate.config.active
+            and effective_signal_date is not None
+            and pd.Timestamp(latest_w).normalize() >= effective_signal_date
+        ):
+            alignment_gate_decision = promotion_gate.evaluate(ticker, market, daily_as_of, latest_w)
+            alignment_gate_audit[pd.Timestamp(latest_w).strftime("%Y-%m-%d")] = alignment_gate_decision.to_dict(latest_w)
+            if not alignment_gate_decision.allowed:
+                failed_conds.append(alignment_gate_decision.reason_code)
+        all_met = bool(base_conditions_met and (alignment_gate_decision is None or alignment_gate_decision.allowed))
 
         entry_conditions = AFastCoreEntryConditions(
             instrument_eligible=inst_ok,
@@ -587,6 +661,9 @@ def _build_a_fast_core_section_impl(
             monthly_regime=m_reg,
             daily_risk=d_risk,
             fast_score_status=sc_stat,
+            alignment_mcap_500b_pass=(alignment_gate_decision.allowed if alignment_gate_decision is not None else None),
+            alignment_mcap_500b_status=(alignment_gate_decision.reason_code if alignment_gate_decision is not None else None),
+            alignment_mcap_500b_details=(dict(alignment_gate_decision.details) if alignment_gate_decision is not None else None),
         )
 
         if all_met:
@@ -594,7 +671,12 @@ def _build_a_fast_core_section_impl(
             action = "ENTER_NEXT_OPEN"
             action_reason = "ALL_ENTRY_CONDITIONS_MET"
             execution_timing = "NEXT_LOCAL_TRADING_DAY_OPEN"
-            interp = f"패스트 코어 V2 전략의 모든 8대 진입 조건이 충족되었습니다. 다음 로컬 거래일 시가에 진입합니다 (Trade #{next_seq})."
+            interp = (
+                f"{PROMOTED_STRATEGY_NAME} 전략의 기존 V2 진입 조건과 승인 gate가 충족되었습니다. "
+                f"다음 로컬 거래일 시가에 진입합니다 (Trade #{next_seq})."
+                if alignment_gate_decision is not None
+                else f"패스트 코어 V2 전략의 모든 8대 진입 조건이 충족되었습니다. 다음 로컬 거래일 시가에 진입합니다 (Trade #{next_seq})."
+            )
         else:
             strategy_state = "WAIT"
             action = "WAIT"
@@ -602,14 +684,20 @@ def _build_a_fast_core_section_impl(
             if not inv_ok:
                 action_reason = f"INVESTABILITY_FILTERED_{inv_status_str}"
                 interp = f"패스트 코어 V2 관망(WAIT) 상태입니다. 투자 유동성/시가총액 기준 미달({inv_status_str})로 진입 조건이 충족되지 않았습니다."
+            elif alignment_gate_decision is not None and not alignment_gate_decision.allowed:
+                action_reason = alignment_gate_decision.reason_code
+                interp = (
+                    f"{PROMOTED_STRATEGY_NAME} 신규 진입 gate 미통과({action_reason})로 관망합니다. "
+                    "기존 V2 보유 포지션과 청산 규칙은 유지됩니다."
+                )
             else:
                 action_reason = "ENTRY_CONDITIONS_NOT_MET"
                 interp = f"패스트 코어 V2 관망(WAIT) 상태입니다. 진입 미충족 조건: {', '.join(failed_conds)}."
 
     return AFastCoreSection(
-        strategy_id="PATTERN_A_FAST_FINAL_STRATEGY_V02",
-        strategy_version="V02",
-        strategy_alias="A FAST Core",
+        strategy_id=promotion_gate.strategy_id_for_as_of(requested_as_of),
+        strategy_version=("V02_ALIGNMENT_MCAP_500B" if promotion_gate.strategy_id_for_as_of(requested_as_of) == PROMOTED_STRATEGY_ID else "V02"),
+        strategy_alias=(PROMOTED_STRATEGY_NAME if promotion_gate.strategy_id_for_as_of(requested_as_of) == PROMOTED_STRATEGY_ID else "A FAST Core V2"),
         strategy_status="FINAL_STRATEGY_FROZEN",
         production_status="PRODUCTION_DECISION_SUPPORT",
         fresh_oos_status="NOT_EXECUTED",
@@ -625,6 +713,14 @@ def _build_a_fast_core_section_impl(
         protection_state=protection_state,
         reentry_state=reentry_state,
         trade_history=trade_history_items,
+        promotion_gate_audit=sorted(alignment_gate_audit.values(), key=lambda item: item["signal_date"]),
         interpretation=interp,
-        provenance=AFastCoreProvenance(),
+        provenance=AFastCoreProvenance(
+            strategy_contract=(PROMOTED_STRATEGY_ID if promotion_gate.strategy_id_for_as_of(requested_as_of) == PROMOTED_STRATEGY_ID else V2_STRATEGY_ID),
+            strategy_contract_path=(
+                "docs/patterns/pattern_a_fast/strategy/version_02_alignment_mcap_500b/README.md"
+                if promotion_gate.strategy_id_for_as_of(requested_as_of) == PROMOTED_STRATEGY_ID
+                else "docs/patterns/pattern_a_fast/strategy/version_02/README.md"
+            ),
+        ),
     )
