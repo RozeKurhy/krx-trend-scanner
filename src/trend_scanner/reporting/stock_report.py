@@ -90,6 +90,21 @@ logger = logging.getLogger(__name__)
 _FUNDAMENTALS_UNSET = object()
 
 
+def _load_fast_alignment_daily(repository: MarketDataRepositoryV2, ticker: str, end: Any) -> pd.DataFrame | None:
+    """Load FAST full-history web input inside the current official PIT identity bounds.
+
+    The replay gate resolves historical identity at each signal date. The price
+    series must still exclude predecessor instruments such as a pre-merger SPAC
+    that shared the ticker and ISU code; Repository V2's normal read enforces
+    that lower bound and retains its strict raw/adjusted session projection.
+    """
+    return RepositoryV2DailyLoader(
+        repository,
+        end=end,
+        historical_identity=False,
+    ).load(ticker)
+
+
 def _format_ticker(ticker: str) -> str:
     return str(ticker).strip().zfill(6)
 
@@ -1378,12 +1393,8 @@ def generate_stock_report(
 
     a_fast_daily = daily
     if a_fast_replay_mode == HISTORICAL_ALIGNMENT_REPLAY_MODE and repository is not None and daily_override is None:
-        historical_daily = RepositoryV2DailyLoader(
-            repository,
-            end=market_data_end,
-            historical_identity=True,
-        ).load(clean_ticker)
-        a_fast_daily = historical_daily if historical_daily is not None else pd.DataFrame()
+        replay_daily = _load_fast_alignment_daily(repository, clean_ticker, market_data_end)
+        a_fast_daily = replay_daily if replay_daily is not None else pd.DataFrame()
 
     a_fast_core_section = build_a_fast_core_section(
         ticker=clean_ticker,
