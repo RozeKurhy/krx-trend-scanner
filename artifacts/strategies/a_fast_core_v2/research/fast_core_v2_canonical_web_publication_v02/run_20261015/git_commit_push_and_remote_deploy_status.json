@@ -1,19 +1,25 @@
 {
   "work_id": "A_FAST_ALIGNMENT_500B_CANONICAL_WEB_PUBLICATION_V02",
-  "status": "PENDING_COMMIT_PUSH",
+  "status": "PASS",
   "base_branch": "main",
   "base_head": "d8f6482096dfcda19d693e6e512a7df3acce4a9c",
-  "base_origin_main": "d8f6482096dfcda19d693e6e512a7df3acce4a9c",
-  "base_head_equals_origin_main": true,
+  "publication_commit": "50e0e8a2f0829df364490b2fc3b80b4414b7a678",
+  "publication_commit_subject": "Publish A FAST Alignment 500B canonical web data",
+  "push_status": "PASS",
+  "pushed_branch": "origin/main",
+  "origin_main_after_publication_push": "50e0e8a2f0829df364490b2fc3b80b4414b7a678",
+  "head_equals_origin_main_after_publication_push": true,
+  "ahead_after_publication_push": 0,
+  "behind_after_publication_push": 0,
+  "tracked_staged_changes_after_push": 0,
+  "tracked_unstaged_changes_after_push": 0,
+  "staged_file_count": 4405,
+  "out_of_allowlist_staged_file_count": 0,
   "unrelated_worktree_status_exactly_unchanged": true,
   "unrelated_worktree_status_rows_before": 33278,
   "unrelated_worktree_status_rows_after": 33278,
   "unrelated_worktree_status_sha256_before": "14db7b293b490469312ed3a1d825c12a4ae33ef6b718917fb4adaffe101d8b01",
   "unrelated_worktree_status_sha256_after": "14db7b293b490469312ed3a1d825c12a4ae33ef6b718917fb4adaffe101d8b01",
-  "publication_commit": null,
-  "push_status": "PENDING",
-  "post_push_head_equals_origin_main": null,
-  "github_pages_deploy_status": "NOT_CHECKED",
   "allowlist": {
     "code_and_tests": [
       "scripts/rebuild_fast_web_canonical_alignment_staging_v01.py",
@@ -23,8 +29,61 @@
       "tests/test_rebuild_fast_web_canonical_alignment_staging_v01.py",
       "tests/test_daily_update_phase4d_v01.py"
     ],
-    "official_reports": "artifacts/reporting/stock_reports/20261011/",
-    "published_web_data": "web/data/",
-    "publication_evidence": "selected V02 run_20261015 files; local backup trees and unrelated research outputs excluded"
+    "official_report_file_count": 2918,
+    "web_data_changed_file_count": 1462,
+    "publication_evidence_file_count": 19,
+    "selected_publication_evidence_only": true,
+    "backups_and_unrelated_research_outputs_staged": false
+  },
+  "github_pages": {
+    "status": "PASS",
+    "site_url": "https://rozekurhy.github.io/krx-trend-scanner/",
+    "verified_at_utc": "2026-10-14 23:21:05 UTC",
+    "workflow": ".github/workflows/pages.yml (push to main deploys web/)",
+    "http_200_pages": {
+      "home": "/",
+      "strategy": "/strategy.html",
+      "stock_report": "/report.html?ticker=000020",
+      "sector": "/sector.html",
+      "foreign_flow": "/foreign.html",
+      "etf": "/etf.html"
+    },
+    "published_strategy_monitor": {
+      "requested_as_of": "2026-10-11",
+      "reference_market_date": "2026-10-08",
+      "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+      "replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+      "digest": "e3c6ecc19187eb8951c1c9ef1626a2b54a9cffe1f6d415721b75a0cca8e89b61",
+      "strategy_rows": 3,
+      "fast_rows": 1,
+      "fast_items": 1459,
+      "fast_trades": 423
+    },
+    "public_compact_stock_report": {
+      "ticker": "000020",
+      "name": "동화약품",
+      "requested_as_of": "2026-10-11",
+      "reference_market_date": "2026-10-08",
+      "strategy_digest": "e3c6ecc19187eb8951c1c9ef1626a2b54a9cffe1f6d415721b75a0cca8e89b61"
+    },
+    "identity_routes": {
+      "route_table_http": "200",
+      "route_count": 399,
+      "sample_target": "data/identity-reports/000650--KR7000650002.json",
+      "sample_target_http": "200",
+      "sample_target_identity": {
+        "ticker": "000650",
+        "isu_cd": "KR7000650002"
+      }
+    },
+    "public_sidecars": {
+      "etf_ranking_http": "200",
+      "etf_ranking_requested_as_of": "2026-10-11",
+      "etf_ranking_reference_market_date": "2026-10-08",
+      "etf_ranking_items": 36,
+      "fear_index_http": "200",
+      "fear_index_preserved_requested_as_of": "2026-10-03",
+      "fear_index_preserved_reference_market_date": "2026-10-02"
+    }
   }
 }
