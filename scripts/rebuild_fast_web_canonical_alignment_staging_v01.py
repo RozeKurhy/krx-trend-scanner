@@ -213,7 +213,7 @@ def _project_signature(ticker: str, row: dict[str, Any], source: str) -> tuple[A
             _normalize_trade_key(ticker, row),
             row.get("trade_id"),
             row.get("strategy_id"), row.get("entry_strategy_id"), row.get("exit_strategy_id"),
-            row.get("entry_open"), row.get("exit_type") if row.get("exit_execution_date") else None,
+            row.get("entry_open"), row.get("exit_type"),
             row.get("exit_signal_date"),
             row.get("exit_execution_date"), row.get("exit_price"), row.get("return_pct"),
             row.get("trade_status"),
@@ -433,7 +433,7 @@ def _verify_three_way_parity(stage_root: Path, target_as_of: str, reference_mark
             or left.get("exit_execution_date") != right.get("exit_execution_date")
             or left.get("exit_price") != right.get("exit_price")
             or left.get("return_pct") != right.get("return_pct")
-            or (left.get("exit_type") if left.get("exit_execution_date") else None) != right.get("exit_reason")
+            or left.get("exit_type") != right.get("exit_reason")
             or left.get("strategy_id") != right.get("strategy_id")
             or left.get("entry_strategy_id") != right.get("entry_strategy_id")
             or left.get("exit_strategy_id") != right.get("exit_strategy_id")

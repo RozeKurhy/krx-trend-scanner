@@ -9,13 +9,13 @@
   },
   "availability": {
     "report_available": true,
-    "report_status": "PARTIAL"
+    "report_status": "READY"
   },
   "decision": {
-    "action": "HOLD",
-    "strategy_state": "HOLD_PROGRESSED",
-    "canonical_position": "OPEN",
-    "action_reason": "OPEN_POSITION_PROGRESSED",
+    "action": "WAIT",
+    "strategy_state": "WAIT",
+    "canonical_position": "FLAT",
+    "action_reason": "INVESTABILITY_FILTERED_FILTERED_MARKET_CAP",
     "is_investable": false
   },
   "summary": {
@@ -1079,41 +1079,1146 @@
     ]
   },
   "strategy": {
-    "action": "HOLD",
-    "state": "HOLD_PROGRESSED",
-    "position": "OPEN",
-    "reason": "OPEN_POSITION_PROGRESSED",
-    "interpretation": "패스트 코어 V2 전략 포지션은 PROGRESSED 구간에 있습니다. 초기 Loss Guard는 비활성화되었으며 Exit3 / Exit4 기준으로 추세 종료 여부를 관찰합니다.",
-    "history": [
+    "action": "WAIT",
+    "state": "WAIT",
+    "position": "FLAT",
+    "reason": "INVESTABILITY_FILTERED_FILTERED_MARKET_CAP",
+    "interpretation": "패스트 코어 V2 관망(WAIT) 상태입니다. 투자 유동성/시가총액 기준 미달(FILTERED_MARKET_CAP)로 진입 조건이 충족되지 않았습니다.",
+    "history": [],
+    "id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+    "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+    "strategy_name": "A FAST Core V2 Alignment 500B",
+    "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+    "strategy_replay_scope": {
+      "type": "PUBLISHED_COMMON_REPORTS",
+      "report_count": 1459,
+      "requested_as_of": "2026-10-11",
+      "reference_market_date": "2026-10-08",
+      "first_v2_candidate_signal_date": "2012-12-28",
+      "last_v2_candidate_signal_date": "2026-10-02",
+      "first_alignment_gate_pass_signal_date": "2015-01-02",
+      "base_candidate_signal_count": 20012,
+      "alignment_gate_pass_count": 423,
+      "output_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+    },
+    "strategy_replay_digest": "e3c6ecc19187eb8951c1c9ef1626a2b54a9cffe1f6d415721b75a0cca8e89b61",
+    "research_group_id": "ALIGNMENT_MCAP_500B",
+    "promotion_gate_audit": [
       {
-        "trade_id": "002700_01",
-        "trade_sequence": 1,
-        "entry_signal_date": "2016-04-01",
-        "entry_execution_date": "2016-04-04",
-        "entry_open": 1895.0,
-        "entry_pattern_a_stage": "TRANSITION",
-        "exit_type": "LOSS_GUARD_CLOSE_LE_NEG_15",
-        "exit_signal_date": "2017-08-22",
-        "exit_execution_date": "2017-08-23",
-        "exit_price": 1440.0,
-        "trade_status": "REALIZED",
-        "return_pct": -24.01,
-        "lifecycle_class": "NEVER_PROGRESSED"
+        "signal_date": "2016-04-01",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 1905.0,
+          "ma20_prior_completed_months": 1561.8,
+          "ma60_prior_completed_months": 1226.0166666666667,
+          "last_completed_month": "2016-03",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2016-04-01",
+          "market_cap_krw": 135345527505,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2016-04-01"
+          }
+        }
       },
       {
-        "trade_id": "002700_02",
-        "trade_sequence": 2,
-        "entry_signal_date": "2019-03-08",
-        "entry_execution_date": "2019-03-11",
-        "entry_open": 1690.0,
-        "entry_pattern_a_stage": "TRANSITION",
-        "exit_type": "NO_EXIT_BEFORE_CUTOFF",
-        "exit_signal_date": null,
-        "exit_execution_date": null,
-        "exit_price": null,
-        "trade_status": "OPEN_AT_CUTOFF",
-        "return_pct": -38.52,
-        "lifecycle_class": "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
+        "signal_date": "2016-04-08",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 1880.0,
+          "ma20_prior_completed_months": 1561.8,
+          "ma60_prior_completed_months": 1226.0166666666667,
+          "last_completed_month": "2016-03",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2016-04-08",
+          "market_cap_krw": 133569339480,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2016-04-08"
+          }
+        }
+      },
+      {
+        "signal_date": "2016-04-15",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 1910.0,
+          "ma20_prior_completed_months": 1561.8,
+          "ma60_prior_completed_months": 1226.0166666666667,
+          "last_completed_month": "2016-03",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2016-04-15",
+          "market_cap_krw": 135700765110,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2016-04-15"
+          }
+        }
+      },
+      {
+        "signal_date": "2016-04-22",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 1940.0,
+          "ma20_prior_completed_months": 1561.8,
+          "ma60_prior_completed_months": 1226.0166666666667,
+          "last_completed_month": "2016-03",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2016-04-22",
+          "market_cap_krw": 137832190740,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2016-04-22"
+          }
+        }
+      },
+      {
+        "signal_date": "2016-04-29",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 1875.0,
+          "ma20_prior_completed_months": 1561.8,
+          "ma60_prior_completed_months": 1226.0166666666667,
+          "last_completed_month": "2016-03",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2016-04-29",
+          "market_cap_krw": 133214101875,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2016-04-29"
+          }
+        }
+      },
+      {
+        "signal_date": "2016-05-13",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 1885.0,
+          "ma20_prior_completed_months": 1553.0,
+          "ma60_prior_completed_months": 1250.8166666666666,
+          "last_completed_month": "2016-04",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2016-05-13",
+          "market_cap_krw": 133924577085,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2016-05-13"
+          }
+        }
+      },
+      {
+        "signal_date": "2016-05-20",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2125.0,
+          "ma20_prior_completed_months": 1553.0,
+          "ma60_prior_completed_months": 1250.8166666666666,
+          "last_completed_month": "2016-04",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2016-05-20",
+          "market_cap_krw": 150975982125,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2016-05-20"
+          }
+        }
+      },
+      {
+        "signal_date": "2016-12-16",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2355.0,
+          "ma20_prior_completed_months": 1628.5,
+          "ma60_prior_completed_months": 1429.9,
+          "last_completed_month": "2016-11",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2016-12-16",
+          "market_cap_krw": 167316911955,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2016-12-16"
+          }
+        }
+      },
+      {
+        "signal_date": "2019-03-08",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 1705.0,
+          "ma20_prior_completed_months": 1455.25,
+          "ma60_prior_completed_months": 1656.7333333333333,
+          "last_completed_month": "2019-02"
+        }
+      },
+      {
+        "signal_date": "2019-03-15",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 1850.0,
+          "ma20_prior_completed_months": 1455.25,
+          "ma60_prior_completed_months": 1656.7333333333333,
+          "last_completed_month": "2019-02"
+        }
+      },
+      {
+        "signal_date": "2019-03-29",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2015.0,
+          "ma20_prior_completed_months": 1455.25,
+          "ma60_prior_completed_months": 1656.7333333333333,
+          "last_completed_month": "2019-02"
+        }
+      },
+      {
+        "signal_date": "2019-05-10",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2170.0,
+          "ma20_prior_completed_months": 1491.5,
+          "ma60_prior_completed_months": 1660.3166666666666,
+          "last_completed_month": "2019-04"
+        }
+      },
+      {
+        "signal_date": "2019-05-17",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2240.0,
+          "ma20_prior_completed_months": 1491.5,
+          "ma60_prior_completed_months": 1660.3166666666666,
+          "last_completed_month": "2019-04"
+        }
+      },
+      {
+        "signal_date": "2020-05-08",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2275.0,
+          "ma20_prior_completed_months": 1685.25,
+          "ma60_prior_completed_months": 1651.6666666666667,
+          "last_completed_month": "2020-04",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2020-05-08",
+          "market_cap_krw": 161633110275,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2020-05-08"
+          }
+        }
+      },
+      {
+        "signal_date": "2020-05-15",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2230.0,
+          "ma20_prior_completed_months": 1685.25,
+          "ma60_prior_completed_months": 1651.6666666666667,
+          "last_completed_month": "2020-04",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2020-05-15",
+          "market_cap_krw": 158435971830,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2020-05-15"
+          }
+        }
+      },
+      {
+        "signal_date": "2020-05-22",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2300.0,
+          "ma20_prior_completed_months": 1685.25,
+          "ma60_prior_completed_months": 1651.6666666666667,
+          "last_completed_month": "2020-04",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2020-05-22",
+          "market_cap_krw": 163409298300,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2020-05-22"
+          }
+        }
+      },
+      {
+        "signal_date": "2020-06-05",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2355.0,
+          "ma20_prior_completed_months": 1728.75,
+          "ma60_prior_completed_months": 1658.3333333333333,
+          "last_completed_month": "2020-05",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2020-06-05",
+          "market_cap_krw": 167316911955,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2020-06-05"
+          }
+        }
+      },
+      {
+        "signal_date": "2021-02-19",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2180.0,
+          "ma20_prior_completed_months": 1802.5,
+          "ma60_prior_completed_months": 1725.8333333333333,
+          "last_completed_month": "2021-01",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2021-02-19",
+          "market_cap_krw": 154883595780,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2021-02-19"
+          }
+        }
+      },
+      {
+        "signal_date": "2021-02-26",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2170.0,
+          "ma20_prior_completed_months": 1802.5,
+          "ma60_prior_completed_months": 1725.8333333333333,
+          "last_completed_month": "2021-01",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2021-02-26",
+          "market_cap_krw": 154173120570,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2021-02-26"
+          }
+        }
+      },
+      {
+        "signal_date": "2021-03-05",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2220.0,
+          "ma20_prior_completed_months": 1806.5,
+          "ma60_prior_completed_months": 1736.25,
+          "last_completed_month": "2021-02",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2021-03-05",
+          "market_cap_krw": 157725496620,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2021-03-05"
+          }
+        }
+      },
+      {
+        "signal_date": "2021-03-12",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2230.0,
+          "ma20_prior_completed_months": 1806.5,
+          "ma60_prior_completed_months": 1736.25,
+          "last_completed_month": "2021-02",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2021-03-12",
+          "market_cap_krw": 158435971830,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2021-03-12"
+          }
+        }
+      },
+      {
+        "signal_date": "2021-03-19",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2345.0,
+          "ma20_prior_completed_months": 1806.5,
+          "ma60_prior_completed_months": 1736.25,
+          "last_completed_month": "2021-02",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2021-03-19",
+          "market_cap_krw": 166606436745,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2021-03-19"
+          }
+        }
+      },
+      {
+        "signal_date": "2021-03-26",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2200.0,
+          "ma20_prior_completed_months": 1806.5,
+          "ma60_prior_completed_months": 1736.25,
+          "last_completed_month": "2021-02",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2021-03-26",
+          "market_cap_krw": 156304546200,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2021-03-26"
+          }
+        }
+      },
+      {
+        "signal_date": "2021-04-09",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2290.0,
+          "ma20_prior_completed_months": 1830.5,
+          "ma60_prior_completed_months": 1742.0,
+          "last_completed_month": "2021-03",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2021-04-09",
+          "market_cap_krw": 162698823090,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2021-04-09"
+          }
+        }
+      },
+      {
+        "signal_date": "2021-04-16",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2275.0,
+          "ma20_prior_completed_months": 1830.5,
+          "ma60_prior_completed_months": 1742.0,
+          "last_completed_month": "2021-03",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2021-04-16",
+          "market_cap_krw": 161633110275,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2021-04-16"
+          }
+        }
+      },
+      {
+        "signal_date": "2021-04-23",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2305.0,
+          "ma20_prior_completed_months": 1830.5,
+          "ma60_prior_completed_months": 1742.0,
+          "last_completed_month": "2021-03",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2021-04-23",
+          "market_cap_krw": 163764535905,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2021-04-23"
+          }
+        }
+      },
+      {
+        "signal_date": "2021-05-07",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2270.0,
+          "ma20_prior_completed_months": 1865.75,
+          "ma60_prior_completed_months": 1747.75,
+          "last_completed_month": "2021-04",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2021-05-07",
+          "market_cap_krw": 161277872670,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2021-05-07"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-03-11",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2245.0,
+          "ma20_prior_completed_months": 1978.5,
+          "ma60_prior_completed_months": 1775.75,
+          "last_completed_month": "2022-02",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2022-03-11",
+          "market_cap_krw": 159501684645,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2022-03-11"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-03-18",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2220.0,
+          "ma20_prior_completed_months": 1978.5,
+          "ma60_prior_completed_months": 1775.75,
+          "last_completed_month": "2022-02",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2022-03-18",
+          "market_cap_krw": 157725496620,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2022-03-18"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-03-25",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2220.0,
+          "ma20_prior_completed_months": 1978.5,
+          "ma60_prior_completed_months": 1775.75,
+          "last_completed_month": "2022-02",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2022-03-25",
+          "market_cap_krw": 157725496620,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2022-03-25"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-04-01",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2295.0,
+          "ma20_prior_completed_months": 1991.5,
+          "ma60_prior_completed_months": 1777.4166666666667,
+          "last_completed_month": "2022-03",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2022-04-01",
+          "market_cap_krw": 163054060695,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2022-04-01"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-04-08",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2295.0,
+          "ma20_prior_completed_months": 1991.5,
+          "ma60_prior_completed_months": 1777.4166666666667,
+          "last_completed_month": "2022-03",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2022-04-08",
+          "market_cap_krw": 163054060695,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2022-04-08"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-04-15",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2360.0,
+          "ma20_prior_completed_months": 1991.5,
+          "ma60_prior_completed_months": 1777.4166666666667,
+          "last_completed_month": "2022-03",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2022-04-15",
+          "market_cap_krw": 167672149560,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2022-04-15"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-04-22",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2350.0,
+          "ma20_prior_completed_months": 1991.5,
+          "ma60_prior_completed_months": 1777.4166666666667,
+          "last_completed_month": "2022-03",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2022-04-22",
+          "market_cap_krw": 166961674350,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2022-04-22"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-04-29",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2290.0,
+          "ma20_prior_completed_months": 1991.5,
+          "ma60_prior_completed_months": 1777.4166666666667,
+          "last_completed_month": "2022-03",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2022-04-29",
+          "market_cap_krw": 162698823090,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2022-04-29"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-05-06",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2345.0,
+          "ma20_prior_completed_months": 2026.0,
+          "ma60_prior_completed_months": 1780.8333333333333,
+          "last_completed_month": "2022-04",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2022-05-06",
+          "market_cap_krw": 166606436745,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2022-05-06"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-05-13",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2240.0,
+          "ma20_prior_completed_months": 2026.0,
+          "ma60_prior_completed_months": 1780.8333333333333,
+          "last_completed_month": "2022-04",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2022-05-13",
+          "market_cap_krw": 159146447040,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2022-05-13"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-05-20",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2405.0,
+          "ma20_prior_completed_months": 2026.0,
+          "ma60_prior_completed_months": 1780.8333333333333,
+          "last_completed_month": "2022-04",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2022-05-20",
+          "market_cap_krw": 170869288005,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2022-05-20"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-05-27",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2355.0,
+          "ma20_prior_completed_months": 2026.0,
+          "ma60_prior_completed_months": 1780.8333333333333,
+          "last_completed_month": "2022-04",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2022-05-27",
+          "market_cap_krw": 167316911955,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2022-05-27"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-06-03",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2410.0,
+          "ma20_prior_completed_months": 2060.75,
+          "ma60_prior_completed_months": 1788.0833333333333,
+          "last_completed_month": "2022-05",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2022-06-03",
+          "market_cap_krw": 171224525610,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2022-06-03"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-06-10",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2285.0,
+          "ma20_prior_completed_months": 2060.75,
+          "ma60_prior_completed_months": 1788.0833333333333,
+          "last_completed_month": "2022-05",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2022-06-10",
+          "market_cap_krw": 162343585485,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2022-06-10"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-07-01",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2365.0,
+          "ma20_prior_completed_months": 2086.25,
+          "ma60_prior_completed_months": 1793.4166666666667,
+          "last_completed_month": "2022-06",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2022-07-01",
+          "market_cap_krw": 168027387165,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2022-07-01"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-07-15",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2265.0,
+          "ma20_prior_completed_months": 2086.25,
+          "ma60_prior_completed_months": 1793.4166666666667,
+          "last_completed_month": "2022-06",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2022-07-15",
+          "market_cap_krw": 160922635065,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2022-07-15"
+          }
+        }
+      },
+      {
+        "signal_date": "2023-02-03",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2105.0,
+          "ma20_prior_completed_months": 2038.75,
+          "ma60_prior_completed_months": 1845.6666666666667,
+          "last_completed_month": "2023-01",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2023-02-03",
+          "market_cap_krw": 149555031705,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2023-02-03"
+          }
+        }
+      },
+      {
+        "signal_date": "2023-02-10",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2100.0,
+          "ma20_prior_completed_months": 2038.75,
+          "ma60_prior_completed_months": 1845.6666666666667,
+          "last_completed_month": "2023-01",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2023-02-10",
+          "market_cap_krw": 149199794100,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2023-02-10"
+          }
+        }
+      },
+      {
+        "signal_date": "2023-02-17",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2090.0,
+          "ma20_prior_completed_months": 2038.75,
+          "ma60_prior_completed_months": 1845.6666666666667,
+          "last_completed_month": "2023-01",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2023-02-17",
+          "market_cap_krw": 148489318890,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2023-02-17"
+          }
+        }
+      },
+      {
+        "signal_date": "2023-02-24",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2120.0,
+          "ma20_prior_completed_months": 2038.75,
+          "ma60_prior_completed_months": 1845.6666666666667,
+          "last_completed_month": "2023-01",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2023-02-24",
+          "market_cap_krw": 150620744520,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2023-02-24"
+          }
+        }
+      },
+      {
+        "signal_date": "2023-03-03",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2185.0,
+          "ma20_prior_completed_months": 2044.5,
+          "ma60_prior_completed_months": 1855.6666666666667,
+          "last_completed_month": "2023-02",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2023-03-03",
+          "market_cap_krw": 155238833385,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2023-03-03"
+          }
+        }
+      },
+      {
+        "signal_date": "2023-03-10",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2150.0,
+          "ma20_prior_completed_months": 2044.5,
+          "ma60_prior_completed_months": 1855.6666666666667,
+          "last_completed_month": "2023-02",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2023-03-10",
+          "market_cap_krw": 152752170150,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2023-03-10"
+          }
+        }
+      },
+      {
+        "signal_date": "2023-03-17",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2110.0,
+          "ma20_prior_completed_months": 2044.5,
+          "ma60_prior_completed_months": 1855.6666666666667,
+          "last_completed_month": "2023-02",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2023-03-17",
+          "market_cap_krw": 149910269310,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2023-03-17"
+          }
+        }
+      },
+      {
+        "signal_date": "2023-03-24",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2045.0,
+          "ma20_prior_completed_months": 2044.5,
+          "ma60_prior_completed_months": 1855.6666666666667,
+          "last_completed_month": "2023-02",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2023-03-24",
+          "market_cap_krw": 145292180445,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2023-03-24"
+          }
+        }
+      },
+      {
+        "signal_date": "2023-03-31",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2100.0,
+          "ma20_prior_completed_months": 2044.5,
+          "ma60_prior_completed_months": 1855.6666666666667,
+          "last_completed_month": "2023-02",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2023-03-31",
+          "market_cap_krw": 149199794100,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2023-03-31"
+          }
+        }
+      },
+      {
+        "signal_date": "2023-04-07",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 2095.0,
+          "ma20_prior_completed_months": 2036.75,
+          "ma60_prior_completed_months": 1863.3333333333333,
+          "last_completed_month": "2023-03",
+          "ticker": "002700",
+          "isu_cd": "KR7002700003",
+          "market": "KOSPI",
+          "signal_date": "2023-04-07",
+          "market_cap_krw": 148844556495,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSPI",
+            "date": "2023-04-07"
+          }
+        }
       }
     ]
   },
@@ -1121,10 +2226,10 @@
     "requested_as_of": "2026-10-11",
     "reference_market_date": "2026-10-08",
     "report_version": "0.7",
-    "report_status": "PARTIAL",
+    "report_status": "READY",
     "asset_type": "COMMON",
-    "investability_status": "DATA_UNAVAILABLE",
-    "investability_reason": "REQUIRED_METRIC_UNAVAILABLE",
+    "investability_status": "FILTERED_MARKET_CAP",
+    "investability_reason": "MARKET_CAP_BELOW_1000EOK (712.9억)",
     "pattern_stage": "WEAK",
     "pattern_score": 7.87,
     "candidate_state": "blocked",

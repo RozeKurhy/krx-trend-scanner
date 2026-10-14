@@ -1,0 +1,55 @@
+{
+  "status": "PASS",
+  "checks": {
+    "official_stock_reports": {
+      "source_tree_sha256": "74ba63e43f426105ac89a55657f2a90e4d2e95f3e2d2a0994ac6da10980e6cbc",
+      "backup_tree_sha256": "74ba63e43f426105ac89a55657f2a90e4d2e95f3e2d2a0994ac6da10980e6cbc",
+      "source_file_count": 2918,
+      "backup_file_count": 2918,
+      "matches": true
+    },
+    "web_data": {
+      "source_tree_sha256": "aa129531d78f6f94b7dd68e37038bcf99e7bd517b19ffeb8e1922f3a94b65df5",
+      "backup_tree_sha256": "aa129531d78f6f94b7dd68e37038bcf99e7bd517b19ffeb8e1922f3a94b65df5",
+      "source_file_count": 1652,
+      "backup_file_count": 1652,
+      "matches": true
+    },
+    "b_select_status": {
+      "source_tree_sha256": "738b029cfdcdeec2cc118f106aeab58f4d22361b7768029f564dacd8069c02a4",
+      "backup_tree_sha256": "738b029cfdcdeec2cc118f106aeab58f4d22361b7768029f564dacd8069c02a4",
+      "source_file_count": 1,
+      "backup_file_count": 1,
+      "matches": true
+    },
+    "protected_julia_reports": {
+      "source_tree_sha256": "a0d721c53e553fd46d14a4f127c0110c5b089cda7bcd940138f19b758ff9f523",
+      "backup_tree_sha256": "a0d721c53e553fd46d14a4f127c0110c5b089cda7bcd940138f19b758ff9f523",
+      "source_file_count": 73,
+      "backup_file_count": 73,
+      "matches": true
+    },
+    "alignment_config": {
+      "source_tree_sha256": "3cc5c2a9eac0d10cebee85e512fe2d5466ffbaeb05369992e41785e4e69d6200",
+      "backup_tree_sha256": "3cc5c2a9eac0d10cebee85e512fe2d5466ffbaeb05369992e41785e4e69d6200",
+      "source_file_count": 1,
+      "backup_file_count": 1,
+      "matches": true
+    },
+    "alignment_activation_history": {
+      "source_tree_sha256": "ff1593adffe0c479b50153e8d9a851ea10ef4eecb3873fbf4daa4c8840e37876",
+      "backup_tree_sha256": "ff1593adffe0c479b50153e8d9a851ea10ef4eecb3873fbf4daa4c8840e37876",
+      "source_file_count": 1,
+      "backup_file_count": 1,
+      "matches": true
+    }
+  },
+  "recovery_paths": {
+    "official_stock_reports": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_canonical_web_publication_v02/run_20261015/backup/stock_reports_20261011",
+    "web_data": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_canonical_web_publication_v02/run_20261015/backup/web_data",
+    "b_select_status": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_canonical_web_publication_v02/run_20261015/backup/b_select_status_20261011/status.json",
+    "protected_julia_reports": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_canonical_web_publication_v02/run_20261015/backup/etf_stock_reports_20261011",
+    "alignment_config": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_canonical_web_publication_v02/run_20261015/backup/alignment_mcap_500b_operational_config.json",
+    "alignment_activation_history": "artifacts/strategies/a_fast_core_v2/research/fast_core_v2_canonical_web_publication_v02/run_20261015/backup/alignment_mcap_500b_activation_history.json"
+  }
+}

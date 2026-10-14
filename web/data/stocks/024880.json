@@ -9,13 +9,13 @@
   },
   "availability": {
     "report_available": true,
-    "report_status": "PARTIAL"
+    "report_status": "READY"
   },
   "decision": {
-    "action": "NONE",
-    "strategy_state": "DATA_UNAVAILABLE",
-    "canonical_position": "DATA_UNAVAILABLE",
-    "action_reason": "INVESTABILITY_DATA_UNAVAILABLE",
+    "action": "WAIT",
+    "strategy_state": "WAIT",
+    "canonical_position": "FLAT",
+    "action_reason": "INVESTABILITY_FILTERED_FILTERED_MARKET_CAP",
     "is_investable": false
   },
   "summary": {
@@ -1079,71 +1079,348 @@
     ]
   },
   "strategy": {
-    "action": "NONE",
-    "state": "DATA_UNAVAILABLE",
-    "position": "DATA_UNAVAILABLE",
-    "reason": "INVESTABILITY_DATA_UNAVAILABLE",
-    "interpretation": "투자 유동성 및 시가총액 데이터 결측으로 패스트 코어 V2 신규 진입 적격성을 판정할 수 없습니다.",
-    "history": [
+    "action": "WAIT",
+    "state": "WAIT",
+    "position": "FLAT",
+    "reason": "INVESTABILITY_FILTERED_FILTERED_MARKET_CAP",
+    "interpretation": "패스트 코어 V2 관망(WAIT) 상태입니다. 투자 유동성/시가총액 기준 미달(FILTERED_MARKET_CAP)로 진입 조건이 충족되지 않았습니다.",
+    "history": [],
+    "id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+    "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+    "strategy_name": "A FAST Core V2 Alignment 500B",
+    "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+    "strategy_replay_scope": {
+      "type": "PUBLISHED_COMMON_REPORTS",
+      "report_count": 1459,
+      "requested_as_of": "2026-10-11",
+      "reference_market_date": "2026-10-08",
+      "first_v2_candidate_signal_date": "2012-12-28",
+      "last_v2_candidate_signal_date": "2026-10-02",
+      "first_alignment_gate_pass_signal_date": "2015-01-02",
+      "base_candidate_signal_count": 20012,
+      "alignment_gate_pass_count": 423,
+      "output_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+    },
+    "strategy_replay_digest": "e3c6ecc19187eb8951c1c9ef1626a2b54a9cffe1f6d415721b75a0cca8e89b61",
+    "research_group_id": "ALIGNMENT_MCAP_500B",
+    "promotion_gate_audit": [
       {
-        "trade_id": "024880_01",
-        "trade_sequence": 1,
-        "entry_signal_date": "2018-03-02",
-        "entry_execution_date": "2018-03-05",
-        "entry_open": 5650.0,
-        "entry_pattern_a_stage": "TRANSITION",
-        "exit_type": "LOSS_GUARD_CLOSE_LE_NEG_15",
-        "exit_signal_date": "2018-08-16",
-        "exit_execution_date": "2018-08-17",
-        "exit_price": 4525.0,
-        "trade_status": "REALIZED",
-        "return_pct": -19.91,
-        "lifecycle_class": "NEVER_PROGRESSED"
+        "signal_date": "2018-03-02",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5700.0,
+          "ma20_prior_completed_months": 4878.75,
+          "ma60_prior_completed_months": 5145.833333333333,
+          "last_completed_month": "2018-02"
+        }
       },
       {
-        "trade_id": "024880_02",
-        "trade_sequence": 2,
-        "entry_signal_date": "2019-03-22",
-        "entry_execution_date": "2019-03-25",
-        "entry_open": 5710.0,
-        "entry_pattern_a_stage": "TRANSITION",
-        "exit_type": "LOSS_GUARD_CLOSE_LE_NEG_15",
-        "exit_signal_date": "2019-05-31",
-        "exit_execution_date": "2019-06-03",
-        "exit_price": 4770.0,
-        "trade_status": "REALIZED",
-        "return_pct": -16.46,
-        "lifecycle_class": "NEVER_PROGRESSED"
+        "signal_date": "2018-03-09",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5770.0,
+          "ma20_prior_completed_months": 4878.75,
+          "ma60_prior_completed_months": 5145.833333333333,
+          "last_completed_month": "2018-02"
+        }
       },
       {
-        "trade_id": "024880_03",
-        "trade_sequence": 3,
-        "entry_signal_date": "2022-01-07",
-        "entry_execution_date": "2022-01-10",
-        "entry_open": 5650.0,
-        "entry_pattern_a_stage": "TRANSITION",
-        "exit_type": "LOSS_GUARD_CLOSE_LE_NEG_15",
-        "exit_signal_date": "2022-02-14",
-        "exit_execution_date": "2022-02-15",
-        "exit_price": 4665.0,
-        "trade_status": "REALIZED",
-        "return_pct": -17.43,
-        "lifecycle_class": "NEVER_PROGRESSED"
+        "signal_date": "2018-03-16",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5850.0,
+          "ma20_prior_completed_months": 4878.75,
+          "ma60_prior_completed_months": 5145.833333333333,
+          "last_completed_month": "2018-02"
+        }
       },
       {
-        "trade_id": "024880_04",
-        "trade_sequence": 4,
-        "entry_signal_date": "2025-07-04",
-        "entry_execution_date": "2025-07-07",
-        "entry_open": 4780.0,
-        "entry_pattern_a_stage": "TRANSITION",
-        "exit_type": "LOSS_GUARD_CLOSE_LE_NEG_15",
-        "exit_signal_date": "2026-06-08",
-        "exit_execution_date": "2026-06-09",
-        "exit_price": 4045.0,
-        "trade_status": "REALIZED",
-        "return_pct": -15.38,
-        "lifecycle_class": "NEVER_PROGRESSED"
+        "signal_date": "2018-05-04",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5700.0,
+          "ma20_prior_completed_months": 4945.5,
+          "ma60_prior_completed_months": 4997.333333333333,
+          "last_completed_month": "2018-04"
+        }
+      },
+      {
+        "signal_date": "2018-05-11",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5750.0,
+          "ma20_prior_completed_months": 4945.5,
+          "ma60_prior_completed_months": 4997.333333333333,
+          "last_completed_month": "2018-04"
+        }
+      },
+      {
+        "signal_date": "2018-05-18",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5620.0,
+          "ma20_prior_completed_months": 4945.5,
+          "ma60_prior_completed_months": 4997.333333333333,
+          "last_completed_month": "2018-04"
+        }
+      },
+      {
+        "signal_date": "2019-03-22",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5790.0,
+          "ma20_prior_completed_months": 4857.5,
+          "ma60_prior_completed_months": 4631.916666666667,
+          "last_completed_month": "2019-02",
+          "ticker": "024880",
+          "isu_cd": "KR7024880007",
+          "market": "KOSDAQ",
+          "signal_date": "2019-03-22",
+          "market_cap_krw": 91055184360,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSDAQ",
+            "date": "2019-03-22"
+          }
+        }
+      },
+      {
+        "signal_date": "2019-03-29",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5980.0,
+          "ma20_prior_completed_months": 4857.5,
+          "ma60_prior_completed_months": 4631.916666666667,
+          "last_completed_month": "2019-02",
+          "ticker": "024880",
+          "isu_cd": "KR7024880007",
+          "market": "KOSDAQ",
+          "signal_date": "2019-03-29",
+          "market_cap_krw": 94043178320,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSDAQ",
+            "date": "2019-03-29"
+          }
+        }
+      },
+      {
+        "signal_date": "2019-04-05",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 6530.0,
+          "ma20_prior_completed_months": 4919.0,
+          "ma60_prior_completed_months": 4629.583333333333,
+          "last_completed_month": "2019-03",
+          "ticker": "024880",
+          "isu_cd": "KR7024880007",
+          "market": "KOSDAQ",
+          "signal_date": "2019-04-05",
+          "market_cap_krw": 103542873170,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSDAQ",
+            "date": "2019-04-05"
+          }
+        }
+      },
+      {
+        "signal_date": "2022-01-07",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5830.0,
+          "ma20_prior_completed_months": 4532.75,
+          "ma60_prior_completed_months": 4689.25,
+          "last_completed_month": "2021-12"
+        }
+      },
+      {
+        "signal_date": "2022-01-14",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5490.0,
+          "ma20_prior_completed_months": 4532.75,
+          "ma60_prior_completed_months": 4689.25,
+          "last_completed_month": "2021-12"
+        }
+      },
+      {
+        "signal_date": "2022-01-21",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5420.0,
+          "ma20_prior_completed_months": 4532.75,
+          "ma60_prior_completed_months": 4689.25,
+          "last_completed_month": "2021-12"
+        }
+      },
+      {
+        "signal_date": "2025-07-04",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 4780.0,
+          "ma20_prior_completed_months": 4535.25,
+          "ma60_prior_completed_months": 5053.0,
+          "last_completed_month": "2025-06"
+        }
+      },
+      {
+        "signal_date": "2025-07-11",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 4970.0,
+          "ma20_prior_completed_months": 4535.25,
+          "ma60_prior_completed_months": 5053.0,
+          "last_completed_month": "2025-06"
+        }
+      },
+      {
+        "signal_date": "2025-07-18",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5150.0,
+          "ma20_prior_completed_months": 4535.25,
+          "ma60_prior_completed_months": 5053.0,
+          "last_completed_month": "2025-06"
+        }
+      },
+      {
+        "signal_date": "2025-07-25",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 4875.0,
+          "ma20_prior_completed_months": 4535.25,
+          "ma60_prior_completed_months": 5053.0,
+          "last_completed_month": "2025-06"
+        }
+      },
+      {
+        "signal_date": "2025-08-08",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5030.0,
+          "ma20_prior_completed_months": 4537.25,
+          "ma60_prior_completed_months": 5064.666666666667,
+          "last_completed_month": "2025-07"
+        }
+      },
+      {
+        "signal_date": "2025-08-29",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5030.0,
+          "ma20_prior_completed_months": 4537.25,
+          "ma60_prior_completed_months": 5064.666666666667,
+          "last_completed_month": "2025-07"
+        }
+      },
+      {
+        "signal_date": "2025-09-05",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5710.0,
+          "ma20_prior_completed_months": 4541.75,
+          "ma60_prior_completed_months": 5083.25,
+          "last_completed_month": "2025-08"
+        }
+      },
+      {
+        "signal_date": "2025-09-12",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5600.0,
+          "ma20_prior_completed_months": 4541.75,
+          "ma60_prior_completed_months": 5083.25,
+          "last_completed_month": "2025-08"
+        }
+      },
+      {
+        "signal_date": "2025-09-19",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5610.0,
+          "ma20_prior_completed_months": 4541.75,
+          "ma60_prior_completed_months": 5083.25,
+          "last_completed_month": "2025-08"
+        }
+      },
+      {
+        "signal_date": "2025-10-10",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5520.0,
+          "ma20_prior_completed_months": 4576.0,
+          "ma60_prior_completed_months": 5104.75,
+          "last_completed_month": "2025-09"
+        }
+      },
+      {
+        "signal_date": "2025-10-24",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5540.0,
+          "ma20_prior_completed_months": 4576.0,
+          "ma60_prior_completed_months": 5104.75,
+          "last_completed_month": "2025-09"
+        }
+      },
+      {
+        "signal_date": "2025-11-28",
+        "allowed": false,
+        "reason_code": "REJECT_MA_ALIGNMENT",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5400.0,
+          "ma20_prior_completed_months": 4609.75,
+          "ma60_prior_completed_months": 5117.416666666667,
+          "last_completed_month": "2025-10"
+        }
       }
     ]
   },
@@ -1151,10 +1428,10 @@
     "requested_as_of": "2026-10-11",
     "reference_market_date": "2026-10-08",
     "report_version": "0.7",
-    "report_status": "PARTIAL",
+    "report_status": "READY",
     "asset_type": "COMMON",
-    "investability_status": "DATA_UNAVAILABLE",
-    "investability_reason": "REQUIRED_METRIC_UNAVAILABLE",
+    "investability_status": "FILTERED_MARKET_CAP",
+    "investability_reason": "MARKET_CAP_BELOW_1000EOK (765.8억)",
     "pattern_stage": "BASE",
     "pattern_score": 36.86,
     "candidate_state": "watch",

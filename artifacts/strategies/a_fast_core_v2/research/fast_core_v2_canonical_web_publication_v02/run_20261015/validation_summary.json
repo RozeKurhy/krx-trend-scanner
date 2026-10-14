@@ -1,0 +1,151 @@
+{
+  "work_id": "A_FAST_ALIGNMENT_500B_CANONICAL_WEB_PUBLICATION_V02",
+  "status": "LOCAL_PUBLISH_PASS_PENDING_GIT",
+  "completion_token": "LOCAL_PUBLISH_PASS_PENDING_GIT",
+  "severity_counts": {
+    "critical": 0,
+    "major": 0,
+    "minor": 0
+  },
+  "resolved_v01_blockers": [
+    "동일 날짜의 기존 V2 게시물을 새 Alignment 정본과 같은 것으로 간주하던 NOOP 오판정 수정",
+    "staging 후보 목록과 promote() 최종 스냅샷을 혼동해 보호 웹 파일 151개 삭제로 판정하던 비교 범위 오탐 해소"
+  ],
+  "requested_as_of": "2026-10-11",
+  "reference_market_date": "2026-10-08",
+  "approved_v08_digest": "e3c6ecc19187eb8951c1c9ef1626a2b54a9cffe1f6d415721b75a0cca8e89b61",
+  "sealed_v02_digest": "b81d708f8794381e6e9a37c0dad8c9811163f199401af87a057f6bcfb271cbb1",
+  "g6_v02_digest_parity": "FAIL_PRESERVED",
+  "checks": {
+    "git_baseline": "PASS",
+    "v08_approved_evidence_sha_6_of_6": "PASS",
+    "v08_report_corpus_digest_scope_trade_gate": "PASS",
+    "backup_and_backup_verification": "PASS",
+    "phase4d_noop_regression": "PASS",
+    "phase4d_dry_run_standard_cli": "PASS",
+    "official_canonical_promotion": "PASS",
+    "phase4d_live_publish": "PASS",
+    "post_publish_readback": "PASS",
+    "three_way_action_state_position_trade_parity": "PASS",
+    "protected_151_files_and_399_routes": "PASS",
+    "b_select_julia_config_activation_protection": "PASS",
+    "required_six_web_payloads": "PASS",
+    "phase4d_transaction_cleanup": "PASS",
+    "scoped_regression_tests": "PASS_102",
+    "git_diff_check": "PASS",
+    "commit_push": "PENDING",
+    "github_pages_deploy": "NOT_CHECKED"
+  },
+  "source_corpus": {
+    "common_reports": 1459,
+    "json_reports": 1459,
+    "markdown_reports": 1459,
+    "digest": "e3c6ecc19187eb8951c1c9ef1626a2b54a9cffe1f6d415721b75a0cca8e89b61",
+    "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+    "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+    "trade_count": 423,
+    "trade_status_counts": {
+      "REALIZED": 398,
+      "OPEN_AT_CUTOFF": 25
+    },
+    "current_open_position_count": 25,
+    "gate_audit_rows": 20012,
+    "approved_evidence_hash_matches": 6
+  },
+  "phase4d": {
+    "dry_run_status": "PASS",
+    "dry_run_execute_live": false,
+    "dry_run_network_calls": 0,
+    "live_status": "PASS",
+    "live_execute_live": true,
+    "live_network_calls": 0,
+    "publication": {
+      "transaction_id": "9a5fd004ec2244178c80cda561f8aa91",
+      "status": "COMMITTED_AND_READ_BACK",
+      "consistency_boundary": "COMPLETE_WEB_DATA_DIRECTORY_PLUS_SEPARATE_B_SELECT_STATUS_REPLACE",
+      "cross_path_atomicity": false,
+      "temporary_exposure": "web/data may be briefly absent during directory rename; B Select status is replaced separately",
+      "failure_recovery": "FULL_OLD_SNAPSHOT_RESTORED_BEFORE_BACKUP_CLEANUP",
+      "prior_transaction_recovery": "NO_PENDING_TRANSACTION"
+    },
+    "readback_summary": {
+      "stock_report_count": 1495,
+      "common_stock_report_count": 1459,
+      "etf_stock_report_count": 36,
+      "strategy_monitor_strategy_count": 3,
+      "b_select_status_count": 1459,
+      "health_overall_status": "NORMAL",
+      "foreign_population_count": 2562,
+      "foreign_flow_covered_count": 2492
+    },
+    "fast_replay_projection": {
+      "source_trade_count": 423,
+      "monitor_trade_count": 423,
+      "trade_mismatch_count": 0,
+      "source_open_position_count": 25,
+      "open_mismatch_count": 0
+    }
+  },
+  "parity": {
+    "common_items": 1459,
+    "action_state_position_mismatch_count": 0,
+    "source_monitor_trade_mismatch_count": 0,
+    "source_compact_trade_mismatch_count": 0,
+    "compact_schema_omitted_field": "previous_exit_type (whitelisted compact projection; all included fields/row identities match)",
+    "trade_status_counts": {
+      "REALIZED": 398,
+      "OPEN_AT_CUTOFF": 25
+    },
+    "open_cutoff_exit_reason_counts": {
+      "NO_EXIT_BEFORE_CUTOFF": 16,
+      "NO_PROGRESSED_BEFORE_CUTOFF": 9
+    }
+  },
+  "protection": {
+    "protected_file_count": 151,
+    "protected_status": "PASS",
+    "route_count": 399,
+    "route_unique_target_count": 399,
+    "route_missing_count": 0,
+    "route_status": "PASS",
+    "b_select_julia_config_status": "PASS",
+    "activation_enabled": false,
+    "effective_signal_date": "PENDING_USER_APPROVAL",
+    "activation_intervals": []
+  },
+  "tests": {
+    "scoped_pass_count": 102,
+    "runs": [
+      {
+        "command": ".venv/bin/python -m pytest tests/test_daily_update_phase4d_v01.py tests/test_daily_update_phase4d_transaction_v02.py tests/test_daily_update_phase4e_v01.py tests/test_rebuild_fast_web_canonical_alignment_staging_v01.py -q",
+        "status": "PASS",
+        "passed": 93
+      },
+      {
+        "command": ".venv/bin/python -m pytest tests/test_daily_update_phase4c_v01.py -k 'fast_monitor or fast_full_history_projection or scanner_summary or report_corpus_missing or report_with_wrong_reference or report_with_wrong_requested' -q",
+        "status": "PASS",
+        "passed": 9,
+        "deselected": 27
+      }
+    ],
+    "combined_wide_run": {
+      "status": "INTERRUPTED_BY_AGENT",
+      "passed_before_interrupt": 81,
+      "elapsed_seconds": 120.66,
+      "reason": "Entered the heavyweight real Phase4C fixture reading local KRX raw snapshots; interrupted to avoid unbounded runtime. This is not reported as a complete suite pass."
+    },
+    "git_diff_check": "PASS"
+  },
+  "git_baseline": {
+    "branch": "main",
+    "head": "d8f6482096dfcda19d693e6e512a7df3acce4a9c",
+    "origin_main": "d8f6482096dfcda19d693e6e512a7df3acce4a9c",
+    "head_equals_origin_main": true,
+    "unrelated_worktree_status_exactly_unchanged": true,
+    "unrelated_worktree_status_rows_before": 33278,
+    "unrelated_worktree_status_rows_after": 33278,
+    "unrelated_worktree_status_sha256_before": "14db7b293b490469312ed3a1d825c12a4ae33ef6b718917fb4adaffe101d8b01",
+    "unrelated_worktree_status_sha256_after": "14db7b293b490469312ed3a1d825c12a4ae33ef6b718917fb4adaffe101d8b01"
+  },
+  "remote_deploy_status": "NOT_CHECKED"
+}

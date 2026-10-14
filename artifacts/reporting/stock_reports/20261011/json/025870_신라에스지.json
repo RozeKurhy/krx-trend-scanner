@@ -20,7 +20,7 @@
   "summary": {
     "headline": "신라에스지(025870)는 현재 Pattern A WEAK 단계이며, 필수 데이터 부족(DATA_UNAVAILABLE)으로 투자 적격성을 판정할 수 없습니다.",
     "bullet_points": [
-      "패스트 코어 V2: 데이터 부족으로 판정 불가",
+      "A FAST Core V2 Alignment 500B: 데이터 부족으로 판정 불가",
       "펀더멘털: Filter FILTERED_OPERATING_LOSS, 최근 FY 매출 700.4억원, TTM 영업이익 -3.5억원, TTM 순이익 -18.0억원.",
       "현재 Pattern A Score는 0.00점(Stage: WEAK, Candidate: NO)입니다.",
       "필수 데이터 부족(REQUIRED_METRIC_UNAVAILABLE)으로 Phase 10 Investability 판정이 불가능합니다.",
@@ -37,13 +37,13 @@
     "official_stage": "WEAK",
     "candidate_state": "blocked",
     "is_candidate": false,
-    "market_cap_eok": 228.4,
+    "market_cap_eok": 42.36,
     "avg_trading_value_20d_eok": null,
     "investability_status": "DATA_UNAVAILABLE",
     "investability_reason": "REQUIRED_METRIC_UNAVAILABLE",
     "is_investable": false,
-    "market_cap_effective_date": "2025-06-27",
-    "market_cap_source": "KRX_HISTORICAL_MARKET_CAP_NORMALIZED"
+    "market_cap_effective_date": "2026-10-08",
+    "market_cap_source": "KRX_RAW_STOCK_SNAPSHOT"
   },
   "monthly_history": {
     "history_start_as_of": "2010-01-29",
@@ -3059,9 +3059,9 @@
     "observation_count": 46
   },
   "a_fast_core": {
-    "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
-    "strategy_version": "V02",
-    "strategy_alias": "A FAST Core",
+    "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+    "strategy_version": "V02_ALIGNMENT_MCAP_500B",
+    "strategy_alias": "A FAST Core V2 Alignment 500B",
     "strategy_status": "FINAL_STRATEGY_FROZEN",
     "production_status": "PRODUCTION_DECISION_SUPPORT",
     "fresh_oos_status": "NOT_EXECUTED",
@@ -3090,7 +3090,10 @@
       "fast_score_status": null,
       "failed_conditions": [
         "INVESTABILITY_DATA_UNAVAILABLE"
-      ]
+      ],
+      "alignment_mcap_500b_pass": null,
+      "alignment_mcap_500b_status": null,
+      "alignment_mcap_500b_details": null
     },
     "current_trade": null,
     "protection_state": null,
@@ -3108,15 +3111,31 @@
     "trade_history": [],
     "interpretation": "투자 유동성 및 시가총액 데이터 결측으로 패스트 코어 V2 신규 진입 적격성을 판정할 수 없습니다.",
     "provenance": {
-      "strategy_contract": "PATTERN_A_FAST_FINAL_STRATEGY_V02",
-      "strategy_contract_path": "docs/patterns/pattern_a_fast/strategy/version_02/README.md",
+      "strategy_contract": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+      "strategy_contract_path": "docs/patterns/pattern_a_fast/strategy/version_02_alignment_mcap_500b/README.md",
       "architecture_authority_commit": "89df82a938dba1961c2342064db2dc0061a5f2ca",
       "calendar_authority_commit": "88d54d85bdee1f2121bec9b27a250cbc1cb9f98f",
       "trade_generation_authority_commit": "b9ba613be973906915e5081a0e5828dd6e1350d6",
       "evidence_closure_authority_commit": "36273d97ae6d4f5b1dbc72cca186bc6009b5fa51",
       "network_requests": 0
     },
-    "metadata_provenance_mode": "CURRENT_VERIFIED"
+    "metadata_provenance_mode": "CURRENT_VERIFIED",
+    "research_group_id": "ALIGNMENT_MCAP_500B",
+    "promotion_gate_audit": [],
+    "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+    "strategy_replay_scope": {
+      "type": "PUBLISHED_COMMON_REPORTS",
+      "report_count": 1459,
+      "requested_as_of": "2026-10-11",
+      "reference_market_date": "2026-10-08",
+      "first_v2_candidate_signal_date": "2012-12-28",
+      "last_v2_candidate_signal_date": "2026-10-02",
+      "first_alignment_gate_pass_signal_date": "2015-01-02",
+      "base_candidate_signal_count": 20012,
+      "alignment_gate_pass_count": 423,
+      "output_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+    },
+    "strategy_replay_digest": "e3c6ecc19187eb8951c1c9ef1626a2b54a9cffe1f6d415721b75a0cca8e89b61"
   },
   "asset_type": "COMMON",
   "fundamentals": {

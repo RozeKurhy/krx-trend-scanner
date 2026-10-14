@@ -1,0 +1,1840 @@
+{
+  "status": "PASS",
+  "target_as_of": "2026-10-11",
+  "requested_as_of": "2026-10-11",
+  "reference_market_date": "2026-10-08",
+  "execute_live": true,
+  "network_calls": 0,
+  "sector_membership": {
+    "effective_date": "2026-09-17",
+    "path": "/Users/june/Documents/projects/krx-trend-scanner/data/market/sector_membership/v01/sector_membership_20260917.parquet"
+  },
+  "staging": {
+    "stock_report_count": 1495,
+    "common_stock_report_count": 1459,
+    "etf_stock_report_count": 36,
+    "sector_population_count": 2562,
+    "foreign_population_count": 2562,
+    "foreign_flow_covered_count": 2492,
+    "health_overall_status": "NORMAL",
+    "strategy_monitor_strategy_count": 3,
+    "b_select_status_count": 1459,
+    "b_select_canonical_trade_history_row_count": 488,
+    "fast_replay_projection": {
+      "source_trade_count": 423,
+      "monitor_trade_count": 423,
+      "trade_mismatch_count": 0,
+      "source_open_position_count": 25,
+      "open_mismatch_count": 0
+    },
+    "b_select_canonical_current_open_position_count": 37,
+    "b_select_published_item_open_position_count": 20,
+    "b_select_historical_only_open_position_count": 17,
+    "b_select_evaluation_error_count": 0,
+    "b_select_date_mismatch_count": 0,
+    "b_select_future_reference_count": 0,
+    "b_select_duplicate_item_count": 0,
+    "b_select_cross_strategy_contamination_count": 0,
+    "b_select_network_requests": 0
+  },
+  "promote_snapshot_validation": {
+    "status": "PASS",
+    "protected_file_count": 151,
+    "protected_files": {
+      "etf-ranking.json": "7b4dc031838edc2c4a3c7a4f037ae962863b0be0c5d736aca2fef8bfb63f94fd",
+      "fear-index.json": "f83ce424b1449074f436b1081749f21de773fa5c9d3a8cc79edd87a15f754e7d",
+      "identity-report-routes.json": "f8d9ca43b7175a7ba0fba0cd96fb8c3ae4d4c79347088a0006bf0e4ccfc7bd66",
+      "identity-reports/000650--KR7000650002.json": "9ef491fd93d9433505bd43a87bb8505bc65ccd601029ec51aeb296dd3197f3d8",
+      "identity-reports/001000--KR7001000009.json": "52c46c478c771065c28c799690711750d47b48fe285f03204c39eea6feb2f57f",
+      "identity-reports/001360--KR7001360007.json": "c17a5d2e402b1b904a46d80b71164fa35694d1d7cfecf4881a56ca34fbaef8d4",
+      "identity-reports/001470--KR7001470004.json": "074bd040fd18be82007b6769c850c380148c24fee01c04c9aab2853593cb105f",
+      "identity-reports/001880--KR7001880004.json": "b5100801f206a1cc7bfd6882e2b100495df18418d6eccb490245ec804c858958",
+      "identity-reports/002410--KR7002410009.json": "cb57398f8657465116522a8f8085a2bb692c04e51ceb61e476bf3e3d9ed29e2e",
+      "identity-reports/003530--KR7003530003.json": "0d4640bb109e09292c67d6afb8d71a591cbbdcd9081a1b42c0be401046fb46db",
+      "identity-reports/004310--KR7004310009.json": "418e7af30a8d1cb6ea5201b5627b35876f40c8a4078a9bc4b860a71ff567ebec",
+      "identity-reports/004920--KR7004920005.json": "4238557427e9bf25859b99bcf7f9e8bedd5aab9ea15e246fc8fcfc880b0b956a",
+      "identity-reports/005160--KR7005160007.json": "eae1375ca835d59b62cbb3c13595a530b5761c9f77d693e78924905f9bc69640",
+      "identity-reports/005620--KR7005620000.json": "6d8db390bc6a8cea02aa0c8128c747e925dd016602766161bf3852055e130b50",
+      "identity-reports/005860--KR7005860002.json": "5b7fb77ba3f0ce5f94adad1fa6c8a762570023413a7ce9032c9e92c97b3f53ca",
+      "identity-reports/005870--KR7005870001.json": "5e7f21253c2823a2747c3e901ad19c128487e8578ebb31174e743c8b3d224d3f",
+      "identity-reports/006380--KR7006380000.json": "bbe85504fc498d09f0e0590f7e4f158e8f5cc1ef85d5d44dfa349739b591e1b2",
+      "identity-reports/006490--KR7006490007.json": "00613c9c82f6ebad49eee1d87a7e4da1e5cda570b79e1ad2d605d91fb85cbb73",
+      "identity-reports/006800--KR7006800007.json": "9325943ec295a0f173ceac3426ddd45b59560abae6291a6ec2b47a6a10135ec4",
+      "identity-reports/007330--KR7007330004.json": "e22ed4ec6a54a8e10cac9bebe1497c6ef7e94f2dd9c7ed787531198b92131153",
+      "identity-reports/007610--KR7007610009.json": "ca23f928aa76e9c3c41fa670f57876ca8efc32442510d14d88cd68032602b624",
+      "identity-reports/008110--KR7008110009.json": "e6839c0bc5add3e8ca729e68572bd3edb1dd96974bf7e295d24f29282a22324f",
+      "identity-reports/008290--KR7008290009.json": "a481a8ce24d55e36a20a909c35fd3fbc1a4ec0a81f1394a4b5116e993e3b4712",
+      "identity-reports/008600--KR7008600009.json": "0dfde1fac48d9083111adc1b1fe0908a6330c5f887376d6d40b5eba467209b09",
+      "identity-reports/008970--KR7008970006.json": "1e827f70b32026921c7bf82f1bc84d8871d6f71009879bb7a5b6d43121441c5a",
+      "identity-reports/011000--KR7011000007.json": "c2e5d741670992b6b64f6aea7360e213473f4272f880f8160c14f33520810ab2",
+      "identity-reports/011090--KR7011090008.json": "55a66affaaaa8286e1dad7e199227c9cb5aebc3a415a986f649dcb6da00855d0",
+      "identity-reports/011150--KR7011150000.json": "f86c5257fd9872ff64d1f13ec5367264333f3539542c4d4e510b44e50adfa6b4",
+      "identity-reports/011330--KR7011330008.json": "a89b446627f7c21ef966f531a6a250903b650890ee641587e3473a401c3f57f1",
+      "identity-reports/013000--KR7013000005.json": "6af763b359b52ff704c90b920f053182a18b93e03e303a259ae4339864342de3",
+      "identity-reports/015020--KR7015020001.json": "e722ff996a830b62566d5108ef76a770e31a3834af0327d7d941df4cb84fa9ec",
+      "identity-reports/016100--KR7016100000.json": "a9f75082dea7c03f45d2be684fdf21a2eda2f5b37be4827633b70e048b4ae49c",
+      "identity-reports/017510--KR7017510009.json": "f78bb20e78de65c166e706385b0a27cdd1b4e1ca2f999b0f79047f05c333b885",
+      "identity-reports/019170--KR7019170000.json": "b99da220400aa827fe68ae0264d8fbb87a38b1e718911fa6f41881009c98dd32",
+      "identity-reports/020180--KR7020180006.json": "9aa19e45f8ddb1b825610015407379bd755e1f7cc941569cc653327a1eceea9d",
+      "identity-reports/020400--KR7020400008.json": "42ce9697c23d944c15fbea1ac7f9405f82476f2880391bb9fd0550295e6150d0",
+      "identity-reports/023460--KR7023460009.json": "33ad486f89674dc3c50b67e45a42952b36aa2560062cecebfe48c5d21d4ebcc0",
+      "identity-reports/023760--KR7023760002.json": "5f95ae47e85bf81ce00d5de43e1d8232e37f721d55b65a8564e8d63bdefb2ba4",
+      "identity-reports/024850--KR7024850000.json": "d1e745a4081f2744b8e0bc855dea64596c71e286d238566a5a1ed3a5801ca0fd",
+      "identity-reports/025320--KR7025320003.json": "17032916df15470041049386c0d0a704ea054d0e43493e4face8461b4d7d2ccc",
+      "identity-reports/025620--KR7025620006.json": "dd0747b902c0e8b6d96d89aa1aebc0d35eed34c15e5815379ebfd5d87a398d2b",
+      "identity-reports/025980--KR7025980004.json": "1b6d00a728454c1d00bde22ece6d04a57e989cfba79be12a6ef63e844dc88685",
+      "identity-reports/026040--KR7026040006.json": "d6f01e47e55c6578392b08a2adb640b5d2f4fb2e6c1a9917af90effdbedd32d6",
+      "identity-reports/027040--KR7027040005.json": "a622187185635a9033f3cfb982affb0a5b1aafd3bb0d90ec7e80536fd1cd2f8a",
+      "identity-reports/027740--KR7027740000.json": "47f4b0fb900ef27688a8527a9ed4df3d441c0707383479efd60b5a763e91733b",
+      "identity-reports/028080--KR7028080000.json": "46d5cd460cbdc9ba282fb184849b6afbeb656ebf2fed46cc0bda535ac35f7d27",
+      "identity-reports/030210--KR7030210009.json": "a1ab1b114d41fa2b675cdb53afd358d418c24ddff1c7a85b03d01dcd9a6cc78c",
+      "identity-reports/030790--KR7030790000.json": "b90bf505b100fd2d45d2230cae063f0525b39ebd017bafd9bea24748acd26990",
+      "identity-reports/030960--KR7030960009.json": "36c9d0c73ba54c59e2c6dafb6bcbab006ed72f7f9a8f075721df43bfe9f36c62",
+      "identity-reports/032500--KR7032500001.json": "8a80b3b3a09851ed08a60c9e9222bd15a1a92196ab7ffd3323028b5690479bb2",
+      "identity-reports/033110--KR7033110008.json": "dce8f21f4e6b35a235f572015d34542b26185f5df518f12266e84889a0b6b9a7",
+      "identity-reports/033200--KR7033200007.json": "62483873473b3694e7a6060570f9de81f69342225635e1f14cb61121540469e5",
+      "identity-reports/033830--KR7033830001.json": "750f3778c0cc70ae144841b0d649f049c3196c83951d9a446ac8c7aa85d4b41a",
+      "identity-reports/035200--KR7035200005.json": "e32103aa9c6653a55fd2c95258e42326c78168baccf28d19b065ee53e68b898c",
+      "identity-reports/035480--KR7035480003.json": "f4d2199fe7b01172aaf45830e52f62c026b48e0e48dde0165d855cf800b62352",
+      "identity-reports/036120--KR7036120004.json": "29f8c98e244cbf16a8bca21f75b7c5cc36d97e0d6465d251ed12cc9d3a81c902",
+      "identity-reports/036170--KR7036170009.json": "9ada5bf426a3eb03bb55ac466077b0fc3801ae7c792ea0b69777028a79460f7b",
+      "identity-reports/037330--KR7037330008.json": "35ce267271e583b76b2b19b23f247627c4daa9e31806dc3881b1936e282cbf65",
+      "identity-reports/037400--KR7037400009.json": "730f040a118b244e1f7ed6a0061809036334a5d72a25c445c24fbd09f048260a",
+      "identity-reports/041460--KR7041460007.json": "c8acda943dc62ad13ba4b605eee26f2d252cbec4d479eb79bdfdb0fcb97eebe1",
+      "identity-reports/042670--KR7042670000.json": "bd493747d0bfb9302385f26d08f7257cb178fe471d3ace61dde861398c8907b3",
+      "identity-reports/042940--KR7042940007.json": "99c0e52edafe2c968bf5d7a8fa5c97474d7626c766a3940ec65874906d5e23b8",
+      "identity-reports/043090--KR7043090000.json": "9964f4f300b5ea2a104ebbbdb69c7badce6a02d73f33a5cd1c314f6ca0e95204",
+      "identity-reports/043910--KR7043910009.json": "f410c653de72bcb8b9f8d6c3df41ccf24f47d6f6a0743971e99ede30c54b81d2",
+      "identity-reports/047440--KR7047440003.json": "46380efa9795c73117d297d7dedf9429b3c958aa91c4d3f0030be1f9f8b2087f",
+      "identity-reports/047770--KR7047770003.json": "d46bdc6a9e47ac220a5436c87f909965d39ee515babce184e8cbc819b811fa90",
+      "identity-reports/048410--KR7048410005.json": "3d9967267d2751e41da533400e8dfd28eb45574f41868685dad427e5f48f0f66",
+      "identity-reports/048550--KR7048550008.json": "5a67505975d55347749de11099c9b0e5a69b5e4fdd53ff9d41261b8c3c725245",
+      "identity-reports/048770--KR7048770002.json": "69403e2008ff5d20a6ae1c9937390a8fca187bc97ab723f1c144dac386717a7d",
+      "identity-reports/049950--KR7049950009.json": "ba6988436b265546b6724e10dd7d0b35df37a98341d10f29d1af521ea4cfa918",
+      "identity-reports/052420--KR7052420007.json": "ae1e25ceaf3a01f794b97a8796c8baaed3774c728ff060e93ac245a62559b631",
+      "identity-reports/052460--KR7052460003.json": "a1009593431b96481f03e5c0f2711027d4b0edf206a00b7d9abcf9930d2f4b41",
+      "identity-reports/053160--KR7053160008.json": "d50e0e826bbb1965f4603aee1d21a98ed9834cfc34013d8beb8116d717a9c1d4",
+      "identity-reports/054620--KR7054620000.json": "dd355bda8ef213d3a517387fb9c0f358b1b8555d2cc5fd34f69b851ff4ceb353",
+      "identity-reports/056080--KR7056080005.json": "634521a4998c6845687974472358e6f91e61e719e04663c0c8634a2e6e9bb351",
+      "identity-reports/060260--KR7060260007.json": "1b8afebde289ec87920ae2d57018fe6a3154914266328d090a5e09d481623e09",
+      "identity-reports/060560--KR7060560000.json": "31bd16ee8a91f1de229cb4ddfc8e2c51252cea22d2a5c1136adb3957a084a219",
+      "identity-reports/061250--KR7061250007.json": "edfef1cb1b9017990ecdd5c950b57a9acfef81427194b75cc095eb5a995e598b",
+      "identity-reports/062860--KR7062860002.json": "6a5e8d897687d78dcca5e9b5fde6afcf896a4e2a28054c7da7c2f133fc852604",
+      "identity-reports/062970--KR7062970009.json": "24b9623312f8d1db66395d82144014f1186f2d3404c9135909c0c42e8708aabc",
+      "identity-reports/063080--KR7063080006.json": "42278155e6c78cabd51bafd4bdc89dece1558639a92e2805f45650b6aafd8260",
+      "identity-reports/064240--KR7064240005.json": "31ba7f85b798d1822d060243651b168782db10a1401c903c99c1df5df2933b92",
+      "identity-reports/065370--KR7065370009.json": "6a49feb39c087b9f304fd4fe4bda527ffe87b673e3f71d3d0b0c70dc81c76ecd",
+      "identity-reports/065650--KR7065650004.json": "d0d8e9c8c1d0af665ac328240a5d9ce1ff137b4079fa9c311db87b4853249dbf",
+      "identity-reports/065770--KR7065770000.json": "cf77d1f145aa6ab57a7c523ef321e2167774553c6bda4d13b25089bc8a903d18",
+      "identity-reports/068050--KR7068050004.json": "7b488a2b302a0212abeccebe02e7437c313c422829aea53ab1639519d8134587",
+      "identity-reports/068240--KR7068240001.json": "f07c96e6e255fa37737beda916ac1b6e686b4496f88c9563c820622ab17673a4",
+      "identity-reports/068330--KR7068330000.json": "6f83b30786b22138e806c760615509f9e98458e190c0c6286517560d950eb6d3",
+      "identity-reports/069540--KR7069540003.json": "698a41915b4914ca7fabde1b06f489890490759ec481345c88b666370ee7c192",
+      "identity-reports/069640--KR7069640001.json": "eb6ec58579ce7f6cc697a7c49282f07501d0854c297f806e09b87fb092b52809",
+      "identity-reports/071670--KR7071670004.json": "ca1a43526e48d8ae064f47f897459f6981c2e578be3ac6109bd0514e260dbbfe",
+      "identity-reports/072770--KR7072770001.json": "66dc119ed2208690320ce367b0c3ff47ecfa948284ee46fdd8747c8d2e602404",
+      "identity-reports/073540--KR7073540007.json": "5ed3c311e9146bec9d87178878e3b4a985279f5d00fd5e811ecb5eda3735b8fd",
+      "identity-reports/074430--KR7074430000.json": "7738bc964e00dfcee2ac1b4d57562558637f0d6050de08c911f7796c088061fc",
+      "identity-reports/078000--KR7078000007.json": "c0de089d73be2a2599499c39efce4d9a831f902662cbae220f2130b4bb8ff3c4",
+      "identity-reports/078590--KR7078590007.json": "057b50da6ff3e6ad9f9e88693ba0e02c7604b67a4f197ccdcf6a6990db4ad6fb",
+      "identity-reports/079000--KR7079000006.json": "98eadee83e6bde875cc0760acdd1503a8e559223923469a75f28932ffe0d578d",
+      "identity-reports/082800--KR7082800004.json": "601782fd2773af937846b4423dc3defc4f2b1ddd3f548e8c2e959cd083f76769",
+      "identity-reports/083640--KR7083640003.json": "b0ae43c7f1189e55fb035b717359807d85a16a9182167bcd26c8dcb0a39e80a4",
+      "identity-reports/084730--KR7084730001.json": "7d3d4a84d5c9e9a92b8143afda467dd13dc132a3f7bd42302be3a75fa2f8f665",
+      "identity-reports/090710--KR7090710005.json": "e50bed6f929029356426766dfb74608e8c2109948367df7ca63e7188bdc18182",
+      "identity-reports/090740--KR7090740002.json": "5917197b99fe0b422da0be2587ac487b7ece42f46f675ecb32d57a1b0ccd6322",
+      "identity-reports/091440--KR7091440008.json": "5526cd96e036682a9fcf198ab0dd7666a65f98daffe70ec110bd2c7c41f10c10",
+      "identity-reports/093640--KR7093640001.json": "e3c3b539e87dec493c09439ae8cb2aba080ac24d9d57db256ede4a3bf121fcd5",
+      "identity-reports/094360--KR7094360005.json": "9eff6c751fac5e927ba1dbbf1aef54aaf680ff36155c4db9ee02b55da8dc7bb7",
+      "identity-reports/094940--KR7094940004.json": "28efc15767cde2239b7989479e7531b8d22fdcb039d5b706456338e6d1714644",
+      "identity-reports/096630--KR7096630009.json": "24c7bd45e9163e7bc9b96281b2978dde91d8b1b097d74f75f6bb600325e31732",
+      "identity-reports/100220--KR7100220003.json": "6585bfd3832840eb6cd382229bff89bc076a565bfebe48d7a79aa53fab54c744",
+      "identity-reports/101730--KR7101730000.json": "d057dbe584574ed01593eb8f6015005f6c69835bcbda78a19edc70b7b44d5544",
+      "identity-reports/103230--KR7103230009.json": "560447932de11bbfd0afd96ae21d13f18119f0b1cc8106a8ff8fdeb3e614acf7",
+      "identity-reports/104200--KR7104200001.json": "3c0d5d824a35e6052c2660af80d71806a88a4c6d4eafc210b49769519540887d",
+      "identity-reports/105550--KR7105550008.json": "b325e798c176fd3e498eb2f49eee283d71fbe10808edf8d579f05101862d1795",
+      "identity-reports/109960--KR7109960005.json": "d99e693f9351139f3ab031b0f8ba2f1fc9158af9b6c3b6774ceecdaba67dcc8c",
+      "identity-reports/112040--KR7112040001.json": "bf614b8fdf97902859a9c8b8e5061706b0255fd909e0a0415b5f8b31a9f452a8",
+      "identity-reports/117730--KR7117730002.json": "cb19181cfefa95a9bc6541ac090fcdd4487139e77a069797a9c6397b4621d3bf",
+      "identity-reports/121850--KR7121850002.json": "9660f6bfcf6ebbef9f74f75fff9fa82dab3bfc2dc242ba4ee7578d990ab3ac12",
+      "identity-reports/123010--KR7123010001.json": "ecb5d60fc0c1ffbba664ae0c0850f82b71ae7cf9391a4cfbea0da57f438ee23f",
+      "identity-reports/123860--KR7123860009.json": "755958c3c24b2474d2d8c4f65d0ef55f752c0583d278795c8d1cb1d53710c1c2",
+      "identity-reports/134790--KR7134790005.json": "dab171f42cd5fcc6a78c00d24ef60e3585d39744839a1caa58efc1f7e91deb20",
+      "identity-reports/138360--KR7138360003.json": "ce4992c448fef6fbe059d9aa1153708615903c7b64557aa1b9363d763ffbf887",
+      "identity-reports/156100--KR7156100000.json": "ccebd8cf754fe15efcb08d47482b8aa023237bb811c8e4987a5a0c66e0245668",
+      "identity-reports/160550--KR7160550000.json": "d3217f1130d7a5df566eb174e808568c5d2846cde80a7fb4a56041e3e9be6ebc",
+      "identity-reports/161570--KR7161570007.json": "ec356003d99267f983eb54d3241ba1b43aaefeff1e35156c5072e43b196d2254",
+      "identity-reports/168330--KR7168330009.json": "70efc14d09f7dda6eb0fc996b950110fa3a706ce5b31c87ade3af6411067cbf7",
+      "identity-reports/171010--KR7171010002.json": "53817d310175b3bdbb638c52b9400d5df0bec31bc16f7d3f79afaf0b63363811",
+      "identity-reports/174900--KR7174900001.json": "e475c7ca9b5b4e947693b93c32d1e83dfd827498f1cc76d2791ccfb8ef589ca4",
+      "identity-reports/187660--KR7187660006.json": "fd41ea11201b4a53643770db54a4d9918096c8996ae7ebbfa8a494730bf5d3e8",
+      "identity-reports/194480--KR7194480000.json": "1537fd1faf54947b504efa913f06529c2a4bd0a29cb9767f10fbc2726e855d4b",
+      "identity-reports/196300--KR7196300008.json": "d111ac0e9ff3dfce1b97d44b075b6cf50c01ddacf8e29371d30dca307a00f24f",
+      "identity-reports/226950--KR7226950004.json": "a1108051f2d55deb5a1387e1ee2a805705f8ec42bc185512fee2bad5ada84d2c",
+      "identity-reports/227610--KR7227610003.json": "2543ec59784ab777c20c2cda96d4e503631cb97415aa08cc007cbc77c0f7b8cf",
+      "identity-reports/234340--KR7234340008.json": "dcbde47f818b9b04efcfbde4656f2bbd57d11fb4f4bb2cab11e3d6e3d1759edb",
+      "identity-reports/238090--KR7238090005.json": "4fa6b8ad26d386934d6c3b15e77642d178607e4b79e42112c4525c5c57d2985f",
+      "identity-reports/289080--KR7289080004.json": "f1f1346a1285a1666c3ea193ecbff032155f25e88ec1eb49d3cc215f39865374",
+      "identity-reports/290670--KR7290670009.json": "a44f0d6a7e75447364d867a150db3df09b4a524c53a4088d93b76f9fcfa7bcc0",
+      "identity-reports/298380--KR7298380007.json": "0bac0e317fb7561ff8ab7f7221b06215a3489290a3f821824464e0c5c173a0b7",
+      "identity-reports/300080--KR7300080009.json": "21f13c81e5c529fd46b18ad36292319a67b591e6a10fd7563cc8a1f68b1babd9",
+      "identity-reports/308080--KR7308080001.json": "bee59e5fc5eb2d65ce242bfa36d87b6ebd126031c40e93ca7eb05c79c4d32c72",
+      "identity-reports/314130--KR7314130006.json": "6ea5a6906c395d9e982dedb40685471693e9b6cd2a33db5916d2bd59d128772e",
+      "identity-reports/317330--KR7317330009.json": "c355d6ace389442a62c32747f477938b3f8c6eeccdf704c01a7c4a9548348ad2",
+      "identity-reports/317690--KR7317690006.json": "e8f9f5b2589ca10770a9c4a5946230eed087fa8ff064ed8e3208f130e5d89271",
+      "identity-reports/317830--KR7317830008.json": "d8bc777d40d6ce5b202093cd85e7f459fda42f088df7b5d05113fe1f3d3c9e77",
+      "identity-reports/321820--KR7321820003.json": "2f34114e968052744f3940aa8b2f2d790e2815d487f74ac4ff02c554659051b0",
+      "identity-reports/322180--KR7322180001.json": "08349ec5a8c1206c126346654ce7dd517d0e5116f3d39358df6936e200112cf9",
+      "identity-reports/322310--KR7322310004.json": "779b82c9bdda197072d6801f888bc346fc0142d4c2ea98d78ae9f539523117fb",
+      "identity-reports/377300--KR7377300009.json": "58fc321c8539da06c6498a77622facd8f0b2f791b32a5e1b422e33131b601e03",
+      "identity-reports/418420--KR7418420006.json": "361309898daa898a6ee702fe196d50e75769cfb70d7c8d83c47f8fcc30c2e23d",
+      "identity-reports/900070--KYG3931T1076.json": "d47e3986dda9e13ce5e9b8d592cc7b683d902fa0e83237ffe0943670395502a2",
+      "identity-reports/900100--USU652221081.json": "7e0525e3979296adc2cfc8ea72a779ee5bd05e5f7e0415cbb1da79f5a7f10ac5",
+      "identity-reports/900250--KYG2115T1076.json": "f1b8e94e211ba781aee08d0a8ed2ff19e744f2a3272cf3b9c6889430ed725ea0",
+      "identity-reports/950140--KR8840110108.json": "36ad38c57858a199c6e1fd1c6b59ba584f3da5a1fc26289cb4ea69af2c6b8582"
+    },
+    "missing_protected_file_count": 0,
+    "changed_protected_file_count": 0,
+    "route_integrity": {
+      "status": "PASS",
+      "route_count": 399,
+      "referenced_file_count": 399,
+      "missing_route_count": 0,
+      "routes": [
+        {
+          "url": "./data/stocks/000050.json",
+          "path": "stocks/000050.json"
+        },
+        {
+          "url": "./data/stocks/000320.json",
+          "path": "stocks/000320.json"
+        },
+        {
+          "url": "./data/identity-reports/000650--KR7000650002.json",
+          "path": "identity-reports/000650--KR7000650002.json"
+        },
+        {
+          "url": "./data/stocks/000680.json",
+          "path": "stocks/000680.json"
+        },
+        {
+          "url": "./data/stocks/000890.json",
+          "path": "stocks/000890.json"
+        },
+        {
+          "url": "./data/identity-reports/001000--KR7001000009.json",
+          "path": "identity-reports/001000--KR7001000009.json"
+        },
+        {
+          "url": "./data/stocks/001230.json",
+          "path": "stocks/001230.json"
+        },
+        {
+          "url": "./data/stocks/001260.json",
+          "path": "stocks/001260.json"
+        },
+        {
+          "url": "./data/identity-reports/001360--KR7001360007.json",
+          "path": "identity-reports/001360--KR7001360007.json"
+        },
+        {
+          "url": "./data/stocks/001380.json",
+          "path": "stocks/001380.json"
+        },
+        {
+          "url": "./data/stocks/001390.json",
+          "path": "stocks/001390.json"
+        },
+        {
+          "url": "./data/stocks/001430.json",
+          "path": "stocks/001430.json"
+        },
+        {
+          "url": "./data/stocks/001440.json",
+          "path": "stocks/001440.json"
+        },
+        {
+          "url": "./data/identity-reports/001470--KR7001470004.json",
+          "path": "identity-reports/001470--KR7001470004.json"
+        },
+        {
+          "url": "./data/stocks/001500.json",
+          "path": "stocks/001500.json"
+        },
+        {
+          "url": "./data/stocks/001530.json",
+          "path": "stocks/001530.json"
+        },
+        {
+          "url": "./data/stocks/001620.json",
+          "path": "stocks/001620.json"
+        },
+        {
+          "url": "./data/stocks/001740.json",
+          "path": "stocks/001740.json"
+        },
+        {
+          "url": "./data/stocks/001810.json",
+          "path": "stocks/001810.json"
+        },
+        {
+          "url": "./data/identity-reports/001880--KR7001880004.json",
+          "path": "identity-reports/001880--KR7001880004.json"
+        },
+        {
+          "url": "./data/stocks/002140.json",
+          "path": "stocks/002140.json"
+        },
+        {
+          "url": "./data/stocks/002170.json",
+          "path": "stocks/002170.json"
+        },
+        {
+          "url": "./data/stocks/002290.json",
+          "path": "stocks/002290.json"
+        },
+        {
+          "url": "./data/stocks/002390.json",
+          "path": "stocks/002390.json"
+        },
+        {
+          "url": "./data/identity-reports/002410--KR7002410009.json",
+          "path": "identity-reports/002410--KR7002410009.json"
+        },
+        {
+          "url": "./data/stocks/002460.json",
+          "path": "stocks/002460.json"
+        },
+        {
+          "url": "./data/stocks/003010.json",
+          "path": "stocks/003010.json"
+        },
+        {
+          "url": "./data/identity-reports/003530--KR7003530003.json",
+          "path": "identity-reports/003530--KR7003530003.json"
+        },
+        {
+          "url": "./data/stocks/003850.json",
+          "path": "stocks/003850.json"
+        },
+        {
+          "url": "./data/stocks/003960.json",
+          "path": "stocks/003960.json"
+        },
+        {
+          "url": "./data/stocks/004020.json",
+          "path": "stocks/004020.json"
+        },
+        {
+          "url": "./data/stocks/004100.json",
+          "path": "stocks/004100.json"
+        },
+        {
+          "url": "./data/identity-reports/004310--KR7004310009.json",
+          "path": "identity-reports/004310--KR7004310009.json"
+        },
+        {
+          "url": "./data/stocks/004370.json",
+          "path": "stocks/004370.json"
+        },
+        {
+          "url": "./data/identity-reports/004920--KR7004920005.json",
+          "path": "identity-reports/004920--KR7004920005.json"
+        },
+        {
+          "url": "./data/stocks/004980.json",
+          "path": "stocks/004980.json"
+        },
+        {
+          "url": "./data/identity-reports/005160--KR7005160007.json",
+          "path": "identity-reports/005160--KR7005160007.json"
+        },
+        {
+          "url": "./data/stocks/005250.json",
+          "path": "stocks/005250.json"
+        },
+        {
+          "url": "./data/stocks/005490.json",
+          "path": "stocks/005490.json"
+        },
+        {
+          "url": "./data/identity-reports/005620--KR7005620000.json",
+          "path": "identity-reports/005620--KR7005620000.json"
+        },
+        {
+          "url": "./data/stocks/005690.json",
+          "path": "stocks/005690.json"
+        },
+        {
+          "url": "./data/stocks/005750.json",
+          "path": "stocks/005750.json"
+        },
+        {
+          "url": "./data/identity-reports/005860--KR7005860002.json",
+          "path": "identity-reports/005860--KR7005860002.json"
+        },
+        {
+          "url": "./data/identity-reports/005870--KR7005870001.json",
+          "path": "identity-reports/005870--KR7005870001.json"
+        },
+        {
+          "url": "./data/stocks/006110.json",
+          "path": "stocks/006110.json"
+        },
+        {
+          "url": "./data/stocks/006360.json",
+          "path": "stocks/006360.json"
+        },
+        {
+          "url": "./data/identity-reports/006380--KR7006380000.json",
+          "path": "identity-reports/006380--KR7006380000.json"
+        },
+        {
+          "url": "./data/identity-reports/006490--KR7006490007.json",
+          "path": "identity-reports/006490--KR7006490007.json"
+        },
+        {
+          "url": "./data/stocks/006660.json",
+          "path": "stocks/006660.json"
+        },
+        {
+          "url": "./data/identity-reports/006800--KR7006800007.json",
+          "path": "identity-reports/006800--KR7006800007.json"
+        },
+        {
+          "url": "./data/stocks/006880.json",
+          "path": "stocks/006880.json"
+        },
+        {
+          "url": "./data/stocks/006910.json",
+          "path": "stocks/006910.json"
+        },
+        {
+          "url": "./data/stocks/007110.json",
+          "path": "stocks/007110.json"
+        },
+        {
+          "url": "./data/identity-reports/007330--KR7007330004.json",
+          "path": "identity-reports/007330--KR7007330004.json"
+        },
+        {
+          "url": "./data/stocks/007370.json",
+          "path": "stocks/007370.json"
+        },
+        {
+          "url": "./data/identity-reports/007610--KR7007610009.json",
+          "path": "identity-reports/007610--KR7007610009.json"
+        },
+        {
+          "url": "./data/stocks/007860.json",
+          "path": "stocks/007860.json"
+        },
+        {
+          "url": "./data/identity-reports/008110--KR7008110009.json",
+          "path": "identity-reports/008110--KR7008110009.json"
+        },
+        {
+          "url": "./data/stocks/008250.json",
+          "path": "stocks/008250.json"
+        },
+        {
+          "url": "./data/identity-reports/008290--KR7008290009.json",
+          "path": "identity-reports/008290--KR7008290009.json"
+        },
+        {
+          "url": "./data/identity-reports/008600--KR7008600009.json",
+          "path": "identity-reports/008600--KR7008600009.json"
+        },
+        {
+          "url": "./data/stocks/008830.json",
+          "path": "stocks/008830.json"
+        },
+        {
+          "url": "./data/identity-reports/008970--KR7008970006.json",
+          "path": "identity-reports/008970--KR7008970006.json"
+        },
+        {
+          "url": "./data/stocks/009200.json",
+          "path": "stocks/009200.json"
+        },
+        {
+          "url": "./data/stocks/009270.json",
+          "path": "stocks/009270.json"
+        },
+        {
+          "url": "./data/stocks/009470.json",
+          "path": "stocks/009470.json"
+        },
+        {
+          "url": "./data/stocks/010100.json",
+          "path": "stocks/010100.json"
+        },
+        {
+          "url": "./data/stocks/010120.json",
+          "path": "stocks/010120.json"
+        },
+        {
+          "url": "./data/stocks/010240.json",
+          "path": "stocks/010240.json"
+        },
+        {
+          "url": "./data/stocks/010280.json",
+          "path": "stocks/010280.json"
+        },
+        {
+          "url": "./data/stocks/010470.json",
+          "path": "stocks/010470.json"
+        },
+        {
+          "url": "./data/stocks/010580.json",
+          "path": "stocks/010580.json"
+        },
+        {
+          "url": "./data/stocks/010660.json",
+          "path": "stocks/010660.json"
+        },
+        {
+          "url": "./data/stocks/010770.json",
+          "path": "stocks/010770.json"
+        },
+        {
+          "url": "./data/stocks/010820.json",
+          "path": "stocks/010820.json"
+        },
+        {
+          "url": "./data/identity-reports/011000--KR7011000007.json",
+          "path": "identity-reports/011000--KR7011000007.json"
+        },
+        {
+          "url": "./data/stocks/011070.json",
+          "path": "stocks/011070.json"
+        },
+        {
+          "url": "./data/identity-reports/011090--KR7011090008.json",
+          "path": "identity-reports/011090--KR7011090008.json"
+        },
+        {
+          "url": "./data/identity-reports/011150--KR7011150000.json",
+          "path": "identity-reports/011150--KR7011150000.json"
+        },
+        {
+          "url": "./data/stocks/011210.json",
+          "path": "stocks/011210.json"
+        },
+        {
+          "url": "./data/stocks/011280.json",
+          "path": "stocks/011280.json"
+        },
+        {
+          "url": "./data/identity-reports/011330--KR7011330008.json",
+          "path": "identity-reports/011330--KR7011330008.json"
+        },
+        {
+          "url": "./data/stocks/011370.json",
+          "path": "stocks/011370.json"
+        },
+        {
+          "url": "./data/stocks/011390.json",
+          "path": "stocks/011390.json"
+        },
+        {
+          "url": "./data/stocks/011690.json",
+          "path": "stocks/011690.json"
+        },
+        {
+          "url": "./data/stocks/012790.json",
+          "path": "stocks/012790.json"
+        },
+        {
+          "url": "./data/stocks/012800.json",
+          "path": "stocks/012800.json"
+        },
+        {
+          "url": "./data/stocks/012860.json",
+          "path": "stocks/012860.json"
+        },
+        {
+          "url": "./data/identity-reports/013000--KR7013000005.json",
+          "path": "identity-reports/013000--KR7013000005.json"
+        },
+        {
+          "url": "./data/stocks/013360.json",
+          "path": "stocks/013360.json"
+        },
+        {
+          "url": "./data/stocks/013580.json",
+          "path": "stocks/013580.json"
+        },
+        {
+          "url": "./data/stocks/013990.json",
+          "path": "stocks/013990.json"
+        },
+        {
+          "url": "./data/stocks/014160.json",
+          "path": "stocks/014160.json"
+        },
+        {
+          "url": "./data/stocks/014570.json",
+          "path": "stocks/014570.json"
+        },
+        {
+          "url": "./data/stocks/014790.json",
+          "path": "stocks/014790.json"
+        },
+        {
+          "url": "./data/stocks/014910.json",
+          "path": "stocks/014910.json"
+        },
+        {
+          "url": "./data/stocks/014940.json",
+          "path": "stocks/014940.json"
+        },
+        {
+          "url": "./data/identity-reports/015020--KR7015020001.json",
+          "path": "identity-reports/015020--KR7015020001.json"
+        },
+        {
+          "url": "./data/stocks/015860.json",
+          "path": "stocks/015860.json"
+        },
+        {
+          "url": "./data/identity-reports/016100--KR7016100000.json",
+          "path": "identity-reports/016100--KR7016100000.json"
+        },
+        {
+          "url": "./data/stocks/016450.json",
+          "path": "stocks/016450.json"
+        },
+        {
+          "url": "./data/stocks/016880.json",
+          "path": "stocks/016880.json"
+        },
+        {
+          "url": "./data/stocks/016920.json",
+          "path": "stocks/016920.json"
+        },
+        {
+          "url": "./data/identity-reports/017510--KR7017510009.json",
+          "path": "identity-reports/017510--KR7017510009.json"
+        },
+        {
+          "url": "./data/stocks/017550.json",
+          "path": "stocks/017550.json"
+        },
+        {
+          "url": "./data/stocks/017650.json",
+          "path": "stocks/017650.json"
+        },
+        {
+          "url": "./data/stocks/017900.json",
+          "path": "stocks/017900.json"
+        },
+        {
+          "url": "./data/stocks/017960.json",
+          "path": "stocks/017960.json"
+        },
+        {
+          "url": "./data/stocks/018290.json",
+          "path": "stocks/018290.json"
+        },
+        {
+          "url": "./data/identity-reports/019170--KR7019170000.json",
+          "path": "identity-reports/019170--KR7019170000.json"
+        },
+        {
+          "url": "./data/stocks/019180.json",
+          "path": "stocks/019180.json"
+        },
+        {
+          "url": "./data/identity-reports/020180--KR7020180006.json",
+          "path": "identity-reports/020180--KR7020180006.json"
+        },
+        {
+          "url": "./data/identity-reports/020400--KR7020400008.json",
+          "path": "identity-reports/020400--KR7020400008.json"
+        },
+        {
+          "url": "./data/stocks/023160.json",
+          "path": "stocks/023160.json"
+        },
+        {
+          "url": "./data/stocks/023350.json",
+          "path": "stocks/023350.json"
+        },
+        {
+          "url": "./data/stocks/023410.json",
+          "path": "stocks/023410.json"
+        },
+        {
+          "url": "./data/identity-reports/023460--KR7023460009.json",
+          "path": "identity-reports/023460--KR7023460009.json"
+        },
+        {
+          "url": "./data/identity-reports/023760--KR7023760002.json",
+          "path": "identity-reports/023760--KR7023760002.json"
+        },
+        {
+          "url": "./data/stocks/023790.json",
+          "path": "stocks/023790.json"
+        },
+        {
+          "url": "./data/stocks/023810.json",
+          "path": "stocks/023810.json"
+        },
+        {
+          "url": "./data/stocks/024120.json",
+          "path": "stocks/024120.json"
+        },
+        {
+          "url": "./data/stocks/024740.json",
+          "path": "stocks/024740.json"
+        },
+        {
+          "url": "./data/stocks/024800.json",
+          "path": "stocks/024800.json"
+        },
+        {
+          "url": "./data/identity-reports/024850--KR7024850000.json",
+          "path": "identity-reports/024850--KR7024850000.json"
+        },
+        {
+          "url": "./data/stocks/024940.json",
+          "path": "stocks/024940.json"
+        },
+        {
+          "url": "./data/identity-reports/025320--KR7025320003.json",
+          "path": "identity-reports/025320--KR7025320003.json"
+        },
+        {
+          "url": "./data/stocks/025560.json",
+          "path": "stocks/025560.json"
+        },
+        {
+          "url": "./data/identity-reports/025620--KR7025620006.json",
+          "path": "identity-reports/025620--KR7025620006.json"
+        },
+        {
+          "url": "./data/stocks/025770.json",
+          "path": "stocks/025770.json"
+        },
+        {
+          "url": "./data/stocks/025870.json",
+          "path": "stocks/025870.json"
+        },
+        {
+          "url": "./data/stocks/025890.json",
+          "path": "stocks/025890.json"
+        },
+        {
+          "url": "./data/identity-reports/025980--KR7025980004.json",
+          "path": "identity-reports/025980--KR7025980004.json"
+        },
+        {
+          "url": "./data/identity-reports/026040--KR7026040006.json",
+          "path": "identity-reports/026040--KR7026040006.json"
+        },
+        {
+          "url": "./data/stocks/026910.json",
+          "path": "stocks/026910.json"
+        },
+        {
+          "url": "./data/identity-reports/027040--KR7027040005.json",
+          "path": "identity-reports/027040--KR7027040005.json"
+        },
+        {
+          "url": "./data/stocks/027710.json",
+          "path": "stocks/027710.json"
+        },
+        {
+          "url": "./data/identity-reports/027740--KR7027740000.json",
+          "path": "identity-reports/027740--KR7027740000.json"
+        },
+        {
+          "url": "./data/identity-reports/028080--KR7028080000.json",
+          "path": "identity-reports/028080--KR7028080000.json"
+        },
+        {
+          "url": "./data/identity-reports/030210--KR7030210009.json",
+          "path": "identity-reports/030210--KR7030210009.json"
+        },
+        {
+          "url": "./data/stocks/030520.json",
+          "path": "stocks/030520.json"
+        },
+        {
+          "url": "./data/identity-reports/030790--KR7030790000.json",
+          "path": "identity-reports/030790--KR7030790000.json"
+        },
+        {
+          "url": "./data/identity-reports/030960--KR7030960009.json",
+          "path": "identity-reports/030960--KR7030960009.json"
+        },
+        {
+          "url": "./data/stocks/031330.json",
+          "path": "stocks/031330.json"
+        },
+        {
+          "url": "./data/stocks/031820.json",
+          "path": "stocks/031820.json"
+        },
+        {
+          "url": "./data/stocks/032350.json",
+          "path": "stocks/032350.json"
+        },
+        {
+          "url": "./data/identity-reports/032500--KR7032500001.json",
+          "path": "identity-reports/032500--KR7032500001.json"
+        },
+        {
+          "url": "./data/stocks/032680.json",
+          "path": "stocks/032680.json"
+        },
+        {
+          "url": "./data/stocks/032940.json",
+          "path": "stocks/032940.json"
+        },
+        {
+          "url": "./data/identity-reports/033110--KR7033110008.json",
+          "path": "identity-reports/033110--KR7033110008.json"
+        },
+        {
+          "url": "./data/stocks/033160.json",
+          "path": "stocks/033160.json"
+        },
+        {
+          "url": "./data/identity-reports/033200--KR7033200007.json",
+          "path": "identity-reports/033200--KR7033200007.json"
+        },
+        {
+          "url": "./data/stocks/033230.json",
+          "path": "stocks/033230.json"
+        },
+        {
+          "url": "./data/stocks/033240.json",
+          "path": "stocks/033240.json"
+        },
+        {
+          "url": "./data/stocks/033250.json",
+          "path": "stocks/033250.json"
+        },
+        {
+          "url": "./data/identity-reports/033830--KR7033830001.json",
+          "path": "identity-reports/033830--KR7033830001.json"
+        },
+        {
+          "url": "./data/stocks/034940.json",
+          "path": "stocks/034940.json"
+        },
+        {
+          "url": "./data/identity-reports/035200--KR7035200005.json",
+          "path": "identity-reports/035200--KR7035200005.json"
+        },
+        {
+          "url": "./data/stocks/035460.json",
+          "path": "stocks/035460.json"
+        },
+        {
+          "url": "./data/identity-reports/035480--KR7035480003.json",
+          "path": "identity-reports/035480--KR7035480003.json"
+        },
+        {
+          "url": "./data/stocks/035600.json",
+          "path": "stocks/035600.json"
+        },
+        {
+          "url": "./data/stocks/035610.json",
+          "path": "stocks/035610.json"
+        },
+        {
+          "url": "./data/stocks/035810.json",
+          "path": "stocks/035810.json"
+        },
+        {
+          "url": "./data/stocks/036030.json",
+          "path": "stocks/036030.json"
+        },
+        {
+          "url": "./data/identity-reports/036120--KR7036120004.json",
+          "path": "identity-reports/036120--KR7036120004.json"
+        },
+        {
+          "url": "./data/identity-reports/036170--KR7036170009.json",
+          "path": "identity-reports/036170--KR7036170009.json"
+        },
+        {
+          "url": "./data/stocks/036200.json",
+          "path": "stocks/036200.json"
+        },
+        {
+          "url": "./data/stocks/036630.json",
+          "path": "stocks/036630.json"
+        },
+        {
+          "url": "./data/stocks/036800.json",
+          "path": "stocks/036800.json"
+        },
+        {
+          "url": "./data/stocks/036830.json",
+          "path": "stocks/036830.json"
+        },
+        {
+          "url": "./data/stocks/037230.json",
+          "path": "stocks/037230.json"
+        },
+        {
+          "url": "./data/identity-reports/037330--KR7037330008.json",
+          "path": "identity-reports/037330--KR7037330008.json"
+        },
+        {
+          "url": "./data/identity-reports/037400--KR7037400009.json",
+          "path": "identity-reports/037400--KR7037400009.json"
+        },
+        {
+          "url": "./data/stocks/038500.json",
+          "path": "stocks/038500.json"
+        },
+        {
+          "url": "./data/stocks/038620.json",
+          "path": "stocks/038620.json"
+        },
+        {
+          "url": "./data/stocks/039030.json",
+          "path": "stocks/039030.json"
+        },
+        {
+          "url": "./data/stocks/039240.json",
+          "path": "stocks/039240.json"
+        },
+        {
+          "url": "./data/stocks/039740.json",
+          "path": "stocks/039740.json"
+        },
+        {
+          "url": "./data/identity-reports/041460--KR7041460007.json",
+          "path": "identity-reports/041460--KR7041460007.json"
+        },
+        {
+          "url": "./data/stocks/042500.json",
+          "path": "stocks/042500.json"
+        },
+        {
+          "url": "./data/stocks/042520.json",
+          "path": "stocks/042520.json"
+        },
+        {
+          "url": "./data/stocks/042660.json",
+          "path": "stocks/042660.json"
+        },
+        {
+          "url": "./data/identity-reports/042670--KR7042670000.json",
+          "path": "identity-reports/042670--KR7042670000.json"
+        },
+        {
+          "url": "./data/stocks/042700.json",
+          "path": "stocks/042700.json"
+        },
+        {
+          "url": "./data/identity-reports/042940--KR7042940007.json",
+          "path": "identity-reports/042940--KR7042940007.json"
+        },
+        {
+          "url": "./data/identity-reports/043090--KR7043090000.json",
+          "path": "identity-reports/043090--KR7043090000.json"
+        },
+        {
+          "url": "./data/stocks/043260.json",
+          "path": "stocks/043260.json"
+        },
+        {
+          "url": "./data/identity-reports/043910--KR7043910009.json",
+          "path": "identity-reports/043910--KR7043910009.json"
+        },
+        {
+          "url": "./data/stocks/045060.json",
+          "path": "stocks/045060.json"
+        },
+        {
+          "url": "./data/stocks/045340.json",
+          "path": "stocks/045340.json"
+        },
+        {
+          "url": "./data/stocks/045660.json",
+          "path": "stocks/045660.json"
+        },
+        {
+          "url": "./data/stocks/046890.json",
+          "path": "stocks/046890.json"
+        },
+        {
+          "url": "./data/stocks/046940.json",
+          "path": "stocks/046940.json"
+        },
+        {
+          "url": "./data/stocks/047310.json",
+          "path": "stocks/047310.json"
+        },
+        {
+          "url": "./data/identity-reports/047440--KR7047440003.json",
+          "path": "identity-reports/047440--KR7047440003.json"
+        },
+        {
+          "url": "./data/identity-reports/047770--KR7047770003.json",
+          "path": "identity-reports/047770--KR7047770003.json"
+        },
+        {
+          "url": "./data/identity-reports/048410--KR7048410005.json",
+          "path": "identity-reports/048410--KR7048410005.json"
+        },
+        {
+          "url": "./data/stocks/048430.json",
+          "path": "stocks/048430.json"
+        },
+        {
+          "url": "./data/identity-reports/048550--KR7048550008.json",
+          "path": "identity-reports/048550--KR7048550008.json"
+        },
+        {
+          "url": "./data/identity-reports/048770--KR7048770002.json",
+          "path": "identity-reports/048770--KR7048770002.json"
+        },
+        {
+          "url": "./data/stocks/048910.json",
+          "path": "stocks/048910.json"
+        },
+        {
+          "url": "./data/stocks/049430.json",
+          "path": "stocks/049430.json"
+        },
+        {
+          "url": "./data/identity-reports/049950--KR7049950009.json",
+          "path": "identity-reports/049950--KR7049950009.json"
+        },
+        {
+          "url": "./data/stocks/051160.json",
+          "path": "stocks/051160.json"
+        },
+        {
+          "url": "./data/stocks/051500.json",
+          "path": "stocks/051500.json"
+        },
+        {
+          "url": "./data/identity-reports/052420--KR7052420007.json",
+          "path": "identity-reports/052420--KR7052420007.json"
+        },
+        {
+          "url": "./data/identity-reports/052460--KR7052460003.json",
+          "path": "identity-reports/052460--KR7052460003.json"
+        },
+        {
+          "url": "./data/stocks/052790.json",
+          "path": "stocks/052790.json"
+        },
+        {
+          "url": "./data/stocks/053050.json",
+          "path": "stocks/053050.json"
+        },
+        {
+          "url": "./data/identity-reports/053160--KR7053160008.json",
+          "path": "identity-reports/053160--KR7053160008.json"
+        },
+        {
+          "url": "./data/stocks/053290.json",
+          "path": "stocks/053290.json"
+        },
+        {
+          "url": "./data/stocks/053610.json",
+          "path": "stocks/053610.json"
+        },
+        {
+          "url": "./data/stocks/053800.json",
+          "path": "stocks/053800.json"
+        },
+        {
+          "url": "./data/stocks/054450.json",
+          "path": "stocks/054450.json"
+        },
+        {
+          "url": "./data/identity-reports/054620--KR7054620000.json",
+          "path": "identity-reports/054620--KR7054620000.json"
+        },
+        {
+          "url": "./data/stocks/054930.json",
+          "path": "stocks/054930.json"
+        },
+        {
+          "url": "./data/stocks/054940.json",
+          "path": "stocks/054940.json"
+        },
+        {
+          "url": "./data/stocks/054950.json",
+          "path": "stocks/054950.json"
+        },
+        {
+          "url": "./data/identity-reports/056080--KR7056080005.json",
+          "path": "identity-reports/056080--KR7056080005.json"
+        },
+        {
+          "url": "./data/stocks/058430.json",
+          "path": "stocks/058430.json"
+        },
+        {
+          "url": "./data/stocks/058470.json",
+          "path": "stocks/058470.json"
+        },
+        {
+          "url": "./data/stocks/058650.json",
+          "path": "stocks/058650.json"
+        },
+        {
+          "url": "./data/identity-reports/060260--KR7060260007.json",
+          "path": "identity-reports/060260--KR7060260007.json"
+        },
+        {
+          "url": "./data/stocks/060280.json",
+          "path": "stocks/060280.json"
+        },
+        {
+          "url": "./data/stocks/060540.json",
+          "path": "stocks/060540.json"
+        },
+        {
+          "url": "./data/identity-reports/060560--KR7060560000.json",
+          "path": "identity-reports/060560--KR7060560000.json"
+        },
+        {
+          "url": "./data/identity-reports/061250--KR7061250007.json",
+          "path": "identity-reports/061250--KR7061250007.json"
+        },
+        {
+          "url": "./data/identity-reports/062860--KR7062860002.json",
+          "path": "identity-reports/062860--KR7062860002.json"
+        },
+        {
+          "url": "./data/identity-reports/062970--KR7062970009.json",
+          "path": "identity-reports/062970--KR7062970009.json"
+        },
+        {
+          "url": "./data/identity-reports/063080--KR7063080006.json",
+          "path": "identity-reports/063080--KR7063080006.json"
+        },
+        {
+          "url": "./data/stocks/063440.json",
+          "path": "stocks/063440.json"
+        },
+        {
+          "url": "./data/identity-reports/064240--KR7064240005.json",
+          "path": "identity-reports/064240--KR7064240005.json"
+        },
+        {
+          "url": "./data/stocks/064260.json",
+          "path": "stocks/064260.json"
+        },
+        {
+          "url": "./data/stocks/064350.json",
+          "path": "stocks/064350.json"
+        },
+        {
+          "url": "./data/stocks/064550.json",
+          "path": "stocks/064550.json"
+        },
+        {
+          "url": "./data/stocks/064960.json",
+          "path": "stocks/064960.json"
+        },
+        {
+          "url": "./data/stocks/065350.json",
+          "path": "stocks/065350.json"
+        },
+        {
+          "url": "./data/identity-reports/065370--KR7065370009.json",
+          "path": "identity-reports/065370--KR7065370009.json"
+        },
+        {
+          "url": "./data/stocks/065510.json",
+          "path": "stocks/065510.json"
+        },
+        {
+          "url": "./data/stocks/065530.json",
+          "path": "stocks/065530.json"
+        },
+        {
+          "url": "./data/identity-reports/065650--KR7065650004.json",
+          "path": "identity-reports/065650--KR7065650004.json"
+        },
+        {
+          "url": "./data/stocks/065680.json",
+          "path": "stocks/065680.json"
+        },
+        {
+          "url": "./data/identity-reports/065770--KR7065770000.json",
+          "path": "identity-reports/065770--KR7065770000.json"
+        },
+        {
+          "url": "./data/stocks/065950.json",
+          "path": "stocks/065950.json"
+        },
+        {
+          "url": "./data/stocks/066980.json",
+          "path": "stocks/066980.json"
+        },
+        {
+          "url": "./data/stocks/067280.json",
+          "path": "stocks/067280.json"
+        },
+        {
+          "url": "./data/identity-reports/068050--KR7068050004.json",
+          "path": "identity-reports/068050--KR7068050004.json"
+        },
+        {
+          "url": "./data/identity-reports/068240--KR7068240001.json",
+          "path": "identity-reports/068240--KR7068240001.json"
+        },
+        {
+          "url": "./data/identity-reports/068330--KR7068330000.json",
+          "path": "identity-reports/068330--KR7068330000.json"
+        },
+        {
+          "url": "./data/identity-reports/069540--KR7069540003.json",
+          "path": "identity-reports/069540--KR7069540003.json"
+        },
+        {
+          "url": "./data/identity-reports/069640--KR7069640001.json",
+          "path": "identity-reports/069640--KR7069640001.json"
+        },
+        {
+          "url": "./data/stocks/069730.json",
+          "path": "stocks/069730.json"
+        },
+        {
+          "url": "./data/stocks/071280.json",
+          "path": "stocks/071280.json"
+        },
+        {
+          "url": "./data/identity-reports/071670--KR7071670004.json",
+          "path": "identity-reports/071670--KR7071670004.json"
+        },
+        {
+          "url": "./data/stocks/071850.json",
+          "path": "stocks/071850.json"
+        },
+        {
+          "url": "./data/identity-reports/072770--KR7072770001.json",
+          "path": "identity-reports/072770--KR7072770001.json"
+        },
+        {
+          "url": "./data/stocks/072950.json",
+          "path": "stocks/072950.json"
+        },
+        {
+          "url": "./data/stocks/073240.json",
+          "path": "stocks/073240.json"
+        },
+        {
+          "url": "./data/stocks/073490.json",
+          "path": "stocks/073490.json"
+        },
+        {
+          "url": "./data/identity-reports/073540--KR7073540007.json",
+          "path": "identity-reports/073540--KR7073540007.json"
+        },
+        {
+          "url": "./data/identity-reports/074430--KR7074430000.json",
+          "path": "identity-reports/074430--KR7074430000.json"
+        },
+        {
+          "url": "./data/stocks/075580.json",
+          "path": "stocks/075580.json"
+        },
+        {
+          "url": "./data/stocks/076610.json",
+          "path": "stocks/076610.json"
+        },
+        {
+          "url": "./data/stocks/077970.json",
+          "path": "stocks/077970.json"
+        },
+        {
+          "url": "./data/identity-reports/078000--KR7078000007.json",
+          "path": "identity-reports/078000--KR7078000007.json"
+        },
+        {
+          "url": "./data/stocks/078150.json",
+          "path": "stocks/078150.json"
+        },
+        {
+          "url": "./data/stocks/078350.json",
+          "path": "stocks/078350.json"
+        },
+        {
+          "url": "./data/identity-reports/078590--KR7078590007.json",
+          "path": "identity-reports/078590--KR7078590007.json"
+        },
+        {
+          "url": "./data/identity-reports/079000--KR7079000006.json",
+          "path": "identity-reports/079000--KR7079000006.json"
+        },
+        {
+          "url": "./data/stocks/079810.json",
+          "path": "stocks/079810.json"
+        },
+        {
+          "url": "./data/stocks/079960.json",
+          "path": "stocks/079960.json"
+        },
+        {
+          "url": "./data/stocks/080220.json",
+          "path": "stocks/080220.json"
+        },
+        {
+          "url": "./data/stocks/080530.json",
+          "path": "stocks/080530.json"
+        },
+        {
+          "url": "./data/stocks/081580.json",
+          "path": "stocks/081580.json"
+        },
+        {
+          "url": "./data/stocks/081660.json",
+          "path": "stocks/081660.json"
+        },
+        {
+          "url": "./data/stocks/082270.json",
+          "path": "stocks/082270.json"
+        },
+        {
+          "url": "./data/identity-reports/082800--KR7082800004.json",
+          "path": "identity-reports/082800--KR7082800004.json"
+        },
+        {
+          "url": "./data/stocks/083450.json",
+          "path": "stocks/083450.json"
+        },
+        {
+          "url": "./data/stocks/083550.json",
+          "path": "stocks/083550.json"
+        },
+        {
+          "url": "./data/identity-reports/083640--KR7083640003.json",
+          "path": "identity-reports/083640--KR7083640003.json"
+        },
+        {
+          "url": "./data/stocks/084110.json",
+          "path": "stocks/084110.json"
+        },
+        {
+          "url": "./data/stocks/084690.json",
+          "path": "stocks/084690.json"
+        },
+        {
+          "url": "./data/identity-reports/084730--KR7084730001.json",
+          "path": "identity-reports/084730--KR7084730001.json"
+        },
+        {
+          "url": "./data/stocks/086060.json",
+          "path": "stocks/086060.json"
+        },
+        {
+          "url": "./data/stocks/086520.json",
+          "path": "stocks/086520.json"
+        },
+        {
+          "url": "./data/stocks/086960.json",
+          "path": "stocks/086960.json"
+        },
+        {
+          "url": "./data/stocks/088130.json",
+          "path": "stocks/088130.json"
+        },
+        {
+          "url": "./data/stocks/088290.json",
+          "path": "stocks/088290.json"
+        },
+        {
+          "url": "./data/stocks/090080.json",
+          "path": "stocks/090080.json"
+        },
+        {
+          "url": "./data/stocks/090150.json",
+          "path": "stocks/090150.json"
+        },
+        {
+          "url": "./data/identity-reports/090710--KR7090710005.json",
+          "path": "identity-reports/090710--KR7090710005.json"
+        },
+        {
+          "url": "./data/identity-reports/090740--KR7090740002.json",
+          "path": "identity-reports/090740--KR7090740002.json"
+        },
+        {
+          "url": "./data/identity-reports/091440--KR7091440008.json",
+          "path": "identity-reports/091440--KR7091440008.json"
+        },
+        {
+          "url": "./data/stocks/091580.json",
+          "path": "stocks/091580.json"
+        },
+        {
+          "url": "./data/stocks/091590.json",
+          "path": "stocks/091590.json"
+        },
+        {
+          "url": "./data/stocks/093240.json",
+          "path": "stocks/093240.json"
+        },
+        {
+          "url": "./data/identity-reports/093640--KR7093640001.json",
+          "path": "identity-reports/093640--KR7093640001.json"
+        },
+        {
+          "url": "./data/identity-reports/094360--KR7094360005.json",
+          "path": "identity-reports/094360--KR7094360005.json"
+        },
+        {
+          "url": "./data/stocks/094480.json",
+          "path": "stocks/094480.json"
+        },
+        {
+          "url": "./data/stocks/094820.json",
+          "path": "stocks/094820.json"
+        },
+        {
+          "url": "./data/identity-reports/094940--KR7094940004.json",
+          "path": "identity-reports/094940--KR7094940004.json"
+        },
+        {
+          "url": "./data/identity-reports/096630--KR7096630009.json",
+          "path": "identity-reports/096630--KR7096630009.json"
+        },
+        {
+          "url": "./data/stocks/098120.json",
+          "path": "stocks/098120.json"
+        },
+        {
+          "url": "./data/stocks/100090.json",
+          "path": "stocks/100090.json"
+        },
+        {
+          "url": "./data/identity-reports/100220--KR7100220003.json",
+          "path": "identity-reports/100220--KR7100220003.json"
+        },
+        {
+          "url": "./data/stocks/100790.json",
+          "path": "stocks/100790.json"
+        },
+        {
+          "url": "./data/stocks/101490.json",
+          "path": "stocks/101490.json"
+        },
+        {
+          "url": "./data/identity-reports/101730--KR7101730000.json",
+          "path": "identity-reports/101730--KR7101730000.json"
+        },
+        {
+          "url": "./data/stocks/102120.json",
+          "path": "stocks/102120.json"
+        },
+        {
+          "url": "./data/stocks/103140.json",
+          "path": "stocks/103140.json"
+        },
+        {
+          "url": "./data/identity-reports/103230--KR7103230009.json",
+          "path": "identity-reports/103230--KR7103230009.json"
+        },
+        {
+          "url": "./data/stocks/103840.json",
+          "path": "stocks/103840.json"
+        },
+        {
+          "url": "./data/identity-reports/104200--KR7104200001.json",
+          "path": "identity-reports/104200--KR7104200001.json"
+        },
+        {
+          "url": "./data/stocks/104480.json",
+          "path": "stocks/104480.json"
+        },
+        {
+          "url": "./data/identity-reports/105550--KR7105550008.json",
+          "path": "identity-reports/105550--KR7105550008.json"
+        },
+        {
+          "url": "./data/stocks/106190.json",
+          "path": "stocks/106190.json"
+        },
+        {
+          "url": "./data/stocks/108380.json",
+          "path": "stocks/108380.json"
+        },
+        {
+          "url": "./data/stocks/108670.json",
+          "path": "stocks/108670.json"
+        },
+        {
+          "url": "./data/stocks/108860.json",
+          "path": "stocks/108860.json"
+        },
+        {
+          "url": "./data/stocks/109080.json",
+          "path": "stocks/109080.json"
+        },
+        {
+          "url": "./data/identity-reports/109960--KR7109960005.json",
+          "path": "identity-reports/109960--KR7109960005.json"
+        },
+        {
+          "url": "./data/stocks/110990.json",
+          "path": "stocks/110990.json"
+        },
+        {
+          "url": "./data/identity-reports/112040--KR7112040001.json",
+          "path": "identity-reports/112040--KR7112040001.json"
+        },
+        {
+          "url": "./data/stocks/114450.json",
+          "path": "stocks/114450.json"
+        },
+        {
+          "url": "./data/stocks/114810.json",
+          "path": "stocks/114810.json"
+        },
+        {
+          "url": "./data/stocks/115180.json",
+          "path": "stocks/115180.json"
+        },
+        {
+          "url": "./data/identity-reports/117730--KR7117730002.json",
+          "path": "identity-reports/117730--KR7117730002.json"
+        },
+        {
+          "url": "./data/stocks/120240.json",
+          "path": "stocks/120240.json"
+        },
+        {
+          "url": "./data/stocks/121600.json",
+          "path": "stocks/121600.json"
+        },
+        {
+          "url": "./data/identity-reports/121850--KR7121850002.json",
+          "path": "identity-reports/121850--KR7121850002.json"
+        },
+        {
+          "url": "./data/stocks/122640.json",
+          "path": "stocks/122640.json"
+        },
+        {
+          "url": "./data/stocks/122870.json",
+          "path": "stocks/122870.json"
+        },
+        {
+          "url": "./data/identity-reports/123010--KR7123010001.json",
+          "path": "identity-reports/123010--KR7123010001.json"
+        },
+        {
+          "url": "./data/identity-reports/123860--KR7123860009.json",
+          "path": "identity-reports/123860--KR7123860009.json"
+        },
+        {
+          "url": "./data/stocks/124500.json",
+          "path": "stocks/124500.json"
+        },
+        {
+          "url": "./data/stocks/125210.json",
+          "path": "stocks/125210.json"
+        },
+        {
+          "url": "./data/stocks/128940.json",
+          "path": "stocks/128940.json"
+        },
+        {
+          "url": "./data/stocks/131400.json",
+          "path": "stocks/131400.json"
+        },
+        {
+          "url": "./data/stocks/131970.json",
+          "path": "stocks/131970.json"
+        },
+        {
+          "url": "./data/stocks/134060.json",
+          "path": "stocks/134060.json"
+        },
+        {
+          "url": "./data/identity-reports/134790--KR7134790005.json",
+          "path": "identity-reports/134790--KR7134790005.json"
+        },
+        {
+          "url": "./data/identity-reports/138360--KR7138360003.json",
+          "path": "identity-reports/138360--KR7138360003.json"
+        },
+        {
+          "url": "./data/stocks/140410.json",
+          "path": "stocks/140410.json"
+        },
+        {
+          "url": "./data/stocks/148150.json",
+          "path": "stocks/148150.json"
+        },
+        {
+          "url": "./data/stocks/155660.json",
+          "path": "stocks/155660.json"
+        },
+        {
+          "url": "./data/identity-reports/156100--KR7156100000.json",
+          "path": "identity-reports/156100--KR7156100000.json"
+        },
+        {
+          "url": "./data/identity-reports/160550--KR7160550000.json",
+          "path": "identity-reports/160550--KR7160550000.json"
+        },
+        {
+          "url": "./data/stocks/160980.json",
+          "path": "stocks/160980.json"
+        },
+        {
+          "url": "./data/identity-reports/161570--KR7161570007.json",
+          "path": "identity-reports/161570--KR7161570007.json"
+        },
+        {
+          "url": "./data/identity-reports/168330--KR7168330009.json",
+          "path": "identity-reports/168330--KR7168330009.json"
+        },
+        {
+          "url": "./data/identity-reports/171010--KR7171010002.json",
+          "path": "identity-reports/171010--KR7171010002.json"
+        },
+        {
+          "url": "./data/identity-reports/174900--KR7174900001.json",
+          "path": "identity-reports/174900--KR7174900001.json"
+        },
+        {
+          "url": "./data/stocks/179290.json",
+          "path": "stocks/179290.json"
+        },
+        {
+          "url": "./data/identity-reports/187660--KR7187660006.json",
+          "path": "identity-reports/187660--KR7187660006.json"
+        },
+        {
+          "url": "./data/stocks/187870.json",
+          "path": "stocks/187870.json"
+        },
+        {
+          "url": "./data/stocks/190510.json",
+          "path": "stocks/190510.json"
+        },
+        {
+          "url": "./data/stocks/192400.json",
+          "path": "stocks/192400.json"
+        },
+        {
+          "url": "./data/identity-reports/194480--KR7194480000.json",
+          "path": "identity-reports/194480--KR7194480000.json"
+        },
+        {
+          "url": "./data/identity-reports/196300--KR7196300008.json",
+          "path": "identity-reports/196300--KR7196300008.json"
+        },
+        {
+          "url": "./data/stocks/196700.json",
+          "path": "stocks/196700.json"
+        },
+        {
+          "url": "./data/stocks/206650.json",
+          "path": "stocks/206650.json"
+        },
+        {
+          "url": "./data/stocks/213420.json",
+          "path": "stocks/213420.json"
+        },
+        {
+          "url": "./data/stocks/214390.json",
+          "path": "stocks/214390.json"
+        },
+        {
+          "url": "./data/stocks/224110.json",
+          "path": "stocks/224110.json"
+        },
+        {
+          "url": "./data/identity-reports/226950--KR7226950004.json",
+          "path": "identity-reports/226950--KR7226950004.json"
+        },
+        {
+          "url": "./data/identity-reports/227610--KR7227610003.json",
+          "path": "identity-reports/227610--KR7227610003.json"
+        },
+        {
+          "url": "./data/stocks/228340.json",
+          "path": "stocks/228340.json"
+        },
+        {
+          "url": "./data/stocks/234100.json",
+          "path": "stocks/234100.json"
+        },
+        {
+          "url": "./data/identity-reports/234340--KR7234340008.json",
+          "path": "identity-reports/234340--KR7234340008.json"
+        },
+        {
+          "url": "./data/identity-reports/238090--KR7238090005.json",
+          "path": "identity-reports/238090--KR7238090005.json"
+        },
+        {
+          "url": "./data/stocks/249420.json",
+          "path": "stocks/249420.json"
+        },
+        {
+          "url": "./data/stocks/251370.json",
+          "path": "stocks/251370.json"
+        },
+        {
+          "url": "./data/stocks/263860.json",
+          "path": "stocks/263860.json"
+        },
+        {
+          "url": "./data/stocks/264450.json",
+          "path": "stocks/264450.json"
+        },
+        {
+          "url": "./data/stocks/265520.json",
+          "path": "stocks/265520.json"
+        },
+        {
+          "url": "./data/identity-reports/289080--KR7289080004.json",
+          "path": "identity-reports/289080--KR7289080004.json"
+        },
+        {
+          "url": "./data/stocks/290650.json",
+          "path": "stocks/290650.json"
+        },
+        {
+          "url": "./data/identity-reports/290670--KR7290670009.json",
+          "path": "identity-reports/290670--KR7290670009.json"
+        },
+        {
+          "url": "./data/stocks/294570.json",
+          "path": "stocks/294570.json"
+        },
+        {
+          "url": "./data/stocks/298020.json",
+          "path": "stocks/298020.json"
+        },
+        {
+          "url": "./data/identity-reports/298380--KR7298380007.json",
+          "path": "identity-reports/298380--KR7298380007.json"
+        },
+        {
+          "url": "./data/identity-reports/300080--KR7300080009.json",
+          "path": "identity-reports/300080--KR7300080009.json"
+        },
+        {
+          "url": "./data/stocks/306040.json",
+          "path": "stocks/306040.json"
+        },
+        {
+          "url": "./data/identity-reports/308080--KR7308080001.json",
+          "path": "identity-reports/308080--KR7308080001.json"
+        },
+        {
+          "url": "./data/identity-reports/314130--KR7314130006.json",
+          "path": "identity-reports/314130--KR7314130006.json"
+        },
+        {
+          "url": "./data/identity-reports/317330--KR7317330009.json",
+          "path": "identity-reports/317330--KR7317330009.json"
+        },
+        {
+          "url": "./data/identity-reports/317690--KR7317690006.json",
+          "path": "identity-reports/317690--KR7317690006.json"
+        },
+        {
+          "url": "./data/identity-reports/317830--KR7317830008.json",
+          "path": "identity-reports/317830--KR7317830008.json"
+        },
+        {
+          "url": "./data/identity-reports/321820--KR7321820003.json",
+          "path": "identity-reports/321820--KR7321820003.json"
+        },
+        {
+          "url": "./data/identity-reports/322180--KR7322180001.json",
+          "path": "identity-reports/322180--KR7322180001.json"
+        },
+        {
+          "url": "./data/identity-reports/322310--KR7322310004.json",
+          "path": "identity-reports/322310--KR7322310004.json"
+        },
+        {
+          "url": "./data/stocks/347700.json",
+          "path": "stocks/347700.json"
+        },
+        {
+          "url": "./data/identity-reports/377300--KR7377300009.json",
+          "path": "identity-reports/377300--KR7377300009.json"
+        },
+        {
+          "url": "./data/stocks/382800.json",
+          "path": "stocks/382800.json"
+        },
+        {
+          "url": "./data/stocks/388050.json",
+          "path": "stocks/388050.json"
+        },
+        {
+          "url": "./data/identity-reports/418420--KR7418420006.json",
+          "path": "identity-reports/418420--KR7418420006.json"
+        },
+        {
+          "url": "./data/identity-reports/900070--KYG3931T1076.json",
+          "path": "identity-reports/900070--KYG3931T1076.json"
+        },
+        {
+          "url": "./data/identity-reports/900100--USU652221081.json",
+          "path": "identity-reports/900100--USU652221081.json"
+        },
+        {
+          "url": "./data/identity-reports/900250--KYG2115T1076.json",
+          "path": "identity-reports/900250--KYG2115T1076.json"
+        },
+        {
+          "url": "./data/identity-reports/950140--KR8840110108.json",
+          "path": "identity-reports/950140--KR8840110108.json"
+        }
+      ]
+    }
+  },
+  "post_promote_readback": {
+    "stock_report_count": 1495,
+    "common_stock_report_count": 1459,
+    "etf_stock_report_count": 36,
+    "sector_population_count": 2562,
+    "foreign_population_count": 2562,
+    "foreign_flow_covered_count": 2492,
+    "health_overall_status": "NORMAL",
+    "strategy_monitor_strategy_count": 3,
+    "b_select_status_count": 1459,
+    "b_select_canonical_trade_history_row_count": 488,
+    "fast_replay_projection": {
+      "source_trade_count": 423,
+      "monitor_trade_count": 423,
+      "trade_mismatch_count": 0,
+      "source_open_position_count": 25,
+      "open_mismatch_count": 0
+    },
+    "b_select_canonical_current_open_position_count": 37,
+    "b_select_published_item_open_position_count": 20,
+    "b_select_historical_only_open_position_count": 17,
+    "b_select_evaluation_error_count": 0,
+    "b_select_date_mismatch_count": 0,
+    "b_select_future_reference_count": 0,
+    "b_select_duplicate_item_count": 0,
+    "b_select_cross_strategy_contamination_count": 0,
+    "b_select_network_requests": 0
+  },
+  "publication": {
+    "transaction_id": "9a5fd004ec2244178c80cda561f8aa91",
+    "status": "COMMITTED_AND_READ_BACK",
+    "consistency_boundary": "COMPLETE_WEB_DATA_DIRECTORY_PLUS_SEPARATE_B_SELECT_STATUS_REPLACE",
+    "cross_path_atomicity": false,
+    "temporary_exposure": "web/data may be briefly absent during directory rename; B Select status is replaced separately",
+    "failure_recovery": "FULL_OLD_SNAPSHOT_RESTORED_BEFORE_BACKUP_CLEANUP",
+    "prior_transaction_recovery": "NO_PENDING_TRANSACTION"
+  }
+}

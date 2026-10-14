@@ -1,0 +1,24 @@
+{
+  "status": "PASS_SCOPED_TESTS",
+  "scoped_pass_count": 102,
+  "runs": [
+    {
+      "command": ".venv/bin/python -m pytest tests/test_daily_update_phase4d_v01.py tests/test_daily_update_phase4d_transaction_v02.py tests/test_daily_update_phase4e_v01.py tests/test_rebuild_fast_web_canonical_alignment_staging_v01.py -q",
+      "status": "PASS",
+      "passed": 93
+    },
+    {
+      "command": ".venv/bin/python -m pytest tests/test_daily_update_phase4c_v01.py -k 'fast_monitor or fast_full_history_projection or scanner_summary or report_corpus_missing or report_with_wrong_reference or report_with_wrong_requested' -q",
+      "status": "PASS",
+      "passed": 9,
+      "deselected": 27
+    }
+  ],
+  "combined_wide_run": {
+    "status": "INTERRUPTED_BY_AGENT",
+    "passed_before_interrupt": 81,
+    "elapsed_seconds": 120.66,
+    "reason": "Entered the heavyweight real Phase4C fixture reading local KRX raw snapshots; interrupted to avoid unbounded runtime. This is not reported as a complete suite pass."
+  },
+  "git_diff_check": "PASS"
+}

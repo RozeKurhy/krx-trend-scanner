@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -42,6 +43,11 @@ def test_explicit_phase4c_rebuild_skips_validation_of_old_published_snapshot(mon
         },
     )
     monkeypatch.setattr(phase4d, "validate_staging", lambda *args, **kwargs: {})
+    monkeypatch.setattr(
+        phase4d,
+        "_inspect_final_promotion_snapshot",
+        lambda *args, **kwargs: {"status": "PASS", "protected_file_count": 0},
+    )
     result = phase4d.run_phase4d(
         "2026-10-03",
         execute_live=False,
@@ -351,6 +357,302 @@ def test_validate_staging_rejects_mismatched_promoted_report_and_monitor_ids(mon
 
     with pytest.raises(phase4d.Phase4DError, match="PHASE4D_FAST_REPORT_MONITOR_STRATEGY_MISMATCH"):
         phase4d.validate_staging(stage, "2026-09-17", "2026-09-17")
+
+
+def _write_noop_canonical(root: Path, *, alignment: bool) -> dict:
+    target = "2026-09-17"
+    report_dir = root / "artifacts/reporting/stock_reports/20260917"
+    json_dir = report_dir / "json"
+    json_dir.mkdir(parents=True)
+    strategy_id = phase4d.PROMOTED_STRATEGY_ID if alignment else phase4d.STRATEGY_ID
+    core = {"strategy_id": strategy_id, "canonical_position": "FLAT", "current_trade": None, "trade_history": []}
+    if alignment:
+        core["strategy_replay_mode"] = phase4d.phase4b.FULL_HISTORY_ALIGNMENT_WEB
+        core["promotion_gate_audit"] = []
+    (json_dir / "000001.json").write_text(json.dumps({
+        "ticker": "000001",
+        "asset_type": "COMMON",
+        "requested_as_of": target,
+        "reference_market_date": target,
+        "a_fast_core": core,
+    }), encoding="utf-8")
+    if alignment:
+        result = phase4d.phase4b.finalize_full_history_alignment_reports(
+            report_dir, {"000001"}, target, target,
+        )
+        assert result["valid"] is True
+        return result
+    return {"strategy_id": strategy_id}
+
+
+def _write_noop_monitor(root: Path, *, alignment: dict | None) -> None:
+    target = "2026-09-17"
+    if alignment is None:
+        monitor = {
+            "requested_as_of": target,
+            "reference_market_date": target,
+            "default_strategy_id": phase4d.STRATEGY_ID,
+            "strategies": [{"id": phase4d.STRATEGY_ID}],
+        }
+    else:
+        monitor = {
+            "requested_as_of": target,
+            "reference_market_date": target,
+            "default_strategy_id": phase4d.PROMOTED_STRATEGY_ID,
+            "strategy_replay_mode": phase4d.phase4b.FULL_HISTORY_ALIGNMENT_WEB,
+            "strategy_replay_digest": alignment["strategy_replay_digest"],
+            "strategy_replay_scope": alignment["strategy_replay_scope"],
+            "strategies": [{
+                "id": phase4d.PROMOTED_STRATEGY_ID,
+                "strategy_replay_mode": phase4d.phase4b.FULL_HISTORY_ALIGNMENT_WEB,
+                "strategy_replay_digest": alignment["strategy_replay_digest"],
+                "strategy_replay_scope": alignment["strategy_replay_scope"],
+            }],
+        }
+    path = root / "web/data/strategy-monitor.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(monitor), encoding="utf-8")
+
+
+def _run_noop_precheck(root: Path, monkeypatch: pytest.MonkeyPatch) -> dict:
+    target = "2026-09-17"
+    monkeypatch.setattr(phase4d, "ROOT", root)
+    monkeypatch.setattr(
+        phase4d,
+        "inspect_published_payload",
+        lambda *args, **kwargs: {"reference_market_date": target, "validation": {"fixture": True}},
+    )
+    monkeypatch.setattr(
+        phase4d,
+        "_inspect_final_promotion_snapshot",
+        lambda *args, **kwargs: {"status": "PASS", "protected_file_count": 0},
+    )
+    monkeypatch.setattr(phase4d, "validate_staging", lambda *args, **kwargs: {})
+    return phase4d.run_phase4d(target, execute_live=False, root=root)
+
+
+def test_phase4d_does_not_noop_on_v2_web_when_canonical_alignment_is_valid(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+):
+    _write_noop_canonical(tmp_path, alignment=True)
+    _write_noop_monitor(tmp_path, alignment=None)
+    stage_calls = []
+    monkeypatch.setattr(
+        phase4d,
+        "_stage_payloads",
+        lambda target, stage, *, phase4c_result=None: (
+            stage_calls.append(target) or {"reference_market_date": target, "sector_membership": {}}
+        ),
+    )
+
+    result = _run_noop_precheck(tmp_path, monkeypatch)
+
+    assert result["status"] == "PASS"
+    assert stage_calls == ["2026-09-17"]
+
+
+def test_phase4d_keeps_noop_when_published_alignment_matches_canonical(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+):
+    canonical = _write_noop_canonical(tmp_path, alignment=True)
+    _write_noop_monitor(tmp_path, alignment=canonical)
+    monkeypatch.setattr(
+        phase4d,
+        "_stage_payloads",
+        lambda *args, **kwargs: pytest.fail("matching Alignment publication must remain NOOP"),
+    )
+
+    result = _run_noop_precheck(tmp_path, monkeypatch)
+
+    assert result["status"] == "NOOP_ALREADY_COMPLETE"
+    assert result["web_data_writes"] == 0
+
+
+def test_phase4d_fails_closed_when_canonical_alignment_digest_is_invalid(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+):
+    canonical = _write_noop_canonical(tmp_path, alignment=True)
+    _write_noop_monitor(tmp_path, alignment=canonical)
+    report_path = tmp_path / "artifacts/reporting/stock_reports/20260917/json/000001.json"
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    report["a_fast_core"]["strategy_replay_digest"] = "0" * 64
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+    monkeypatch.setattr(
+        phase4d,
+        "_stage_payloads",
+        lambda *args, **kwargs: pytest.fail("invalid canonical must fail before staging"),
+    )
+
+    with pytest.raises(phase4d.Phase4DError, match="PHASE4D_CANONICAL_FULL_HISTORY_ALIGNMENT_INVALID"):
+        _run_noop_precheck(tmp_path, monkeypatch)
+
+
+def test_phase4d_preserves_v2_noop_for_v2_canonical_and_published_web(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+):
+    _write_noop_canonical(tmp_path, alignment=False)
+    _write_noop_monitor(tmp_path, alignment=None)
+    monkeypatch.setattr(
+        phase4d,
+        "_stage_payloads",
+        lambda *args, **kwargs: pytest.fail("existing V2 canonical/web should remain NOOP"),
+    )
+
+    result = _run_noop_precheck(tmp_path, monkeypatch)
+
+    assert result["status"] == "NOOP_ALREADY_COMPLETE"
+    assert result["web_data_writes"] == 0
+
+
+def test_phase4d_reuses_existing_exact_date_b_select_status_without_recalculation(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+):
+    target = "2026-09-17"
+    status = {
+        "status": "PASS",
+        "strategy_id": phase4d.B_SELECT_ID,
+        "requested_as_of": target,
+        "reference_market_date": target,
+        "network_requests": 0,
+        "count": 1,
+        "items": [],
+    }
+    status_path = phase4d._b_select_status_path(tmp_path, target)
+    status_path.parent.mkdir(parents=True)
+    status_path.write_text(json.dumps(status), encoding="utf-8")
+    calls = []
+    monkeypatch.setattr(phase4d, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        phase4d.phase4c,
+        "run_phase4c",
+        lambda *args, **kwargs: calls.append((args, kwargs)) or {"status": "PASS"},
+    )
+
+    result = phase4d._run_phase4c_for_phase4d(target)
+
+    assert result["status"] == "PASS"
+    assert len(calls) == 1
+    assert calls[0][1]["b_select_status_override"] == status
+
+
+def test_phase4d_rejects_invalid_existing_b_select_status_without_recalculation(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+):
+    target = "2026-09-17"
+    status_path = phase4d._b_select_status_path(tmp_path, target)
+    status_path.parent.mkdir(parents=True)
+    status_path.write_text(json.dumps({
+        "status": "PASS",
+        "strategy_id": phase4d.B_SELECT_ID,
+        "requested_as_of": "2026-09-16",
+        "network_requests": 0,
+    }), encoding="utf-8")
+    monkeypatch.setattr(phase4d, "ROOT", tmp_path)
+    monkeypatch.setattr(
+        phase4d.phase4c,
+        "run_phase4c",
+        lambda *args, **kwargs: pytest.fail("invalid stored B Select status must not trigger recalculation"),
+    )
+
+    with pytest.raises(phase4d.Phase4DError, match="PHASE4D_B_SELECT_CANONICAL_STATUS_INVALID"):
+        phase4d._run_phase4c_for_phase4d(target)
+
+
+def test_phase4d_uses_existing_builder_when_exact_date_b_select_status_is_absent(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+):
+    target = "2026-09-17"
+    monkeypatch.setattr(phase4d, "ROOT", tmp_path)
+    calls = []
+    monkeypatch.setattr(
+        phase4d.phase4c,
+        "run_phase4c",
+        lambda *args, **kwargs: calls.append((args, kwargs)) or {"status": "PASS"},
+    )
+
+    phase4d._run_phase4c_for_phase4d(target)
+
+    assert len(calls) == 1
+    assert calls[0][0] == (target,)
+    assert calls[0][1] == {"root": tmp_path}
+
+
+def test_phase4d_reuses_the_validated_phase4c_foreign_ranking_payload(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    payload = {"requested_as_of": "2026-09-17", "items": [{"ticker": "000001"}]}
+    monkeypatch.setattr(
+        phase4d.foreign_web,
+        "build_foreign_net_buy_ranking",
+        lambda **kwargs: pytest.fail("Phase4D must not rebuild the Phase4C repository projection"),
+    )
+
+    result = phase4d._foreign_net_buy_payload(
+        {"_foreign_net_buy_for_phase4d": payload},
+        as_of="2026-09-17",
+    )
+
+    assert result is payload
+
+
+def _promotion_fixture(root: Path) -> tuple[Path, Path]:
+    web_data = root / "web/data"
+    stage_data = root / ".phase4d-stage/data"
+    web_data.mkdir(parents=True)
+    (web_data / "stocks").mkdir()
+    stage_data.mkdir(parents=True)
+    (stage_data / "stocks").mkdir()
+    for index, name in enumerate(phase4d.REQUIRED_FILES):
+        (web_data / name).write_text(json.dumps({"old": index}), encoding="utf-8")
+        (stage_data / name).write_text(json.dumps({"new": index}), encoding="utf-8")
+    (web_data / "stocks/000001.json").write_text('{"old":true}', encoding="utf-8")
+    (stage_data / "stocks/000001.json").write_text('{"new":true}', encoding="utf-8")
+    (stage_data / phase4d.B_SELECT_STATUS_STAGING_NAME).write_text('{"status":"PASS"}', encoding="utf-8")
+    (web_data / "etf-ranking.json").write_text('{"name":"etf"}', encoding="utf-8")
+    (web_data / "fear-index.json").write_text('{"name":"fear"}', encoding="utf-8")
+    identity_reports = web_data / "identity-reports"
+    identity_reports.mkdir()
+    for index in range(148):
+        (identity_reports / f"{index:06d}.json").write_text(json.dumps({"identity": index}), encoding="utf-8")
+    (web_data / "identity-report-routes.json").write_text(json.dumps({
+        "route_count": 2,
+        "supplemental_report_count": 1,
+        "items": [
+            {"url": "./data/stocks/000001.json"},
+            {"url": "./data/identity-reports/000000.json"},
+        ],
+    }), encoding="utf-8")
+    return stage_data, web_data
+
+
+def test_phase4d_promote_snapshot_preserves_151_sidecars_and_routes(tmp_path: Path):
+    stage_data, web_data = _promotion_fixture(tmp_path)
+
+    snapshot_check = phase4d._inspect_final_promotion_snapshot(stage_data, web_data)
+
+    assert snapshot_check["status"] == "PASS"
+    assert snapshot_check["protected_file_count"] == 151
+    assert snapshot_check["route_integrity"]["route_count"] == 2
+    assert snapshot_check["route_integrity"]["missing_route_count"] == 0
+    promoted = phase4d.promote(
+        stage_data,
+        web_data,
+        target_as_of="2026-09-17",
+        post_publish_validate=lambda _status_path: {"status": "PASS"},
+    )
+    assert promoted["promoted_snapshot_validation"]["protected_files"] == snapshot_check["protected_files"]
+    assert (web_data / "stocks/000001.json").read_text(encoding="utf-8") == '{"new":true}'
+    assert (web_data / "identity-reports/000000.json").is_file()
+
+
+def test_phase4d_promote_snapshot_fails_when_a_protected_file_is_missing(tmp_path: Path):
+    stage_data, web_data = _promotion_fixture(tmp_path)
+    snapshot = tmp_path / "staged-final"
+    phase4d._build_promotion_snapshot(stage_data, web_data, snapshot)
+    (snapshot / "identity-reports/000000.json").unlink()
+
+    with pytest.raises(phase4d.Phase4DError, match="PHASE4D_PROMOTION_PROTECTED_WEB_FILES_MISMATCH"):
+        phase4d._validate_promoted_snapshot(web_data, snapshot)
 
 
 def test_validate_staging_rejects_invalid_promoted_effective_date(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):

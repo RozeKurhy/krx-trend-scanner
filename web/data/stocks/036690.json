@@ -1090,36 +1090,65 @@
     "position": "DATA_UNAVAILABLE",
     "reason": "INVESTABILITY_DATA_UNAVAILABLE",
     "interpretation": "투자 유동성 및 시가총액 데이터 결측으로 패스트 코어 V2 신규 진입 적격성을 판정할 수 없습니다.",
-    "history": [
+    "history": [],
+    "id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+    "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+    "strategy_name": "A FAST Core V2 Alignment 500B",
+    "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+    "strategy_replay_scope": {
+      "type": "PUBLISHED_COMMON_REPORTS",
+      "report_count": 1459,
+      "requested_as_of": "2026-10-11",
+      "reference_market_date": "2026-10-08",
+      "first_v2_candidate_signal_date": "2012-12-28",
+      "last_v2_candidate_signal_date": "2026-10-02",
+      "first_alignment_gate_pass_signal_date": "2015-01-02",
+      "base_candidate_signal_count": 20012,
+      "alignment_gate_pass_count": 423,
+      "output_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+    },
+    "strategy_replay_digest": "e3c6ecc19187eb8951c1c9ef1626a2b54a9cffe1f6d415721b75a0cca8e89b61",
+    "research_group_id": "ALIGNMENT_MCAP_500B",
+    "promotion_gate_audit": [
       {
-        "trade_id": "036690_01",
-        "trade_sequence": 1,
-        "entry_signal_date": "2014-01-17",
-        "entry_execution_date": "2014-01-20",
-        "entry_open": 2641.0,
-        "entry_pattern_a_stage": "TRANSITION",
-        "exit_type": "EXIT4_SCORE_DRAWDOWN_GE_15",
-        "exit_signal_date": "2015-02-28",
-        "exit_execution_date": "2015-03-02",
-        "exit_price": 5169.0,
-        "trade_status": "REALIZED",
-        "return_pct": 95.72,
-        "lifecycle_class": "NORMAL_EARLY_TREND_HANDOFF"
+        "signal_date": "2014-01-17",
+        "allowed": false,
+        "reason_code": "REJECT_MA_UNAVAILABLE",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "cause": "PRIOR_COMPLETED_MONTHS_INSUFFICIENT_OR_GAPPED",
+          "required_months": 60,
+          "available_months": 48,
+          "missing_months": [
+            "2009-01",
+            "2009-02",
+            "2009-03",
+            "2009-04",
+            "2009-05"
+          ]
+        }
       },
       {
-        "trade_id": "036690_02",
-        "trade_sequence": 2,
-        "entry_signal_date": "2016-10-07",
-        "entry_execution_date": "2016-10-11",
-        "entry_open": 5448.0,
-        "entry_pattern_a_stage": "EARLY_TREND",
-        "exit_type": "LOSS_GUARD_CLOSE_LE_NEG_15",
-        "exit_signal_date": "2016-11-09",
-        "exit_execution_date": "2016-11-11",
-        "exit_price": 4745.0,
-        "trade_status": "REALIZED",
-        "return_pct": -12.9,
-        "lifecycle_class": "NEVER_PROGRESSED"
+        "signal_date": "2016-10-07",
+        "allowed": false,
+        "reason_code": "REJECT_MCAP_BELOW_500B",
+        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+        "details": {
+          "signal_close_adjusted": 5331.0,
+          "ma20_prior_completed_months": 4875.05,
+          "ma60_prior_completed_months": 3459.0833333333335,
+          "last_completed_month": "2016-09",
+          "ticker": "036690",
+          "isu_cd": "KR7036690006",
+          "market": "KOSDAQ",
+          "signal_date": "2016-10-07",
+          "market_cap_krw": 84461713800,
+          "market_cap_threshold_krw": 500000000000,
+          "market_cap_partition": {
+            "market": "KOSDAQ",
+            "date": "2016-10-07"
+          }
+        }
       }
     ]
   },

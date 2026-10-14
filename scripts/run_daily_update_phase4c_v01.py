@@ -666,6 +666,7 @@ def run_phase4c(
         "status": "PASS",
         "_b_select_status_for_phase4d": b_select_status,
         "_strategy_monitor_for_phase4d": strategy_monitor,
+        "_foreign_net_buy_for_phase4d": foreign_net_buy,
     }
     return result
 
@@ -686,6 +687,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     result.pop("_b_select_status_for_phase4d", None)
     result.pop("_strategy_monitor_for_phase4d", None)
+    result.pop("_foreign_net_buy_for_phase4d", None)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2, default=str))
     return 0
 

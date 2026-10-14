@@ -14,7 +14,7 @@ import json
 import math
 import os
 from datetime import date
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import re
 import shutil
 import sys
@@ -34,6 +34,7 @@ from scripts import export_stock_report_web as stock_web
 from scripts import export_strategy_monitor_web as strategy_web
 from scripts import export_web_data as health_web
 from scripts import build_b_select_core_v2_status as b_select_status_web
+from scripts import run_daily_update_phase4b_v01 as phase4b
 from scripts import run_daily_update_phase4c_v01 as phase4c
 from scripts import run_pattern_a_universe_scanner as phase4a
 from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
@@ -201,6 +202,139 @@ def inspect_published_payload(
     }
 
 
+def _canonical_full_history_alignment_provenance(
+    root: Path,
+    target_as_of: str,
+    reference_market_date: str,
+) -> dict[str, Any] | None:
+    """Validate the exact-date canonical when it declares a full-history replay.
+
+    A valid legacy V2 corpus returns ``None`` so the existing daily NOOP contract
+    remains unchanged. Once any COMMON report declares the promoted replay, the
+    complete canonical corpus must validate or Phase 4D fails closed.
+    """
+    report_dir = root / "artifacts/reporting/stock_reports" / target_as_of.replace("-", "")
+    json_dir = report_dir / "json"
+    report_paths = sorted(json_dir.glob("*.json")) if json_dir.is_dir() else []
+    if not report_paths:
+        if report_dir.exists() and any(report_dir.rglob("*.md")):
+            raise Phase4DError("PHASE4D_CANONICAL_STOCK_REPORT_CORPUS_INCOMPLETE")
+        return None
+
+    common_tickers: set[str] = set()
+    declares_alignment = False
+    parse_errors: list[str] = []
+    for path in report_paths:
+        try:
+            report = _read_json(path)
+        except (OSError, UnicodeError, ValueError, json.JSONDecodeError):
+            parse_errors.append(path.name)
+            continue
+        if report.get("asset_type") != "COMMON":
+            continue
+        ticker = str(report.get("ticker") or "").strip().upper().zfill(6)
+        if ticker:
+            common_tickers.add(ticker)
+        core = report.get("a_fast_core")
+        if isinstance(core, dict) and (
+            core.get("strategy_replay_mode") == phase4b.FULL_HISTORY_ALIGNMENT_WEB
+            or core.get("strategy_id") == PROMOTED_STRATEGY_ID
+        ):
+            declares_alignment = True
+
+    if not declares_alignment:
+        return None
+    if parse_errors:
+        raise Phase4DError("PHASE4D_CANONICAL_FULL_HISTORY_ALIGNMENT_INVALID: REPORT_JSON_INVALID")
+    try:
+        validation = phase4b.validate_full_history_alignment_corpus(
+            report_dir,
+            target_as_of,
+            reference_market_date,
+            common_tickers,
+        )
+    except (OSError, UnicodeError, ValueError, phase4b.Phase4BError) as exc:
+        raise Phase4DError(f"PHASE4D_CANONICAL_FULL_HISTORY_ALIGNMENT_INVALID: {exc}") from exc
+    scope = validation.get("strategy_replay_scope")
+    if (
+        validation.get("valid") is not True
+        or validation.get("strategy_id") != PROMOTED_STRATEGY_ID
+        or validation.get("strategy_replay_mode") != phase4b.FULL_HISTORY_ALIGNMENT_WEB
+        or not isinstance(validation.get("strategy_replay_digest"), str)
+        or not isinstance(scope, dict)
+        or scope.get("requested_as_of") != target_as_of
+        or scope.get("reference_market_date") != reference_market_date
+        or scope.get("report_count") != validation.get("common_report_count")
+        or scope.get("output_strategy_id") != PROMOTED_STRATEGY_ID
+    ):
+        reasons = validation.get("reason_codes") or ["CANONICAL_PROVENANCE_INVALID"]
+        raise Phase4DError(
+            "PHASE4D_CANONICAL_FULL_HISTORY_ALIGNMENT_INVALID: " + ",".join(map(str, reasons))
+        )
+    return validation
+
+
+def _published_monitor_matches_canonical_full_history_alignment(
+    root: Path,
+    target_as_of: str,
+    reference_market_date: str,
+    canonical: dict[str, Any],
+) -> bool:
+    """Return whether the published FAST row reflects the validated canonical."""
+    try:
+        monitor = _read_json(root / "web/data/strategy-monitor.json")
+    except (OSError, UnicodeError, ValueError, Phase4DError):
+        return False
+    fast_rows = [
+        row for row in monitor.get("strategies", [])
+        if isinstance(row, dict) and row.get("id") in FAST_STRATEGY_IDS
+    ]
+    if len(fast_rows) != 1:
+        return False
+    fast_row = fast_rows[0]
+    digest = canonical.get("strategy_replay_digest")
+    scope = canonical.get("strategy_replay_scope")
+    return bool(
+        fast_row.get("id") == PROMOTED_STRATEGY_ID
+        and monitor.get("strategy_replay_mode") == phase4b.FULL_HISTORY_ALIGNMENT_WEB
+        and monitor.get("strategy_replay_digest") == digest
+        and monitor.get("strategy_replay_scope") == scope
+        and fast_row.get("strategy_replay_mode") == phase4b.FULL_HISTORY_ALIGNMENT_WEB
+        and fast_row.get("strategy_replay_digest") == digest
+        and fast_row.get("strategy_replay_scope") == scope
+        and monitor.get("requested_as_of") == target_as_of
+        and monitor.get("reference_market_date") == reference_market_date
+    )
+
+
+def _run_phase4c_for_phase4d(target_as_of: str) -> dict[str, Any]:
+    """Reuse an exact-date canonical B Select status instead of recalculating it."""
+    status_path = _b_select_status_path(ROOT, target_as_of)
+    if not status_path.is_file():
+        return phase4c.run_phase4c(target_as_of, root=ROOT)
+    status = _read_json(status_path)
+    if (
+        status.get("status") != "PASS"
+        or status.get("strategy_id") != B_SELECT_ID
+        or status.get("requested_as_of") != target_as_of
+        or status.get("network_requests") != 0
+    ):
+        raise Phase4DError("PHASE4D_B_SELECT_CANONICAL_STATUS_INVALID")
+    return phase4c.run_phase4c(
+        target_as_of,
+        root=ROOT,
+        b_select_status_override=status,
+    )
+
+
+def _foreign_net_buy_payload(phase4c_result: dict[str, Any], **build_args: Any) -> dict[str, Any]:
+    """Reuse the exact payload already computed and validated by Phase 4C."""
+    payload = phase4c_result.get("_foreign_net_buy_for_phase4d")
+    if isinstance(payload, dict):
+        return payload
+    return foreign_web.build_foreign_net_buy_ranking(**build_args)
+
+
 def _stage_payloads(
     target_as_of: str,
     stage_data: Path,
@@ -208,7 +342,7 @@ def _stage_payloads(
     phase4c_result: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if phase4c_result is None:
-        phase4c_result = phase4c.run_phase4c(target_as_of, root=ROOT)
+        phase4c_result = _run_phase4c_for_phase4d(target_as_of)
     if phase4c_result.get("status") not in {"PASS", "NOOP_ALREADY_COMPLETE"} or phase4c_result.get("network_calls") != 0:
         raise Phase4DError("PHASE4D_PHASE4C_PREREQUISITE_FAILED")
     if phase4c_result.get("web_data_writes") != 0:
@@ -269,7 +403,8 @@ def _stage_payloads(
         reference_market_date=reference_market_date,
     )
     _write_json(stage_data / "sector-rs-ranking.json", sector)
-    foreign = foreign_web.build_foreign_net_buy_ranking(
+    foreign = _foreign_net_buy_payload(
+        phase4c_result,
         index_path=stage_data / "stock-index.json",
         flow_path=ROOT / "artifacts/patterns/pattern_a/production/flow/source" / f"foreign_flow_daily_{dt_clean}.parquet",
         sector_path=sector_membership_path,
@@ -975,6 +1110,116 @@ def _tree_manifest(path: Path) -> dict[str, Any] | None:
     return {"directories": directories, "files": files}
 
 
+def _build_promotion_snapshot(stage_data: Path, web_data: Path, new_snapshot: Path) -> None:
+    """Apply the same complete-directory and stocks-only replacement used by promote()."""
+    if web_data.exists():
+        shutil.copytree(web_data, new_snapshot)
+    else:
+        new_snapshot.mkdir(parents=True)
+    staged_stocks = stage_data / "stocks"
+    new_stocks = new_snapshot / "stocks"
+    _remove_path(new_stocks)
+    shutil.copytree(staged_stocks, new_stocks)
+    for name in REQUIRED_FILES:
+        temporary = new_snapshot / f".{name}.{uuid.uuid4().hex}.tmp"
+        _phase4d_checkpoint(f"before_json_replace:{name}")
+        shutil.copy2(stage_data / name, temporary)
+        os.replace(temporary, new_snapshot / name)
+        _phase4d_checkpoint(f"after_json_replace:{name}")
+
+
+def _validate_promoted_snapshot(web_data: Path, new_snapshot: Path) -> dict[str, Any]:
+    """Verify exact preservation of non-stock sidecars and every identity route."""
+    protected_before = {
+        path.relative_to(web_data).as_posix(): _sha256_file(path)
+        for path in sorted(web_data.rglob("*"))
+        if path.is_file()
+        and path.relative_to(web_data).parts[0] != "stocks"
+        and path.relative_to(web_data).as_posix() not in REQUIRED_FILES
+    } if web_data.is_dir() else {}
+    protected_after = {
+        path.relative_to(new_snapshot).as_posix(): _sha256_file(path)
+        for path in sorted(new_snapshot.rglob("*"))
+        if path.is_file()
+        and path.relative_to(new_snapshot).parts[0] != "stocks"
+        and path.relative_to(new_snapshot).as_posix() not in REQUIRED_FILES
+    }
+    if protected_before != protected_after:
+        missing = sorted(set(protected_before) - set(protected_after))
+        added = sorted(set(protected_after) - set(protected_before))
+        changed = sorted(
+            path for path in set(protected_before) & set(protected_after)
+            if protected_before[path] != protected_after[path]
+        )
+        raise Phase4DError(
+            "PHASE4D_PROMOTION_PROTECTED_WEB_FILES_MISMATCH: "
+            f"missing={len(missing)} added={len(added)} changed={len(changed)}"
+        )
+
+    route_path = new_snapshot / "identity-report-routes.json"
+    route_result: dict[str, Any] = {
+        "status": "NOT_PRESENT",
+        "route_count": 0,
+        "referenced_file_count": 0,
+        "missing_route_count": 0,
+        "routes": [],
+    }
+    if route_path.is_file():
+        routes = _read_json(route_path)
+        items = routes.get("items")
+        if not isinstance(items, list):
+            raise Phase4DError("PHASE4D_PROMOTION_IDENTITY_ROUTES_INVALID")
+        resolved_routes: list[dict[str, str]] = []
+        missing: list[str] = []
+        for item in items:
+            if not isinstance(item, dict) or not isinstance(item.get("url"), str):
+                raise Phase4DError("PHASE4D_PROMOTION_IDENTITY_ROUTE_ITEM_INVALID")
+            url = item["url"]
+            prefix = "./data/"
+            if not url.startswith(prefix):
+                raise Phase4DError("PHASE4D_PROMOTION_IDENTITY_ROUTE_URL_INVALID")
+            relative = PurePosixPath(url[len(prefix):])
+            if relative.is_absolute() or any(part in {"", ".", ".."} for part in relative.parts):
+                raise Phase4DError("PHASE4D_PROMOTION_IDENTITY_ROUTE_URL_INVALID")
+            target = new_snapshot.joinpath(*relative.parts)
+            if not _path_is_within(target, new_snapshot):
+                raise Phase4DError("PHASE4D_PROMOTION_IDENTITY_ROUTE_URL_INVALID")
+            if not target.is_file():
+                missing.append(url)
+            resolved_routes.append({"url": url, "path": relative.as_posix()})
+        if missing:
+            raise Phase4DError(
+                f"PHASE4D_PROMOTION_IDENTITY_ROUTE_TARGET_MISSING: count={len(missing)}"
+            )
+        route_result = {
+            "status": "PASS",
+            "route_count": len(items),
+            "referenced_file_count": len({item["path"] for item in resolved_routes}),
+            "missing_route_count": 0,
+            "routes": resolved_routes,
+        }
+    return {
+        "status": "PASS",
+        "protected_file_count": len(protected_before),
+        "protected_files": protected_before,
+        "missing_protected_file_count": 0,
+        "changed_protected_file_count": 0,
+        "route_integrity": route_result,
+    }
+
+
+def _inspect_final_promotion_snapshot(stage_data: Path, web_data: Path) -> dict[str, Any]:
+    """Preflight the exact final tree without touching the published web/data."""
+    preflight_root = web_data.parent / f".phase4d-preflight-{uuid.uuid4().hex}"
+    preflight_root.mkdir()
+    try:
+        snapshot = preflight_root / "new-web-data"
+        _build_promotion_snapshot(stage_data, web_data, snapshot)
+        return _validate_promoted_snapshot(web_data, snapshot)
+    finally:
+        shutil.rmtree(preflight_root, ignore_errors=True)
+
+
 def _path_is_within(path: Path, root: Path) -> bool:
     try:
         path.resolve().relative_to(root.resolve())
@@ -1211,21 +1456,9 @@ def promote(
             status_destination.parent.mkdir(parents=True, exist_ok=True)
 
             old_manifest = _tree_manifest(web_data)
-            if web_data.exists():
-                shutil.copytree(web_data, new_snapshot)
-            else:
-                new_snapshot.mkdir()
-            staged_stocks = stage_data / "stocks"
-            new_stocks = new_snapshot / "stocks"
-            _remove_path(new_stocks)
-            shutil.copytree(staged_stocks, new_stocks)
+            _build_promotion_snapshot(stage_data, web_data, new_snapshot)
             _phase4d_checkpoint("after_stocks_stage_copy")
-            for name in REQUIRED_FILES:
-                temporary = new_snapshot / f".{name}.{tx_id}.tmp"
-                _phase4d_checkpoint(f"before_json_replace:{name}")
-                shutil.copy2(stage_data / name, temporary)
-                os.replace(temporary, new_snapshot / name)
-                _phase4d_checkpoint(f"after_json_replace:{name}")
+            snapshot_validation = _validate_promoted_snapshot(web_data, new_snapshot)
             new_manifest = _tree_manifest(new_snapshot)
             new_status_digest = _sha256_file(status_source)
             old_status_digest = _status_digest(status_destination)
@@ -1309,6 +1542,7 @@ def promote(
             return {
                 "status_path": status_destination,
                 "post_publish_readback": readback,
+                "promoted_snapshot_validation": snapshot_validation,
                 "publication": {
                     "transaction_id": tx_id,
                     "status": "COMMITTED_AND_READ_BACK",
@@ -1348,6 +1582,19 @@ def run_phase4d(
         else None
     )
     if published is not None and phase4c_result is None:
+        canonical_alignment = _canonical_full_history_alignment_provenance(
+            root,
+            target_as_of,
+            str(published["reference_market_date"]),
+        )
+        if canonical_alignment is not None and not _published_monitor_matches_canonical_full_history_alignment(
+            root,
+            target_as_of,
+            str(published["reference_market_date"]),
+            canonical_alignment,
+        ):
+            published = None
+    if published is not None and phase4c_result is None:
         return {
             "status": "NOOP_ALREADY_COMPLETE",
             "target_as_of": target_as_of,
@@ -1366,6 +1613,7 @@ def run_phase4d(
         validation = validate_staging(
             stage_data, target_as_of, context["reference_market_date"], require_etf36=True,
         )
+        snapshot_validation = _inspect_final_promotion_snapshot(stage_data, web_data)
         if execute_live:
             promotion = promote(
                 stage_data,
@@ -1391,6 +1639,7 @@ def run_phase4d(
             "network_calls": 0,
             "sector_membership": context["sector_membership"],
             "staging": validation,
+            "promote_snapshot_validation": snapshot_validation,
             "post_promote_readback": readback,
             "publication": promotion["publication"] if execute_live else None,
         }

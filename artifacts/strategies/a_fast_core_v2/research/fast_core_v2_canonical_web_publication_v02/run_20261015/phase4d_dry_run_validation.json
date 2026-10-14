@@ -1,0 +1,63 @@
+{
+  "status": "PASS",
+  "command": ".venv/bin/python scripts/run_daily_update_phase4d_v01.py --target-as-of 2026-10-11",
+  "execute_live": false,
+  "requested_as_of": "2026-10-11",
+  "reference_market_date": "2026-10-08",
+  "network_calls": 0,
+  "canonical_alignment": {
+    "status": "PASS",
+    "report_count": 1459,
+    "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+    "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+    "digest": "e3c6ecc19187eb8951c1c9ef1626a2b54a9cffe1f6d415721b75a0cca8e89b61",
+    "scope": {
+      "type": "PUBLISHED_COMMON_REPORTS",
+      "report_count": 1459,
+      "requested_as_of": "2026-10-11",
+      "reference_market_date": "2026-10-08",
+      "first_v2_candidate_signal_date": "2012-12-28",
+      "last_v2_candidate_signal_date": "2026-10-02",
+      "first_alignment_gate_pass_signal_date": "2015-01-02",
+      "base_candidate_signal_count": 20012,
+      "alignment_gate_pass_count": 423,
+      "output_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+    },
+    "trades": 423,
+    "realized": 398,
+    "open_at_cutoff": 25,
+    "gate_audit_rows": 20012
+  },
+  "staging": {
+    "stock_report_count": 1495,
+    "common_stock_report_count": 1459,
+    "etf_stock_report_count": 36,
+    "strategy_monitor_strategy_count": 3,
+    "b_select_status_count": 1459,
+    "health_overall_status": "NORMAL",
+    "fast_replay_projection": {
+      "source_trade_count": 423,
+      "monitor_trade_count": 423,
+      "trade_mismatch_count": 0,
+      "source_open_position_count": 25,
+      "open_mismatch_count": 0
+    },
+    "b_select_error_and_mismatch_counts": {
+      "b_select_evaluation_error_count": 0,
+      "b_select_date_mismatch_count": 0,
+      "b_select_future_reference_count": 0,
+      "b_select_duplicate_item_count": 0,
+      "b_select_cross_strategy_contamination_count": 0,
+      "b_select_network_requests": 0
+    }
+  },
+  "promote_snapshot": {
+    "status": "PASS",
+    "protected_files_preserved": 151,
+    "protected_hashes_match": true,
+    "route_count": 399,
+    "route_targets_valid": 399,
+    "missing_route_count": 0
+  },
+  "production_mutations_during_dry_run": false
+}
