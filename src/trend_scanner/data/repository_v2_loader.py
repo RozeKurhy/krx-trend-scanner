@@ -117,14 +117,11 @@ class RepositoryV2DailyLoader:
 
 
 def build_repository_v2(repo_root: Path | str, *, end: str | pd.Timestamp) -> MarketDataRepositoryV2:
-    """Build one run-scoped Repository V2 instance from canonical stores.
+    """Build a frozen Repository V2 for historical research/backtest reproduction only.
 
-    HISTORICAL_FROZEN_MODE: never applies a rolling-authority boundary. This is the correct,
-    unchanged entrypoint for E2E/closure/evaluation callers whose ``end`` is always a fixed,
-    already-certified date (directive ROLLING_MARKET_DATA_AUTHORITY_FINALIZATION_V01 section 8) --
-    it must keep behaving exactly as it always has. Genuine live/production callers (an ``end`` that
-    can be "today" or a caller-supplied as-of) must use :func:`build_production_repository_v2` instead,
-    which enforces the boundary unconditionally rather than as an opt-in.
+    **Do not use this factory for production or web generation.** It deliberately does not apply
+    rolling authority or current PIT identity bounds. Any operational, live, or caller-supplied
+    as-of consumer must use :func:`build_production_repository_v2` instead.
     """
     root = Path(repo_root)
     return MarketDataRepositoryV2(

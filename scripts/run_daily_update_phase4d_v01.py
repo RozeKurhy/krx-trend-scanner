@@ -1407,12 +1407,167 @@ def _recover_pending_promotion(web_data: Path) -> dict[str, Any]:
     }
 
 
+V13_ALIGNMENT_CANDIDATE_DIGEST = "3993cc22f55f52b169736159637662e93ebac3c0f4edac4fe0946f2fd933733c"
+V13_ALIGNMENT_STAGE_RELATIVE_PATH = Path(
+    "artifacts/strategies/a_fast_core_v2/research/"
+    "a_fast_alignment_500b_v09_strict_baseline_approval_and_phase4d_preflight/"
+    "run_20261015/phase4d_stage/web"
+)
+
+
+def _alignment_candidate_binding(
+    stage_data: Path,
+    root: Path,
+    *,
+    alignment_candidate_digest: str | None = None,
+) -> dict[str, str] | None:
+    """Recognize candidate intent independently of mutable monitor markers.
+
+    The designated stage path is only a reason to require the gate; it is never
+    evidence that the files are trusted. The V13 gate still binds every staged
+    file to its pinned manifest and V05/V12 evidence before publication.
+    """
+    from trend_scanner.validation.a_fast_alignment_publication_gate_v13 import V05_STAGE_REL
+
+    designated_stage_data = {
+        (root / V13_ALIGNMENT_STAGE_RELATIVE_PATH).resolve(),
+        (root / V05_STAGE_REL / "web").resolve(),
+    }
+    is_designated_stage = stage_data.resolve() in designated_stage_data
+    if alignment_candidate_digest is not None and alignment_candidate_digest != V13_ALIGNMENT_CANDIDATE_DIGEST:
+        raise Phase4DError("PHASE4D_ALIGNMENT_CANDIDATE_DIGEST_NOT_BOUND_TO_V13")
+
+    monitor_path = stage_data / "strategy-monitor.json"
+    monitor: dict[str, Any] = {}
+    if monitor_path.is_file():
+        monitor = _read_json(monitor_path)
+    strategy_rows = monitor.get("strategies")
+    strategy_rows = strategy_rows if isinstance(strategy_rows, list) else []
+    promoted_row_present = any(
+        isinstance(row, dict) and row.get("id") == PROMOTED_STRATEGY_ID
+        for row in strategy_rows
+    )
+    marker_candidate = (
+        monitor.get("strategy_replay_mode") == "FULL_HISTORY_ALIGNMENT_WEB"
+        or promoted_row_present
+        or monitor.get("strategy_replay_digest") == V13_ALIGNMENT_CANDIDATE_DIGEST
+    )
+    if not (alignment_candidate_digest is not None or is_designated_stage or marker_candidate):
+        return None
+    if not is_designated_stage:
+        raise Phase4DError("PHASE4D_ALIGNMENT_CANDIDATE_STAGE_NOT_DESIGNATED")
+    monitor_digest = monitor.get("strategy_replay_digest")
+    if monitor_digest is not None and monitor_digest != V13_ALIGNMENT_CANDIDATE_DIGEST:
+        raise Phase4DError("PHASE4D_ALIGNMENT_CANDIDATE_DIGEST_NOT_BOUND_TO_V13")
+    return {
+        "candidate_digest": V13_ALIGNMENT_CANDIDATE_DIGEST,
+        "requested_as_of": "2026-10-11",
+        "reference_market_date": "2026-10-08",
+    }
+
+
+def _validate_v13_alignment_stage(
+    stage_data: Path,
+    target_as_of: str,
+    root: Path,
+    *,
+    expected_candidate_digest: str | None = None,
+) -> dict[str, Any]:
+    """Run both the independent evidence gate and Phase4D's ordinary validator."""
+    from trend_scanner.validation.a_fast_alignment_publication_gate_v13 import (
+        EXPECTED as V13_EXPECTED,
+        V09_STAGE_REL,
+        validate_alignment_candidate_evidence,
+    )
+
+    if root.resolve() != ROOT.resolve():
+        raise Phase4DError("PHASE4D_ALIGNMENT_CANDIDATE_REPOSITORY_ROOT_MISMATCH")
+    stage_root = stage_data.parent
+    try:
+        evidence = validate_alignment_candidate_evidence(root, stage_root)
+        validation = validate_staging(
+            stage_data,
+            V13_EXPECTED["requested_as_of"],
+            V13_EXPECTED["reference_market_date"],
+            require_etf36=True,
+            b_select_status_path=stage_root / B_SELECT_STATUS_STAGING_NAME,
+        )
+    except Exception as exc:
+        if isinstance(exc, Phase4DError):
+            raise
+        raise Phase4DError(f"PHASE4D_ALIGNMENT_ELIGIBILITY_GATE_FAILED:{exc}") from exc
+    if target_as_of != V13_EXPECTED["requested_as_of"]:
+        raise Phase4DError("PHASE4D_ALIGNMENT_CANDIDATE_TARGET_DATE_MISMATCH")
+    candidate_digest = evidence["candidate_binding"]["candidate_digest"]
+    if expected_candidate_digest is not None and candidate_digest != expected_candidate_digest:
+        raise Phase4DError("PHASE4D_ALIGNMENT_CANDIDATE_DIGEST_NOT_BOUND_TO_V13")
+    if stage_data.resolve() != (root / V09_STAGE_REL / "web").resolve():
+        raise Phase4DError("PHASE4D_ALIGNMENT_CANDIDATE_STAGE_NOT_DESIGNATED")
+    return {
+        "status": "PASS",
+        "candidate_digest": candidate_digest,
+        "stage_fingerprint_sha256": evidence["stage_fingerprint_sha256"],
+        "b_select_status_sha256": evidence["b_select_status_sha256"],
+        "phase4d_staging_validation": validation,
+    }
+
+
+def _published_alignment_candidate_matches(
+    root: Path,
+    target_as_of: str,
+    candidate_digest: str,
+    published: dict[str, Any] | None,
+) -> bool:
+    """Allow candidate NOOP only after payload and exact date/scope validation."""
+    if candidate_digest != V13_ALIGNMENT_CANDIDATE_DIGEST or target_as_of != "2026-10-11":
+        raise Phase4DError("PHASE4D_ALIGNMENT_CANDIDATE_REQUEST_BINDING_INVALID")
+    if not isinstance(published, dict):
+        return False
+    reference_market_date = published.get("reference_market_date")
+    if reference_market_date != "2026-10-08":
+        return False
+    try:
+        monitor = _read_json(root / "web/data/strategy-monitor.json")
+    except (OSError, UnicodeError, ValueError, Phase4DError):
+        return False
+    scope = monitor.get("strategy_replay_scope")
+    rows = monitor.get("strategies")
+    fast_rows = [
+        row for row in rows if isinstance(row, dict) and row.get("id") == PROMOTED_STRATEGY_ID
+    ] if isinstance(rows, list) else []
+    fast_row = fast_rows[0] if len(fast_rows) == 1 else {}
+    return bool(
+        monitor.get("requested_as_of") == target_as_of
+        and monitor.get("reference_market_date") == reference_market_date
+        and monitor.get("strategy_replay_mode") == "FULL_HISTORY_ALIGNMENT_WEB"
+        and monitor.get("strategy_replay_digest") == candidate_digest
+        and isinstance(scope, dict)
+        and scope.get("requested_as_of") == target_as_of
+        and scope.get("reference_market_date") == reference_market_date
+        and scope.get("report_count") == 1459
+        and scope.get("output_strategy_id") == PROMOTED_STRATEGY_ID
+        and fast_row.get("strategy_replay_mode") == "FULL_HISTORY_ALIGNMENT_WEB"
+        and fast_row.get("strategy_replay_digest") == candidate_digest
+        and fast_row.get("strategy_replay_scope") == scope
+    )
+
+
+def _assert_alignment_snapshot_matches_stage(stage_data: Path, new_snapshot: Path) -> None:
+    """Ensure the exact Alignment payload copied to the promotion snapshot was gated."""
+    for name in REQUIRED_FILES:
+        if _sha256_file(stage_data / name) != _sha256_file(new_snapshot / name):
+            raise Phase4DError(f"PHASE4D_ALIGNMENT_SNAPSHOT_PAYLOAD_MISMATCH:{name}")
+    if _tree_manifest(stage_data / "stocks") != _tree_manifest(new_snapshot / "stocks"):
+        raise Phase4DError("PHASE4D_ALIGNMENT_SNAPSHOT_STOCKS_MISMATCH")
+
+
 def promote(
     stage_data: Path,
     web_data: Path,
     *,
     target_as_of: str,
     post_publish_validate: Callable[[Path], Any] | None = None,
+    alignment_candidate_digest: str | None = None,
 ) -> dict[str, Any]:
     """Publish one complete web/data directory plus B Select status with recoverable rollback.
 
@@ -1424,7 +1579,32 @@ def promote(
     stage_data = Path(stage_data)
     web_data = Path(web_data)
     root = web_data.parent.parent.resolve()
+    try:
+        alignment_binding = _alignment_candidate_binding(
+            stage_data,
+            root,
+            alignment_candidate_digest=alignment_candidate_digest,
+        )
+    except Phase4DError as binding_error:
+        # A content-identified Alignment stage outside the pinned locations is
+        # still a candidate attempt. Run the independent evidence gate before
+        # rejecting it so direct promote() cannot bypass eligibility checks by
+        # copying the payload to an unrecognized directory.
+        if str(binding_error) != "PHASE4D_ALIGNMENT_CANDIDATE_STAGE_NOT_DESIGNATED":
+            raise
+        try:
+            _validate_v13_alignment_stage(
+                stage_data,
+                target_as_of,
+                root,
+                expected_candidate_digest=V13_ALIGNMENT_CANDIDATE_DIGEST,
+            )
+        except Phase4DError as gate_error:
+            raise gate_error from binding_error
+        raise binding_error
     status_source = stage_data / B_SELECT_STATUS_STAGING_NAME
+    if alignment_binding is not None and not status_source.is_file():
+        status_source = stage_data.parent / B_SELECT_STATUS_STAGING_NAME
     status_destination = _b_select_status_path(root, target_as_of)
     journal_path = web_data.parent / PHASE4D_PUBLISH_JOURNAL
     lock_key = hashlib.sha256(str(root).encode("utf-8")).hexdigest()[:24]
@@ -1443,6 +1623,14 @@ def promote(
         except BlockingIOError as exc:
             raise Phase4DError("PHASE4D_PUBLICATION_ALREADY_IN_PROGRESS") from exc
         try:
+            alignment_preflight = None
+            if alignment_binding is not None:
+                alignment_preflight = _validate_v13_alignment_stage(
+                    stage_data,
+                    target_as_of,
+                    root,
+                    expected_candidate_digest=alignment_binding["candidate_digest"],
+                )
             recovery = _recover_pending_promotion(web_data)
             tx_id = uuid.uuid4().hex
             tx_dir = web_data.parent / f".phase4d-publish-txn-{tx_id}"
@@ -1459,8 +1647,26 @@ def promote(
             _build_promotion_snapshot(stage_data, web_data, new_snapshot)
             _phase4d_checkpoint("after_stocks_stage_copy")
             snapshot_validation = _validate_promoted_snapshot(web_data, new_snapshot)
+            alignment_final = None
+            if alignment_binding is not None:
+                alignment_final = _validate_v13_alignment_stage(
+                    stage_data,
+                    target_as_of,
+                    root,
+                    expected_candidate_digest=alignment_binding["candidate_digest"],
+                )
+                if alignment_preflight is None or alignment_final["stage_fingerprint_sha256"] != alignment_preflight["stage_fingerprint_sha256"]:
+                    raise Phase4DError("PHASE4D_ALIGNMENT_FINAL_STAGE_FINGERPRINT_MISMATCH")
+                if not isinstance(alignment_final.get("b_select_status_sha256"), str):
+                    raise Phase4DError("PHASE4D_ALIGNMENT_FINAL_STATUS_HASH_MISSING")
+                _assert_alignment_snapshot_matches_stage(stage_data, new_snapshot)
+                _phase4d_checkpoint("after_alignment_final_gate")
             new_manifest = _tree_manifest(new_snapshot)
-            new_status_digest = _sha256_file(status_source)
+            new_status_digest = (
+                alignment_final["b_select_status_sha256"]
+                if alignment_final is not None
+                else _sha256_file(status_source)
+            )
             old_status_digest = _status_digest(status_destination)
             journal = {
                 "schema": "phase4d_publish_transaction_v02",
@@ -1567,6 +1773,7 @@ def run_phase4d(
     execute_live: bool,
     root: Path = ROOT,
     phase4c_result: dict[str, Any] | None = None,
+    alignment_candidate_digest: str | None = None,
 ) -> dict[str, Any]:
     if root != ROOT:
         raise Phase4DError("PHASE4D_REPOSITORY_ROOT_MISMATCH")
@@ -1576,6 +1783,77 @@ def run_phase4d(
         if not execute_live:
             raise Phase4DError("PHASE4D_PENDING_PUBLISH_RECOVERY_REQUIRES_EXECUTE_LIVE")
         _recover_pending_promotion(web_data)
+    if alignment_candidate_digest is not None:
+        _alignment_candidate_binding(
+            root / V13_ALIGNMENT_STAGE_RELATIVE_PATH,
+            root,
+            alignment_candidate_digest=alignment_candidate_digest,
+        )
+        if target_as_of != "2026-10-11":
+            raise Phase4DError("PHASE4D_ALIGNMENT_CANDIDATE_TARGET_DATE_MISMATCH")
+        published = inspect_published_payload(root, target_as_of, require_etf_source=True)
+        if _published_alignment_candidate_matches(
+            root,
+            target_as_of,
+            alignment_candidate_digest,
+            published,
+        ):
+            return {
+                "status": "NOOP_ALREADY_COMPLETE",
+                "target_as_of": target_as_of,
+                "requested_as_of": target_as_of,
+                "reference_market_date": "2026-10-08",
+                "execute_live": execute_live,
+                "network_calls": 0,
+                "web_data_writes": 0,
+                "b_select_status_writes": 0,
+                "promotion_called": False,
+                "published": published["validation"],
+                "candidate_digest": alignment_candidate_digest,
+                "reason": "VALID_PUBLISHED_ALIGNMENT_CANDIDATE",
+            }
+
+        stage_data = root / V13_ALIGNMENT_STAGE_RELATIVE_PATH
+        eligibility = _validate_v13_alignment_stage(
+            stage_data,
+            target_as_of,
+            root,
+            expected_candidate_digest=alignment_candidate_digest,
+        )
+        snapshot_validation = _inspect_final_promotion_snapshot(stage_data, web_data)
+        promotion = None
+        readback = None
+        if execute_live:
+            promotion = promote(
+                stage_data,
+                web_data,
+                target_as_of=target_as_of,
+                alignment_candidate_digest=alignment_candidate_digest,
+                post_publish_validate=lambda status_path: validate_staging(
+                    web_data,
+                    target_as_of,
+                    "2026-10-08",
+                    require_etf36=True,
+                    b_select_status_path=status_path,
+                ),
+            )
+            readback = promotion["post_publish_readback"]
+        return {
+            "status": "PASS",
+            "target_as_of": target_as_of,
+            "requested_as_of": target_as_of,
+            "reference_market_date": "2026-10-08",
+            "execute_live": execute_live,
+            "network_calls": 0,
+            "web_data_writes": 0 if not execute_live else None,
+            "b_select_status_writes": 0 if not execute_live else None,
+            "promotion_called": execute_live,
+            "candidate_digest": alignment_candidate_digest,
+            "candidate_eligibility": eligibility,
+            "promote_snapshot_validation": snapshot_validation,
+            "post_promote_readback": readback,
+            "publication": promotion["publication"] if promotion is not None else None,
+        }
     published = (
         inspect_published_payload(root, target_as_of, require_etf_source=True)
         if phase4c_result is None
@@ -1650,6 +1928,10 @@ def run_phase4d(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target-as-of", required=True, help="explicit YYYY-MM-DD target (no default)")
+    parser.add_argument(
+        "--alignment-candidate-digest",
+        help="explicitly validate the pinned saved Alignment candidate digest",
+    )
     parser.add_argument("--execute-live", action="store_true", help="promote validated staging payloads to web/data")
     return parser
 
@@ -1660,6 +1942,7 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps(run_phase4d(
             args.target_as_of,
             execute_live=args.execute_live,
+            alignment_candidate_digest=args.alignment_candidate_digest,
         ), ensure_ascii=False, indent=2))
         return 0
     except (Phase4DError, ValueError, FileNotFoundError) as exc:

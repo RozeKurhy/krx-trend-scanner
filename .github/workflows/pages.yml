@@ -24,6 +24,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pytest
+        run: python -m pip install pytest
+      - name: Guard production Repository V2 entrypoints
+        run: python -m pytest -q tests/test_production_repository_factory_guard_v01.py
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload Pages artifact
