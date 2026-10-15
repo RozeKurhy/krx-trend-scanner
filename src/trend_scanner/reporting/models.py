@@ -429,7 +429,7 @@ class PatternAFastSection:
 @dataclass
 class AFastCoreEntryConditions:
     instrument_eligible: bool
-    investability_pass: bool
+    investability_pass: bool | None
     pattern_a_stage_eligible: bool
     fast_trigger_ready: bool
     monthly_regime_permitted: bool
@@ -437,6 +437,8 @@ class AFastCoreEntryConditions:
     fast_score_status_allowed: bool
     no_open_position: bool
     all_conditions_met: bool
+    investability_required: bool = True
+    investability_reference_status: str | None = None
     pattern_a_stage: str | None = None
     fast_stage: str | None = None
     fast_stage_status: str | None = None
@@ -608,6 +610,10 @@ class StockReport:
                 core.pop(key, None)
         if isinstance(core, dict) and self.a_fast_core.strategy_replay_mode is None:
             core.pop("strategy_replay_mode", None)
+            entry_conditions = core.get("entry_conditions")
+            if isinstance(entry_conditions, dict):
+                entry_conditions.pop("investability_required", None)
+                entry_conditions.pop("investability_reference_status", None)
         if isinstance(core, dict) and self.a_fast_core.strategy_replay_scope is None:
             core.pop("strategy_replay_scope", None)
         if isinstance(core, dict) and self.a_fast_core.strategy_replay_digest is None:

@@ -1,0 +1,20 @@
+metric,before,counterfactual_after,delta,unit,basis,gate_status_effect
+web_cj_gross_trade_return_pct,42.56510034915644,41.213785015592094,-1.3513153335643437,pct,"adjusted open / 37519 entry open; web historical trade, no portfolio costs",NO_STATUS_CHANGE
+p1_cj_net_trade_return_pct,42.237577318966565,40.8893664400809,-1.3482108788856664,pct,P1 exit net proceeds after 0.1% sell slippage and 0.015% commission; entry cost unchanged,NO_STATUS_CHANGE
+p1_cj_exit_adjusted_reference_open_krw,53489.0,52982.0,-507.0,KRW,Naver native adjusted open; exact KRX next session,NO_STATUS_CHANGE
+p1_cj_exit_fill_after_slippage_krw,53435.511,52929.018,-506.4930000000022,KRW,P1 sell slippage rate 0.1%,NO_STATUS_CHANGE
+p1_cj_exit_commission_krw,1066.0384444499998,1055.9339090999997,-10.104535350000106,KRW,P1 commission rate 0.015%,NO_STATUS_CHANGE
+p1_cj_exit_slippage_impact_krw,7114.037000000186,7046.60600000048,-67.43099999970582,KRW,P1 sell slippage rate 0.1%,NO_STATUS_CHANGE
+p1_cj_net_sale_proceeds_krw,7105856.924555549,7038503.4600909,-67353.46446464956,KRW,notional minus sell commission; settlement T+1,NO_STATUS_CHANGE
+p1_portfolio_cash_delta_after_settlement_krw,0.0,-67353.46446464956,-67353.46446464956,KRW,new CJ sale proceeds less saved 2016-10-05 proceeds; no later entry flips,NO_STATUS_CHANGE
+p1_nav_2016_10_04_krw,,191208718.63659292,,KRW,reconstructed cash + pending proceeds + 22 exact 10/04 adjusted-close marks; CJ exit proceeds remain pending,NO_STATUS_CHANGE
+p1_nav_2016_10_05_krw,191129219.1010576,191061865.63659292,-67353.46446466446,KRW,saved 10/05 NAV adjusted by T+1 settled proceeds delta,NO_STATUS_CHANGE
+p1_nav_coverage_pct,93.27325394271001,93.30543933054393,0.032185387833919776,pct,valid NAV days / 3107 KRX sessions,NO_STATUS_CHANGE
+p1_mdd_observed_pct,-32.5790351953956,-32.58849022692765,-0.009455031532048963,pct,saved P1 equity plus bounded cash delta and reconstructed 10/04 NAV,NO_STATUS_CHANGE
+p1_candidate_relative_mdd_control_minus_candidate_pp,-17.021802243693607,-17.012347212161558,0.009455031532048963,pp,latest official 185-pair five-window readjudication control MDD minus candidate MDD,NO_STATUS_CHANGE
+p1_total_return_pct,107.65162488143645,107.61794814920415,-0.03367673223229417,pct,ending equity adjusted by net sale-proceeds delta; no official artifact rewritten,NO_STATUS_CHANGE
+p1_cagr_pct,5.941552880330669,5.940195611796839,-0.0013572685338303359,pct,"initial 200M KRW, elapsed calendar days 2014-01-02 through 2026-08-31",NO_STATUS_CHANGE
+p1_candidate_executed_buy_minimum_cash_headroom_after_2016_10_04_krw,134826.88071810175,134826.88071810175,0.0,KRW,saved executed ENTRY events; exceeds absolute net-proceeds change,NO_STATUS_CHANGE
+p1_executed_entry_events_on_2016_10_05,0,0,0,count,saved event ledger,NO_STATUS_CHANGE
+p1_candidate_nav_valid_days,2898,2899,1,days,one newly resolved 2016-10-04 valuation date,NO_STATUS_CHANGE
+other_four_official_windows,4,4,0,windows,"P2-1, P2-2, P3-1, P3-2 start after this 2016 event",UNCHANGED

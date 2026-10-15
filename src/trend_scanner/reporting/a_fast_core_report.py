@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -34,8 +34,12 @@ from trend_scanner.reporting.models import (
 )
 from trend_scanner.universe.models import AssetType
 from trend_scanner.data.market_calendar import MarketCalendarAuthority
+from trend_scanner.data.market_calendar import resolve_reference_market_date
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
-from trend_scanner.validation.pattern_a_fast_core_v02_reentry import simulate_ticker_core_v02_reentry
+from trend_scanner.validation.pattern_a_fast_core_v02_reentry import (
+    ExecutionPriceUnavailableError,
+    simulate_ticker_core_v02_reentry,
+)
 from trend_scanner.validation.pattern_a_fast_alignment_mcap_500b import (
     AlignmentGateIntegrityError,
     AlignmentMcap500BGate,
@@ -70,6 +74,7 @@ def build_a_fast_core_section(
     *,
     metadata_provenance_mode: str,
     market_calendar: MarketCalendarAuthority | None = None,
+    execution_open_resolver: Callable[[pd.Timestamp], float | None] | None = None,
     repo_root: Path | None = None,
     promotion_gate: AlignmentMcap500BGate | None = None,
     replay_mode: str = OPERATIONAL_REPLAY_MODE,
@@ -122,6 +127,7 @@ def build_a_fast_core_section(
         is_common_stock=is_common_stock,
         metadata_trusted=(metadata_provenance_mode != "DATA_UNAVAILABLE"),
         market_calendar=market_calendar,
+        execution_open_resolver=execution_open_resolver,
         promotion_gate=gate,
         historical_alignment_replay=historical_alignment_replay,
     )
@@ -163,6 +169,7 @@ def _build_a_fast_core_section_impl(
     *,
     metadata_trusted: bool,
     market_calendar: MarketCalendarAuthority | None = None,
+    execution_open_resolver: Callable[[pd.Timestamp], float | None] | None = None,
     promotion_gate: AlignmentMcap500BGate,
     historical_alignment_replay: bool = False,
 ) -> AFastCoreSection:
@@ -291,11 +298,29 @@ def _build_a_fast_core_section_impl(
             stage_contract=stage_contract,
             cutoff_date=requested_as_of,
             market_calendar=market_calendar,
+            execution_open_resolver=execution_open_resolver,
             strict_errors=historical_alignment_replay,
             entry_signal_filter=entry_signal_allowed if promotion_filter_active else None,
         )
     except AlignmentGateIntegrityError:
         raise
+    except ExecutionPriceUnavailableError as exc:
+        logger.warning("Execution price unresolved for %s on %s: %s", ticker, as_of_str, exc)
+        return AFastCoreSection(
+            as_of=as_of_str,
+            applicability="DATA_UNAVAILABLE",
+            strategy_state="DATA_UNAVAILABLE",
+            canonical_position="DATA_UNAVAILABLE",
+            action="NONE",
+            action_reason="EXECUTION_PRICE_UNRESOLVED",
+            execution_timing=None,
+            promotion_gate_audit=list(alignment_gate_audit.values()),
+            interpretation=(
+                "실제 다음 KRX 거래일의 검증된 조정 시가를 확인할 수 없어 "
+                f"체결 판단을 보류했습니다 ({exc.execution_date:%Y-%m-%d})."
+            ),
+            provenance=AFastCoreProvenance(),
+        )
     except Exception as exc:
         logger.error("Simulation error for %s on %s: %s", ticker, as_of_str, exc)
         return AFastCoreSection(
@@ -495,7 +520,9 @@ def _build_a_fast_core_section_impl(
             # Entry checks describe opening a new position. While one is
             # already open, a passing current investability snapshot cannot
             # make another entry eligible.
-            investability_pass=False,
+            investability_pass=False if not historical_alignment_replay else None,
+            investability_required=not historical_alignment_replay,
+            investability_reference_status=(inv_status_str if historical_alignment_replay else None),
             pattern_a_stage_eligible=False,
             fast_trigger_ready=False,
             monthly_regime_permitted=False,
@@ -527,7 +554,7 @@ def _build_a_fast_core_section_impl(
         )
 
         # 9. Investability DATA_UNAVAILABLE handling for FLAT positions
-        if inv_status_str == "DATA_UNAVAILABLE":
+        if inv_status_str == "DATA_UNAVAILABLE" and not historical_alignment_replay:
             return AFastCoreSection(
                 as_of=as_of_str,
                 applicability="APPLICABLE",
@@ -556,6 +583,62 @@ def _build_a_fast_core_section_impl(
                 interpretation="투자 유동성 및 시가총액 데이터 결측으로 패스트 코어 V2 신규 진입 적격성을 판정할 수 없습니다.",
                 provenance=AFastCoreProvenance(),
             )
+
+        # Alignment's current-state decision must use a price row for the
+        # exact reference KRX session.  A stale last row can still produce a
+        # valid-looking historical FAST trigger, so fail closed before using
+        # it as a current entry signal. Phase10 status is deliberately not
+        # part of this freshness check.
+        if historical_alignment_replay:
+            try:
+                expected_reference_date = resolve_reference_market_date(
+                    as_of_str,
+                    market_calendar,
+                )
+            except (RuntimeError, TypeError, ValueError):
+                return AFastCoreSection(
+                    as_of=as_of_str,
+                    applicability="APPLICABLE",
+                    strategy_state="DATA_UNAVAILABLE",
+                    canonical_position="DATA_UNAVAILABLE",
+                    action="NONE",
+                    action_reason="MARKET_CALENDAR_UNAVAILABLE",
+                    execution_timing=None,
+                    entry_conditions=None,
+                    current_trade=None,
+                    protection_state=None,
+                    reentry_state=reentry_state,
+                    trade_history=trade_history_items,
+                    promotion_gate_audit=list(alignment_gate_audit.values()),
+                    interpretation=(
+                        "정확한 기준 KRX 거래일을 확인할 수 없어 FAST Alignment 500B "
+                        "현재 진입 상태를 판정할 수 없습니다."
+                    ),
+                    provenance=AFastCoreProvenance(),
+                )
+
+            latest_price_date = daily_as_of.index.max().strftime("%Y-%m-%d")
+            if latest_price_date != expected_reference_date:
+                return AFastCoreSection(
+                    as_of=as_of_str,
+                    applicability="APPLICABLE",
+                    strategy_state="DATA_UNAVAILABLE",
+                    canonical_position="DATA_UNAVAILABLE",
+                    action="NONE",
+                    action_reason="CURRENT_SESSION_PRICE_UNAVAILABLE",
+                    execution_timing=None,
+                    entry_conditions=None,
+                    current_trade=None,
+                    protection_state=None,
+                    reentry_state=reentry_state,
+                    trade_history=trade_history_items,
+                    promotion_gate_audit=list(alignment_gate_audit.values()),
+                    interpretation=(
+                        f"기준 거래일 {expected_reference_date}의 유효 일봉이 없어 "
+                        "FAST Alignment 500B 현재 진입 상태를 판정할 수 없습니다."
+                    ),
+                    provenance=AFastCoreProvenance(),
+                )
 
         # 10. Evaluate entry conditions on the latest completed week on or before requested_as_of
         weekly_bars = to_weekly(daily_as_of)
@@ -628,12 +711,13 @@ def _build_a_fast_core_section_impl(
 
         inst_ok = is_common_stock
         inv_ok = (inv_status_str == "INVESTABLE")
+        investability_required = not historical_alignment_replay
         no_pos_ok = True
 
         failed_conds: list[str] = []
         if not inst_ok:
             failed_conds.append("NON_COMMON_STOCK")
-        if not inv_ok:
+        if investability_required and not inv_ok:
             failed_conds.append(f"NOT_INVESTABLE ({inv_status_str})")
         if not pa_ok:
             failed_conds.append("PATTERN_A_STAGE_NOT_ELIGIBLE")
@@ -646,9 +730,10 @@ def _build_a_fast_core_section_impl(
         if not sc_stat_ok:
             failed_conds.append("FAST_SCORE_STATUS_NOT_ALLOWED")
 
-        base_conditions_met = bool(
-            inst_ok and inv_ok and pa_ok and fast_trig_ok and m_reg_ok and d_risk_ok and sc_stat_ok and no_pos_ok
+        v2_conditions_met = bool(
+            inst_ok and pa_ok and fast_trig_ok and m_reg_ok and d_risk_ok and sc_stat_ok and no_pos_ok
         )
+        base_conditions_met = bool(v2_conditions_met and (not investability_required or inv_ok))
         alignment_gate_decision = None
         if (
             base_conditions_met
@@ -666,7 +751,9 @@ def _build_a_fast_core_section_impl(
 
         entry_conditions = AFastCoreEntryConditions(
             instrument_eligible=inst_ok,
-            investability_pass=inv_ok,
+            investability_pass=(inv_ok if investability_required else None),
+            investability_required=investability_required,
+            investability_reference_status=(inv_status_str if historical_alignment_replay else None),
             pattern_a_stage_eligible=pa_ok,
             fast_trigger_ready=fast_trig_ok,
             monthly_regime_permitted=m_reg_ok,
@@ -701,7 +788,7 @@ def _build_a_fast_core_section_impl(
             strategy_state = "WAIT"
             action = "WAIT"
             execution_timing = None
-            if not inv_ok:
+            if investability_required and not inv_ok:
                 action_reason = f"INVESTABILITY_FILTERED_{inv_status_str}"
                 interp = f"패스트 코어 V2 관망(WAIT) 상태입니다. 투자 유동성/시가총액 기준 미달({inv_status_str})로 진입 조건이 충족되지 않았습니다."
             elif alignment_gate_decision is not None and not alignment_gate_decision.allowed:

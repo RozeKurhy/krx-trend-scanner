@@ -58,6 +58,9 @@
   const isBSelectLineageId = (strategyId) => (
     strategyId === B_SELECT_STRATEGY_ID || strategyId === LEGACY_B_SELECT_STRATEGY_ID
   );
+  const supportsMarketFilters = (strategyId) => (
+    isBSelectLineageId(strategyId) || FAST_STRATEGY_IDS.has(strategyId)
+  );
   const FUNDAMENTAL_STATUSES = ["우수", "양호", "보통", "주의", "미상"];
   const MARKET_FILTERS = new Set(["all", "KOSPI", "KOSDAQ"]);
   const SORT_OPTIONS = new Set(["entry-date", "return", "name"]);
@@ -217,7 +220,7 @@
   }
 
   function marketFilterActive() {
-    return isBSelectLineageId(activeStrategyId) && marketFilter !== "all";
+    return supportsMarketFilters(activeStrategyId) && marketFilter !== "all";
   }
 
   function marketMatches(item, selectedMarket, active) {
@@ -486,7 +489,7 @@
   }
 
   function historyMarketFilterActive() {
-    return isBSelectLineageId(activeStrategyId) && historyMarketFilter !== "all";
+    return supportsMarketFilters(activeStrategyId) && historyMarketFilter !== "all";
   }
 
   function historyTrades() {
@@ -742,9 +745,10 @@
     ].forEach(([rowId, selectId, value]) => {
       const row = byId(rowId);
       const select = byId(selectId);
-      if (row) row.hidden = !visible;
+      const filterVisible = supportsMarketFilters(activeStrategyId);
+      if (row) row.hidden = !filterVisible;
       if (select) {
-        select.disabled = !visible;
+        select.disabled = !filterVisible;
         if (select.value !== value) select.value = value;
       }
     });
@@ -764,7 +768,7 @@
   function syncHistorySortVisibility() {
     const row = byId("history-sort-row");
     const select = byId("history-sort");
-    const visible = isBSelectLineageId(activeStrategyId);
+    const visible = supportsMarketFilters(activeStrategyId);
     if (row) row.hidden = !visible;
     if (select) {
       select.disabled = !visible;

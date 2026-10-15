@@ -72,16 +72,17 @@ def _source_projection(ticker: str, exporter=None) -> dict:
 def test_strategy_monitor_schema_and_source_count_are_consistent():
     monitor = _load_monitor()
     index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
+    fast_id = "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
     strategies = {strategy["id"]: strategy for strategy in monitor["strategies"]}
-    common = strategies["PATTERN_A_FAST_FINAL_STRATEGY_V02"]
+    common = strategies[fast_id]
     b_select = strategies["PATTERN_B_SELECT_CORE_V02"]
     julia = strategies["JULIA_ETF_STRATEGY_V01"]
     items = common["items"]
 
     assert monitor["schema_version"] == 2
-    assert monitor["default_strategy_id"] == "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+    assert monitor["default_strategy_id"] == fast_id
     assert [strategy["id"] for strategy in monitor["strategies"]] == [
-        "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        fast_id,
         "PATTERN_B_SELECT_CORE_V02",
         "JULIA_ETF_STRATEGY_V01",
     ]
@@ -400,7 +401,7 @@ def test_b_select_watch_item_does_not_receive_fake_entry_pattern_a_context():
 def test_etf_is_not_in_action_counts_and_has_no_fake_trade():
     monitor = _load_monitor()
     strategies = {strategy["id"]: strategy for strategy in monitor["strategies"]}
-    common = strategies["PATTERN_A_FAST_FINAL_STRATEGY_V02"]
+    common = strategies["PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"]
     julia = strategies["JULIA_ETF_STRATEGY_V01"]
     assert "069500" not in {item["ticker"] for item in common["items"]}
     assert "069500" in {item["ticker"] for item in julia["items"]}
@@ -618,7 +619,7 @@ def test_strategy_hold_sort_contract_is_hold_only_and_session_scoped():
     assert "margin-left: auto" in css
 
 
-def test_b_select_trade_history_sort_reuses_hold_sort_contract_and_filters():
+def test_fast_and_b_select_trade_history_market_filter_and_sort_controls():
     strategy_html = (ROOT / "web/strategy.html").read_text(encoding="utf-8")
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
 
@@ -637,6 +638,12 @@ def test_b_select_trade_history_sort_reuses_hold_sort_contract_and_filters():
     assert 'const SORT_OPTIONS = new Set(["entry-date", "return", "name"]);' in strategy_js
     assert 'return compareByTradeSort(a, b, holdSort);' in strategy_js
     assert 'return compareByTradeSort(a, b, historySort);' in strategy_js
+    assert 'const supportsMarketFilters = (strategyId) => (' in strategy_js
+    assert 'isBSelectLineageId(strategyId) || FAST_STRATEGY_IDS.has(strategyId)' in strategy_js
+    assert 'return supportsMarketFilters(activeStrategyId) && marketFilter !== "all";' in strategy_js
+    assert 'return supportsMarketFilters(activeStrategyId) && historyMarketFilter !== "all";' in strategy_js
+    assert 'const filterVisible = supportsMarketFilters(activeStrategyId);' in strategy_js
+    assert 'const visible = supportsMarketFilters(activeStrategyId);' in strategy_js
     assert 'const visible = isBSelectLineageId(activeStrategyId);' in strategy_js
     assert 'const monthEvents = months.get(month).sort(compareMonthlyEvents);' in strategy_js
     assert 'entry_execution_date: a.date, return_pct: a.trade_return_pct' in strategy_js
@@ -687,7 +694,7 @@ def test_strategy_monitor_json_matches_clean_exporter_projection():
     exporter = _load_exporter()
     monitor = _load_monitor()
     assert [row["id"] for row in monitor["strategies"]] == [
-        "PATTERN_A_FAST_FINAL_STRATEGY_V02",
+        exporter.PROMOTED_STRATEGY_ID,
         exporter.B_SELECT_ID,
         "JULIA_ETF_STRATEGY_V01",
     ]
@@ -954,18 +961,19 @@ def test_three_strategy_trade_history_counts_identity_and_source_parity():
     exporter = _load_exporter()
     monitor = _load_monitor()
     strategies = {strategy["id"]: strategy for strategy in monitor["strategies"]}
+    fast_id = exporter.PROMOTED_STRATEGY_ID
     index = json.loads((ROOT / "web/data/stock-index.json").read_text(encoding="utf-8"))
 
     source_counts = {
-        "PATTERN_A_FAST_FINAL_STRATEGY_V02": Counter(),
+        fast_id: Counter(),
         "JULIA_ETF_STRATEGY_V01": Counter(),
     }
     source_history_counts = {
-        "PATTERN_A_FAST_FINAL_STRATEGY_V02": 0,
+        fast_id: 0,
         "JULIA_ETF_STRATEGY_V01": 0,
     }
     source_tickers = {
-        "PATTERN_A_FAST_FINAL_STRATEGY_V02": set(),
+        fast_id: set(),
         "JULIA_ETF_STRATEGY_V01": set(),
     }
     for item in index["items"]:
@@ -974,7 +982,7 @@ def test_three_strategy_trade_history_counts_identity_and_source_parity():
         report = json.loads((ROOT / "web/data/stocks" / f"{item['ticker']}.json").read_text(encoding="utf-8"))
         history = (report.get("strategy") or {}).get("history") or []
         if item.get("asset_type") == "COMMON":
-            strategy_id = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
+            strategy_id = fast_id
         elif item.get("asset_type") == "ETF":
             strategy_id = "JULIA_ETF_STRATEGY_V01"
         else:
@@ -984,7 +992,7 @@ def test_three_strategy_trade_history_counts_identity_and_source_parity():
         source_history_counts[strategy_id] += len(history)
         source_tickers[strategy_id].add(item["ticker"])
 
-    fast = strategies["PATTERN_A_FAST_FINAL_STRATEGY_V02"]["trade_history"]
+    fast = strategies[fast_id]["trade_history"]
     b_select_strategy = strategies["PATTERN_B_SELECT_CORE_V02"]
     b_select = b_select_strategy["trade_history"]
     julia = strategies["JULIA_ETF_STRATEGY_V01"]["trade_history"]
@@ -1015,7 +1023,7 @@ def test_three_strategy_trade_history_counts_identity_and_source_parity():
     source_history_counts["PATTERN_B_SELECT_CORE_V02"] = len(b_status_trades)
     source_tickers["PATTERN_B_SELECT_CORE_V02"] = {item["ticker"] for item in b_source_items}
     for strategy_id, expected_asset_type in (
-        ("PATTERN_A_FAST_FINAL_STRATEGY_V02", "COMMON"),
+        (fast_id, "COMMON"),
         ("PATTERN_B_SELECT_CORE_V02", "COMMON"),
         ("JULIA_ETF_STRATEGY_V01", "ETF"),
     ):
@@ -1030,13 +1038,13 @@ def test_three_strategy_trade_history_counts_identity_and_source_parity():
         assert {item["ticker"] for item in strategy["items"]} == source_tickers[strategy_id]
         assert all(item["asset_type"] == expected_asset_type for item in strategy["items"])
 
-    assert source_tickers["PATTERN_A_FAST_FINAL_STRATEGY_V02"] == source_tickers["PATTERN_B_SELECT_CORE_V02"]
+    assert source_tickers[fast_id] == source_tickers["PATTERN_B_SELECT_CORE_V02"]
     assert source_tickers["JULIA_ETF_STRATEGY_V01"] == {
         item["ticker"] for item in strategies["JULIA_ETF_STRATEGY_V01"]["items"]
     }
 
     for strategy_id, trades in (
-        ("PATTERN_A_FAST_FINAL_STRATEGY_V02", fast),
+        (fast_id, fast),
         ("PATTERN_B_SELECT_CORE_V02", b_select),
         ("JULIA_ETF_STRATEGY_V01", julia),
     ):
@@ -1046,11 +1054,38 @@ def test_three_strategy_trade_history_counts_identity_and_source_parity():
         ]
         assert len(identities) == len(set(identities))
 
-    source_report = json.loads((ROOT / "web/data/stocks/005930.json").read_text(encoding="utf-8"))
-    source_trade = source_report["strategy"]["history"][0]
+    # Pick a real source report with both a realized and an open row. 005930
+    # no longer has trade history in the current snapshot, so a fixed ticker
+    # would make this parity assertion depend on stale fixture assumptions.
+    sample_item = next(
+        item
+        for item in index["items"]
+        if item.get("asset_type") == "COMMON" and item.get("report_available") is True
+        and (ROOT / "web/data/stocks" / f"{item['ticker']}.json").is_file()
+        and any(
+            trade.get("trade_status") == "REALIZED"
+            for trade in (
+                json.loads((ROOT / "web/data/stocks" / f"{item['ticker']}.json").read_text(encoding="utf-8"))
+                .get("strategy", {}).get("history") or []
+            )
+        )
+        and any(
+            (trade.get("trade_status") or "").startswith("OPEN")
+            for trade in (
+                json.loads((ROOT / "web/data/stocks" / f"{item['ticker']}.json").read_text(encoding="utf-8"))
+                .get("strategy", {}).get("history") or []
+            )
+        )
+    )
+    source_report = json.loads(
+        (ROOT / "web/data/stocks" / f"{sample_item['ticker']}.json").read_text(encoding="utf-8")
+    )
+    source_trade = next(
+        trade for trade in source_report["strategy"]["history"] if trade["trade_status"] == "REALIZED"
+    )
     projected = next(
         trade for trade in fast
-        if trade["ticker"] == "005930" and trade["trade_sequence"] == source_trade["trade_sequence"]
+        if trade["ticker"] == sample_item["ticker"] and trade["trade_sequence"] == source_trade["trade_sequence"]
     )
     assert projected["entry_execution_date"] == source_trade["entry_execution_date"]
     assert projected["entry_price"] == source_trade["entry_open"]
@@ -1061,7 +1096,7 @@ def test_three_strategy_trade_history_counts_identity_and_source_parity():
     source_open = next(trade for trade in source_report["strategy"]["history"] if trade["trade_status"].startswith("OPEN"))
     projected_open = next(
         trade for trade in fast
-        if trade["ticker"] == "005930" and trade["trade_sequence"] == source_open["trade_sequence"]
+        if trade["ticker"] == sample_item["ticker"] and trade["trade_sequence"] == source_open["trade_sequence"]
     )
     assert projected_open["entry_execution_date"] == source_open["entry_execution_date"]
     assert projected_open["entry_price"] == source_open["entry_open"]

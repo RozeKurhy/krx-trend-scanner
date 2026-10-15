@@ -1,0 +1,163 @@
+{
+  "schema": "fast_core_v2_alignment_500b_cj_cgv_execution_contract_closure_v03",
+  "work_id": "A_FAST_ALIGNMENT_500B_CJCGV_EXECUTION_CONTRACT_CLOSURE_AND_WEB_FINISH_V03",
+  "as_of_local_date": "2026-10-15",
+  "status": "PASS",
+  "severity_counts": {
+    "CRITICAL": 0,
+    "MAJOR": 0,
+    "MINOR": 1
+  },
+  "minor_findings": [
+    "The corporate-action store is a state/transition ledger rather than a complete historical event ledger. PIT identity and 2016 listed-share continuity are confirmed; no claim is made that this proves absence of all corporate actions."
+  ],
+  "cj_cgv": {
+    "ticker": "079160",
+    "trade_id": "079160_01",
+    "exit_signal_date": "2016-09-30",
+    "exact_next_krx_session": "2016-10-04",
+    "saved_execution_date": "2016-10-05",
+    "decision": "YES_EXACT_ADJUSTED_OPEN_USABLE_FOR_EXECUTION_ONLY",
+    "raw_open_krw": 83600,
+    "adjusted_open_krw": 52982.0,
+    "adjusted_low_krw": 52412.0,
+    "adjusted_high_krw": 53616.0,
+    "adjusted_close_krw": 53617.0,
+    "full_adjusted_bar_valid": false,
+    "full_bar_violation": "close exceeds high by 1 KRW",
+    "analytic_policy": "full bar remains excluded; exact-date validated open is execution-only"
+  },
+  "trade_audit": {
+    "rows": 423,
+    "entry_next_session_mismatches": 0,
+    "realized_exits": 398,
+    "exit_next_session_mismatches_before": 1,
+    "mismatch_trade_ids_before": [
+      "079160_01"
+    ],
+    "expected_after_counts": {
+      "UNCHANGED_EXACT_NEXT_SESSION": 397,
+      "UNCHANGED_OPEN_CUTOFF": 25,
+      "CJ_CGV_EXIT_CORRECTED_TO_NEXT_KRX_SESSION": 1
+    },
+    "expected_changed_trade_ids": [
+      "079160_01"
+    ],
+    "contract_audit_status_after": "423 PASS expected from saved ledger rule audit; full web strategy projection tests pass",
+    "basis_limit": "trade_parity_diff is an exact saved-ledger expected diff, not a new public 423-row artifact generation"
+  },
+  "p1_counterfactual": {
+    "web_cj_gross_trade_return_pct_before": 42.56510034915644,
+    "after": 5.940195611796839,
+    "delta_pp": -1.3482108788856664,
+    "p1_cj_net_trade_return_pct_before": 42.237577318966565,
+    "net_sale_proceeds_krw_before": 7105856.924555549,
+    "delta_krw": -67353.46446464956,
+    "nav_2016_10_04_after_krw": 191208718.63659292,
+    "nav_2016_10_05_after_krw": 191061865.63659292,
+    "nav_coverage_pct_before": 93.27325394271001,
+    "mdd_pct_before": -32.5790351953956,
+    "total_return_pct_before": 107.65162488143645,
+    "cagr_pct_before": 5.941552880330669,
+    "executed_entries_2016_10_05": 0,
+    "minimum_later_entry_headroom_krw": 134826.88071810175,
+    "gate_status_effect": "NO_STATUS_CHANGE",
+    "official_p1_or_five_window_replay": false
+  },
+  "five_window_saved_gate_readjudgment": {
+    "P1": "A-D PASS; E OBSERVED",
+    "P2-1": "A-D PASS; E OBSERVED",
+    "P2-2": "A-D PASS; E OBSERVED",
+    "P3-1": "A-D PASS; E OBSERVED",
+    "P3-2": "A-D PASS; E OBSERVED",
+    "new_official_replay_run": false,
+    "saved_worker_errors": 0
+  },
+  "ui": {
+    "status": "PASS",
+    "current_state_market_filter": "FAST and B Select",
+    "history_market_and_sort": "FAST and B Select",
+    "fundamentals": "B Select only",
+    "Julia": "unchanged",
+    "focused_ui_test": "1 passed",
+    "full_web_test_includes_ui_regressions": true
+  },
+  "tests": {
+    "compileall": "PASS",
+    "manual_exact_open_resolver": "PASS; 52982.0 returned; no network calls",
+    "focused_alignment_phase4e_regressions": "45 passed",
+    "focused_ui_test": "1 passed",
+    "full_test_web_strategy": "30 passed in 580.67s",
+    "first_full_web_attempt": "29 passed, 1 failed on stale fixed 005930 sample; test now chooses a current source report with realized and open rows; final full rerun passed"
+  },
+  "runtime_parity": {
+    "strategy_monitor_clean_exporter_projection": "PASS; test_strategy_monitor_json_matches_clean_exporter_projection",
+    "three_strategy_trade_history_identity_and_source_parity": "PASS",
+    "current_saved_action_reason_bucket_projection": "PASS through exact monitor projection comparison",
+    "canonical_public_outputs_regenerated": false
+  },
+  "provenance": {
+    "adjusted_price_parquet_sha256": "cc583d57bd968ce6b49439244d03529cefbe1ab3cf0f6503d8a10304ecbfa171",
+    "adjusted_price_metadata_sha256": "7edf02d767b8ec23c786a945c8724ca7d046688cbc09e850fbad520b048810fa",
+    "krx_calendar_sha256_expected": "e9e2e038314b0970cb0de9ae736ae56998e90be57d4b39e162b28451c9a135cb",
+    "raw_krx_partition_checks": {
+      "2016-09-30": {
+        "path": "data/market/raw/krx_stocks/v01/market=KOSPI/year=2016/2016-09-30.parquet",
+        "expected_sha256": "adaa0a4cac92369fde501faec7f2f95677752497efdd7fa729105fb31a212cf0",
+        "current_sha256": "adaa0a4cac92369fde501faec7f2f95677752497efdd7fa729105fb31a212cf0",
+        "matches": true
+      },
+      "2016-10-04": {
+        "path": "data/market/raw/krx_stocks/v01/market=KOSPI/year=2016/2016-10-04.parquet",
+        "expected_sha256": "62f81690d7d147f84ec6b2d86849686a1efacf189bdba51c9ae4db60b4df2e4a",
+        "current_sha256": "62f81690d7d147f84ec6b2d86849686a1efacf189bdba51c9ae4db60b4df2e4a",
+        "matches": true
+      },
+      "2016-10-05": {
+        "path": "data/market/raw/krx_stocks/v01/market=KOSPI/year=2016/2016-10-05.parquet",
+        "expected_sha256": "1971eb0be7975eec67f7b1cca80033337ad9541eb767864119f2133526159312",
+        "current_sha256": "1971eb0be7975eec67f7b1cca80033337ad9541eb767864119f2133526159312",
+        "matches": true
+      }
+    },
+    "protected_151_file_count": 151,
+    "protected_151_mismatches": 0,
+    "b_select_status_sha256_current": "6e033e40f50dca47840c084191b5be505871ddc090ee332aec7b0697d94db06f",
+    "b_select_status_matches_v02_preflight": true,
+    "locked_inputs_match_v02_preflight": true,
+    "v02_evidence_files_unchanged": true
+  },
+  "git": {
+    "branch": "main",
+    "head_at_v03_start": "b964eab2327506669f5618895f23a02972b79289",
+    "origin_main_at_v03_start": "b964eab2327506669f5618895f23a02972b79289",
+    "head_equal_origin_main_at_start": true,
+    "diff_check": "PASS",
+    "commit": "Eligible after final scope check",
+    "push": "Eligible after final scope check",
+    "public_digest_or_publication": "NOT RUN; separate user approval required"
+  },
+  "changed_source_and_test_sha256": {
+    "src/trend_scanner/validation/pattern_a_fast_core_v02_reentry.py": "c16ea8480685546d354a41f4a7604b5bb272154acd7826fdad0c3f8748b29a6d",
+    "src/trend_scanner/reporting/a_fast_core_report.py": "4806525fe1cc55d1fc4a3863e90475201b05ebd49d3b0adb9fbd44635e0d5331",
+    "src/trend_scanner/reporting/stock_report.py": "70c0329964c07b0d6fd2e5708a0049fc011b83e23502d97036a0da991173f94a",
+    "src/trend_scanner/reporting/models.py": "6cd8edc27d69eaebcd3457748d888daef365f182b8836ac489f5e9abf671c0f5",
+    "web/js/strategy.js": "7f7a8d71756dc15007d94334dfd2a2de7132aed3edf75246f93a4af0595ce4fd",
+    "tests/test_pattern_a_fast_core_v02_reentry.py": "29596021425bbe060f7f47a555b7faff15862656b845d2561a7bd02aaa158883",
+    "tests/test_a_fast_alignment_entry_contract_v02.py": "6f5cd474ac6423b6b129f0d2b235a4c961b5c6438de5cb29a10ca8559700d25e",
+    "tests/test_web_strategy.py": "07f775f1461861981b72f8eb11382d6d34b1d50a38bc30669431337d4d5837e7"
+  },
+  "evidence_files": [
+    "report.md",
+    "validation_summary.json",
+    "cj_execution_source_audit.json",
+    "execution_impact.csv",
+    "trade_parity_diff.csv",
+    "preflight.json",
+    "source_manifest.json"
+  ],
+  "limitations": [
+    "The exact-date Naver row is from the current authoritative Naver-native adjusted store; the preserved latest fetch payload is 2026-10-06 through 2026-10-08, not a 2016 request.",
+    "No official P1/5-window backtest, canonical generation, activation, digest change, or publication was performed."
+  ]
+}

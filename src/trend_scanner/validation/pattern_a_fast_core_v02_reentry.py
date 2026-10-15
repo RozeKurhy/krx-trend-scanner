@@ -38,10 +38,81 @@ logger = logging.getLogger(__name__)
 DATA_CUTOFF = pd.Timestamp("2026-08-14")
 
 
+class ExecutionPriceUnavailableError(RuntimeError):
+    """The exact next KRX session exists, but its verified adjusted open is unavailable."""
+
+    def __init__(self, execution_date: pd.Timestamp, reason: str) -> None:
+        self.execution_date = pd.Timestamp(execution_date).normalize()
+        self.reason = str(reason)
+        super().__init__(
+            f"EXECUTION_PRICE_UNRESOLVED:{self.execution_date:%Y-%m-%d}:{self.reason}"
+        )
+
+
 def _last_trading_date_on_or_before(index: pd.DatetimeIndex, date: pd.Timestamp) -> pd.Timestamp | None:
     """Return the last index date no later than ``date`` using a binary search."""
     position = index.searchsorted(pd.Timestamp(date).normalize(), side="right") - 1
     return index[position].normalize() if position >= 0 else None
+
+
+def _next_execution_open(
+    signal_date: pd.Timestamp,
+    daily: pd.DataFrame,
+    support_end: pd.Timestamp,
+    market_calendar: MarketCalendarAuthority | None,
+    execution_open_resolver: Callable[[pd.Timestamp], float | None] | None = None,
+) -> tuple[pd.Timestamp | None, float | None]:
+    """Resolve the next-session fill without skipping an unusable analytic candle.
+
+    The analytic daily frame remains the only input to signal and lifecycle
+    calculations. When its exact next KRX session is absent, a caller may supply
+    an independently verified execution-open resolver; absent evidence raises
+    an explicit error rather than shifting the fill to a later valid bar.
+    """
+    signal = pd.Timestamp(signal_date).normalize()
+    support = pd.Timestamp(support_end).normalize()
+    if market_calendar is None:
+        # Preserve the frozen-calendar test/research interface for callers that
+        # intentionally omit exchange authority. Production callers provide it.
+        candidates = daily[(daily.index > signal) & (daily.index <= support)]
+        if candidates.empty:
+            return None, None
+        session = pd.Timestamp(candidates.index[0]).normalize()
+        price = float(candidates.iloc[0]["open"])
+        if not np.isfinite(price) or price <= 0:
+            raise ExecutionPriceUnavailableError(session, "INVALID_ANALYTIC_OPEN")
+        return session, price
+
+    trading_dates = pd.DatetimeIndex(market_calendar.trading_dates).normalize()
+    if trading_dates.empty:
+        raise MarketCalendarUnavailableError(
+            f"Market calendar '{market_calendar.source_name}' has no trading dates."
+        )
+    position = trading_dates.searchsorted(signal, side="right")
+    if position >= len(trading_dates):
+        # The signal is at the certified calendar frontier; there is no known
+        # next session within the available execution authority.
+        return None, None
+    session = pd.Timestamp(trading_dates[position]).normalize()
+    if session > support:
+        return None, None
+
+    if session in daily.index:
+        price = float(daily.loc[session, "open"])
+    elif execution_open_resolver is not None:
+        resolved = execution_open_resolver(session)
+        if resolved is None:
+            raise ExecutionPriceUnavailableError(
+                session, "EXACT_SESSION_HAS_NO_VERIFIED_ADJUSTED_OPEN"
+            )
+        price = float(resolved)
+    else:
+        raise ExecutionPriceUnavailableError(
+            session, "EXACT_SESSION_MISSING_FROM_ANALYTIC_DAILY_AND_NO_SOURCE_RESOLVER"
+        )
+    if not np.isfinite(price) or price <= 0:
+        raise ExecutionPriceUnavailableError(session, "INVALID_ADJUSTED_OPEN")
+    return session, price
 
 
 @dataclass
@@ -234,6 +305,7 @@ def simulate_ticker_core_v02_reentry(
     entry_execution_cutoff_date: pd.Timestamp | None = None,
     entry_signal_cutoff_date: pd.Timestamp | None = None,
     entry_signal_filter: Callable[[pd.Timestamp, Mapping[str, Any]], bool] | None = None,
+    execution_open_resolver: Callable[[pd.Timestamp], float | None] | None = None,
 ) -> list[V02TradeRecord]:
     """Replay one ticker's V2 trade state through ``cutoff_date``.
 
@@ -378,17 +450,22 @@ def simulate_ticker_core_v02_reentry(
             )
             continue
 
-        # Check execution date
-        fut_daily = daily[(daily.index > found_signal_w) & (daily.index <= execution_support)]
-        if fut_daily.empty:
+        # Use the exchange calendar to identify the exact next local session.
+        # An analytically invalid candle may still have a separately verified
+        # execution open; never skip it to a later valid analytic row.
+        entry_exec_date, entry_open_price = _next_execution_open(
+            found_signal_w,
+            daily,
+            execution_support,
+            market_calendar,
+            execution_open_resolver,
+        )
+        if entry_exec_date is None or entry_open_price is None:
             break
-
-        entry_exec_date = fut_daily.index[0]
         # Support data may complete an existing exit, not create new exposure.
         # Check before trade_seq and any position state are advanced.
         if entry_execution_cutoff is not None and entry_exec_date.normalize() > entry_execution_cutoff:
             break
-        entry_open_price = float(fut_daily.iloc[0]["open"])
 
         trade_seq += 1
         trade_id = f"{ticker}_{trade_seq:02d}"
@@ -470,10 +547,13 @@ def simulate_ticker_core_v02_reentry(
             if (c_price / entry_open_price - 1.0) <= -0.15:
                 loss_guard_triggered = True
                 loss_guard_sig_d = d
-                fut_after_stop = daily[(daily.index > d) & (daily.index <= execution_support)]
-                if not fut_after_stop.empty:
-                    loss_guard_exec_d = fut_after_stop.index[0]
-                    loss_guard_exec_price = float(fut_after_stop.iloc[0]["open"])
+                loss_guard_exec_d, loss_guard_exec_price = _next_execution_open(
+                    d,
+                    daily,
+                    execution_support,
+                    market_calendar,
+                    execution_open_resolver,
+                )
                 break
 
         # A Loss Guard closes the lifecycle at its own signal date.  Otherwise
@@ -509,6 +589,8 @@ def simulate_ticker_core_v02_reentry(
             daily,
             valuation_cutoff,
             execution_support_date=execution_support,
+            market_calendar=market_calendar,
+            execution_open_resolver=execution_open_resolver,
         )
 
         record = V02TradeRecord(
@@ -570,6 +652,8 @@ def _calc_trade_outcome(
     daily: pd.DataFrame,
     cutoff_date: pd.Timestamp,
     execution_support_date: pd.Timestamp | None = None,
+    market_calendar: MarketCalendarAuthority | None = None,
+    execution_open_resolver: Callable[[pd.Timestamp], float | None] | None = None,
 ) -> dict[str, Any]:
     support_end = pd.Timestamp(execution_support_date or cutoff_date).normalize()
     exit_exec_d: pd.Timestamp | None = None
@@ -579,10 +663,14 @@ def _calc_trade_outcome(
     mark_to_cutoff_ret: float | None = None
 
     if exit_sig_d is not None:
-        fut_after_exit = daily[(daily.index > exit_sig_d) & (daily.index <= support_end)]
-        if not fut_after_exit.empty:
-            exit_exec_d = fut_after_exit.index[0]
-            exit_open = float(fut_after_exit.iloc[0]["open"])
+        exit_exec_d, exit_open = _next_execution_open(
+            exit_sig_d,
+            daily,
+            support_end,
+            market_calendar,
+            execution_open_resolver,
+        )
+        if exit_exec_d is not None and exit_open is not None:
             trade_status = "REALIZED"
             realized_ret = round(((exit_open - entry_open) / entry_open) * 100, 2)
         else:

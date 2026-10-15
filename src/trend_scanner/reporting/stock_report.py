@@ -105,6 +105,85 @@ def _load_fast_alignment_daily(repository: MarketDataRepositoryV2, ticker: str, 
     ).load(ticker)
 
 
+def _make_fast_execution_open_resolver(
+    repository: MarketDataRepositoryV2 | None,
+    ticker: str,
+) -> Callable[[pd.Timestamp], float | None] | None:
+    """Return exact-date adjusted opens backed by both Naver and active KRX rows.
+
+    This source is used only for fills when the analytically validated daily
+    frame omits the exact next KRX session. It does not feed indicator, signal,
+    or lifecycle calculations.
+    """
+    if repository is None:
+        return None
+    adjusted_store = getattr(repository, "_adjusted_price_store", None)
+    raw_loader = getattr(repository, "get_raw_daily", None)
+    if adjusted_store is None or not callable(raw_loader):
+        return None
+
+    source_ready: bool | None = None
+    cache: dict[str, float | None] = {}
+
+    def resolve(execution_date: pd.Timestamp) -> float | None:
+        nonlocal source_ready
+        day = pd.Timestamp(execution_date).normalize()
+        day_text = day.strftime("%Y-%m-%d")
+        if day_text in cache:
+            return cache[day_text]
+        if source_ready is None:
+            try:
+                metadata = adjusted_store.load_metadata(ticker)
+                source_ready = bool(
+                    adjusted_store.is_current_authority_snapshot(ticker)
+                    and metadata.get("source_native_adjusted") is True
+                    and metadata.get("source_authority_id") == "NAVER_DIRECT_DATE_RANGE_ADJUSTED_V1"
+                    and metadata.get("source_name") == "NAVER_DIRECT_DATE_RANGE_ADJUSTED"
+                    and metadata.get("source_semantics") == "ADJUSTED_OHLC_ONLY"
+                    and metadata.get("authority_type") == "AUTHORITATIVE"
+                )
+            except Exception:
+                source_ready = False
+        if not source_ready:
+            cache[day_text] = None
+            return None
+        try:
+            adjusted = adjusted_store.load_daily_source(ticker, day_text, day_text)
+            raw = raw_loader(ticker, day_text, day_text)
+            if day not in adjusted.index or day not in raw.index:
+                cache[day_text] = None
+                return None
+            adjusted_row = adjusted.loc[day]
+            raw_row = raw.loc[day]
+            adjusted_values = np.asarray(
+                [adjusted_row["open"], adjusted_row["high"], adjusted_row["low"]],
+                dtype=float,
+            )
+            raw_values = np.asarray(
+                [raw_row["open"], raw_row["high"], raw_row["low"], raw_row["close"]],
+                dtype=float,
+            )
+            if (
+                not np.isfinite(adjusted_values).all()
+                or not np.isfinite(raw_values).all()
+                or (adjusted_values <= 0).any()
+                or (raw_values <= 0).any()
+                or float(adjusted_row["low"]) > float(adjusted_row["open"])
+                or float(adjusted_row["open"]) > float(adjusted_row["high"])
+                or int(raw_row["volume"]) <= 0
+                or int(raw_row["trading_value"]) <= 0
+            ):
+                cache[day_text] = None
+                return None
+            cache[day_text] = float(adjusted_row["open"])
+            return cache[day_text]
+        except Exception:
+            cache[day_text] = None
+            return None
+
+    return resolve
+
+
 def _format_ticker(ticker: str) -> str:
     return str(ticker).strip().zfill(6)
 
@@ -265,6 +344,10 @@ def _generate_deterministic_narrative(
     relative_strength_section: RelativeStrengthSection,
     sector_relative_strength_section: SectorRelativeStrengthSection,
     tv_section: TradingValueFlowSection,
+    *,
+    strategy_replay_mode: str | None = None,
+    strategy_state: str | None = None,
+    strategy_action_reason: str | None = None,
 ) -> tuple[str, list[str], str]:
     if current_snapshot.investability_status == "INVESTABLE":
         headline = (
@@ -305,6 +388,19 @@ def _generate_deterministic_narrative(
         )
         inv_bullet = f"필수 데이터 부족({current_snapshot.investability_reason})으로 Phase 10 Investability 판정이 불가능합니다."
         inv_clause = f"필수 데이터 부족({current_snapshot.investability_reason})으로 투자 적격성 판정이 보류되었습니다."
+
+    if strategy_replay_mode == HISTORICAL_ALIGNMENT_REPLAY_MODE:
+        state_text = strategy_state or "DATA_UNAVAILABLE"
+        reason_text = strategy_action_reason or "UNKNOWN_REASON"
+        headline = f"{name}({ticker})의 FAST Alignment 500B 현재 상태는 {state_text} ({reason_text})입니다."
+        inv_bullet = (
+            f"Phase 10 Investability 참고 결과는 `{current_snapshot.investability_status}` "
+            f"({current_snapshot.investability_reason})이며 FAST Alignment 500B의 필수 진입 조건은 아닙니다."
+        )
+        inv_clause = (
+            f"참고용 Phase 10 Investability 결과는 `{current_snapshot.investability_status}` "
+            f"({current_snapshot.investability_reason})이며 FAST Alignment 500B 진입 판정에는 사용하지 않습니다."
+        )
 
     score_bullet = (
         f"현재 Pattern A Score는 {current_snapshot.pattern_a_score:.2f}점(Stage: {current_snapshot.official_stage}, Candidate: {'YES' if current_snapshot.is_candidate else 'NO'})입니다."
@@ -517,8 +613,12 @@ def render_markdown_report(report: StockReport) -> str:
     else:
         md.append("- **시가총액**: `N/A`")
     md.append(f"- **20일 평균 거래대금**: `{cur.avg_trading_value_20d_eok:.2f}억원`" if cur.avg_trading_value_20d_eok is not None else "- **20일 평균 거래대금**: `N/A`")
-    md.append(f"- **Investability 상태**: `{cur.investability_status}` (사유: `{cur.investability_reason}`)")
-    md.append(f"- **최종 투자 가능 여부 (Is Investable)**: `{'YES' if cur.is_investable else 'NO'}`")
+    if core.strategy_replay_mode == HISTORICAL_ALIGNMENT_REPLAY_MODE:
+        md.append(f"- **Phase 10 Investability 참고 상태**: `{cur.investability_status}` (사유: `{cur.investability_reason}`)")
+        md.append("- **Phase 10 필수 진입 조건 여부**: `아님` (FAST Alignment 500B는 별도 V2·MA 정렬·PIT 시총 gate로 판정)")
+    else:
+        md.append(f"- **Investability 상태**: `{cur.investability_status}` (사유: `{cur.investability_reason}`)")
+        md.append(f"- **최종 투자 가능 여부 (Is Investable)**: `{'YES' if cur.is_investable else 'NO'}`")
     md.append("")
     md.append("---")
     md.append("")
@@ -530,7 +630,11 @@ def render_markdown_report(report: StockReport) -> str:
 
     # Section 2. 패스트 코어 V2 전략 상태 (A FAST Core V2 Strategy State)
     seq_str = f"{core.current_trade.trade_sequence}번째 거래" if (core.current_trade and core.canonical_position == "OPEN") else ("N/A (FLAT)" if core.canonical_position == "FLAT" else "N/A")
-    md.append("## 2. 패스트 코어 V2 전략 상태 (A FAST Core V2 Strategy State)")
+    md.append(
+        "## 2. FAST Alignment 500B 전략 상태 (A FAST Core V2 Alignment 500B Strategy State)"
+        if core.strategy_replay_mode == HISTORICAL_ALIGNMENT_REPLAY_MODE
+        else "## 2. 패스트 코어 V2 전략 상태 (A FAST Core V2 Strategy State)"
+    )
     if core.metadata_provenance_mode == "HISTORICAL_LEGACY_RESEARCH":
         md.append("> ⚠️ **UNVERIFIED_HISTORICAL_METADATA** — 이 시점의 종목 메타데이터는 formal 재검증되지 않았습니다(`LEGACY_UNVERIFIED`). 아래 전략 상태는 retrospective 연구용이며 production 투자 판단 근거가 아닙니다.")
     elif core.metadata_provenance_mode == "DATA_UNAVAILABLE":
@@ -549,7 +653,11 @@ def render_markdown_report(report: StockReport) -> str:
         md.append("| 진입 검증 항목 | 현재 관측값 | 충족 여부 |")
         md.append("|---|---|:---:|")
         md.append(f"| 보통주 적격성 (Instrument Eligible) | `{report.asset_type}` | `{'PASS' if ec.instrument_eligible else 'FAIL'}` |")
-        md.append(f"| 유동성 적격성 (Phase 10 Investability) | `{cur.investability_status}` | `{'PASS' if ec.investability_pass else 'FAIL'}` |")
+        if ec.investability_required:
+            md.append(f"| Phase 10 Investability 필수 조건 | `{cur.investability_status}` | `{'PASS' if ec.investability_pass else 'FAIL'}` |")
+        else:
+            ref_status = ec.investability_reference_status or cur.investability_status
+            md.append(f"| Phase 10 Investability 참고 (진입 gate 아님) | `{ref_status}` | `참고 정보` |")
         md.append(f"| 국면 적격성 (TRANSITION / EARLY_TREND) | `{ec.pattern_a_stage}` | `{'PASS' if ec.pattern_a_stage_eligible else 'FAIL'}` |")
         md.append(f"| FAST 주별 트리거 (TRIGGER & READY) | `{ec.fast_stage} ({ec.fast_stage_status})` | `{'PASS' if ec.fast_trigger_ready else 'FAIL'}` |")
         md.append(f"| 월간 거시 국면 (PERMITTED_REGIME) | `{ec.monthly_regime}` | `{'PASS' if ec.monthly_regime_permitted else 'FAIL'}` |")
@@ -1395,6 +1503,7 @@ def generate_stock_report(
     if a_fast_replay_mode == HISTORICAL_ALIGNMENT_REPLAY_MODE and repository is not None and daily_override is None:
         replay_daily = _load_fast_alignment_daily(repository, clean_ticker, market_data_end)
         a_fast_daily = replay_daily if replay_daily is not None else pd.DataFrame()
+    execution_open_resolver = _make_fast_execution_open_resolver(repository, clean_ticker)
 
     a_fast_core_section = build_a_fast_core_section(
         ticker=clean_ticker,
@@ -1411,6 +1520,7 @@ def generate_stock_report(
         is_common_stock=is_common,
         metadata_provenance_mode=metadata_provenance_mode,
         market_calendar=production_market_calendar,
+        execution_open_resolver=execution_open_resolver,
         repo_root=root_path,
         promotion_gate=promotion_gate,
         replay_mode=a_fast_replay_mode,
@@ -1465,6 +1575,9 @@ def generate_stock_report(
         relative_strength_section=relative_strength_section,
         sector_relative_strength_section=sector_relative_strength_section,
         tv_section=trading_value_section,
+        strategy_replay_mode=a_fast_core_section.strategy_replay_mode,
+        strategy_state=a_fast_core_section.strategy_state,
+        strategy_action_reason=a_fast_core_section.action_reason,
     )
 
     # Prepend Strategy Bullet Point in Executive Summary
@@ -1481,7 +1594,11 @@ def generate_stock_report(
     elif st_state == "EXIT":
         strat_bullet = f"{strategy_bullet_prefix}: 청산 신호 발생({a_fast_core_section.action_reason}) · 다음 거래일 시가 청산"
     elif st_state == "WAIT":
-        strat_bullet = f"{strategy_bullet_prefix}: 관망 · 현재 신규 진입 조건 미충족"
+        strat_bullet = (
+            f"{strategy_bullet_prefix}: 관망 ({a_fast_core_section.action_reason}) · 현재 신규 진입 조건 미충족"
+            if a_fast_replay_mode == HISTORICAL_ALIGNMENT_REPLAY_MODE
+            else f"{strategy_bullet_prefix}: 관망 · 현재 신규 진입 조건 미충족"
+        )
     elif st_state == "NOT_APPLICABLE":
         strat_bullet = f"{strategy_bullet_prefix}: 전략 적용 대상 아님"
     else:

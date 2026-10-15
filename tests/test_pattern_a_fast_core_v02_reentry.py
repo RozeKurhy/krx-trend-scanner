@@ -9,6 +9,7 @@ import pytest
 
 from trend_scanner.data.cache import ParquetCache
 from trend_scanner.data.market_calendar import (
+    MarketCalendarAuthority,
     MarketCalendarUnavailableError,
     load_rolling_production_market_calendar,
 )
@@ -18,8 +19,10 @@ from trend_scanner.validation.historical_snapshot import build_historical_snapsh
 from trend_scanner.validation import pattern_a_fast_core_v02_reentry as v2
 from trend_scanner.validation.pattern_a_fast_core_v02_reentry import (
     DATA_CUTOFF,
+    ExecutionPriceUnavailableError,
     V02TradeRecord,
     _calc_trade_outcome,
+    _next_execution_open,
     simulate_ticker_core_v02_reentry,
 )
 from scripts.inspect_v02_evidence import (
@@ -34,6 +37,108 @@ V01_CSV_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/strategy_fin
 V02_CSV_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/trades.csv"
 V02_TICKER_CSV_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/ticker_summary.csv"
 DEEP_LOSS_CSV_PATH = ROOT / "artifacts/patterns/pattern_a_fast/production/core_v02_reentry/deep_loss_reentry_cases.csv"
+
+
+def _cj_execution_calendar() -> MarketCalendarAuthority:
+    dates = pd.DatetimeIndex(
+        ["2016-09-30", "2016-10-04", "2016-10-05", "2016-10-31"]
+    )
+    return MarketCalendarAuthority(
+        trading_dates=dates,
+        completed_month_ends=[pd.Timestamp("2016-10-31")],
+        source_name="CJ_CGV_EXECUTION_TEST",
+    )
+
+
+def test_exact_next_krx_session_uses_verified_open_when_analytic_row_is_excluded():
+    signal = pd.Timestamp("2016-09-30")
+    next_session = pd.Timestamp("2016-10-04")
+    daily = pd.DataFrame(
+        {
+            "open": [53743.0, 53489.0],
+            "high": [53743.0, 53553.0],
+            "low": [52919.0, 52538.0],
+            "close": [53047.0, 52603.0],
+        },
+        index=pd.DatetimeIndex(["2016-09-30", "2016-10-05"]),
+    )
+    seen: list[pd.Timestamp] = []
+
+    def resolve(day: pd.Timestamp) -> float:
+        seen.append(day)
+        return 52982.0
+
+    exec_date, exec_open = _next_execution_open(
+        signal,
+        daily,
+        pd.Timestamp("2016-10-05"),
+        _cj_execution_calendar(),
+        resolve,
+    )
+
+    assert seen == [next_session]
+    assert exec_date == next_session
+    assert exec_open == 52982.0
+    assert next_session not in daily.index
+
+
+def test_exit_outcome_uses_exact_next_krx_session_and_adjusted_open():
+    daily = pd.DataFrame(
+        {
+            "open": [53743.0, 53489.0],
+            "high": [53743.0, 53553.0],
+            "low": [52919.0, 52538.0],
+            "close": [53047.0, 52603.0],
+        },
+        index=pd.DatetimeIndex(["2016-09-30", "2016-10-05"]),
+    )
+    result = _calc_trade_outcome(
+        entry_exec_d=pd.Timestamp("2016-09-30"),
+        entry_open=37519.0,
+        exit_sig_d=pd.Timestamp("2016-09-30"),
+        daily=daily,
+        cutoff_date=pd.Timestamp("2016-10-05"),
+        market_calendar=_cj_execution_calendar(),
+        execution_open_resolver=lambda day: 52982.0 if day == pd.Timestamp("2016-10-04") else None,
+    )
+
+    assert result["trade_status"] == "REALIZED"
+    assert result["exit_exec_d"] == pd.Timestamp("2016-10-04")
+    assert result["exit_open"] == 52982.0
+    assert result["realized_ret"] == round((52982.0 - 37519.0) / 37519.0 * 100, 2)
+
+
+def test_missing_exact_next_session_open_fails_closed():
+    daily = pd.DataFrame(
+        {"open": [53743.0, 53489.0]},
+        index=pd.DatetimeIndex(["2016-09-30", "2016-10-05"]),
+    )
+
+    with pytest.raises(ExecutionPriceUnavailableError, match="2016-10-04"):
+        _next_execution_open(
+            pd.Timestamp("2016-09-30"),
+            daily,
+            pd.Timestamp("2016-10-05"),
+            _cj_execution_calendar(),
+        )
+
+
+def test_exact_normal_session_keeps_existing_analytic_fill_without_source_fallback():
+    daily = pd.DataFrame(
+        {"open": [83600.0, 84400.0]},
+        index=pd.DatetimeIndex(["2016-10-04", "2016-10-05"]),
+    )
+
+    exec_date, exec_open = _next_execution_open(
+        pd.Timestamp("2016-09-30"),
+        daily,
+        pd.Timestamp("2016-10-05"),
+        _cj_execution_calendar(),
+        lambda _day: pytest.fail("verified analytic session should not call source fallback"),
+    )
+
+    assert exec_date == pd.Timestamp("2016-10-04")
+    assert exec_open == 83600.0
 
 
 def _load_production_daily_through_20260917(
