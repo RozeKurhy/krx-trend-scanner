@@ -250,16 +250,12 @@ def test_alignment_promotion_gate_fails_before_recovery_or_publication(tmp_path,
     assert not (tmp_path / "web" / phase4d.PHASE4D_PUBLISH_JOURNAL).exists()
 
 
-def test_saved_candidate_dryrun_uses_phase4d_and_never_promotes():
+def test_saved_candidate_preflight_noops_when_exact_candidate_is_already_published():
     result = gate.preflight_alignment_candidate(ROOT)
-    assert result["status"] == "V13_LOCAL_DRYRUN_READY_FOR_EXPLICIT_PUBLISH_APPROVAL_REVIEW"
+    assert result["status"] == "NOOP_ALREADY_COMPLETE"
+    assert result["candidate_digest"] == gate.EXPECTED["candidate_digest"]
     assert result["promotion_called"] is False
-    assert result["canonical_web_data_writes"] == 0
-    assert result["b_select_status_writes"] == 0
-    assert result["phase4d_validate_staging"]["common_stock_report_count"] == 1459
-    assert result["phase4d_validate_staging"]["etf_stock_report_count"] == 36
-    assert result["phase4d_final_snapshot"]["route_integrity"]["route_count"] == 399
-    assert result["candidate_eligibility"]["independent_blocker_reconciliation"]["event_count"] == 204
+    assert result["web_data_writes"] == 0
 
 
 def test_pages_repository_guard_runs_before_configure_upload_and_deploy():

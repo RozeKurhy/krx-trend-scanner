@@ -134,6 +134,39 @@ def test_phase4d_readback_validation_failure_rolls_back_both_public_paths(tmp_pa
     assert _status_hash(status_path) == old_status
 
 
+def test_phase4d_identity_route_readback_failure_restores_old_routes_and_reports(tmp_path: Path):
+    web_data, status_path = _write_snapshot(tmp_path, "old")
+    stage = _write_stage(tmp_path, "new")
+    report_name = "000001--KR7000000001.json"
+    (web_data / "identity-reports").mkdir()
+    (web_data / "identity-reports" / report_name).write_text(
+        json.dumps({"snapshot": "old"}), encoding="utf-8",
+    )
+    (web_data / "identity-report-routes.json").write_text(json.dumps({
+        "items": [{"url": f"./data/identity-reports/{report_name}"}],
+    }), encoding="utf-8")
+    (stage / "identity-reports").mkdir()
+    (stage / "identity-reports" / report_name).write_text(
+        json.dumps({"snapshot": "new"}), encoding="utf-8",
+    )
+    (stage / "identity-report-routes.json").write_text(json.dumps({
+        "items": [{"url": f"./data/identity-reports/{report_name}"}],
+    }), encoding="utf-8")
+    old_data = _file_snapshot(web_data)
+    old_status = _status_hash(status_path)
+
+    def reject_readback(_status: Path):
+        assert json.loads((web_data / "identity-reports" / report_name).read_text()) == {"snapshot": "new"}
+        raise ValueError("synthetic identity route readback mismatch")
+
+    with pytest.raises(phase4d.Phase4DError, match="ROLLED_BACK"):
+        phase4d.promote(stage, web_data, target_as_of=TARGET, post_publish_validate=reject_readback)
+
+    assert _file_snapshot(web_data) == old_data
+    assert _status_hash(status_path) == old_status
+    assert json.loads((web_data / "identity-reports" / report_name).read_text()) == {"snapshot": "old"}
+
+
 @pytest.mark.parametrize("crash_checkpoint", ["after_stocks_backup", "after_stocks_promote", "after_status_promote"])
 def test_phase4d_interrupted_process_recovers_from_journal(
     tmp_path: Path,

@@ -34,6 +34,7 @@ from scripts import export_stock_report_web as stock_web
 from scripts import export_strategy_monitor_web as strategy_web
 from scripts import export_web_data as health_web
 from scripts import build_b_select_core_v2_status as b_select_status_web
+from scripts import export_b_select_core_v2_identity_reports_web as identity_reports_web
 from scripts import run_daily_update_phase4b_v01 as phase4b
 from scripts import run_daily_update_phase4c_v01 as phase4c
 from scripts import run_pattern_a_universe_scanner as phase4a
@@ -60,6 +61,10 @@ B_SELECT_ID = "PATTERN_B_SELECT_CORE_V02"
 JULIA_ID = "JULIA_ETF_STRATEGY_V01"
 B_SELECT_STATUS_STAGING_NAME = "b-select-status.json"
 PHASE4D_PUBLISH_JOURNAL = ".phase4d-publish-transaction.json"
+DAILY_ALIGNMENT_TARGET_AS_OF = "2026-10-15"
+DAILY_ALIGNMENT_REFERENCE_MARKET_DATE = "2026-10-15"
+DAILY_ALIGNMENT_REPLAY_DIGEST = "eb9137d752331b71b2570bd742dd1cc2d3c66dedd8dc6303fa5ecb346d423b81"
+_DAILY_ALIGNMENT_PROMOTION_AUTHORITY = object()
 
 
 def _b_select_status_path(root: Path, target_as_of: str) -> Path:
@@ -183,6 +188,11 @@ def inspect_published_payload(
             raise Phase4DError(f"PHASE4D_ETF36_SOURCE_INVALID: {exc}") from exc
     if not status_path.is_file():
         return None
+    expected_exclusion_count = None
+    if target_as_of == "2026-10-11":
+        monitor = _read_json(web_data / "strategy-monitor.json")
+        if monitor.get("strategy_replay_digest") == V13_ALIGNMENT_CANDIDATE_DIGEST:
+            expected_exclusion_count = V13_ALIGNMENT_PERMANENT_EXCLUSION_COUNT
     try:
         validation = validate_staging(
             web_data,
@@ -190,6 +200,7 @@ def inspect_published_payload(
             reference_market_date,
             require_etf36=require_etf_source,
             b_select_status_path=status_path,
+            expected_permanent_identity_exclusion_count=expected_exclusion_count,
         )
     except Phase4DError as exc:
         code = str(exc).split(":", 1)[0]
@@ -388,6 +399,23 @@ def _stage_payloads(
         )
     _write_json(stage_data / "strategy-monitor.json", strategy)
 
+    identity_route_validation = None
+    if isinstance(b_status.get("canonical_trade_history"), list):
+        identity_routes, supplemental_reports = identity_reports_web.build_identity_routes(
+            status_data=b_status,
+            index_data=index,
+            pit_data=identity_reports_web._read(identity_reports_web.PIT_PATH),
+            monitor_data=strategy,
+            stocks_dir=stocks_dir,
+            output_dir=stage_data / "identity-reports",
+            expected_requested_as_of=target_as_of,
+            expected_reference_market_date=reference_market_date,
+        )
+        _write_json(stage_data / "identity-report-routes.json", identity_routes)
+        identity_route_validation = identity_reports_web.validate_identity_routes(stage_data, b_status)
+    elif target_as_of >= "2026-10-15":
+        raise Phase4DError("PHASE4D_CANONICAL_B_SELECT_HISTORY_REQUIRED_FOR_IDENTITY_ROUTES")
+
     dt_clean = target_as_of.replace("-", "")
     sector_membership_effective_date, sector_membership_path = phase4c.resolve_sector_membership_for_target(
         target_as_of,
@@ -434,6 +462,16 @@ def _stage_payloads(
             "evaluation_error_count": b_status.get("evaluation_error_count"),
             "network_requests": b_status.get("network_requests"),
         },
+        "identity_routes": (
+            {
+                **identity_route_validation,
+                "supplemental_report_paths": [
+                    path.relative_to(stage_data).as_posix() for path in supplemental_reports
+                ],
+            }
+            if identity_route_validation is not None
+            else {"status": "NOT_APPLICABLE", "route_count": 0, "supplemental_report_paths": []}
+        ),
     }
 
 
@@ -444,6 +482,7 @@ def validate_staging(
     *,
     require_etf36: bool = False,
     b_select_status_path: Path | None = None,
+    expected_permanent_identity_exclusion_count: int | None = None,
 ) -> dict[str, Any]:
     missing = [name for name in REQUIRED_FILES if not (stage_data / name).is_file()]
     if missing or not (stage_data / "stocks").is_dir():
@@ -458,6 +497,8 @@ def validate_staging(
     if not b_select_status_path.is_file():
         raise Phase4DError("PHASE4D_B_SELECT_STATUS_MISSING")
     b_status = _read_json(b_select_status_path)
+    if expected_permanent_identity_exclusion_count is None:
+        expected_permanent_identity_exclusion_count = len(PERMANENT_IDENTITY_EXCLUSIONS)
     stock_paths = sorted((stage_data / "stocks").glob("*.json"))
     stocks = {path.stem: _read_json(path) for path in stock_paths}
     for name, document in documents.items():
@@ -465,6 +506,24 @@ def validate_staging(
     _assert_finite(b_status, "b-select-status.json")
     for ticker, document in stocks.items():
         _assert_finite(document, f"stocks/{ticker}.json")
+
+    identity_route_path = stage_data / "identity-report-routes.json"
+    if target_as_of >= "2026-10-15" and not identity_route_path.is_file():
+        raise Phase4DError("PHASE4D_IDENTITY_ROUTE_TABLE_REQUIRED")
+    identity_route_validation = None
+    if identity_route_path.is_file():
+        route_metadata = _read_json(identity_route_path)
+        route_dates_match = (
+            route_metadata.get("requested_as_of") == target_as_of
+            and route_metadata.get("reference_market_date") == reference_market_date
+        )
+        if route_dates_match:
+            try:
+                identity_route_validation = identity_reports_web.validate_identity_routes(stage_data, b_status)
+            except (OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
+                raise Phase4DError(f"PHASE4D_IDENTITY_ROUTE_INTEGRITY_FAILED: {exc}") from exc
+        elif target_as_of >= "2026-10-15":
+            raise Phase4DError("PHASE4D_IDENTITY_ROUTE_DATE_MISMATCH")
 
     index = documents["stock-index.json"]
     report_tickers = _report_tickers(index)
@@ -644,7 +703,7 @@ def validate_staging(
         or b_status.get("future_reference_count") != 0
         or b_status.get("duplicate_item_count") != 0
         or b_status.get("cross_strategy_contamination_count") != 0
-        or b_status.get("permanent_identity_exclusion_count") != 181
+        or b_status.get("permanent_identity_exclusion_count") != expected_permanent_identity_exclusion_count
         or (b_status.get("source_authorities") or {}).get("signal_cadence") != "MONTH_END_ENTRY_DAILY_NORMAL_EXIT"
         or b_status.get("scope", {}).get("type") != "PUBLISHED_COMMON_REPORTS"
         or b_status.get("count") != len(common_tickers)
@@ -1077,6 +1136,7 @@ def validate_staging(
         "b_select_duplicate_item_count": b_status.get("duplicate_item_count"),
         "b_select_cross_strategy_contamination_count": b_status.get("cross_strategy_contamination_count"),
         "b_select_network_requests": b_status.get("network_requests"),
+        "identity_route_integrity": identity_route_validation,
     }
 
 
@@ -1127,15 +1187,61 @@ def _build_promotion_snapshot(stage_data: Path, web_data: Path, new_snapshot: Pa
         os.replace(temporary, new_snapshot / name)
         _phase4d_checkpoint(f"after_json_replace:{name}")
 
+    staged_routes_path = stage_data / "identity-report-routes.json"
+    if staged_routes_path.is_file():
+        routes = _read_json(staged_routes_path)
+        for item in routes.get("items", []):
+            if not isinstance(item, dict) or not isinstance(item.get("url"), str):
+                raise Phase4DError("PHASE4D_PROMOTION_IDENTITY_ROUTE_ITEM_INVALID")
+            url = item["url"]
+            if not url.startswith("./data/identity-reports/"):
+                continue
+            relative = PurePosixPath(url[len("./data/"):])
+            if relative.is_absolute() or any(part in {"", ".", ".."} for part in relative.parts):
+                raise Phase4DError("PHASE4D_PROMOTION_IDENTITY_ROUTE_URL_INVALID")
+            source = stage_data.joinpath(*relative.parts)
+            if source.is_file():
+                target = new_snapshot.joinpath(*relative.parts)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                temporary = target.with_name(f".{target.name}.{uuid.uuid4().hex}.tmp")
+                shutil.copy2(source, temporary)
+                os.replace(temporary, target)
+        temporary = new_snapshot / f".identity-report-routes.json.{uuid.uuid4().hex}.tmp"
+        shutil.copy2(staged_routes_path, temporary)
+        os.replace(temporary, new_snapshot / "identity-report-routes.json")
 
-def _validate_promoted_snapshot(web_data: Path, new_snapshot: Path) -> dict[str, Any]:
+
+def _validate_promoted_snapshot(
+    web_data: Path,
+    new_snapshot: Path,
+    *,
+    stage_data: Path | None = None,
+) -> dict[str, Any]:
     """Verify exact preservation of non-stock sidecars and every identity route."""
+    route_publish_allowlist: set[str] = set()
+    if stage_data is not None:
+        staged_routes_path = stage_data / "identity-report-routes.json"
+        if staged_routes_path.is_file():
+            route_publish_allowlist.add("identity-report-routes.json")
+            staged_routes = _read_json(staged_routes_path)
+            for item in staged_routes.get("items", []):
+                if not isinstance(item, dict) or not isinstance(item.get("url"), str):
+                    raise Phase4DError("PHASE4D_PROMOTION_IDENTITY_ROUTE_ITEM_INVALID")
+                url = item["url"]
+                if not url.startswith("./data/identity-reports/"):
+                    continue
+                relative = PurePosixPath(url[len("./data/"):])
+                if relative.is_absolute() or any(part in {"", ".", ".."} for part in relative.parts):
+                    raise Phase4DError("PHASE4D_PROMOTION_IDENTITY_ROUTE_URL_INVALID")
+                if stage_data.joinpath(*relative.parts).is_file():
+                    route_publish_allowlist.add(relative.as_posix())
     protected_before = {
         path.relative_to(web_data).as_posix(): _sha256_file(path)
         for path in sorted(web_data.rglob("*"))
         if path.is_file()
         and path.relative_to(web_data).parts[0] != "stocks"
         and path.relative_to(web_data).as_posix() not in REQUIRED_FILES
+        and path.relative_to(web_data).as_posix() not in route_publish_allowlist
     } if web_data.is_dir() else {}
     protected_after = {
         path.relative_to(new_snapshot).as_posix(): _sha256_file(path)
@@ -1143,6 +1249,7 @@ def _validate_promoted_snapshot(web_data: Path, new_snapshot: Path) -> dict[str,
         if path.is_file()
         and path.relative_to(new_snapshot).parts[0] != "stocks"
         and path.relative_to(new_snapshot).as_posix() not in REQUIRED_FILES
+        and path.relative_to(new_snapshot).as_posix() not in route_publish_allowlist
     }
     if protected_before != protected_after:
         missing = sorted(set(protected_before) - set(protected_after))
@@ -1198,6 +1305,18 @@ def _validate_promoted_snapshot(web_data: Path, new_snapshot: Path) -> dict[str,
             "missing_route_count": 0,
             "routes": resolved_routes,
         }
+        if stage_data is not None and (stage_data / "identity-report-routes.json").is_file():
+            status_path = stage_data / B_SELECT_STATUS_STAGING_NAME
+            if status_path.is_file():
+                expected_status = _read_json(status_path)
+                if isinstance(expected_status.get("canonical_trade_history"), list):
+                    try:
+                        full_integrity = identity_reports_web.validate_identity_routes(new_snapshot, expected_status)
+                    except (OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
+                        raise Phase4DError(f"PHASE4D_PROMOTION_IDENTITY_ROUTE_INTEGRITY_FAILED: {exc}") from exc
+                    route_result.update(full_integrity)
+                    route_result["referenced_file_count"] = len({item["path"] for item in resolved_routes})
+                    route_result["routes"] = resolved_routes
     return {
         "status": "PASS",
         "protected_file_count": len(protected_before),
@@ -1215,7 +1334,7 @@ def _inspect_final_promotion_snapshot(stage_data: Path, web_data: Path) -> dict[
     try:
         snapshot = preflight_root / "new-web-data"
         _build_promotion_snapshot(stage_data, web_data, snapshot)
-        return _validate_promoted_snapshot(web_data, snapshot)
+        return _validate_promoted_snapshot(web_data, snapshot, stage_data=stage_data)
     finally:
         shutil.rmtree(preflight_root, ignore_errors=True)
 
@@ -1408,6 +1527,7 @@ def _recover_pending_promotion(web_data: Path) -> dict[str, Any]:
 
 
 V13_ALIGNMENT_CANDIDATE_DIGEST = "3993cc22f55f52b169736159637662e93ebac3c0f4edac4fe0946f2fd933733c"
+V13_ALIGNMENT_PERMANENT_EXCLUSION_COUNT = 181
 V13_ALIGNMENT_STAGE_RELATIVE_PATH = Path(
     "artifacts/strategies/a_fast_core_v2/research/"
     "a_fast_alignment_500b_v09_strict_baseline_approval_and_phase4d_preflight/"
@@ -1491,6 +1611,7 @@ def _validate_v13_alignment_stage(
             V13_EXPECTED["reference_market_date"],
             require_etf36=True,
             b_select_status_path=stage_root / B_SELECT_STATUS_STAGING_NAME,
+            expected_permanent_identity_exclusion_count=V13_ALIGNMENT_PERMANENT_EXCLUSION_COUNT,
         )
     except Exception as exc:
         if isinstance(exc, Phase4DError):
@@ -1561,6 +1682,187 @@ def _assert_alignment_snapshot_matches_stage(stage_data: Path, new_snapshot: Pat
         raise Phase4DError("PHASE4D_ALIGNMENT_SNAPSHOT_STOCKS_MISMATCH")
 
 
+def _daily_alignment_stage_proof(
+    stage_data: Path,
+    target_as_of: str,
+    reference_market_date: str,
+    root: Path,
+    *,
+    phase4c_result: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Bind the one approved daily Alignment projection to its canonical inputs."""
+    stage_data = Path(stage_data)
+    root = Path(root)
+    if root.resolve() != ROOT.resolve():
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_REPOSITORY_ROOT_MISMATCH")
+    if (
+        target_as_of != DAILY_ALIGNMENT_TARGET_AS_OF
+        or reference_market_date != DAILY_ALIGNMENT_REFERENCE_MARKET_DATE
+    ):
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_DATE_NOT_DESIGNATED")
+    if (
+        stage_data.name != "data"
+        or not stage_data.parent.name.startswith(".phase4d-stage-")
+        or stage_data.parent.parent.resolve() != (root / "web").resolve()
+        or not _path_is_within(stage_data, root)
+    ):
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_STAGE_NOT_OFFICIAL_TEMP_STAGE")
+
+    monitor = _read_json(stage_data / "strategy-monitor.json")
+    b_status_path = stage_data / B_SELECT_STATUS_STAGING_NAME
+    b_status = _read_json(b_status_path)
+    canonical = _canonical_full_history_alignment_provenance(
+        root, target_as_of, reference_market_date,
+    )
+    if (
+        canonical is None
+        or canonical.get("valid") is not True
+        or canonical.get("strategy_id") != PROMOTED_STRATEGY_ID
+        or canonical.get("strategy_replay_mode") != "FULL_HISTORY_ALIGNMENT_WEB"
+        or canonical.get("strategy_replay_digest") != DAILY_ALIGNMENT_REPLAY_DIGEST
+        or canonical.get("computed_strategy_replay_digest") != DAILY_ALIGNMENT_REPLAY_DIGEST
+    ):
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_CANONICAL_PROVENANCE_MISMATCH")
+    canonical_scope = canonical.get("strategy_replay_scope")
+    if (
+        not isinstance(canonical_scope, dict)
+        or canonical_scope.get("requested_as_of") != target_as_of
+        or canonical_scope.get("reference_market_date") != reference_market_date
+        or canonical_scope.get("report_count") != canonical.get("common_report_count")
+        or canonical_scope.get("output_strategy_id") != PROMOTED_STRATEGY_ID
+        or monitor.get("requested_as_of") != target_as_of
+        or monitor.get("reference_market_date") != reference_market_date
+        or monitor.get("default_strategy_id") != PROMOTED_STRATEGY_ID
+        or monitor.get("strategy_replay_mode") != "FULL_HISTORY_ALIGNMENT_WEB"
+        or monitor.get("strategy_replay_digest") != DAILY_ALIGNMENT_REPLAY_DIGEST
+        or monitor.get("strategy_replay_scope") != canonical_scope
+    ):
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_MONITOR_CANONICAL_MISMATCH")
+
+    if phase4c_result is not None:
+        phase4c_monitor = phase4c_result.get("_strategy_monitor_for_phase4d")
+        phase4c_b_status = phase4c_result.get("_b_select_status_for_phase4d")
+        if (
+            phase4c_result.get("status") != "PASS"
+            or phase4c_result.get("target_as_of") != target_as_of
+            or phase4c_result.get("requested_as_of") != target_as_of
+            or phase4c_result.get("reference_market_date") != reference_market_date
+            or phase4c_result.get("network_calls") != 0
+            or phase4c_result.get("web_data_writes") != 0
+            or phase4c_monitor != monitor
+            or phase4c_b_status != b_status
+            or (phase4c_result.get("strategy_monitor") or {}).get("common_report_count")
+            != canonical.get("common_report_count")
+            or (phase4c_result.get("stock_report") or {}).get("available_report_count")
+            != canonical.get("common_report_count")
+        ):
+            raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PHASE4C_CANONICAL_MISMATCH")
+        b_summary = phase4c_result.get("b_select_status") or {}
+        if any(
+            b_summary.get(key) != b_status.get(source_key)
+            for key, source_key in (
+                ("status", "status"),
+                ("count", "count"),
+                ("counts", "counts"),
+                ("evaluation_error_count", "evaluation_error_count"),
+                ("date_mismatch_count", "date_mismatch_count"),
+                ("network_requests", "network_requests"),
+            )
+        ):
+            raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PHASE4C_B_STATUS_MISMATCH")
+
+    validation = validate_staging(
+        stage_data,
+        target_as_of,
+        reference_market_date,
+        require_etf36=True,
+        b_select_status_path=b_status_path,
+    )
+    manifest = _tree_manifest(stage_data)
+    if manifest is None:
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_STAGE_MISSING")
+    stage_fingerprint = hashlib.sha256(
+        json.dumps(manifest, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return {
+        "status": "PASS",
+        "candidate_digest": DAILY_ALIGNMENT_REPLAY_DIGEST,
+        "requested_as_of": target_as_of,
+        "reference_market_date": reference_market_date,
+        "strategy_replay_scope": canonical_scope,
+        "stage_fingerprint_sha256": stage_fingerprint,
+        "b_select_status_sha256": _sha256_file(b_status_path),
+        "canonical_trade_count": b_status.get("canonical_trade_history_row_count"),
+        "canonical_identity_count": len({
+            (str(row.get("ticker") or "").zfill(6), str(row.get("isu_cd") or "").upper())
+            for row in b_status.get("canonical_trade_history", [])
+            if isinstance(row, dict)
+        }),
+        "route_integrity": validation.get("identity_route_integrity"),
+        "validation": validation,
+    }
+
+
+def _create_daily_alignment_promotion_context(
+    stage_data: Path,
+    target_as_of: str,
+    reference_market_date: str,
+    root: Path,
+    phase4c_result: dict[str, Any],
+) -> dict[str, Any] | None:
+    monitor_path = Path(stage_data) / "strategy-monitor.json"
+    if not monitor_path.is_file():
+        return None
+    if _read_json(monitor_path).get("strategy_replay_mode") != "FULL_HISTORY_ALIGNMENT_WEB":
+        return None
+    proof = _daily_alignment_stage_proof(
+        stage_data,
+        target_as_of,
+        reference_market_date,
+        root,
+        phase4c_result=phase4c_result,
+    )
+    return {
+        "_authority": _DAILY_ALIGNMENT_PROMOTION_AUTHORITY,
+        "stage_data": str(Path(stage_data).resolve()),
+        "target_as_of": target_as_of,
+        "reference_market_date": reference_market_date,
+        "candidate_digest": proof["candidate_digest"],
+        "stage_fingerprint_sha256": proof["stage_fingerprint_sha256"],
+        "b_select_status_sha256": proof["b_select_status_sha256"],
+        "proof": proof,
+    }
+
+
+def _validate_daily_alignment_promotion_context(
+    context: dict[str, Any] | None,
+    stage_data: Path,
+    target_as_of: str,
+    root: Path,
+) -> dict[str, Any]:
+    if (
+        not isinstance(context, dict)
+        or context.get("_authority") is not _DAILY_ALIGNMENT_PROMOTION_AUTHORITY
+        or context.get("stage_data") != str(Path(stage_data).resolve())
+        or context.get("target_as_of") != target_as_of
+        or context.get("reference_market_date") != DAILY_ALIGNMENT_REFERENCE_MARKET_DATE
+        or context.get("candidate_digest") != DAILY_ALIGNMENT_REPLAY_DIGEST
+    ):
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PROMOTION_CONTEXT_INVALID")
+    proof = _daily_alignment_stage_proof(
+        stage_data,
+        target_as_of,
+        DAILY_ALIGNMENT_REFERENCE_MARKET_DATE,
+        root,
+    )
+    if (
+        proof.get("stage_fingerprint_sha256") != context.get("stage_fingerprint_sha256")
+        or proof.get("b_select_status_sha256") != context.get("b_select_status_sha256")
+    ):
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_STAGE_CHANGED_AFTER_VALIDATION")
+    return proof
+
+
 def promote(
     stage_data: Path,
     web_data: Path,
@@ -1568,6 +1870,7 @@ def promote(
     target_as_of: str,
     post_publish_validate: Callable[[Path], Any] | None = None,
     alignment_candidate_digest: str | None = None,
+    _daily_alignment_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Publish one complete web/data directory plus B Select status with recoverable rollback.
 
@@ -1579,29 +1882,39 @@ def promote(
     stage_data = Path(stage_data)
     web_data = Path(web_data)
     root = web_data.parent.parent.resolve()
-    try:
-        alignment_binding = _alignment_candidate_binding(
-            stage_data,
-            root,
-            alignment_candidate_digest=alignment_candidate_digest,
-        )
-    except Phase4DError as binding_error:
-        # A content-identified Alignment stage outside the pinned locations is
-        # still a candidate attempt. Run the independent evidence gate before
-        # rejecting it so direct promote() cannot bypass eligibility checks by
-        # copying the payload to an unrecognized directory.
-        if str(binding_error) != "PHASE4D_ALIGNMENT_CANDIDATE_STAGE_NOT_DESIGNATED":
-            raise
+    if _daily_alignment_context is not None:
+        if alignment_candidate_digest is not None:
+            raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_CANDIDATE_MODE_CONFLICT")
+        alignment_binding = {
+            "binding_type": "DAILY_ALIGNMENT",
+            **_validate_daily_alignment_promotion_context(
+                _daily_alignment_context, stage_data, target_as_of, root,
+            ),
+        }
+    else:
         try:
-            _validate_v13_alignment_stage(
+            alignment_binding = _alignment_candidate_binding(
                 stage_data,
-                target_as_of,
                 root,
-                expected_candidate_digest=V13_ALIGNMENT_CANDIDATE_DIGEST,
+                alignment_candidate_digest=alignment_candidate_digest,
             )
-        except Phase4DError as gate_error:
-            raise gate_error from binding_error
-        raise binding_error
+        except Phase4DError as binding_error:
+            # A content-identified Alignment stage outside the pinned locations is
+            # still a candidate attempt. Run the independent evidence gate before
+            # rejecting it so direct promote() cannot bypass eligibility checks by
+            # copying the payload to an unrecognized directory.
+            if str(binding_error) != "PHASE4D_ALIGNMENT_CANDIDATE_STAGE_NOT_DESIGNATED":
+                raise
+            try:
+                _validate_v13_alignment_stage(
+                    stage_data,
+                    target_as_of,
+                    root,
+                    expected_candidate_digest=V13_ALIGNMENT_CANDIDATE_DIGEST,
+                )
+            except Phase4DError as gate_error:
+                raise gate_error from binding_error
+            raise binding_error
     status_source = stage_data / B_SELECT_STATUS_STAGING_NAME
     if alignment_binding is not None and not status_source.is_file():
         status_source = stage_data.parent / B_SELECT_STATUS_STAGING_NAME
@@ -1625,12 +1938,17 @@ def promote(
         try:
             alignment_preflight = None
             if alignment_binding is not None:
-                alignment_preflight = _validate_v13_alignment_stage(
-                    stage_data,
-                    target_as_of,
-                    root,
-                    expected_candidate_digest=alignment_binding["candidate_digest"],
-                )
+                if alignment_binding.get("binding_type") == "DAILY_ALIGNMENT":
+                    alignment_preflight = _validate_daily_alignment_promotion_context(
+                        _daily_alignment_context, stage_data, target_as_of, root,
+                    )
+                else:
+                    alignment_preflight = _validate_v13_alignment_stage(
+                        stage_data,
+                        target_as_of,
+                        root,
+                        expected_candidate_digest=alignment_binding["candidate_digest"],
+                    )
             recovery = _recover_pending_promotion(web_data)
             tx_id = uuid.uuid4().hex
             tx_dir = web_data.parent / f".phase4d-publish-txn-{tx_id}"
@@ -1646,15 +1964,22 @@ def promote(
             old_manifest = _tree_manifest(web_data)
             _build_promotion_snapshot(stage_data, web_data, new_snapshot)
             _phase4d_checkpoint("after_stocks_stage_copy")
-            snapshot_validation = _validate_promoted_snapshot(web_data, new_snapshot)
+            snapshot_validation = _validate_promoted_snapshot(
+                web_data, new_snapshot, stage_data=stage_data,
+            )
             alignment_final = None
             if alignment_binding is not None:
-                alignment_final = _validate_v13_alignment_stage(
-                    stage_data,
-                    target_as_of,
-                    root,
-                    expected_candidate_digest=alignment_binding["candidate_digest"],
-                )
+                if alignment_binding.get("binding_type") == "DAILY_ALIGNMENT":
+                    alignment_final = _validate_daily_alignment_promotion_context(
+                        _daily_alignment_context, stage_data, target_as_of, root,
+                    )
+                else:
+                    alignment_final = _validate_v13_alignment_stage(
+                        stage_data,
+                        target_as_of,
+                        root,
+                        expected_candidate_digest=alignment_binding["candidate_digest"],
+                    )
                 if alignment_preflight is None or alignment_final["stage_fingerprint_sha256"] != alignment_preflight["stage_fingerprint_sha256"]:
                     raise Phase4DError("PHASE4D_ALIGNMENT_FINAL_STAGE_FINGERPRINT_MISMATCH")
                 if not isinstance(alignment_final.get("b_select_status_sha256"), str):
@@ -1835,6 +2160,7 @@ def run_phase4d(
                     "2026-10-08",
                     require_etf36=True,
                     b_select_status_path=status_path,
+                    expected_permanent_identity_exclusion_count=V13_ALIGNMENT_PERMANENT_EXCLUSION_COUNT,
                 ),
             )
             readback = promotion["post_publish_readback"]
@@ -1887,11 +2213,23 @@ def run_phase4d(
     try:
         stage_data = stage_root / "data"
         stage_data.mkdir()
-        context = _stage_payloads(target_as_of, stage_data, phase4c_result=phase4c_result)
+        stage_context = _stage_payloads(target_as_of, stage_data, phase4c_result=phase4c_result)
         validation = validate_staging(
-            stage_data, target_as_of, context["reference_market_date"], require_etf36=True,
+            stage_data, target_as_of, stage_context["reference_market_date"], require_etf36=True,
         )
         snapshot_validation = _inspect_final_promotion_snapshot(stage_data, web_data)
+        phase4c_for_stage = stage_context.get("phase4c", phase4c_result)
+        daily_alignment_context = (
+            _create_daily_alignment_promotion_context(
+                stage_data,
+                target_as_of,
+                stage_context["reference_market_date"],
+                root,
+                phase4c_for_stage,
+            )
+            if isinstance(phase4c_for_stage, dict)
+            else None
+        )
         if execute_live:
             promotion = promote(
                 stage_data,
@@ -1900,10 +2238,11 @@ def run_phase4d(
                 post_publish_validate=lambda status_path: validate_staging(
                     web_data,
                     target_as_of,
-                    context["reference_market_date"],
+                    stage_context["reference_market_date"],
                     require_etf36=True,
                     b_select_status_path=status_path,
                 ),
+                _daily_alignment_context=daily_alignment_context,
             )
             readback = promotion["post_publish_readback"]
         else:
@@ -1912,12 +2251,15 @@ def run_phase4d(
             "status": "PASS",
             "target_as_of": target_as_of,
             "requested_as_of": target_as_of,
-            "reference_market_date": context["reference_market_date"],
+            "reference_market_date": stage_context["reference_market_date"],
             "execute_live": execute_live,
             "network_calls": 0,
-            "sector_membership": context["sector_membership"],
+            "sector_membership": stage_context["sector_membership"],
             "staging": validation,
             "promote_snapshot_validation": snapshot_validation,
+            "daily_alignment_eligibility": (
+                daily_alignment_context["proof"] if daily_alignment_context is not None else None
+            ),
             "post_promote_readback": readback,
             "publication": promotion["publication"] if execute_live else None,
         }

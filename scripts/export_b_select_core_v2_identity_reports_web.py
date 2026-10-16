@@ -177,22 +177,53 @@ def _identity_only_report(
     }
 
 
-def build_identity_routes() -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    status = _read(STATUS_PATH)
-    index = _read(INDEX_PATH)
-    pit = _read(PIT_PATH)
-    monitor = _read(MONITOR_PATH)
+def build_identity_routes(
+    *,
+    status_data: Mapping[str, Any] | None = None,
+    index_data: Mapping[str, Any] | None = None,
+    pit_data: Mapping[str, Any] | None = None,
+    monitor_data: Mapping[str, Any] | None = None,
+    stocks_dir: Path = STOCKS_DIR,
+    output_dir: Path = OUTPUT_DIR,
+    expected_requested_as_of: str | None = None,
+    expected_reference_market_date: str | None = None,
+) -> tuple[dict[str, Any], list[Path]]:
+    """Build routes from the caller's exact-date authorities.
+
+    The no-argument CLI retains its historical 2026-10-02 input contract. Phase4D
+    supplies its validated in-memory Phase4C status and temporary stage paths so
+    supplemental records are never written to the published web tree during a
+    dry run.
+    """
+    status = dict(status_data) if status_data is not None else _read(STATUS_PATH)
+    index = dict(index_data) if index_data is not None else _read(INDEX_PATH)
+    pit = dict(pit_data) if pit_data is not None else _read(PIT_PATH)
+    monitor = dict(monitor_data) if monitor_data is not None else _read(MONITOR_PATH)
+    stocks_dir = Path(stocks_dir)
+    output_dir = Path(output_dir)
     reference_date = str(status.get("reference_market_date", ""))[:10]
-    if not reference_date or reference_date != "2026-10-02":
+    requested_date = str(status.get("requested_as_of", ""))[:10]
+    if not reference_date or not requested_date:
+        raise ValueError("canonical B Select dates are required")
+    if expected_requested_as_of is not None and requested_date != expected_requested_as_of:
+        raise ValueError(f"canonical B Select requested date mismatch: {requested_date}")
+    if expected_reference_market_date is not None and reference_date != expected_reference_market_date:
+        raise ValueError(f"canonical B Select reference date mismatch: {reference_date}")
+    if status_data is None and reference_date != "2026-10-02":
         raise ValueError(f"unexpected canonical history reference date: {reference_date}")
-    if int(status.get("canonical_trade_history_row_count", -1)) != len(status.get("canonical_trade_history", [])):
+    history = status.get("canonical_trade_history")
+    if not isinstance(history, list) or int(status.get("canonical_trade_history_row_count", -1)) != len(history):
         raise ValueError("canonical trade history row count mismatch")
 
     trades_by_identity: dict[tuple[str, str], list[dict[str, Any]]] = {}
-    for row in status["canonical_trade_history"]:
+    for row in history:
+        if not isinstance(row, dict) or not row.get("ticker") or not row.get("isu_cd"):
+            raise ValueError("canonical trade history exact identity is invalid")
         identity = (str(row["ticker"]).zfill(6), str(row["isu_cd"]).upper())
         trades_by_identity.setdefault(identity, []).append(row)
-    if len(status["canonical_trade_history"]) != 488 or len(trades_by_identity) != 399:
+    if not trades_by_identity:
+        raise ValueError("canonical B Select trade history is empty")
+    if status_data is None and (len(history) != 488 or len(trades_by_identity) != 399):
         raise ValueError("unexpected canonical V2 trade or identity count")
 
     strategy = next(
@@ -201,12 +232,20 @@ def build_identity_routes() -> tuple[dict[str, Any], list[dict[str, Any]]]:
     )
     if strategy is None:
         raise ValueError("canonical V2 Strategy Monitor data is missing")
+    monitor_history = strategy.get("trade_history")
     monitor_pairs = {
         (str(row.get("ticker", "")).zfill(6), str(row.get("isu_cd", "")).upper())
-        for row in strategy.get("trade_history", [])
+        for row in monitor_history or []
+        if isinstance(row, dict)
     }
-    if monitor_pairs != set(trades_by_identity):
+    if not isinstance(monitor_history, list) or len(monitor_history) != len(history) or monitor_pairs != set(trades_by_identity):
         raise ValueError("Strategy Monitor identity set differs from canonical history")
+    current_hold_pairs = {
+        (str(row.get("ticker", "")).zfill(6), str(row.get("isu_cd", "")).upper())
+        for row in strategy.get("items", [])
+        if isinstance(row, dict)
+        and (row.get("action") == "HOLD" or row.get("canonical_position") == "OPEN")
+    }
 
     active_pairs = {
         (str(row.get("ticker", "")).zfill(6), str(row.get("isu_cd", "")).upper())
@@ -222,7 +261,7 @@ def build_identity_routes() -> tuple[dict[str, Any], list[dict[str, Any]]]:
         ticker, isu_cd = identity
         is_current_common = identity in active_pairs
         index_item = index_items.get(ticker, {})
-        current_report_path = STOCKS_DIR / f"{ticker}.json"
+        current_report_path = stocks_dir / f"{ticker}.json"
         exact_current_report = False
         if is_current_common and current_report_path.is_file():
             report = _read(current_report_path)
@@ -236,8 +275,12 @@ def build_identity_routes() -> tuple[dict[str, Any], list[dict[str, Any]]]:
             report_type = "CURRENT_STOCK_REPORT"
             identity_status = "CURRENT_COMMON"
         else:
+            if identity in current_hold_pairs:
+                raise ValueError(
+                    f"current B Select HOLD cannot use identity-only report: {ticker}/{isu_cd}"
+                )
             report_name = f"{ticker}--{isu_cd}.json"
-            supplemental_path = OUTPUT_DIR / report_name
+            supplemental_path = output_dir / report_name
             latest_trade = max(
                 rows,
                 key=lambda row: (str(row.get("entry_signal_date", "")), int(row.get("trade_sequence") or 0)),
@@ -269,23 +312,129 @@ def build_identity_routes() -> tuple[dict[str, Any], list[dict[str, Any]]]:
             "trade_count": len(rows),
         })
 
-    expected_supplemental = len(trades_by_identity) - sum(
-        row["report_type"] == "CURRENT_STOCK_REPORT" for row in routes
-    )
-    if len(supplemental_paths) != expected_supplemental:
-        raise ValueError("supplemental exact-identity report count mismatch")
     payload = {
         "schema_version": 1,
         "strategy_id": "PATTERN_B_SELECT_CORE_V02",
-        "requested_as_of": status["requested_as_of"],
+        "requested_as_of": requested_date,
         "reference_market_date": reference_date,
-        "canonical_trade_count": len(status["canonical_trade_history"]),
+        "canonical_trade_count": len(history),
         "unique_exact_identity_count": len(trades_by_identity),
         "route_count": len(routes),
         "supplemental_report_count": len(supplemental_paths),
         "items": routes,
     }
     return payload, sorted(supplemental_paths)
+
+
+def validate_identity_routes(
+    data_root: Path,
+    expected_status: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate every exact-identity route against canonical B history and files."""
+    data_root = Path(data_root)
+    route_path = data_root / "identity-report-routes.json"
+    if not route_path.is_file():
+        raise ValueError("B Select identity route table is missing")
+    payload = _read(route_path)
+    history = expected_status.get("canonical_trade_history")
+    if not isinstance(history, list):
+        raise ValueError("canonical B Select trade history is missing")
+    by_identity: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for row in history:
+        identity = (str(row.get("ticker", "")).zfill(6), str(row.get("isu_cd", "")).upper())
+        if not identity[0] or not identity[1]:
+            raise ValueError("canonical B Select trade identity is invalid")
+        by_identity.setdefault(identity, []).append(row)
+    items = payload.get("items")
+    if not isinstance(items, list):
+        raise ValueError("B Select identity route items are invalid")
+    expected_dates = {
+        "requested_as_of": str(expected_status.get("requested_as_of", ""))[:10],
+        "reference_market_date": str(expected_status.get("reference_market_date", ""))[:10],
+    }
+    if (
+        payload.get("schema_version") != 1
+        or payload.get("strategy_id") != "PATTERN_B_SELECT_CORE_V02"
+        or any(payload.get(key) != value for key, value in expected_dates.items())
+        or payload.get("canonical_trade_count") != len(history)
+        or payload.get("unique_exact_identity_count") != len(by_identity)
+        or payload.get("route_count") != len(items)
+    ):
+        raise ValueError("B Select identity route metadata mismatch")
+
+    actual: dict[tuple[str, str], dict[str, Any]] = {}
+    urls: set[str] = set()
+    supplemental_count = 0
+    current_hold_pairs = {
+        (str(row.get("ticker", "")).zfill(6), str(row.get("isu_cd", "")).upper())
+        for row in expected_status.get("items", [])
+        if isinstance(row, dict)
+        and (row.get("action") == "HOLD" or row.get("canonical_position") == "OPEN")
+    }
+    for item in items:
+        if not isinstance(item, dict):
+            raise ValueError("B Select identity route item is invalid")
+        ticker = str(item.get("ticker", "")).zfill(6)
+        isu_cd = str(item.get("isu_cd", "")).upper()
+        identity = (ticker, isu_cd)
+        if not ticker or not isu_cd or identity in actual or identity not in by_identity:
+            raise ValueError("B Select identity route identity is duplicate or unexpected")
+        if item.get("trade_count") != len(by_identity[identity]):
+            raise ValueError(f"B Select identity route trade count mismatch: {ticker}/{isu_cd}")
+        url = item.get("url")
+        if not isinstance(url, str) or not url.startswith("./data/") or url in urls:
+            raise ValueError("B Select identity route URL is invalid or duplicated")
+        relative = Path(url.removeprefix("./data/"))
+        if relative.is_absolute() or any(part in {"", ".", ".."} for part in relative.parts):
+            raise ValueError("B Select identity route URL is unsafe")
+        target = data_root.joinpath(*relative.parts)
+        if not target.resolve().is_relative_to(data_root.resolve()) or not target.is_file():
+            raise ValueError(f"B Select identity route target is missing or unsafe: {url}")
+        if item.get("report_type") == "CURRENT_STOCK_REPORT":
+            expected_url = f"./data/stocks/{ticker}.json"
+        elif item.get("report_type") in {"IDENTITY_ONLY_CURRENT", "HISTORICAL_ARCHIVE"}:
+            expected_url = f"./data/identity-reports/{ticker}--{isu_cd}.json"
+            supplemental_count += 1
+            if item.get("report_type") == "IDENTITY_ONLY_CURRENT" and identity in current_hold_pairs:
+                raise ValueError(f"current B Select HOLD cannot use identity-only report: {ticker}/{isu_cd}")
+        else:
+            raise ValueError("B Select identity route report type is invalid")
+        if url != expected_url:
+            raise ValueError(f"B Select identity route URL does not match its identity: {url}")
+        report = _read(target)
+        report_identity = report.get("identity") or {}
+        if (
+            str(report_identity.get("ticker", "")).zfill(6) != ticker
+            or str(report_identity.get("isu_cd", "")).upper() != isu_cd
+        ):
+            raise ValueError(f"B Select identity route target identity mismatch: {url}")
+        if item["report_type"] != "CURRENT_STOCK_REPORT":
+            availability = report.get("availability") or {}
+            decision = report.get("decision") or {}
+            strategy = report.get("strategy") or {}
+            if (
+                availability.get("report_status") != "PARTIAL_IDENTITY_ONLY"
+                or decision.get("action") != "NONE"
+                or strategy.get("state") != "NOT_APPLICABLE"
+                or strategy.get("history") != [_public_trade(row) for row in by_identity[identity]]
+            ):
+                raise ValueError(f"B Select identity-only report history or signal contract mismatch: {url}")
+        urls.add(url)
+        actual[identity] = item
+    if set(actual) != set(by_identity):
+        raise ValueError("B Select identity route set differs from canonical history")
+    if payload.get("supplemental_report_count") != supplemental_count:
+        raise ValueError("B Select supplemental report count mismatch")
+    return {
+        "status": "PASS",
+        "route_count": len(items),
+        "unique_exact_identity_count": len(actual),
+        "canonical_trade_count": len(history),
+        "supplemental_report_count": supplemental_count,
+        "missing_route_count": 0,
+        "duplicate_url_count": 0,
+        "identity_mismatch_count": 0,
+    }
 
 
 def export() -> dict[str, Any]:

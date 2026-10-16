@@ -1439,7 +1439,7 @@ class RollingRawMarketUpdater:
         result = self.runner.run(
             start,
             target_as_of,
-            required_dates=sessions,
+            required_dates=known_missing,
             resume=True,
             markets=("KOSPI", "KOSDAQ"),
             **run_kwargs,

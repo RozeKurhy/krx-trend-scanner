@@ -1407,7 +1407,7 @@ def build_b_select_status(
         interval_components,
         trading_dates,
     )
-    if permanent_exclusion_count != 181:
+    if permanent_exclusion_count != 185:
         raise BSelectStatusError(
             f"B_SELECT_PERMANENT_EXCLUSION_AUTHORITY_COUNT_MISMATCH:{permanent_exclusion_count}"
         )

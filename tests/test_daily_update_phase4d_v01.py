@@ -121,7 +121,7 @@ def _health_validation_fixture(
         "future_reference_count": 0,
         "duplicate_item_count": 0,
         "cross_strategy_contamination_count": 0,
-        "permanent_identity_exclusion_count": 181,
+        "permanent_identity_exclusion_count": 185,
         "current_v1_source_row_count": 0,
         "source_authorities": {"signal_cadence": "MONTH_END_ENTRY_DAILY_NORMAL_EXIT"},
     }
@@ -622,16 +622,29 @@ def _promotion_fixture(root: Path) -> tuple[Path, Path]:
             {"url": "./data/identity-reports/000000.json"},
         ],
     }), encoding="utf-8")
+    (stage_data / "identity-reports").mkdir()
+    (stage_data / "identity-reports/000000.json").write_text(
+        json.dumps({"identity": {"ticker": "000000", "isu_cd": "KR7000000000"}, "snapshot": "new"}),
+        encoding="utf-8",
+    )
+    (stage_data / "identity-report-routes.json").write_text(json.dumps({
+        "route_count": 2,
+        "supplemental_report_count": 1,
+        "items": [
+            {"url": "./data/stocks/000001.json"},
+            {"url": "./data/identity-reports/000000.json"},
+        ],
+    }), encoding="utf-8")
     return stage_data, web_data
 
 
-def test_phase4d_promote_snapshot_preserves_151_sidecars_and_routes(tmp_path: Path):
+def test_phase4d_promote_snapshot_updates_only_staged_identity_routes_and_preserves_sidecars(tmp_path: Path):
     stage_data, web_data = _promotion_fixture(tmp_path)
 
     snapshot_check = phase4d._inspect_final_promotion_snapshot(stage_data, web_data)
 
     assert snapshot_check["status"] == "PASS"
-    assert snapshot_check["protected_file_count"] == 151
+    assert snapshot_check["protected_file_count"] == 149
     assert snapshot_check["route_integrity"]["route_count"] == 2
     assert snapshot_check["route_integrity"]["missing_route_count"] == 0
     promoted = phase4d.promote(
@@ -642,17 +655,31 @@ def test_phase4d_promote_snapshot_preserves_151_sidecars_and_routes(tmp_path: Pa
     )
     assert promoted["promoted_snapshot_validation"]["protected_files"] == snapshot_check["protected_files"]
     assert (web_data / "stocks/000001.json").read_text(encoding="utf-8") == '{"new":true}'
-    assert (web_data / "identity-reports/000000.json").is_file()
+    assert json.loads((web_data / "identity-reports/000000.json").read_text()) == {
+        "identity": {"ticker": "000000", "isu_cd": "KR7000000000"}, "snapshot": "new",
+    }
+    assert json.loads((web_data / "fear-index.json").read_text()) == {"name": "fear"}
+    assert json.loads((web_data / "etf-ranking.json").read_text()) == {"name": "etf"}
+
+
+def test_phase4d_promote_snapshot_rejects_mutated_protected_sidecar(tmp_path: Path):
+    stage_data, web_data = _promotion_fixture(tmp_path)
+    snapshot = tmp_path / "staged-final"
+    phase4d._build_promotion_snapshot(stage_data, web_data, snapshot)
+    (snapshot / "fear-index.json").write_text('{"name":"changed"}', encoding="utf-8")
+
+    with pytest.raises(phase4d.Phase4DError, match="PHASE4D_PROMOTION_PROTECTED_WEB_FILES_MISMATCH"):
+        phase4d._validate_promoted_snapshot(web_data, snapshot, stage_data=stage_data)
 
 
 def test_phase4d_promote_snapshot_fails_when_a_protected_file_is_missing(tmp_path: Path):
     stage_data, web_data = _promotion_fixture(tmp_path)
     snapshot = tmp_path / "staged-final"
     phase4d._build_promotion_snapshot(stage_data, web_data, snapshot)
-    (snapshot / "identity-reports/000000.json").unlink()
+    (snapshot / "identity-reports/000001.json").unlink()
 
     with pytest.raises(phase4d.Phase4DError, match="PHASE4D_PROMOTION_PROTECTED_WEB_FILES_MISMATCH"):
-        phase4d._validate_promoted_snapshot(web_data, snapshot)
+        phase4d._validate_promoted_snapshot(web_data, snapshot, stage_data=stage_data)
 
 
 def test_validate_staging_rejects_invalid_promoted_effective_date(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):

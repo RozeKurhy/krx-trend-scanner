@@ -16,6 +16,9 @@ TARGET = "2026-10-11"
 REFERENCE = "2026-10-08"
 CANDIDATE = phase4d.V13_ALIGNMENT_CANDIDATE_DIGEST
 CURRENT_PUBLIC = "e3c6ecc19187eb8951c1c9ef1626a2b54a9cffe1f6d415721b75a0cca8e89b61"
+DAILY_TARGET = "2026-10-15"
+DAILY_REFERENCE = "2026-10-15"
+DAILY_DIGEST = "eb9137d752331b71b2570bd742dd1cc2d3c66dedd8dc6303fa5ecb346d423b81"
 
 
 def _sha(path: Path) -> str:
@@ -120,6 +123,114 @@ def _install_test_gate(monkeypatch: pytest.MonkeyPatch, *, reject: str | None = 
     monkeypatch.setattr(v13_gate, "validate_alignment_candidate_evidence", validate_evidence)
     monkeypatch.setattr(phase4d, "validate_staging", lambda *args, **kwargs: {"status": "PASS"})
     return calls
+
+
+def _daily_alignment_fixture(root: Path) -> tuple[Path, dict, dict, dict]:
+    scope = {
+        "type": "PUBLISHED_COMMON_REPORTS",
+        "report_count": 1425,
+        "requested_as_of": DAILY_TARGET,
+        "reference_market_date": DAILY_REFERENCE,
+        "output_strategy_id": phase4d.PROMOTED_STRATEGY_ID,
+    }
+    monitor = {
+        "requested_as_of": DAILY_TARGET,
+        "reference_market_date": DAILY_REFERENCE,
+        "default_strategy_id": phase4d.PROMOTED_STRATEGY_ID,
+        "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+        "strategy_replay_digest": DAILY_DIGEST,
+        "strategy_replay_scope": scope,
+        "strategies": [],
+    }
+    canonical_history = [
+        {"ticker": f"{ticker:06d}", "isu_cd": f"KR7{ticker:09d}", "trade_sequence": 1}
+        for ticker in range(1, 400)
+    ]
+    canonical_history.extend(
+        {"ticker": f"{ticker:06d}", "isu_cd": f"KR7{ticker:09d}", "trade_sequence": 2}
+        for ticker in range(1, 90)
+    )
+    b_status = {
+        "status": "PASS",
+        "strategy_id": phase4d.B_SELECT_ID,
+        "requested_as_of": DAILY_TARGET,
+        "reference_market_date": DAILY_REFERENCE,
+        "count": 1425,
+        "counts": {"entry": 0, "hold": 20, "exit": 0, "watch": 1263, "unavailable": 142},
+        "evaluation_error_count": 0,
+        "date_mismatch_count": 0,
+        "network_requests": 0,
+        "canonical_trade_history_row_count": 488,
+        "canonical_trade_history": canonical_history,
+    }
+    stage_data = root / "web/.phase4d-stage-daily-test/data"
+    (stage_data / "stocks").mkdir(parents=True)
+    for name in phase4d.REQUIRED_FILES:
+        payload = {"requested_as_of": DAILY_TARGET, "reference_market_date": DAILY_REFERENCE}
+        if name == "strategy-monitor.json":
+            payload = monitor
+        if name == "stock-index.json":
+            payload.update({"items": [], "available_report_count": 0})
+        (stage_data / name).write_text(json.dumps(payload), encoding="utf-8")
+    (stage_data / "stocks/000001.json").write_text('{"ticker":"000001"}', encoding="utf-8")
+    (stage_data / phase4d.B_SELECT_STATUS_STAGING_NAME).write_text(
+        json.dumps(b_status), encoding="utf-8",
+    )
+    phase4c_result = {
+        "status": "PASS",
+        "target_as_of": DAILY_TARGET,
+        "requested_as_of": DAILY_TARGET,
+        "reference_market_date": DAILY_REFERENCE,
+        "network_calls": 0,
+        "web_data_writes": 0,
+        "strategy_monitor": {"common_report_count": 1425},
+        "stock_report": {"available_report_count": 1425},
+        "b_select_status": {
+            key: b_status[key]
+            for key in ("status", "count", "counts", "evaluation_error_count", "date_mismatch_count", "network_requests")
+        },
+        "_strategy_monitor_for_phase4d": monitor,
+        "_b_select_status_for_phase4d": b_status,
+    }
+    return stage_data, phase4c_result, monitor, b_status
+
+
+def _install_daily_alignment_canonical(monkeypatch: pytest.MonkeyPatch, *, digest: str = DAILY_DIGEST) -> None:
+    scope = {
+        "type": "PUBLISHED_COMMON_REPORTS",
+        "report_count": 1425,
+        "requested_as_of": DAILY_TARGET,
+        "reference_market_date": DAILY_REFERENCE,
+        "output_strategy_id": phase4d.PROMOTED_STRATEGY_ID,
+    }
+    monkeypatch.setattr(
+        phase4d,
+        "_canonical_full_history_alignment_provenance",
+        lambda *_args, **_kwargs: {
+            "valid": True,
+            "strategy_id": phase4d.PROMOTED_STRATEGY_ID,
+            "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+            "strategy_replay_digest": digest,
+            "computed_strategy_replay_digest": digest,
+            "strategy_replay_scope": scope,
+            "common_report_count": 1425,
+            "trade_count": 411,
+        },
+    )
+    monkeypatch.setattr(
+        phase4d,
+        "validate_staging",
+        lambda *_args, **_kwargs: {
+            "status": "PASS",
+            "identity_route_integrity": {
+                "route_count": 399,
+                "canonical_trade_count": 488,
+                "missing_route_count": 0,
+                "duplicate_url_count": 0,
+                "identity_mismatch_count": 0,
+            },
+        },
+    )
 
 
 def test_a1_designated_stage_without_monitor_markers_fails_direct_promote_before_public_write(
@@ -411,3 +522,191 @@ def test_c3_matching_status_sha_promotes_only_inside_temporary_root(
     assert _sha(status_destination) == _sha(status_source)
     assert (web_data / "stocks/000001.json").is_file()
     assert not list(web_data.parent.glob(".phase4d-publish-txn-*"))
+
+
+def test_daily_alignment_internal_context_binds_phase4c_canonical_and_exact_stage(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(phase4d, "ROOT", tmp_path)
+    _install_daily_alignment_canonical(monkeypatch)
+    monkeypatch.setattr(
+        phase4d,
+        "validate_staging",
+        lambda *_args, **_kwargs: {
+            "status": "PASS",
+            "identity_route_integrity": {
+                "route_count": 399,
+                "canonical_trade_count": 488,
+                "missing_route_count": 0,
+                "duplicate_url_count": 0,
+                "identity_mismatch_count": 0,
+            },
+        },
+    )
+    stage_data, phase4c_result, _, _ = _daily_alignment_fixture(tmp_path)
+
+    context = phase4d._create_daily_alignment_promotion_context(
+        stage_data,
+        DAILY_TARGET,
+        DAILY_REFERENCE,
+        tmp_path,
+        phase4c_result,
+    )
+
+    assert context is not None
+    assert context["candidate_digest"] == DAILY_DIGEST
+    assert context["proof"]["canonical_trade_count"] == 488
+    assert context["proof"]["canonical_identity_count"] == 399
+    assert context["proof"]["route_integrity"]["missing_route_count"] == 0
+    assert phase4d._validate_daily_alignment_promotion_context(
+        context, stage_data, DAILY_TARGET, tmp_path,
+    )["status"] == "PASS"
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        ("phase4c_status", "PHASE4D_DAILY_ALIGNMENT_PHASE4C_CANONICAL_MISMATCH"),
+        ("phase4c_monitor", "PHASE4D_DAILY_ALIGNMENT_PHASE4C_CANONICAL_MISMATCH"),
+        ("phase4c_b_status", "PHASE4D_DAILY_ALIGNMENT_PHASE4C_CANONICAL_MISMATCH"),
+        ("daily_date", "PHASE4D_DAILY_ALIGNMENT_DATE_NOT_DESIGNATED"),
+        ("canonical_digest", "PHASE4D_DAILY_ALIGNMENT_CANONICAL_PROVENANCE_MISMATCH"),
+        ("monitor_digest", "PHASE4D_DAILY_ALIGNMENT_MONITOR_CANONICAL_MISMATCH"),
+        ("monitor_scope", "PHASE4D_DAILY_ALIGNMENT_MONITOR_CANONICAL_MISMATCH"),
+    ],
+)
+def test_daily_alignment_context_rejects_forged_or_mismatched_authority(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mutation: str,
+    message: str,
+):
+    monkeypatch.setattr(phase4d, "ROOT", tmp_path)
+    canonical_digest = "f" * 64 if mutation == "canonical_digest" else DAILY_DIGEST
+    _install_daily_alignment_canonical(monkeypatch, digest=canonical_digest)
+    monkeypatch.setattr(phase4d, "validate_staging", lambda *_args, **_kwargs: {"status": "PASS"})
+    stage_data, phase4c_result, _, _ = _daily_alignment_fixture(tmp_path)
+
+    target = DAILY_TARGET
+    if mutation == "phase4c_status":
+        phase4c_result["status"] = "FAILED"
+    elif mutation == "phase4c_monitor":
+        phase4c_result["_strategy_monitor_for_phase4d"] = {"forged": True}
+    elif mutation == "phase4c_b_status":
+        phase4c_result["_b_select_status_for_phase4d"] = {"forged": True}
+    elif mutation == "daily_date":
+        target = "2026-10-14"
+    elif mutation == "monitor_digest":
+        forged_monitor = json.loads((stage_data / "strategy-monitor.json").read_text())
+        forged_monitor["strategy_replay_digest"] = "f" * 64
+        (stage_data / "strategy-monitor.json").write_text(json.dumps(forged_monitor), encoding="utf-8")
+        phase4c_result["_strategy_monitor_for_phase4d"] = forged_monitor
+    elif mutation == "monitor_scope":
+        forged_monitor = json.loads((stage_data / "strategy-monitor.json").read_text())
+        forged_monitor["strategy_replay_scope"]["report_count"] = 1424
+        (stage_data / "strategy-monitor.json").write_text(json.dumps(forged_monitor), encoding="utf-8")
+        phase4c_result["_strategy_monitor_for_phase4d"] = forged_monitor
+
+    with pytest.raises(phase4d.Phase4DError, match=message):
+        phase4d._create_daily_alignment_promotion_context(
+            stage_data,
+            target,
+            DAILY_REFERENCE,
+            tmp_path,
+            phase4c_result,
+        )
+
+
+def test_daily_alignment_direct_promote_without_internal_phase4e_context_stays_fail_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(phase4d, "ROOT", tmp_path)
+    stage_data, _, _, _ = _daily_alignment_fixture(tmp_path)
+    web_data, _ = _write_public_snapshot(tmp_path)
+    before = _web_snapshot(web_data)
+    gate_calls: list[Path] = []
+
+    def reject_non_v13_daily_stage(*_args, **_kwargs):
+        gate_calls.append(stage_data)
+        raise phase4d.Phase4DError(
+            "PHASE4D_ALIGNMENT_ELIGIBILITY_GATE_FAILED:ALIGNMENT_STAGE_PATH_NOT_DESIGNATED"
+        )
+
+    monkeypatch.setattr(phase4d, "_validate_v13_alignment_stage", reject_non_v13_daily_stage)
+    with pytest.raises(phase4d.Phase4DError, match="ALIGNMENT_STAGE_PATH_NOT_DESIGNATED"):
+        phase4d.promote(stage_data, web_data, target_as_of=DAILY_TARGET)
+
+    assert gate_calls == [stage_data]
+    assert _web_snapshot(web_data) == before
+    assert not (web_data.parent / phase4d.PHASE4D_PUBLISH_JOURNAL).exists()
+    assert not list(web_data.parent.glob(".phase4d-publish-txn-*"))
+
+
+def test_daily_alignment_official_context_promotes_and_stage_mutation_is_blocked(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    monkeypatch.setattr(phase4d, "ROOT", tmp_path)
+    _install_daily_alignment_canonical(monkeypatch)
+    monkeypatch.setattr(
+        phase4d,
+        "validate_staging",
+        lambda *_args, **_kwargs: {
+            "status": "PASS",
+            "identity_route_integrity": {
+                "route_count": 399,
+                "canonical_trade_count": 488,
+                "missing_route_count": 0,
+                "duplicate_url_count": 0,
+                "identity_mismatch_count": 0,
+            },
+        },
+    )
+    stage_data, phase4c_result, _, _ = _daily_alignment_fixture(tmp_path)
+    context = phase4d._create_daily_alignment_promotion_context(
+        stage_data, DAILY_TARGET, DAILY_REFERENCE, tmp_path, phase4c_result,
+    )
+    assert context is not None
+
+    web_data = tmp_path / "web/data"
+    (web_data / "stocks").mkdir(parents=True)
+    (web_data / "stocks/previous.json").write_text('{"previous":true}', encoding="utf-8")
+    monkeypatch.setattr(
+        phase4d,
+        "_validate_promoted_snapshot",
+        lambda *_args, **_kwargs: {"status": "PASS", "protected_file_count": 0},
+    )
+    promoted = phase4d.promote(
+        stage_data,
+        web_data,
+        target_as_of=DAILY_TARGET,
+        _daily_alignment_context=context,
+    )
+    assert promoted["publication"]["status"] == "COMMITTED_AND_READ_BACK"
+    assert _sha(phase4d._b_select_status_path(tmp_path, DAILY_TARGET)) == _sha(
+        stage_data / phase4d.B_SELECT_STATUS_STAGING_NAME,
+    )
+
+    second_web_data = tmp_path / "web-copy/data"
+    second_root = second_web_data.parent.parent
+    second_root.mkdir(parents=True, exist_ok=True)
+    second_stage = second_root / "web/.phase4d-stage-daily-copy/data"
+    shutil.copytree(stage_data, second_stage)
+    second_context = dict(context)
+    second_context["stage_data"] = str(second_stage.resolve())
+    second_context["stage_fingerprint_sha256"] = context["stage_fingerprint_sha256"]
+    (second_stage / "stock-index.json").write_text('{"tampered":true}', encoding="utf-8")
+    (second_web_data / "stocks").mkdir(parents=True)
+    (second_web_data / "stocks/previous.json").write_text('{"previous":true}', encoding="utf-8")
+    before = _web_snapshot(second_web_data)
+    with pytest.raises(phase4d.Phase4DError, match="STAGE_CHANGED_AFTER_VALIDATION"):
+        phase4d.promote(
+            second_stage,
+            second_web_data,
+            target_as_of=DAILY_TARGET,
+            _daily_alignment_context=second_context,
+        )
+    assert _web_snapshot(second_web_data) == before
+    assert not (second_web_data.parent / phase4d.PHASE4D_PUBLISH_JOURNAL).exists()
