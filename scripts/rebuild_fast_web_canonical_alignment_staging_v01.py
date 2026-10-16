@@ -28,13 +28,14 @@ import pandas as pd
 from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
 from trend_scanner.data.repository_v2_loader import (
     RepositoryV2DailyLoader,
-    build_repository_v2,
+    build_production_repository_v2,
 )
 from trend_scanner.filters.investability import evaluate_investability
 from trend_scanner.reporting.a_fast_core_report import (
     HISTORICAL_ALIGNMENT_REPLAY_MODE,
     build_a_fast_core_section,
 )
+from trend_scanner.reporting.stock_report import _make_fast_execution_open_resolver
 from trend_scanner.validation.pattern_a_fast_alignment_mcap_500b import (
     AlignmentGateIntegrityError,
     PROMOTED_STRATEGY_ID,
@@ -83,6 +84,12 @@ def sha256_file(path: Path) -> str:
 
 def canonical_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+
+
+def _rooted_path(path: Path) -> Path:
+    """Resolve CLI-relative paths against the repository root."""
+    path = Path(path)
+    return path if path.is_absolute() else ROOT / path
 
 
 def _write_csv(path: Path, fieldnames: list[str], rows: list[dict[str, Any]]) -> None:
@@ -196,6 +203,28 @@ def _validate_trade_rows(ticker: str, history: list[dict[str, Any]]) -> None:
             raise ValueError(f"trade ID does not match ticker/sequence: {ticker}")
     if sequences != list(range(1, len(sequences) + 1)):
         raise ValueError(f"trade sequence is not contiguous from one: {ticker}")
+
+
+def _validate_cj_execution_contract(ticker: str, history: list[dict[str, Any]]) -> None:
+    """Fail closed unless the isolated replay uses CJ CGV's exact KRX fill."""
+    if ticker != "079160":
+        return
+    matches = [row for row in history if row.get("trade_id") == "079160_01"]
+    if len(matches) != 1:
+        raise ValueError("CJ_CGV_EXACT_SESSION_FILL_UNVERIFIED: expected one 079160_01 row")
+    trade = matches[0]
+    expected = {
+        "exit_signal_date": "2016-09-30",
+        "exit_execution_date": "2016-10-04",
+        "exit_price": 52982.0,
+        "return_pct": 41.21,
+        "trade_status": "REALIZED",
+    }
+    if any(trade.get(field) != value for field, value in expected.items()):
+        raise ValueError(
+            "CJ_CGV_EXACT_SESSION_FILL_UNVERIFIED: "
+            f"observed fields differ from the verified KRX next-session fill: {trade}"
+        )
 
 
 def _normalize_trade_key(ticker: str, row: dict[str, Any]) -> tuple[Any, ...]:
@@ -478,11 +507,25 @@ def _verify_three_way_parity(stage_root: Path, target_as_of: str, reference_mark
     }
 
 
+def _build_historical_replay_inputs(
+    reference_market_date: str,
+    requested_as_of: str,
+) -> tuple[Any, RepositoryV2DailyLoader]:
+    """Use rolling-certified data without clipping historical PIT price history."""
+    repository = build_production_repository_v2(ROOT, end=reference_market_date)
+    daily_loader = RepositoryV2DailyLoader(
+        repository,
+        end=requested_as_of,
+        historical_identity=True,
+    )
+    return repository, daily_loader
+
+
 def run(target_as_of: str | None = None, staging_parent: Path = STAGING_PARENT) -> dict[str, Any]:
     started = time.monotonic()
     requested_as_of, reference_market_date, scanner_summary = _scanner_dates(target_as_of)
     report_dir, report_paths, common_tickers = _report_sources(requested_as_of)
-    staging_parent = Path(staging_parent)
+    staging_parent = _rooted_path(Path(staging_parent))
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     stage_root = staging_parent / f"staging_{run_id}"
     if stage_root.exists():
@@ -501,11 +544,13 @@ def run(target_as_of: str | None = None, staging_parent: Path = STAGING_PARENT) 
 
     score_contract = read_json(SCORE_CONTRACT_PATH)
     stage_contract = read_json(STAGE_CONTRACT_PATH)
-    # This is a fixed historical replay over a certified cutoff. Keep the
-    # full PIT history available for pre-transfer signals; production-mode
-    # current-identity clamping would truncate a migrated ticker's old market.
-    repository = build_repository_v2(ROOT, end=reference_market_date)
-    daily_loader = RepositoryV2DailyLoader(repository, end=requested_as_of)
+    # Enforce the rolling certified-through boundary, but preserve pre-transfer
+    # ticker history. The historical gate resolves PIT identity per signal date;
+    # current-identity lower-bound clamping would discard valid earlier prices.
+    repository, daily_loader = _build_historical_replay_inputs(
+        reference_market_date,
+        requested_as_of,
+    )
     market_calendar = load_rolling_production_market_calendar(ROOT)
     if market_calendar is None:
         raise AlignmentGateIntegrityError("rolling production market calendar is unavailable")
@@ -608,6 +653,7 @@ def run(target_as_of: str | None = None, staging_parent: Path = STAGING_PARENT) 
                 is_common_stock=True,
                 metadata_provenance_mode=metadata_mode,
                 market_calendar=market_calendar,
+                execution_open_resolver=_make_fast_execution_open_resolver(repository, ticker),
                 repo_root=ROOT,
                 promotion_gate=gate,
                 replay_mode=HISTORICAL_ALIGNMENT_REPLAY_MODE,
@@ -617,6 +663,7 @@ def run(target_as_of: str | None = None, staging_parent: Path = STAGING_PARENT) 
                 raise ValueError(f"historical full-replay mode was not applied: {ticker}")
             history = core.get("trade_history") or []
             _validate_trade_rows(ticker, history)
+            _validate_cj_execution_contract(ticker, history)
             candidate_audit = core.get("promotion_gate_audit") or []
             decisions_for_ticker = Counter(str(row.get("reason_code") or "UNKNOWN") for row in candidate_audit)
             gate_reasons.update(decisions_for_ticker)

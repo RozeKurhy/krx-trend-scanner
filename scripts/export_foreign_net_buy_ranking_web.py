@@ -11,7 +11,7 @@ from typing import Any
 import pandas as pd
 
 from trend_scanner.data.errors import MarketDataError
-from trend_scanner.data.repository_v2_loader import EXPECTED_DATA_UNAVAILABLE, build_repository_v2
+from trend_scanner.data.repository_v2_loader import EXPECTED_DATA_UNAVAILABLE, build_production_repository_v2
 from trend_scanner.data.sector_membership import resolve_sector_membership_snapshot_for_target
 
 
@@ -321,7 +321,7 @@ def build_foreign_net_buy_ranking(
     flow_covered_tickers = target_tickers & source_tickers
 
     if repository is None:
-        repository = build_repository_v2(repo_root, end=as_of)
+        repository = build_production_repository_v2(repo_root, end=as_of)
 
     items: list[dict[str, Any]] = []
     price_exact_resolved_count = 0

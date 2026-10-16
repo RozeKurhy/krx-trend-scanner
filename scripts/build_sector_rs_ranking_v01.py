@@ -13,7 +13,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_repository_v2
+from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_production_repository_v2
 from trend_scanner.data.market_calendar import (
     load_rolling_production_market_calendar,
     resolve_reference_market_date,
@@ -184,7 +184,7 @@ def _compute_rows(
     membership_effective_date: str,
 ) -> pd.DataFrame:
     mapping = load_sector_mapping_exact_snapshot(membership_effective_date, repo_root=ROOT)
-    repository = build_repository_v2(ROOT, end=as_of)
+    repository = build_production_repository_v2(ROOT, end=as_of)
     loader = RepositoryV2DailyLoader(
         repository,
         start=str(sector_index["date"].astype(str).str[:10].min()),

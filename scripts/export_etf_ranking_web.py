@@ -18,7 +18,7 @@ if str(ROOT) not in sys.path:
 from scripts.run_pattern_a_universe_scanner import resolve_reference_market_date
 from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
 from trend_scanner.data.repository_v2_instrument_contract import repository_v2_contract_for_metadata
-from trend_scanner.data.repository_v2_loader import build_repository_v2
+from trend_scanner.data.repository_v2_loader import build_production_repository_v2
 from trend_scanner.universe.instrument_metadata import InstrumentMetadataResolver
 
 
@@ -198,7 +198,7 @@ def build_etf_ranking(target_as_of: str, repo_root: Path | str = ROOT) -> dict[s
     reference_market_date = _resolve_reference_market_date(target_as_of, root)
     _validate_universe()
     metadata_by_ticker = _load_metadata(root, reference_market_date=reference_market_date)
-    repo = build_repository_v2(root, end=reference_market_date)
+    repo = build_production_repository_v2(root, end=reference_market_date)
     items = [
         _project_item(
             repo, ticker, group, category, metadata_by_ticker[ticker],

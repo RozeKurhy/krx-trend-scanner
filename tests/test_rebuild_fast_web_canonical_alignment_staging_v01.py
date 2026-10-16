@@ -94,3 +94,58 @@ def test_saved_v08_candidate_rejects_an_open_exit_reason_value_mismatch(saved_v0
         runner._verify_three_way_parity(
             stage_root, "2026-10-11", "2026-10-08", index, changed_monitor, old_monitor
         )
+
+
+def test_cj_cgv_staging_fill_requires_exact_next_krx_session():
+    runner = _load_runner()
+    expected_trade = {
+        "trade_id": "079160_01",
+        "exit_signal_date": "2016-09-30",
+        "exit_execution_date": "2016-10-04",
+        "exit_price": 52982.0,
+        "return_pct": 41.21,
+        "trade_status": "REALIZED",
+    }
+
+    runner._validate_cj_execution_contract("079160", [expected_trade])
+
+    shifted = {**expected_trade, "exit_execution_date": "2016-10-05", "exit_price": 53489.0}
+    with pytest.raises(ValueError, match="CJ_CGV_EXACT_SESSION_FILL_UNVERIFIED"):
+        runner._validate_cj_execution_contract("079160", [shifted])
+
+
+def test_relative_staging_parent_resolves_from_repository_root():
+    runner = _load_runner()
+
+    assert runner._rooted_path(Path("artifacts/staging")) == ROOT / "artifacts/staging"
+    assert runner._rooted_path(ROOT / "artifacts/staging") == ROOT / "artifacts/staging"
+
+
+def test_historical_replay_uses_certified_factory_without_current_identity_clamp(monkeypatch):
+    runner = _load_runner()
+    repository = object()
+    calls = []
+
+    def build_repository(repo_root, *, end):
+        calls.append((repo_root, end))
+        return repository
+
+    class Loader:
+        def __init__(self, actual_repository, *, end, historical_identity):
+            self.repository = actual_repository
+            self.end = end
+            self.historical_identity = historical_identity
+
+    monkeypatch.setattr(runner, "build_production_repository_v2", build_repository)
+    monkeypatch.setattr(runner, "RepositoryV2DailyLoader", Loader)
+
+    actual_repository, loader = runner._build_historical_replay_inputs(
+        "2026-10-08",
+        "2026-10-11",
+    )
+
+    assert calls == [(ROOT, "2026-10-08")]
+    assert actual_repository is repository
+    assert loader.repository is repository
+    assert loader.end == "2026-10-11"
+    assert loader.historical_identity is True

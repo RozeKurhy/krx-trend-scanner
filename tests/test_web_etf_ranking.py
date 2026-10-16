@@ -92,7 +92,7 @@ def test_etf_exporter_contract_is_fixed_and_uses_repository_authority():
     assert "474800" not in {ticker for ticker, _group, _category in exporter.ETF_UNIVERSE}
     assert exporter.HORIZONS == HORIZONS
     source = EXPORTER_PATH.read_text(encoding="utf-8")
-    assert "build_repository_v2" in source
+    assert "build_production_repository_v2" in source
     assert "InstrumentMetadataResolver" in source
     assert "repository_v2_contract_for_metadata" in source
     assert "requests" not in source
