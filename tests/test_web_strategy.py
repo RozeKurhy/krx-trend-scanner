@@ -433,6 +433,9 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
     strategy_asset_version = "web-strategy-price-order-history-age-v01"
+    assert 'data-strategy-id="PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"' in strategy_html
+    assert '<span class="strategy-option-name">A FAST Core V2 Alignment 500B</span>' in strategy_html
+    assert '<span class="strategy-option-detail">현재 공식 전략 · COMMON</span>' in strategy_html
     assert strategy_html.count(strategy_asset_version) == 3
     assert f'src="./js/strategy.js?v={strategy_asset_version}"' in strategy_html
     assert '<label id="strategy-fundamental-filter-label">진입 펀더멘탈</label>' in strategy_html
