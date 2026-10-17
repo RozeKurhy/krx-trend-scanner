@@ -16,6 +16,7 @@ import json
 from pathlib import Path
 import re
 import sys
+import uuid
 from types import SimpleNamespace
 from typing import Any, Callable
 
@@ -402,6 +403,7 @@ def run_phase4d(
     execute_live: bool,
     root: Path = ROOT,
     phase4c_result: dict[str, Any] | None = None,
+    _phase4e_daily_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Call the existing Phase 4D runner with its explicit live flag."""
 
@@ -410,6 +412,7 @@ def run_phase4d(
         execute_live=execute_live,
         root=root,
         phase4c_result=phase4c_result,
+        _phase4e_daily_context=_phase4e_daily_context,
     )
 
 
@@ -437,6 +440,7 @@ def _run_one(
     execute_live: bool = False,
     root: Path,
     phase4c_result: dict[str, Any] | None = None,
+    phase4e_daily_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     try:
         kwargs: dict[str, Any] = {"root": root}
@@ -449,6 +453,12 @@ def _run_one(
             )
             if phase4c_result is not None and accepts_context:
                 kwargs["phase4c_result"] = phase4c_result
+            accepts_daily_context = "_phase4e_daily_context" in parameters or any(
+                parameter.kind is inspect.Parameter.VAR_KEYWORD
+                for parameter in parameters.values()
+            )
+            if phase4e_daily_context is not None and accepts_daily_context:
+                kwargs["_phase4e_daily_context"] = phase4e_daily_context
         raw_result = runner(target_as_of, **kwargs)
         status = normalize_status(raw_result)
         return {"status": status, "result": raw_result}
@@ -532,6 +542,25 @@ def run_phase4e(
             }
         else:
             phase4c_context = (phases.get("4C") or {}).get("result")
+            phase4e_daily_context = None
+            if phase_name == "4D" and isinstance(phase4c_context, dict):
+                try:
+                    reference_market_date = _phase4a_reference_market_date(phases["4A"], target_as_of)
+                    phase4e_daily_context = {
+                        "_authority": phase4d._PHASE4E_DAILY_ALIGNMENT_AUTHORITY,
+                        "nonce": uuid.uuid4().hex,
+                        "target_as_of": target_as_of,
+                        "reference_market_date": reference_market_date,
+                        "phase4c_result": phase4c_context,
+                        "phases": {
+                            "4A": phases["4A"],
+                            "4B": phases["4B"],
+                            "4C": phases["4C"],
+                        },
+                        "etf_stock_reports": etf_stock_reports,
+                    }
+                except (KeyError, Phase4EError):
+                    phase4e_daily_context = None
             phase_result = _run_one(
                 phase_name,
                 target_as_of,
@@ -539,6 +568,7 @@ def run_phase4e(
                 execute_live=execute_live,
                 root=root,
                 phase4c_result=phase4c_context if isinstance(phase4c_context, dict) else None,
+                phase4e_daily_context=phase4e_daily_context,
             )
         phases[phase_name] = phase_result
         if phase_result["status"] in {FAILED, BLOCKED}:

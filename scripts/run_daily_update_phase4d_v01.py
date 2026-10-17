@@ -61,10 +61,10 @@ B_SELECT_ID = "PATTERN_B_SELECT_CORE_V02"
 JULIA_ID = "JULIA_ETF_STRATEGY_V01"
 B_SELECT_STATUS_STAGING_NAME = "b-select-status.json"
 PHASE4D_PUBLISH_JOURNAL = ".phase4d-publish-transaction.json"
-DAILY_ALIGNMENT_TARGET_AS_OF = "2026-10-15"
-DAILY_ALIGNMENT_REFERENCE_MARKET_DATE = "2026-10-15"
-DAILY_ALIGNMENT_REPLAY_DIGEST = "eb9137d752331b71b2570bd742dd1cc2d3c66dedd8dc6303fa5ecb346d423b81"
 _DAILY_ALIGNMENT_PROMOTION_AUTHORITY = object()
+_PHASE4E_DAILY_ALIGNMENT_AUTHORITY = object()
+_DAILY_ALIGNMENT_PROMOTION_CONTEXTS: dict[str, dict[str, Any]] = {}
+_DAILY_ALIGNMENT_PHASE4E_CONTEXT_NONCES: set[str] = set()
 
 
 def _b_select_status_path(root: Path, target_as_of: str) -> Path:
@@ -1682,6 +1682,75 @@ def _assert_alignment_snapshot_matches_stage(stage_data: Path, new_snapshot: Pat
         raise Phase4DError("PHASE4D_ALIGNMENT_SNAPSHOT_STOCKS_MISMATCH")
 
 
+def _daily_alignment_reference_from_calendar(target_as_of: str, root: Path) -> str:
+    try:
+        if date.fromisoformat(target_as_of).isoformat() != target_as_of:
+            raise ValueError("target date is not canonical ISO format")
+        calendar = load_rolling_production_market_calendar(root)
+        reference = phase4a.resolve_reference_market_date(target_as_of, calendar)
+        if date.fromisoformat(reference).isoformat() != reference or reference > target_as_of:
+            raise ValueError("calendar returned an invalid reference date")
+    except Exception as exc:
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_OFFICIAL_CALENDAR_INVALID") from exc
+    return reference
+
+
+def _daily_alignment_phase4e_context_proof(
+    context: dict[str, Any] | None,
+    target_as_of: str,
+    reference_market_date: str,
+    phase4c_result: dict[str, Any] | None,
+) -> str:
+    if (
+        not isinstance(context, dict)
+        or context.get("_authority") is not _PHASE4E_DAILY_ALIGNMENT_AUTHORITY
+        or context.get("target_as_of") != target_as_of
+        or context.get("reference_market_date") != reference_market_date
+        or context.get("phase4c_result") is not phase4c_result
+    ):
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PHASE4E_CONTEXT_INVALID")
+
+    phases = context.get("phases")
+    if not isinstance(phases, dict):
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PHASE4E_CONTEXT_INVALID")
+    for phase_name in ("4A", "4B", "4C"):
+        phase = phases.get(phase_name)
+        if not isinstance(phase, dict) or phase.get("status") not in {"PASS", "NOOP_ALREADY_COMPLETE"}:
+            raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PHASE4E_PREREQUISITE_FAILED")
+    if phases["4C"].get("result") is not phase4c_result:
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PHASE4E_CONTEXT_INVALID")
+    etf_reports = context.get("etf_stock_reports")
+    if not isinstance(etf_reports, dict) or etf_reports.get("status") not in {"PASS", "NOOP_ALREADY_COMPLETE"}:
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PHASE4E_PREREQUISITE_FAILED")
+
+    phase4a_result = phases["4A"].get("result")
+    if not isinstance(phase4a_result, dict):
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PHASE4A_RESULT_INVALID")
+    phase4a_reference = phase4a_result.get("reference_market_date")
+    if phase4a_reference is None and isinstance(phase4a_result.get("summary"), dict):
+        phase4a_reference = phase4a_result["summary"].get("reference_market_date")
+    if phase4a_reference != reference_market_date:
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PHASE4A_CALENDAR_MISMATCH")
+    if (
+        etf_reports.get("reference_market_date") != reference_market_date
+        or etf_reports.get("target_as_of") != target_as_of
+    ):
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_ETF36_CONTEXT_MISMATCH")
+
+    nonce = context.get("nonce")
+    if not isinstance(nonce, str) or not nonce:
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PHASE4E_CONTEXT_INVALID")
+    return nonce
+
+
+def _daily_alignment_proof_fingerprint(proof: dict[str, Any]) -> str:
+    try:
+        payload = json.dumps(proof, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+    except (TypeError, ValueError) as exc:
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PROOF_NOT_SERIALIZABLE") from exc
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def _daily_alignment_stage_proof(
     stage_data: Path,
     target_as_of: str,
@@ -1689,17 +1758,22 @@ def _daily_alignment_stage_proof(
     root: Path,
     *,
     phase4c_result: dict[str, Any] | None = None,
+    phase4e_daily_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Bind the one approved daily Alignment projection to its canonical inputs."""
     stage_data = Path(stage_data)
     root = Path(root)
     if root.resolve() != ROOT.resolve():
         raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_REPOSITORY_ROOT_MISMATCH")
-    if (
-        target_as_of != DAILY_ALIGNMENT_TARGET_AS_OF
-        or reference_market_date != DAILY_ALIGNMENT_REFERENCE_MARKET_DATE
-    ):
-        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_DATE_NOT_DESIGNATED")
+    calendar_reference = _daily_alignment_reference_from_calendar(target_as_of, root)
+    if reference_market_date != calendar_reference:
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_OFFICIAL_CALENDAR_MISMATCH")
+    phase4e_nonce = _daily_alignment_phase4e_context_proof(
+        phase4e_daily_context,
+        target_as_of,
+        reference_market_date,
+        phase4c_result,
+    )
     if (
         stage_data.name != "data"
         or not stage_data.parent.name.startswith(".phase4d-stage-")
@@ -1711,16 +1785,24 @@ def _daily_alignment_stage_proof(
     monitor = _read_json(stage_data / "strategy-monitor.json")
     b_status_path = stage_data / B_SELECT_STATUS_STAGING_NAME
     b_status = _read_json(b_status_path)
+    if (
+        b_status.get("status") != "PASS"
+        or b_status.get("requested_as_of") != target_as_of
+        or b_status.get("reference_market_date") != reference_market_date
+    ):
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_B_SELECT_STATUS_MISMATCH")
     canonical = _canonical_full_history_alignment_provenance(
         root, target_as_of, reference_market_date,
     )
+    canonical_digest = canonical.get("strategy_replay_digest") if isinstance(canonical, dict) else None
     if (
         canonical is None
         or canonical.get("valid") is not True
         or canonical.get("strategy_id") != PROMOTED_STRATEGY_ID
         or canonical.get("strategy_replay_mode") != "FULL_HISTORY_ALIGNMENT_WEB"
-        or canonical.get("strategy_replay_digest") != DAILY_ALIGNMENT_REPLAY_DIGEST
-        or canonical.get("computed_strategy_replay_digest") != DAILY_ALIGNMENT_REPLAY_DIGEST
+        or not isinstance(canonical_digest, str)
+        or not re.fullmatch(r"[0-9a-f]{64}", canonical_digest)
+        or canonical.get("computed_strategy_replay_digest") != canonical_digest
     ):
         raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_CANONICAL_PROVENANCE_MISMATCH")
     canonical_scope = canonical.get("strategy_replay_scope")
@@ -1734,7 +1816,7 @@ def _daily_alignment_stage_proof(
         or monitor.get("reference_market_date") != reference_market_date
         or monitor.get("default_strategy_id") != PROMOTED_STRATEGY_ID
         or monitor.get("strategy_replay_mode") != "FULL_HISTORY_ALIGNMENT_WEB"
-        or monitor.get("strategy_replay_digest") != DAILY_ALIGNMENT_REPLAY_DIGEST
+        or monitor.get("strategy_replay_digest") != canonical_digest
         or monitor.get("strategy_replay_scope") != canonical_scope
     ):
         raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_MONITOR_CANONICAL_MISMATCH")
@@ -1778,6 +1860,25 @@ def _daily_alignment_stage_proof(
         require_etf36=True,
         b_select_status_path=b_status_path,
     )
+    route_integrity = validation.get("identity_route_integrity")
+    canonical_trade_count = b_status.get("canonical_trade_history_row_count")
+    canonical_identity_count = len({
+        (str(row.get("ticker") or "").zfill(6), str(row.get("isu_cd") or "").upper())
+        for row in b_status.get("canonical_trade_history", [])
+        if isinstance(row, dict)
+    })
+    if (
+        not isinstance(route_integrity, dict)
+        or route_integrity.get("missing_route_count") != 0
+        or route_integrity.get("duplicate_url_count") != 0
+        or route_integrity.get("identity_mismatch_count") != 0
+        or route_integrity.get("route_count") != canonical_identity_count
+        or route_integrity.get("canonical_trade_count") != canonical_trade_count
+        or not isinstance(canonical_trade_count, int)
+        or not isinstance(canonical_identity_count, int)
+        or canonical_identity_count <= 0
+    ):
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_IDENTITY_ROUTE_MISMATCH")
     manifest = _tree_manifest(stage_data)
     if manifest is None:
         raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_STAGE_MISSING")
@@ -1786,19 +1887,16 @@ def _daily_alignment_stage_proof(
     ).hexdigest()
     return {
         "status": "PASS",
-        "candidate_digest": DAILY_ALIGNMENT_REPLAY_DIGEST,
+        "candidate_digest": canonical_digest,
         "requested_as_of": target_as_of,
         "reference_market_date": reference_market_date,
+        "phase4e_context_nonce": phase4e_nonce,
         "strategy_replay_scope": canonical_scope,
         "stage_fingerprint_sha256": stage_fingerprint,
         "b_select_status_sha256": _sha256_file(b_status_path),
-        "canonical_trade_count": b_status.get("canonical_trade_history_row_count"),
-        "canonical_identity_count": len({
-            (str(row.get("ticker") or "").zfill(6), str(row.get("isu_cd") or "").upper())
-            for row in b_status.get("canonical_trade_history", [])
-            if isinstance(row, dict)
-        }),
-        "route_integrity": validation.get("identity_route_integrity"),
+        "canonical_trade_count": canonical_trade_count,
+        "canonical_identity_count": canonical_identity_count,
+        "route_integrity": route_integrity,
         "validation": validation,
     }
 
@@ -1809,6 +1907,7 @@ def _create_daily_alignment_promotion_context(
     reference_market_date: str,
     root: Path,
     phase4c_result: dict[str, Any],
+    phase4e_daily_context: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     monitor_path = Path(stage_data) / "strategy-monitor.json"
     if not monitor_path.is_file():
@@ -1821,17 +1920,27 @@ def _create_daily_alignment_promotion_context(
         reference_market_date,
         root,
         phase4c_result=phase4c_result,
+        phase4e_daily_context=phase4e_daily_context,
     )
-    return {
+    nonce = proof["phase4e_context_nonce"]
+    if nonce in _DAILY_ALIGNMENT_PHASE4E_CONTEXT_NONCES:
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PHASE4E_CONTEXT_REPLAYED")
+    context = {
         "_authority": _DAILY_ALIGNMENT_PROMOTION_AUTHORITY,
+        "_phase4e_authority": _PHASE4E_DAILY_ALIGNMENT_AUTHORITY,
         "stage_data": str(Path(stage_data).resolve()),
         "target_as_of": target_as_of,
-        "reference_market_date": reference_market_date,
+        "reference_market_date": proof["reference_market_date"],
         "candidate_digest": proof["candidate_digest"],
-        "stage_fingerprint_sha256": proof["stage_fingerprint_sha256"],
-        "b_select_status_sha256": proof["b_select_status_sha256"],
+        "proof_fingerprint_sha256": _daily_alignment_proof_fingerprint(proof),
+        "phase4e_context_nonce": proof["phase4e_context_nonce"],
+        "_phase4c_result": phase4c_result,
+        "_phase4e_daily_context": phase4e_daily_context,
         "proof": proof,
     }
+    _DAILY_ALIGNMENT_PHASE4E_CONTEXT_NONCES.add(nonce)
+    _DAILY_ALIGNMENT_PROMOTION_CONTEXTS[nonce] = context
+    return context
 
 
 def _validate_daily_alignment_promotion_context(
@@ -1840,25 +1949,31 @@ def _validate_daily_alignment_promotion_context(
     target_as_of: str,
     root: Path,
 ) -> dict[str, Any]:
+    if not isinstance(context, dict):
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PROMOTION_CONTEXT_INVALID")
+    context_nonce = context.get("phase4e_context_nonce")
     if (
-        not isinstance(context, dict)
-        or context.get("_authority") is not _DAILY_ALIGNMENT_PROMOTION_AUTHORITY
+        context.get("_authority") is not _DAILY_ALIGNMENT_PROMOTION_AUTHORITY
+        or context.get("_phase4e_authority") is not _PHASE4E_DAILY_ALIGNMENT_AUTHORITY
+        or not isinstance(context_nonce, str)
+        or not context_nonce
+        or _DAILY_ALIGNMENT_PROMOTION_CONTEXTS.get(context_nonce) is not context
         or context.get("stage_data") != str(Path(stage_data).resolve())
         or context.get("target_as_of") != target_as_of
-        or context.get("reference_market_date") != DAILY_ALIGNMENT_REFERENCE_MARKET_DATE
-        or context.get("candidate_digest") != DAILY_ALIGNMENT_REPLAY_DIGEST
     ):
+        raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PROMOTION_CONTEXT_INVALID")
+    reference_market_date = context.get("reference_market_date")
+    if not isinstance(reference_market_date, str):
         raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PROMOTION_CONTEXT_INVALID")
     proof = _daily_alignment_stage_proof(
         stage_data,
         target_as_of,
-        DAILY_ALIGNMENT_REFERENCE_MARKET_DATE,
+        reference_market_date,
         root,
+        phase4c_result=context.get("_phase4c_result"),
+        phase4e_daily_context=context.get("_phase4e_daily_context"),
     )
-    if (
-        proof.get("stage_fingerprint_sha256") != context.get("stage_fingerprint_sha256")
-        or proof.get("b_select_status_sha256") != context.get("b_select_status_sha256")
-    ):
+    if _daily_alignment_proof_fingerprint(proof) != context.get("proof_fingerprint_sha256"):
         raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_STAGE_CHANGED_AFTER_VALIDATION")
     return proof
 
@@ -1883,14 +1998,19 @@ def promote(
     web_data = Path(web_data)
     root = web_data.parent.parent.resolve()
     if _daily_alignment_context is not None:
+        if not isinstance(_daily_alignment_context, dict):
+            raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_PROMOTION_CONTEXT_INVALID")
         if alignment_candidate_digest is not None:
             raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_CANDIDATE_MODE_CONFLICT")
+        if _daily_alignment_context.get("_promotion_started") is True:
+            raise Phase4DError("PHASE4D_DAILY_ALIGNMENT_CONTEXT_REPLAYED")
         alignment_binding = {
             "binding_type": "DAILY_ALIGNMENT",
             **_validate_daily_alignment_promotion_context(
                 _daily_alignment_context, stage_data, target_as_of, root,
             ),
         }
+        _daily_alignment_context["_promotion_started"] = True
     else:
         try:
             alignment_binding = _alignment_candidate_binding(
@@ -2099,6 +2219,7 @@ def run_phase4d(
     root: Path = ROOT,
     phase4c_result: dict[str, Any] | None = None,
     alignment_candidate_digest: str | None = None,
+    _phase4e_daily_context: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if root != ROOT:
         raise Phase4DError("PHASE4D_REPOSITORY_ROOT_MISMATCH")
@@ -2226,6 +2347,7 @@ def run_phase4d(
                 stage_context["reference_market_date"],
                 root,
                 phase4c_for_stage,
+                _phase4e_daily_context,
             )
             if isinstance(phase4c_for_stage, dict)
             else None

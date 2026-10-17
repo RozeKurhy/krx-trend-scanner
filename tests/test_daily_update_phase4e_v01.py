@@ -724,7 +724,12 @@ def test_future_reference_is_blocked(monkeypatch: pytest.MonkeyPatch, tmp_path: 
 def test_phase4c_is_called_once_and_4d_reuses_its_result(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    calls = {"phase4c": 0, "phase4d_context": None}
+    calls = {
+        "phase4c": 0,
+        "phase4d_context": None,
+        "phase4c_same_run_object": None,
+        "phase4e_daily_context": None,
+    }
 
     monkeypatch.setattr(
         phase4e,
@@ -732,6 +737,15 @@ def test_phase4c_is_called_once_and_4d_reuses_its_result(
         lambda *args, **kwargs: {"status": "PASS", "reference_market_date": "2026-09-17"},
     )
     monkeypatch.setattr(phase4e, "run_phase4b", lambda *args, **kwargs: {"status": "PASS"})
+    monkeypatch.setattr(
+        phase4e,
+        "run_etf_stock_reports",
+        lambda target, reference, **kwargs: {
+            "status": "PASS",
+            "target_as_of": target,
+            "reference_market_date": reference,
+        },
+    )
 
     def phase4c_runner(*args: object, **kwargs: object) -> dict[str, object]:
         calls["phase4c"] += 1
@@ -745,6 +759,8 @@ def test_phase4c_is_called_once_and_4d_reuses_its_result(
     def phase4d_runner(*args: object, **kwargs: object) -> dict[str, object]:
         context = kwargs.get("phase4c_result")
         calls["phase4d_context"] = context.copy() if isinstance(context, dict) else context
+        calls["phase4c_same_run_object"] = context
+        calls["phase4e_daily_context"] = kwargs.get("_phase4e_daily_context")
         return {"status": "PASS"}
 
     monkeypatch.setattr(phase4e, "run_phase4c", phase4c_runner)
@@ -755,6 +771,12 @@ def test_phase4c_is_called_once_and_4d_reuses_its_result(
     assert result["overall_status"] == "PASS"
     assert calls["phase4c"] == 1
     assert calls["phase4d_context"]["_b_select_status_for_phase4d"] == {"marker": "same-run-status"}
+    daily_context = calls["phase4e_daily_context"]
+    assert daily_context["_authority"] is phase4d._PHASE4E_DAILY_ALIGNMENT_AUTHORITY
+    assert daily_context["target_as_of"] == "2026-09-17"
+    assert daily_context["reference_market_date"] == "2026-09-17"
+    assert daily_context["phase4c_result"] is calls["phase4c_same_run_object"]
+    assert daily_context["etf_stock_reports"]["status"] == "PASS"
     assert "_b_select_status_for_phase4d" not in result["phases"]["4C"]["result"]
 
 
