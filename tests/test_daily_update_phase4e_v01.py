@@ -193,14 +193,54 @@ def _write_scanner_fixture(
     root: Path,
     target: str = "2026-09-17",
     reference_market_date: str | None = None,
+    *,
+    candidate_state: str = "blocked",
+    axis_statuses: dict[str, str] | None = None,
 ) -> None:
     scanner_dir = root / "artifacts/patterns/pattern_a/production/scanner"
     scanner_dir.mkdir(parents=True)
     dt = target.replace("-", "")
-    with (scanner_dir / f"pattern_a_universe_scan_{dt}.csv").open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["ticker", "candidate_state"])
+    statuses = {
+        "investability_status": "INVESTABLE",
+        "foreign_flow_data_status": "READY",
+        "market_rs_data_status": "READY",
+        "sector_rs_data_status": "READY",
+        **(axis_statuses or {}),
+    }
+    row = {
+        "ticker": "000001",
+        "candidate_state": candidate_state,
+        **statuses,
+        "row_status": "OK",
+        "error_type": "",
+        "error_message": "",
+    }
+    csv_path = scanner_dir / f"pattern_a_universe_scan_{dt}.csv"
+    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=list(row))
         writer.writeheader()
-        writer.writerow({"ticker": "000001", "candidate_state": "CANDIDATE"})
+        writer.writerow(row)
+    is_candidate = candidate_state.strip().lower() == "candidate"
+    candidate_count = int(is_candidate)
+    state_distribution = {candidate_state.strip().lower(): 1}
+    distributions = {
+        "candidate_investability_distribution": {
+            status: int(is_candidate and statuses["investability_status"] == status)
+            for status in ("INVESTABLE", "FILTERED_MARKET_CAP", "FILTERED_LIQUIDITY", "DATA_UNAVAILABLE")
+        },
+        "candidate_flow_distribution": {
+            status: int(is_candidate and statuses["foreign_flow_data_status"] == status)
+            for status in ("READY", "PARTIAL", "DATA_UNAVAILABLE", "NOT_EVALUATED")
+        },
+        "candidate_market_rs_distribution": {
+            status: int(is_candidate and statuses["market_rs_data_status"] == status)
+            for status in ("READY", "PARTIAL", "DATA_UNAVAILABLE", "NOT_EVALUATED")
+        },
+        "candidate_sector_rs_distribution": {
+            status: int(is_candidate and statuses["sector_rs_data_status"] == status)
+            for status in ("READY", "PARTIAL", "DATA_UNAVAILABLE", "NOT_EVALUATED")
+        },
+    }
     (scanner_dir / f"pattern_a_universe_scan_{dt}_summary.json").write_text(
         json.dumps(
             {
@@ -210,6 +250,22 @@ def _write_scanner_fixture(
                 "scan_target_count": 1,
                 "rows_emitted": 1,
                 "scanner_error_count": 0,
+                "candidate_raw_count": candidate_count,
+                "candidate_state_distribution": state_distribution,
+                **distributions,
+                "candidate_investable_count": distributions["candidate_investability_distribution"]["INVESTABLE"],
+                "candidate_filtered_market_cap_count": distributions["candidate_investability_distribution"]["FILTERED_MARKET_CAP"],
+                "candidate_filtered_liquidity_count": distributions["candidate_investability_distribution"]["FILTERED_LIQUIDITY"],
+                "candidate_data_unavailable_count": distributions["candidate_investability_distribution"]["DATA_UNAVAILABLE"],
+                "candidate_flow_ready_count": distributions["candidate_flow_distribution"]["READY"],
+                "candidate_flow_partial_count": distributions["candidate_flow_distribution"]["PARTIAL"],
+                "candidate_flow_data_unavailable_count": distributions["candidate_flow_distribution"]["DATA_UNAVAILABLE"],
+                "candidate_market_rs_ready_count": distributions["candidate_market_rs_distribution"]["READY"],
+                "candidate_market_rs_partial_count": distributions["candidate_market_rs_distribution"]["PARTIAL"],
+                "candidate_market_rs_data_unavailable_count": distributions["candidate_market_rs_distribution"]["DATA_UNAVAILABLE"],
+                "candidate_sector_rs_ready_count": distributions["candidate_sector_rs_distribution"]["READY"],
+                "candidate_sector_rs_partial_count": distributions["candidate_sector_rs_distribution"]["PARTIAL"],
+                "candidate_sector_rs_data_unavailable_count": distributions["candidate_sector_rs_distribution"]["DATA_UNAVAILABLE"],
             }
         ),
         encoding="utf-8",
@@ -543,6 +599,93 @@ def test_phase4a_valid_exact_artifact_skips_runner(monkeypatch: pytest.MonkeyPat
     result = phase4e.run_phase4e("2026-09-17", root=tmp_path)
 
     assert result["phases"]["4A"]["status"] == "NOOP_ALREADY_COMPLETE"
+
+
+def test_phase4a_noop_rejects_candidates_unavailable_on_all_four_axes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = "2026-09-17"
+    _write_scanner_fixture(
+        tmp_path,
+        candidate_state="candidate",
+        axis_statuses={
+            "investability_status": "DATA_UNAVAILABLE",
+            "foreign_flow_data_status": "DATA_UNAVAILABLE",
+            "market_rs_data_status": "DATA_UNAVAILABLE",
+            "sector_rs_data_status": "DATA_UNAVAILABLE",
+        },
+    )
+    _patch_calendar(monkeypatch, target)
+
+    result = phase4e._phase4a_noop_precheck(target, root=tmp_path)
+
+    assert result is not None
+    assert result["status"] == "BLOCKED"
+    assert result["reason"] == "PHASE4A_SCANNER_QUALITY_INVALID"
+    assert "all candidate rows are DATA_UNAVAILABLE" in result["error"]
+
+
+def test_phase4a_noop_allows_consistent_partial_and_missing_axis_values(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = "2026-09-17"
+    _write_scanner_fixture(
+        tmp_path,
+        candidate_state="candidate",
+        axis_statuses={
+            "investability_status": "FILTERED_MARKET_CAP",
+            "foreign_flow_data_status": "DATA_UNAVAILABLE",
+            "market_rs_data_status": "PARTIAL",
+            "sector_rs_data_status": "READY",
+        },
+    )
+    _patch_calendar(monkeypatch, target)
+
+    result = phase4e._phase4a_noop_precheck(target, root=tmp_path)
+
+    assert result is not None
+    assert result["status"] == "NOOP_ALREADY_COMPLETE"
+
+
+@pytest.mark.parametrize("mismatch", ["requested_date", "ticker_set", "duplicate_ticker", "summary_count"])
+def test_phase4a_noop_blocks_inconsistent_existing_canonical(
+    mismatch: str,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    target = "2026-09-17"
+    _write_scanner_fixture(tmp_path)
+    _patch_calendar(monkeypatch, target)
+    csv_path, summary_path = phase4b._scanner_paths(tmp_path, target)
+
+    if mismatch == "requested_date":
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        summary["requested_as_of"] = "2026-09-18"
+        summary_path.write_text(json.dumps(summary), encoding="utf-8")
+    elif mismatch == "ticker_set":
+        monkeypatch.setattr(phase4e, "load_target_pit_common_tickers", lambda root, as_of: {"000002"})
+    elif mismatch == "duplicate_ticker":
+        with csv_path.open(encoding="utf-8", newline="") as handle:
+            reader = csv.DictReader(handle)
+            fields = reader.fieldnames
+            rows = list(reader)
+        with csv_path.open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(rows + rows)
+    else:
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        summary["rows_emitted"] = 2
+        summary_path.write_text(json.dumps(summary), encoding="utf-8")
+
+    monkeypatch.setattr(phase4e, "run_phase4a", lambda *args, **kwargs: pytest.fail("unsafe 4A rerun"))
+
+    result = phase4e.run_phase4e(target, root=tmp_path)
+
+    assert result["overall_status"] in {"BLOCKED", "FAILED"}
+    assert result["phases"]["4A"]["status"] in {"BLOCKED", "FAILED"}
 
 
 def test_phase4b_valid_exact_corpus_skips_runner(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

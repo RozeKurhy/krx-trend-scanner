@@ -20,11 +20,11 @@
   },
   "summary": {
     "trend_stage": "WEAK",
-    "flow_state": "FLOW_DISTRIBUTION"
+    "flow_state": "FLOW_MIXED"
   },
   "price_trend": {
-    "latest_close": 3435.0,
-    "latest_close_as_of": "2026-10-15",
+    "latest_close": 3605.0,
+    "latest_close_as_of": "2026-10-16",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/099430.parquet",
     "score_trend": {
@@ -38,13 +38,13 @@
       "change_6m": -14.02,
       "change_12m": -36.24
     },
-    "trading_value_state": "TRADING_VALUE_MIXED",
-    "trading_value_explanation": "최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 6.24억원, 20일: 6.05억원, 60일: 7.52억원)",
-    "avg_trading_value_1d_eok": 8.89,
-    "avg_trading_value_5d_eok": 6.24,
-    "avg_trading_value_10d_eok": 8.81,
-    "avg_trading_value_20d_eok": 6.05,
-    "avg_trading_value_60d_eok": 7.52
+    "trading_value_state": "TRADING_VALUE_WEAKENING",
+    "trading_value_explanation": "최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(5.98억원)이 20일 평균(6.10억원) 및 60일 평균(7.51억원)을 밑돌고 있습니다.",
+    "avg_trading_value_1d_eok": 5.1,
+    "avg_trading_value_5d_eok": 5.98,
+    "avg_trading_value_10d_eok": 7.9,
+    "avg_trading_value_20d_eok": 6.1,
+    "avg_trading_value_60d_eok": 7.51
   },
   "pattern": {
     "official_stage": "WEAK",
@@ -363,14 +363,14 @@
     "applicability": "APPLICABLE",
     "evaluation_status": "READY",
     "pattern_b_state": "DEPRESSED",
-    "as_of": "2026-10-15",
+    "as_of": "2026-10-16",
     "freshness_status": "CURRENT",
-    "expected_weekly_bar": "2026-10-09",
+    "expected_weekly_bar": "2026-10-16",
     "range_36m": 0.09243697478991597,
     "monthly_ma24_distance": -0.3833050633368219,
-    "range_52w": 0.20759837177747625,
+    "range_52w": 0.1469387755102041,
     "monthly_last_bar": "2026-09-30",
-    "weekly_last_bar": "2026-10-09",
+    "weekly_last_bar": "2026-10-16",
     "reason_codes": [],
     "reason_details": [],
     "monthly_history": [
@@ -485,14 +485,14 @@
         "weekly_last_bar": "2026-09-25"
       },
       {
-        "as_of": "2026-10-15",
+        "as_of": "2026-10-16",
         "evaluation_status": "READY",
         "pattern_b_state": "DEPRESSED",
         "range_36m": 0.09243697478991597,
         "monthly_ma24_distance": -0.3833050633368219,
-        "range_52w": 0.20759837177747625,
+        "range_52w": 0.1469387755102041,
         "monthly_last_bar": "2026-09-30",
-        "weekly_last_bar": "2026-10-09"
+        "weekly_last_bar": "2026-10-16"
       }
     ],
     "monthly_history_24m": [
@@ -737,14 +737,14 @@
         "weekly_last_bar": "2026-09-25"
       },
       {
-        "as_of": "2026-10-15",
+        "as_of": "2026-10-16",
         "evaluation_status": "READY",
         "pattern_b_state": "DEPRESSED",
         "range_36m": 0.09243697478991597,
         "monthly_ma24_distance": -0.3833050633368219,
-        "range_52w": 0.20759837177747625,
+        "range_52w": 0.1469387755102041,
         "monthly_last_bar": "2026-09-30",
-        "weekly_last_bar": "2026-10-09"
+        "weekly_last_bar": "2026-10-16"
       }
     ],
     "provenance": {
@@ -764,49 +764,49 @@
     "applicability": "APPLICABLE",
     "data_status": "READY",
     "benchmark_name": "코스닥",
-    "benchmark_last_observation_date": "2026-10-15",
-    "stock_return_2w": 0.025373134328358304,
-    "stock_return_1m": 0.06677018633540377,
-    "stock_return_3m": -0.14125,
-    "stock_return_6m": -0.34571428571428575,
-    "stock_return_12m": -0.48345864661654137,
-    "market_rs_2w": 0.14529335394999965,
-    "market_rs_1m": 0.17347244334773793,
-    "market_rs_3m": -0.05477903774874493,
-    "market_rs_6m": -0.06275691265439187,
-    "market_rs_12m": -0.43296683455701634,
-    "percentile_2w": 72.98519736842105,
-    "percentile_1m": 74.83416252072969,
-    "percentile_3m": 22.2268383880349,
-    "percentile_6m": 47.42785445420326,
-    "percentile_12m": 32.44613434727503,
-    "explanation": "12개월 기준으로는 시장 대비 약세였으나 6개월, 3개월로 갈수록 상대강도가 연속 개선되며 최근 시장 대비 강도가 뚜렷하게 회복되고 있습니다."
+    "benchmark_last_observation_date": "2026-10-16",
+    "stock_return_2w": 0.012640449438202195,
+    "stock_return_1m": 0.11956521739130443,
+    "stock_return_3m": -0.07326478149100257,
+    "stock_return_6m": -0.30000000000000004,
+    "stock_return_12m": -0.4790462427745664,
+    "market_rs_2w": 0.09052704783544097,
+    "market_rs_1m": 0.15599285336822777,
+    "market_rs_3m": -0.06792437622064951,
+    "market_rs_6m": -0.05231636427690689,
+    "market_rs_12m": -0.445007730717498,
+    "percentile_2w": 59.95065789473685,
+    "percentile_1m": 74.92747617074181,
+    "percentile_3m": 22.92358803986711,
+    "percentile_6m": 50.77698446031079,
+    "percentile_12m": 30.405405405405407,
+    "explanation": "기간별 시장 상대강도가 엇갈리는 혼조 흐름입니다."
   },
   "flow": {
     "data_status": "READY",
-    "state": "FLOW_DISTRIBUTION",
-    "net_buy_value_1d_krw": 191035325.0,
-    "net_buy_value_5d_krw": -1162737.0,
-    "net_buy_value_10d_krw": -298631070.0,
-    "net_buy_value_20d_krw": -608777689.0,
-    "net_buy_value_60d_krw": -452103618.0,
-    "intensity_1d": 0.215,
-    "intensity_5d": -0.0004,
-    "intensity_10d": -0.0339,
-    "intensity_20d": -0.0503,
-    "intensity_60d": -0.01,
+    "state": "FLOW_MIXED",
+    "net_buy_value_1d_krw": 114518245.0,
+    "net_buy_value_5d_krw": 229284093.0,
+    "net_buy_value_10d_krw": -181101909.0,
+    "net_buy_value_20d_krw": -565055017.0,
+    "net_buy_value_60d_krw": -301994105.0,
+    "intensity_1d": 0.2246,
+    "intensity_5d": 0.0767,
+    "intensity_10d": -0.0229,
+    "intensity_20d": -0.0463,
+    "intensity_60d": -0.0067,
     "positive_days_1d": 1,
-    "positive_days_5d": 1,
-    "positive_days_10d": 2,
+    "positive_days_5d": 2,
+    "positive_days_10d": 3,
     "positive_days_20d": 4,
-    "positive_days_60d": 27,
-    "explanation": "5일, 20일, 60일 모두 외국인 누적 순매도 상태로, 중단기 외국인 수급은 전반적인 매도 우위(이탈) 흐름입니다 (5일 순매수 강도: -0.04%)."
+    "positive_days_60d": 28,
+    "explanation": "외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: +7.67%)."
   },
   "fundamentals": {
     "status": "PARTIAL",
     "applicability": "APPLICABLE",
     "reason": "DISPLAY_WINDOW_PARTIAL",
-    "requested_as_of": "2026-10-15",
+    "requested_as_of": "2026-10-18",
     "company_family": "NON_FINANCIAL",
     "currency": "KRW",
     "filter_status": "PASS",
@@ -1091,17 +1091,17 @@
     "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
     "strategy_replay_scope": {
       "type": "PUBLISHED_COMMON_REPORTS",
-      "report_count": 1425,
-      "requested_as_of": "2026-10-15",
-      "reference_market_date": "2026-10-15",
+      "report_count": 1426,
+      "requested_as_of": "2026-10-18",
+      "reference_market_date": "2026-10-16",
       "first_v2_candidate_signal_date": "2012-12-28",
-      "last_v2_candidate_signal_date": "2026-10-02",
+      "last_v2_candidate_signal_date": "2026-10-16",
       "first_alignment_gate_pass_signal_date": "2015-01-02",
-      "base_candidate_signal_count": 19242,
-      "alignment_gate_pass_count": 411,
+      "base_candidate_signal_count": 19255,
+      "alignment_gate_pass_count": 412,
       "output_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
     },
-    "strategy_replay_digest": "eb9137d752331b71b2570bd742dd1cc2d3c66dedd8dc6303fa5ecb346d423b81",
+    "strategy_replay_digest": "96d7f6b2cea6b64320ceebce78b3c30b797f202781a9ffaca8decc199a510f1a",
     "research_group_id": "ALIGNMENT_MCAP_500B",
     "promotion_gate_audit": [
       {
@@ -1251,8 +1251,8 @@
     ]
   },
   "technical_details": {
-    "requested_as_of": "2026-10-15",
-    "reference_market_date": "2026-10-15",
+    "requested_as_of": "2026-10-18",
+    "reference_market_date": "2026-10-16",
     "report_version": "0.7",
     "report_status": "READY",
     "asset_type": "COMMON",
@@ -1261,25 +1261,25 @@
     "pattern_stage": "WEAK",
     "pattern_score": 10.66,
     "candidate_state": "blocked",
-    "flow_state": "FLOW_DISTRIBUTION",
+    "flow_state": "FLOW_MIXED",
     "market_strength_applicability": "APPLICABLE",
     "market_strength_status": "READY",
     "relative_strength_status": "READY",
-    "trading_value_state": "TRADING_VALUE_MIXED",
-    "price_as_of": "2026-10-15",
+    "trading_value_state": "TRADING_VALUE_WEAKENING",
+    "price_as_of": "2026-10-16",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/099430.parquet",
     "sector_name": null,
     "data_quality": {
       "cache_present": true,
       "cache_first_date": "2021-09-27",
-      "cache_last_date": "2026-10-15",
-      "daily_rows_count": 1232,
+      "cache_last_date": "2026-10-16",
+      "daily_rows_count": 1233,
       "completed_month_count": 61,
       "quality_status": "OK",
       "quality_flags": []
     },
-    "source_report": "artifacts/reporting/stock_reports/20261015/json/099430_바이오플러스.json"
+    "source_report": "artifacts/reporting/stock_reports/20261018/json/099430_바이오플러스.json"
   },
   "external_links": {
     "naver_finance": "https://finance.naver.com/item/main.naver?code=099430",

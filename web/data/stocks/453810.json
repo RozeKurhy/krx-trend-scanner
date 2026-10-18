@@ -22,8 +22,8 @@
     "flow_state": "FLOW_UNAVAILABLE"
   },
   "price_trend": {
-    "latest_close": 10835.0,
-    "latest_close_as_of": "2026-10-15",
+    "latest_close": 10860.0,
+    "latest_close_as_of": "2026-10-16",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/453810.parquet",
     "score_trend": {
@@ -38,12 +38,12 @@
       "change_12m": null
     },
     "trading_value_state": "TRADING_VALUE_MIXED",
-    "trading_value_explanation": "최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 24.09억원, 20일: 12.33억원, 60일: 14.00억원)",
-    "avg_trading_value_1d_eok": 17.22,
-    "avg_trading_value_5d_eok": 24.09,
-    "avg_trading_value_10d_eok": 16.38,
-    "avg_trading_value_20d_eok": 12.33,
-    "avg_trading_value_60d_eok": 14.0
+    "trading_value_explanation": "최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 24.13억원, 20일: 11.98억원, 60일: 13.95억원)",
+    "avg_trading_value_1d_eok": 7.76,
+    "avg_trading_value_5d_eok": 24.13,
+    "avg_trading_value_10d_eok": 16.68,
+    "avg_trading_value_20d_eok": 11.98,
+    "avg_trading_value_60d_eok": 13.95
   },
   "pattern": {
     "official_stage": "WEAK",
@@ -405,7 +405,7 @@
     "status": "NOT_APPLICABLE",
     "applicability": "NOT_APPLICABLE",
     "reason": "ASSET_TYPE_NOT_APPLICABLE",
-    "requested_as_of": "2026-10-15",
+    "requested_as_of": "2026-10-18",
     "company_family": null,
     "currency": "KRW",
     "filter_status": "NOT_APPLICABLE",
@@ -445,17 +445,17 @@
     "interpretation": "Julia V1의 현재 보유 포지션은 없어. 다음 진입은 고정 ETF36 범위, 기존 가격·준비일 gate, 완료된 주봉 신호와 exact KRX 익일 시가 조건이 모두 확인돼야 해.",
     "history": [],
     "eligibility": {
-      "as_of": "2026-10-15",
+      "as_of": "2026-10-16",
       "official_etf36_membership": true,
       "listing_date": "2023-04-21",
       "listing_age_pass": true,
-      "raw_close_krw": 10835.0,
+      "raw_close_krw": 10860.0,
       "minimum_raw_close_krw": 1000,
       "raw_close_pass": true,
-      "avg_volume_20d_shares": 114857.3,
+      "avg_volume_20d_shares": 111697.9,
       "volume_window_sessions": 20,
-      "volume_window_start": "2026-09-14",
-      "volume_window_end": "2026-10-15",
+      "volume_window_start": "2026-09-15",
+      "volume_window_end": "2026-10-16",
       "volume_window_includes_signal_date": true,
       "minimum_avg_volume_20d_shares": 10000,
       "volume_pass": true,
@@ -469,8 +469,8 @@
     }
   },
   "technical_details": {
-    "requested_as_of": "2026-10-15",
-    "reference_market_date": "2026-10-15",
+    "requested_as_of": "2026-10-18",
+    "reference_market_date": "2026-10-16",
     "report_version": "0.6",
     "report_status": "PARTIAL",
     "asset_type": "ETF",
@@ -484,20 +484,20 @@
     "market_strength_status": "NOT_EVALUATED",
     "relative_strength_status": "NOT_EVALUATED",
     "trading_value_state": "TRADING_VALUE_MIXED",
-    "price_as_of": "2026-10-15",
+    "price_as_of": "2026-10-16",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/453810.parquet",
     "sector_name": null,
     "data_quality": {
       "cache_present": true,
       "cache_first_date": "2023-04-21",
-      "cache_last_date": "2026-10-15",
-      "daily_rows_count": 846,
+      "cache_last_date": "2026-10-16",
+      "daily_rows_count": 847,
       "completed_month_count": 42,
       "quality_status": "OK",
       "quality_flags": []
     },
-    "source_report": "artifacts/reporting/etf_stock_reports/20261015/json/453810_KODEX 인도Nifty50.json"
+    "source_report": "artifacts/reporting/etf_stock_reports/20261018/json/453810_KODEX 인도Nifty50.json"
   },
   "external_links": {
     "naver_finance": "https://finance.naver.com/item/main.naver?code=453810",

@@ -164,6 +164,134 @@ def _expected_reference_market_date(root: Path, target_as_of: str) -> str:
     return phase4a.resolve_reference_market_date(target_as_of, calendar)
 
 
+def _phase4a_candidate_quality_error(
+    rows: list[dict[str, str]],
+    summary: Mapping[str, Any],
+) -> str | None:
+    """Check that a candidate scanner corpus is internally consistent and usable."""
+
+    for key in ("official_common_total", "scan_target_count", "rows_emitted"):
+        value = summary.get(key)
+        if value is not None and (
+            not isinstance(value, int) or isinstance(value, bool) or value != len(rows)
+        ):
+            return f"{key} does not match CSV rows"
+
+    scanner_errors = summary.get("scanner_error_count")
+    if not isinstance(scanner_errors, int) or isinstance(scanner_errors, bool):
+        return "scanner_error_count is missing or invalid"
+    if scanner_errors != 0:
+        return f"scanner_error_count is {scanner_errors}"
+    if rows and "row_status" in rows[0]:
+        row_errors = sum(str(row.get("row_status", "")).strip().upper() == "ERROR" for row in rows)
+        if row_errors != scanner_errors:
+            return "CSV row_status errors do not match scanner_error_count"
+
+    actual_states: dict[str, int] = {}
+    for row in rows:
+        state = str(row.get("candidate_state") or "").strip().lower()
+        if not state:
+            return "CSV candidate_state is missing"
+        actual_states[state] = actual_states.get(state, 0) + 1
+    state_distribution = summary.get("candidate_state_distribution")
+    if state_distribution is not None:
+        if not isinstance(state_distribution, Mapping):
+            return "candidate_state_distribution is invalid"
+        try:
+            declared_states = {
+                str(key).strip().lower(): value
+                for key, value in state_distribution.items()
+                if int(value) != 0
+            }
+            declared_states = {key: int(value) for key, value in declared_states.items()}
+        except (TypeError, ValueError):
+            return "candidate_state_distribution contains invalid counts"
+        if declared_states != actual_states:
+            return "candidate_state_distribution does not match CSV"
+
+    candidate_tickers = set(phase4b.select_candidate_tickers(rows))
+    candidates = [row for row in rows if str(row.get("ticker") or "").strip() in candidate_tickers]
+    candidate_count = len(candidates)
+    raw_candidate_count = summary.get("candidate_raw_count")
+    if raw_candidate_count is not None and (
+        not isinstance(raw_candidate_count, int)
+        or isinstance(raw_candidate_count, bool)
+        or raw_candidate_count != candidate_count
+    ):
+        return "candidate_raw_count does not match CSV"
+
+    axes = {
+        "investability_status": {
+            "INVESTABLE", "FILTERED_MARKET_CAP", "FILTERED_LIQUIDITY", "DATA_UNAVAILABLE",
+        },
+        "foreign_flow_data_status": {"READY", "PARTIAL", "DATA_UNAVAILABLE", "NOT_EVALUATED"},
+        "market_rs_data_status": {"READY", "PARTIAL", "DATA_UNAVAILABLE", "NOT_EVALUATED"},
+        "sector_rs_data_status": {"READY", "PARTIAL", "DATA_UNAVAILABLE", "NOT_EVALUATED"},
+    }
+    summary_keys = {
+        "investability_status": "candidate_investability_distribution",
+        "foreign_flow_data_status": "candidate_flow_distribution",
+        "market_rs_data_status": "candidate_market_rs_distribution",
+        "sector_rs_data_status": "candidate_sector_rs_distribution",
+    }
+    actual_distributions: dict[str, dict[str, int]] = {}
+    for column, allowed in axes.items():
+        counts: dict[str, int] = {}
+        for row in candidates:
+            status = str(row.get(column) or "").strip().upper()
+            if status not in allowed:
+                return f"candidate {column} is missing or invalid"
+            counts[status] = counts.get(status, 0) + 1
+        actual_distributions[column] = counts
+
+        summary_key = summary_keys[column]
+        declared = summary.get(summary_key)
+        if declared is not None:
+            if not isinstance(declared, Mapping):
+                return f"{summary_key} is invalid"
+            try:
+                declared_counts = {
+                    str(key).strip().upper(): int(value)
+                    for key, value in declared.items()
+                    if int(value) != 0
+                }
+            except (TypeError, ValueError):
+                return f"{summary_key} contains invalid counts"
+            if declared_counts != counts:
+                return f"{summary_key} does not match CSV"
+
+    scalar_counts = {
+        "candidate_investable_count": ("investability_status", "INVESTABLE"),
+        "candidate_filtered_market_cap_count": ("investability_status", "FILTERED_MARKET_CAP"),
+        "candidate_filtered_liquidity_count": ("investability_status", "FILTERED_LIQUIDITY"),
+        "candidate_data_unavailable_count": ("investability_status", "DATA_UNAVAILABLE"),
+        "candidate_flow_ready_count": ("foreign_flow_data_status", "READY"),
+        "candidate_flow_partial_count": ("foreign_flow_data_status", "PARTIAL"),
+        "candidate_flow_data_unavailable_count": ("foreign_flow_data_status", "DATA_UNAVAILABLE"),
+        "candidate_market_rs_ready_count": ("market_rs_data_status", "READY"),
+        "candidate_market_rs_partial_count": ("market_rs_data_status", "PARTIAL"),
+        "candidate_market_rs_data_unavailable_count": ("market_rs_data_status", "DATA_UNAVAILABLE"),
+        "candidate_sector_rs_ready_count": ("sector_rs_data_status", "READY"),
+        "candidate_sector_rs_partial_count": ("sector_rs_data_status", "PARTIAL"),
+        "candidate_sector_rs_data_unavailable_count": ("sector_rs_data_status", "DATA_UNAVAILABLE"),
+    }
+    for summary_key, (column, status) in scalar_counts.items():
+        value = summary.get(summary_key)
+        if value is not None and (
+            not isinstance(value, int)
+            or isinstance(value, bool)
+            or value != actual_distributions[column].get(status, 0)
+        ):
+            return f"{summary_key} does not match CSV"
+
+    if candidates and all(
+        actual_distributions[column].get("DATA_UNAVAILABLE", 0) == candidate_count
+        for column in axes
+    ):
+        return "all candidate rows are DATA_UNAVAILABLE on all four axes"
+    return None
+
+
 def _phase4a_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] | None:
     csv_path, summary_path = phase4b._scanner_paths(root, target_as_of)
     if not csv_path.is_file() or not summary_path.is_file():
@@ -193,7 +321,21 @@ def _phase4a_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
             or len(rows) != len(expected_tickers)
             or actual_tickers != expected_tickers
         ):
-            return None
+            return {
+                "status": BLOCKED,
+                "target_as_of": target_as_of,
+                "reason": "PHASE4A_PIT_COMMON_SET_MISMATCH",
+            }
+    quality_error = _phase4a_candidate_quality_error(rows, summary)
+    if quality_error is not None:
+        return {
+            "status": BLOCKED,
+            "target_as_of": target_as_of,
+            "requested_as_of": target_as_of,
+            "reference_market_date": summary["reference_market_date"],
+            "reason": "PHASE4A_SCANNER_QUALITY_INVALID",
+            "error": quality_error,
+        }
     return {
         "status": NOOP_ALREADY_COMPLETE,
         "target_as_of": target_as_of,

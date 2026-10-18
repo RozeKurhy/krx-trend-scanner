@@ -22,8 +22,8 @@
     "flow_state": "FLOW_UNAVAILABLE"
   },
   "price_trend": {
-    "latest_close": 13470.0,
-    "latest_close_as_of": "2026-10-15",
+    "latest_close": 13390.0,
+    "latest_close_as_of": "2026-10-16",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/283580.parquet",
     "score_trend": {
@@ -37,13 +37,13 @@
       "change_6m": -16.57,
       "change_12m": -10.06
     },
-    "trading_value_state": "TRADING_VALUE_STABLE",
-    "trading_value_explanation": "최근 거래대금이 급격한 변동 없이 일정 범위(15.71억원 수준)를 안정적으로 유지하고 있습니다.",
-    "avg_trading_value_1d_eok": 19.32,
-    "avg_trading_value_5d_eok": 17.1,
-    "avg_trading_value_10d_eok": 16.83,
-    "avg_trading_value_20d_eok": 15.71,
-    "avg_trading_value_60d_eok": 17.35
+    "trading_value_state": "TRADING_VALUE_MIXED",
+    "trading_value_explanation": "최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 18.64억원, 20일: 16.22억원, 60일: 17.27억원)",
+    "avg_trading_value_1d_eok": 16.57,
+    "avg_trading_value_5d_eok": 18.64,
+    "avg_trading_value_10d_eok": 17.14,
+    "avg_trading_value_20d_eok": 16.22,
+    "avg_trading_value_60d_eok": 17.27
   },
   "pattern": {
     "official_stage": "TRANSITION",
@@ -405,7 +405,7 @@
     "status": "NOT_APPLICABLE",
     "applicability": "NOT_APPLICABLE",
     "reason": "ASSET_TYPE_NOT_APPLICABLE",
-    "requested_as_of": "2026-10-15",
+    "requested_as_of": "2026-10-18",
     "company_family": null,
     "currency": "KRW",
     "filter_status": "NOT_APPLICABLE",
@@ -456,22 +456,22 @@
         "exit_execution_date": null,
         "exit_price": null,
         "trade_status": "OPEN_AT_CUTOFF",
-        "return_pct": -10.5,
+        "return_pct": -11.03,
         "lifecycle_class": "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
       }
     ],
     "eligibility": {
-      "as_of": "2026-10-15",
+      "as_of": "2026-10-16",
       "official_etf36_membership": true,
       "listing_date": "2017-12-13",
       "listing_age_pass": true,
-      "raw_close_krw": 13470.0,
+      "raw_close_krw": 13390.0,
       "minimum_raw_close_krw": 1000,
       "raw_close_pass": true,
-      "avg_volume_20d_shares": 109594.15,
+      "avg_volume_20d_shares": 113539.55,
       "volume_window_sessions": 20,
-      "volume_window_start": "2026-09-14",
-      "volume_window_end": "2026-10-15",
+      "volume_window_start": "2026-09-15",
+      "volume_window_end": "2026-10-16",
       "volume_window_includes_signal_date": true,
       "minimum_avg_volume_20d_shares": 10000,
       "volume_pass": true,
@@ -485,8 +485,8 @@
     }
   },
   "technical_details": {
-    "requested_as_of": "2026-10-15",
-    "reference_market_date": "2026-10-15",
+    "requested_as_of": "2026-10-18",
+    "reference_market_date": "2026-10-16",
     "report_version": "0.6",
     "report_status": "PARTIAL",
     "asset_type": "ETF",
@@ -499,21 +499,21 @@
     "market_strength_applicability": "NOT_APPLICABLE",
     "market_strength_status": "NOT_EVALUATED",
     "relative_strength_status": "NOT_EVALUATED",
-    "trading_value_state": "TRADING_VALUE_STABLE",
-    "price_as_of": "2026-10-15",
+    "trading_value_state": "TRADING_VALUE_MIXED",
+    "price_as_of": "2026-10-16",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/283580.parquet",
     "sector_name": null,
     "data_quality": {
       "cache_present": true,
       "cache_first_date": "2017-12-13",
-      "cache_last_date": "2026-10-15",
-      "daily_rows_count": 2165,
+      "cache_last_date": "2026-10-16",
+      "daily_rows_count": 2166,
       "completed_month_count": 106,
       "quality_status": "OK",
       "quality_flags": []
     },
-    "source_report": "artifacts/reporting/etf_stock_reports/20261015/json/283580_KODEX 차이나CSI300.json"
+    "source_report": "artifacts/reporting/etf_stock_reports/20261018/json/283580_KODEX 차이나CSI300.json"
   },
   "external_links": {
     "naver_finance": "https://finance.naver.com/item/main.naver?code=283580",
