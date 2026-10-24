@@ -1,75 +1,75 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-10-18T07:11:34.656730Z",
-  "requested_as_of": "2026-10-18",
-  "reference_market_date": "2026-10-16",
+  "generated_at": "2026-10-24T07:11:54.412898Z",
+  "requested_as_of": "2026-10-24",
+  "reference_market_date": "2026-10-23",
   "overall_status": "NORMAL",
   "market_data": {
     "status": "NORMAL",
-    "latest_trading_date": "2026-10-16",
-    "certified_through": "2026-10-18",
+    "latest_trading_date": "2026-10-23",
+    "certified_through": "2026-10-24",
     "authority_version": "ROLLING_MARKET_DATA_V01",
     "source": {
       "path": "data/market/rolling_authority/manifest.json",
-      "as_of": "2026-10-16",
+      "as_of": "2026-10-23",
       "generated_at": "2026-09-14T01:20:32.586563+00:00"
     }
   },
   "universe": {
     "status": "NORMAL",
-    "count": 4304,
-    "snapshot_date": "2026-10-16",
+    "count": 4306,
+    "snapshot_date": "2026-10-23",
     "asset_type_counts": {
-      "COMMON": 2546,
+      "COMMON": 2548,
       "ETF": 1167,
       "ETN": 375,
       "PREFERRED": 101,
       "REIT": 23,
-      "SPAC": 65,
-      "UNKNOWN": 27
+      "SPAC": 64,
+      "UNKNOWN": 28
     },
     "source": {
       "path": "data/reference/krx_instrument_metadata.parquet",
-      "as_of": "2026-10-16"
+      "as_of": "2026-10-23"
     }
   },
   "fundamentals": {
     "status": "NORMAL",
     "run_status": "COMPLETE",
-    "requested_as_of": "2026-10-18",
-    "completed": 4304,
-    "total": 4304,
+    "requested_as_of": "2026-10-24",
+    "completed": 4306,
+    "total": 4306,
     "remaining": 0,
     "percentage": 100.0,
     "terminal_status_counts": {
-      "DATA_UNAVAILABLE": 269,
+      "DATA_UNAVAILABLE": 272,
       "FILTERED_ANNUAL_REVENUE": 572,
       "FILTERED_NET_LOSS": 165,
-      "FILTERED_OPERATING_LOSS": 360,
+      "FILTERED_OPERATING_LOSS": 359,
       "FILTERED_QUARTERLY_REVENUE": 7,
       "NOT_APPLICABLE": 1825,
       "PASS": 1106
     },
     "data_status_counts": {
-      "DATA_UNAVAILABLE": 269,
+      "DATA_UNAVAILABLE": 272,
       "NOT_APPLICABLE": 1825,
-      "PARTIAL": 2210
+      "PARTIAL": 2209
     },
     "output_integrity": {
-      "valid_output_count": 4304,
+      "valid_output_count": 4306,
       "invalid_output_count": 0,
       "outside_universe_count": 0,
       "duplicate_payload_count": 0
     },
     "source": {
-      "production_directory": "artifacts/fundamentals/production/20261018",
+      "production_directory": "artifacts/fundamentals/production/20261024",
       "manifest": {
-        "path": "artifacts/fundamentals/production/20261018/manifest.json",
-        "as_of": "2026-10-18"
+        "path": "artifacts/fundamentals/production/20261024/manifest.json",
+        "as_of": "2026-10-24"
       },
       "outputs": {
-        "path": "artifacts/fundamentals/production/20261018/tickers",
-        "as_of": "2026-10-18"
+        "path": "artifacts/fundamentals/production/20261024/tickers",
+        "as_of": "2026-10-24"
       }
     }
   },
@@ -77,24 +77,24 @@
     "status": "NORMAL",
     "reason": "Stock Report v0.7 and Web Fundamentals artifacts are complete.",
     "source": {
-      "path": "artifacts/fundamentals/production/20261018/manifest.json",
-      "as_of": "2026-10-18"
+      "path": "artifacts/fundamentals/production/20261024/manifest.json",
+      "as_of": "2026-10-24"
     },
-    "existing_artifact_count": 1426,
+    "existing_artifact_count": 1427,
     "artifact_source": {
-      "path": "artifacts/reporting/stock_reports/20261018",
-      "as_of": "2026-10-18"
+      "path": "artifacts/reporting/stock_reports/20261024",
+      "as_of": "2026-10-24"
     },
     "report_version": "0.7",
     "ready": true,
-    "source_json_count": 1426,
-    "source_markdown_count": 1426,
+    "source_json_count": 1427,
+    "source_markdown_count": 1427,
     "v05_count": 0,
-    "v07_count": 1426,
+    "v07_count": 1427,
     "schema_errors": 0,
-    "fundamentals_integrated_count": 1426,
-    "web_compact_count": 1426,
-    "web_fundamentals_integrated_count": 1426,
-    "web_index_available_report_count": 1426
+    "fundamentals_integrated_count": 1427,
+    "web_compact_count": 1427,
+    "web_fundamentals_integrated_count": 1427,
+    "web_index_available_report_count": 1427
   }
 }
