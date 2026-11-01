@@ -22,42 +22,34 @@
     "flow_state": "FLOW_UNAVAILABLE"
   },
   "price_trend": {
-    "latest_close": 10485.0,
-    "latest_close_as_of": "2026-10-23",
+    "latest_close": 10065.0,
+    "latest_close_as_of": "2026-10-30",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/117680.parquet",
     "score_trend": {
-      "current_score": 73.56,
-      "score_1m_ago": 71.91,
-      "score_3m_ago": 53.06,
-      "score_6m_ago": 68.32,
-      "score_12m_ago": 88.96,
-      "change_1m": 1.65,
-      "change_3m": 20.5,
-      "change_6m": 5.24,
-      "change_12m": -15.4
+      "current_score": 70.68,
+      "score_1m_ago": 73.44,
+      "score_3m_ago": 58.31,
+      "score_6m_ago": 56.52,
+      "score_12m_ago": 81.62,
+      "change_1m": -2.76,
+      "change_3m": 12.37,
+      "change_6m": 14.16,
+      "change_12m": -10.94
     },
     "trading_value_state": "TRADING_VALUE_WEAKENING",
-    "trading_value_explanation": "최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(2.38억원)이 20일 평균(5.79억원) 및 60일 평균(7.60억원)을 밑돌고 있습니다.",
-    "avg_trading_value_1d_eok": 1.12,
-    "avg_trading_value_5d_eok": 2.38,
-    "avg_trading_value_10d_eok": 2.95,
-    "avg_trading_value_20d_eok": 5.79,
-    "avg_trading_value_60d_eok": 7.6
+    "trading_value_explanation": "최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(1.13억원)이 20일 평균(3.25억원) 및 60일 평균(7.08억원)을 밑돌고 있습니다.",
+    "avg_trading_value_1d_eok": 0.71,
+    "avg_trading_value_5d_eok": 1.13,
+    "avg_trading_value_10d_eok": 1.75,
+    "avg_trading_value_20d_eok": 3.25,
+    "avg_trading_value_60d_eok": 7.08
   },
   "pattern": {
     "official_stage": "PROGRESSED",
     "candidate_state": "late",
-    "score": 73.56,
+    "score": 70.68,
     "history_12m": [
-      {
-        "as_of": "2025-09-30",
-        "close": 11320.0,
-        "score": 88.96,
-        "stage": "TRANSITION",
-        "candidate_state": "candidate",
-        "data_available": true
-      },
       {
         "as_of": "2025-10-31",
         "close": 11665.0,
@@ -153,17 +145,17 @@
         "stage": "PROGRESSED",
         "candidate_state": "late",
         "data_available": true
+      },
+      {
+        "as_of": "2026-10-30",
+        "close": 10065.0,
+        "score": 70.68,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
       }
     ],
     "history_24m": [
-      {
-        "as_of": "2024-09-30",
-        "close": 8760.0,
-        "score": 72.85,
-        "stage": "TRANSITION",
-        "candidate_state": "candidate",
-        "data_available": true
-      },
       {
         "as_of": "2024-10-31",
         "close": 9790.0,
@@ -355,6 +347,14 @@
         "stage": "PROGRESSED",
         "candidate_state": "late",
         "data_available": true
+      },
+      {
+        "as_of": "2026-10-30",
+        "close": 10065.0,
+        "score": 70.68,
+        "stage": "PROGRESSED",
+        "candidate_state": "late",
+        "data_available": true
       }
     ]
   },
@@ -405,7 +405,7 @@
     "status": "NOT_APPLICABLE",
     "applicability": "NOT_APPLICABLE",
     "reason": "ASSET_TYPE_NOT_APPLICABLE",
-    "requested_as_of": "2026-10-24",
+    "requested_as_of": "2026-11-01",
     "company_family": null,
     "currency": "KRW",
     "filter_status": "NOT_APPLICABLE",
@@ -476,17 +476,17 @@
       }
     ],
     "eligibility": {
-      "as_of": "2026-10-23",
+      "as_of": "2026-10-30",
       "official_etf36_membership": true,
       "listing_date": "2009-10-30",
       "listing_age_pass": true,
-      "raw_close_krw": 10485.0,
+      "raw_close_krw": 10065.0,
       "minimum_raw_close_krw": 1000,
       "raw_close_pass": true,
-      "avg_volume_20d_shares": 48637.3,
+      "avg_volume_20d_shares": 28127.35,
       "volume_window_sessions": 20,
-      "volume_window_start": "2026-09-22",
-      "volume_window_end": "2026-10-23",
+      "volume_window_start": "2026-10-01",
+      "volume_window_end": "2026-10-30",
       "volume_window_includes_signal_date": true,
       "minimum_avg_volume_20d_shares": 10000,
       "volume_pass": true,
@@ -500,35 +500,35 @@
     }
   },
   "technical_details": {
-    "requested_as_of": "2026-10-24",
-    "reference_market_date": "2026-10-23",
+    "requested_as_of": "2026-11-01",
+    "reference_market_date": "2026-10-30",
     "report_version": "0.6",
     "report_status": "PARTIAL",
     "asset_type": "ETF",
     "investability_status": "NOT_APPLICABLE",
     "investability_reason": "ETF_OFFICIAL_ETF36_FIXED_PRODUCTION_UNIVERSE",
     "pattern_stage": "PROGRESSED",
-    "pattern_score": 73.56,
+    "pattern_score": 70.68,
     "candidate_state": "late",
     "flow_state": "FLOW_UNAVAILABLE",
     "market_strength_applicability": "NOT_APPLICABLE",
     "market_strength_status": "NOT_EVALUATED",
     "relative_strength_status": "NOT_EVALUATED",
     "trading_value_state": "TRADING_VALUE_WEAKENING",
-    "price_as_of": "2026-10-23",
+    "price_as_of": "2026-10-30",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/117680.parquet",
     "sector_name": null,
     "data_quality": {
       "cache_present": true,
       "cache_first_date": "2014-01-02",
-      "cache_last_date": "2026-10-23",
-      "daily_rows_count": 3142,
-      "completed_month_count": 153,
+      "cache_last_date": "2026-10-30",
+      "daily_rows_count": 3147,
+      "completed_month_count": 154,
       "quality_status": "OK",
       "quality_flags": []
     },
-    "source_report": "artifacts/reporting/etf_stock_reports/20261024/json/117680_KODEX 철강.json"
+    "source_report": "artifacts/reporting/etf_stock_reports/20261101/json/117680_KODEX 철강.json"
   },
   "external_links": {
     "naver_finance": "https://finance.naver.com/item/main.naver?code=117680",

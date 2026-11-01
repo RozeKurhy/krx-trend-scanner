@@ -11,6 +11,8 @@ from bisect import bisect_right
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from trend_scanner.data.market_calendar import terminal_month_is_certified
+
 
 STRATEGY_ID = "PATTERN_B_SELECT_CORE_V01"
 STRATEGY_NAME = "B Select Core V1"
@@ -46,19 +48,24 @@ def next_exact_session(signal_date: str, trading_dates: Sequence[str]) -> str | 
     return days[position] if position < len(days) else None
 
 
-def exact_month_end_sessions(trading_dates: Sequence[str]) -> frozenset[str]:
+def exact_month_end_sessions(
+    trading_dates: Sequence[str], *, certified_through: str | None = None,
+) -> frozenset[str]:
     """Return exact sessions whose immediate next KRX session is in a new month.
 
-    The final calendar session is excluded because the authority does not yet
-    prove that its month has ended. This naturally handles month ends on
-    holidays, weekends, Fridays, February, and year boundaries.
+    The final session is included only when an explicit certified boundary
+    covers the last calendar day of its month. The default preserves the
+    existing adjacent-session-only behavior.
     """
     days = sorted({str(day)[:10] for day in trading_dates})
-    return frozenset(
+    completed = {
         day
         for day, next_day in zip(days, days[1:])
         if day[:7] != next_day[:7]
-    )
+    }
+    if days and terminal_month_is_certified(days[-1], certified_through):
+        completed.add(days[-1])
+    return frozenset(completed)
 
 
 def resolve_progressed_episode(

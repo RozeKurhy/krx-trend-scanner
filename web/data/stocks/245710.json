@@ -18,46 +18,38 @@
     "is_investable": false
   },
   "summary": {
-    "trend_stage": "PROGRESSED",
+    "trend_stage": "TRANSITION",
     "flow_state": "FLOW_UNAVAILABLE"
   },
   "price_trend": {
-    "latest_close": 26775.0,
-    "latest_close_as_of": "2026-10-23",
+    "latest_close": 26770.0,
+    "latest_close_as_of": "2026-10-30",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/245710.parquet",
     "score_trend": {
-      "current_score": 81.97,
-      "score_1m_ago": 83.65,
-      "score_3m_ago": 71.89,
-      "score_6m_ago": 72.65,
-      "score_12m_ago": 100.0,
-      "change_1m": -1.68,
-      "change_3m": 10.08,
-      "change_6m": 9.32,
-      "change_12m": -18.03
+      "current_score": 82.14,
+      "score_1m_ago": 81.97,
+      "score_3m_ago": 81.53,
+      "score_6m_ago": 62.26,
+      "score_12m_ago": 95.94,
+      "change_1m": 0.17,
+      "change_3m": 0.61,
+      "change_6m": 19.88,
+      "change_12m": -13.8
     },
-    "trading_value_state": "TRADING_VALUE_EXPANDING",
-    "trading_value_explanation": "최근 거래대금이 지속 확대되는 흐름입니다. 5일 평균 거래대금(7.55억원)은 20일 평균의 약 1.01배이며 60일 평균(7.31억원)을 상회하고 있습니다.",
-    "avg_trading_value_1d_eok": 3.5,
-    "avg_trading_value_5d_eok": 7.55,
-    "avg_trading_value_10d_eok": 7.93,
-    "avg_trading_value_20d_eok": 7.5,
-    "avg_trading_value_60d_eok": 7.31
+    "trading_value_state": "TRADING_VALUE_WEAKENING",
+    "trading_value_explanation": "최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(1.29억원)이 20일 평균(6.71억원) 및 60일 평균(6.84억원)을 밑돌고 있습니다.",
+    "avg_trading_value_1d_eok": 1.16,
+    "avg_trading_value_5d_eok": 1.29,
+    "avg_trading_value_10d_eok": 4.42,
+    "avg_trading_value_20d_eok": 6.71,
+    "avg_trading_value_60d_eok": 6.84
   },
   "pattern": {
-    "official_stage": "PROGRESSED",
-    "candidate_state": "late",
-    "score": 81.97,
+    "official_stage": "TRANSITION",
+    "candidate_state": "candidate",
+    "score": 82.14,
     "history_12m": [
-      {
-        "as_of": "2025-09-30",
-        "close": 27750.0,
-        "score": 100.0,
-        "stage": "EARLY_TREND",
-        "candidate_state": "candidate",
-        "data_available": true
-      },
       {
         "as_of": "2025-10-31",
         "close": 29235.0,
@@ -153,17 +145,17 @@
         "stage": "PROGRESSED",
         "candidate_state": "late",
         "data_available": true
+      },
+      {
+        "as_of": "2026-10-30",
+        "close": 26770.0,
+        "score": 82.14,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
       }
     ],
     "history_24m": [
-      {
-        "as_of": "2024-09-30",
-        "close": 20475.0,
-        "score": 66.08,
-        "stage": "BASE",
-        "candidate_state": "watch",
-        "data_available": true
-      },
       {
         "as_of": "2024-10-31",
         "close": 20670.0,
@@ -355,6 +347,14 @@
         "stage": "PROGRESSED",
         "candidate_state": "late",
         "data_available": true
+      },
+      {
+        "as_of": "2026-10-30",
+        "close": 26770.0,
+        "score": 82.14,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
       }
     ]
   },
@@ -405,7 +405,7 @@
     "status": "NOT_APPLICABLE",
     "applicability": "NOT_APPLICABLE",
     "reason": "ASSET_TYPE_NOT_APPLICABLE",
-    "requested_as_of": "2026-10-24",
+    "requested_as_of": "2026-11-01",
     "company_family": null,
     "currency": "KRW",
     "filter_status": "NOT_APPLICABLE",
@@ -476,17 +476,17 @@
       }
     ],
     "eligibility": {
-      "as_of": "2026-10-23",
+      "as_of": "2026-10-30",
       "official_etf36_membership": true,
       "listing_date": "2016-07-01",
       "listing_age_pass": true,
-      "raw_close_krw": 26775.0,
+      "raw_close_krw": 26770.0,
       "minimum_raw_close_krw": 1000,
       "raw_close_pass": true,
-      "avg_volume_20d_shares": 27778.0,
+      "avg_volume_20d_shares": 25005.5,
       "volume_window_sessions": 20,
-      "volume_window_start": "2026-09-22",
-      "volume_window_end": "2026-10-23",
+      "volume_window_start": "2026-10-01",
+      "volume_window_end": "2026-10-30",
       "volume_window_includes_signal_date": true,
       "minimum_avg_volume_20d_shares": 10000,
       "volume_pass": true,
@@ -500,35 +500,35 @@
     }
   },
   "technical_details": {
-    "requested_as_of": "2026-10-24",
-    "reference_market_date": "2026-10-23",
+    "requested_as_of": "2026-11-01",
+    "reference_market_date": "2026-10-30",
     "report_version": "0.6",
     "report_status": "PARTIAL",
     "asset_type": "ETF",
     "investability_status": "NOT_APPLICABLE",
     "investability_reason": "ETF_OFFICIAL_ETF36_FIXED_PRODUCTION_UNIVERSE",
-    "pattern_stage": "PROGRESSED",
-    "pattern_score": 81.97,
-    "candidate_state": "late",
+    "pattern_stage": "TRANSITION",
+    "pattern_score": 82.14,
+    "candidate_state": "candidate",
     "flow_state": "FLOW_UNAVAILABLE",
     "market_strength_applicability": "NOT_APPLICABLE",
     "market_strength_status": "NOT_EVALUATED",
     "relative_strength_status": "NOT_EVALUATED",
-    "trading_value_state": "TRADING_VALUE_EXPANDING",
-    "price_as_of": "2026-10-23",
+    "trading_value_state": "TRADING_VALUE_WEAKENING",
+    "price_as_of": "2026-10-30",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/245710.parquet",
     "sector_name": null,
     "data_quality": {
       "cache_present": true,
       "cache_first_date": "2016-07-01",
-      "cache_last_date": "2026-10-23",
-      "daily_rows_count": 2528,
-      "completed_month_count": 123,
+      "cache_last_date": "2026-10-30",
+      "daily_rows_count": 2533,
+      "completed_month_count": 124,
       "quality_status": "OK",
       "quality_flags": []
     },
-    "source_report": "artifacts/reporting/etf_stock_reports/20261024/json/245710_ACE 베트남VN30(합성).json"
+    "source_report": "artifacts/reporting/etf_stock_reports/20261101/json/245710_ACE 베트남VN30(합성).json"
   },
   "external_links": {
     "naver_finance": "https://finance.naver.com/item/main.naver?code=245710",

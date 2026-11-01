@@ -22,42 +22,34 @@
     "flow_state": "FLOW_UNAVAILABLE"
   },
   "price_trend": {
-    "latest_close": 13195.0,
-    "latest_close_as_of": "2026-10-23",
+    "latest_close": 12875.0,
+    "latest_close_as_of": "2026-10-30",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/283580.parquet",
     "score_trend": {
-      "current_score": 83.43,
-      "score_1m_ago": 87.17,
-      "score_3m_ago": 95.28,
-      "score_6m_ago": 100.0,
-      "score_12m_ago": 93.49,
-      "change_1m": -3.74,
-      "change_3m": -11.85,
-      "change_6m": -16.57,
-      "change_12m": -10.06
+      "current_score": 78.2,
+      "score_1m_ago": 83.43,
+      "score_3m_ago": 85.85,
+      "score_6m_ago": 91.24,
+      "score_12m_ago": 99.97,
+      "change_1m": -5.23,
+      "change_3m": -7.65,
+      "change_6m": -13.04,
+      "change_12m": -21.77
     },
     "trading_value_state": "TRADING_VALUE_MIXED",
-    "trading_value_explanation": "최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 17.76억원, 20일: 17.83억원, 60일: 16.22억원)",
-    "avg_trading_value_1d_eok": 51.73,
-    "avg_trading_value_5d_eok": 17.76,
-    "avg_trading_value_10d_eok": 18.2,
-    "avg_trading_value_20d_eok": 17.83,
-    "avg_trading_value_60d_eok": 16.22
+    "trading_value_explanation": "최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 8.55억원, 20일: 15.15억원, 60일: 14.77억원)",
+    "avg_trading_value_1d_eok": 9.3,
+    "avg_trading_value_5d_eok": 8.55,
+    "avg_trading_value_10d_eok": 13.15,
+    "avg_trading_value_20d_eok": 15.15,
+    "avg_trading_value_60d_eok": 14.77
   },
   "pattern": {
     "official_stage": "TRANSITION",
     "candidate_state": "candidate",
-    "score": 83.43,
+    "score": 78.2,
     "history_12m": [
-      {
-        "as_of": "2025-09-30",
-        "close": 14845.0,
-        "score": 93.49,
-        "stage": "EARLY_TREND",
-        "candidate_state": "candidate",
-        "data_available": true
-      },
       {
         "as_of": "2025-10-31",
         "close": 15020.0,
@@ -153,17 +145,17 @@
         "stage": "TRANSITION",
         "candidate_state": "candidate",
         "data_available": true
+      },
+      {
+        "as_of": "2026-10-30",
+        "close": 12875.0,
+        "score": 78.2,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
       }
     ],
     "history_24m": [
-      {
-        "as_of": "2024-09-30",
-        "close": 12225.0,
-        "score": 46.47,
-        "stage": "BASE",
-        "candidate_state": "watch",
-        "data_available": true
-      },
       {
         "as_of": "2024-10-31",
         "close": 12350.0,
@@ -355,6 +347,14 @@
         "stage": "TRANSITION",
         "candidate_state": "candidate",
         "data_available": true
+      },
+      {
+        "as_of": "2026-10-30",
+        "close": 12875.0,
+        "score": 78.2,
+        "stage": "TRANSITION",
+        "candidate_state": "candidate",
+        "data_available": true
       }
     ]
   },
@@ -405,7 +405,7 @@
     "status": "NOT_APPLICABLE",
     "applicability": "NOT_APPLICABLE",
     "reason": "ASSET_TYPE_NOT_APPLICABLE",
-    "requested_as_of": "2026-10-24",
+    "requested_as_of": "2026-11-01",
     "company_family": null,
     "currency": "KRW",
     "filter_status": "NOT_APPLICABLE",
@@ -456,22 +456,22 @@
         "exit_execution_date": null,
         "exit_price": null,
         "trade_status": "OPEN_AT_CUTOFF",
-        "return_pct": -12.33,
+        "return_pct": -14.45,
         "lifecycle_class": "PROGRESSED_WITHOUT_DIRECT_HANDOFF"
       }
     ],
     "eligibility": {
-      "as_of": "2026-10-23",
+      "as_of": "2026-10-30",
       "official_etf36_membership": true,
       "listing_date": "2017-12-13",
       "listing_age_pass": true,
-      "raw_close_krw": 13195.0,
+      "raw_close_krw": 12875.0,
       "minimum_raw_close_krw": 1000,
       "raw_close_pass": true,
-      "avg_volume_20d_shares": 128527.35,
+      "avg_volume_20d_shares": 111761.15,
       "volume_window_sessions": 20,
-      "volume_window_start": "2026-09-22",
-      "volume_window_end": "2026-10-23",
+      "volume_window_start": "2026-10-01",
+      "volume_window_end": "2026-10-30",
       "volume_window_includes_signal_date": true,
       "minimum_avg_volume_20d_shares": 10000,
       "volume_pass": true,
@@ -485,35 +485,35 @@
     }
   },
   "technical_details": {
-    "requested_as_of": "2026-10-24",
-    "reference_market_date": "2026-10-23",
+    "requested_as_of": "2026-11-01",
+    "reference_market_date": "2026-10-30",
     "report_version": "0.6",
     "report_status": "PARTIAL",
     "asset_type": "ETF",
     "investability_status": "NOT_APPLICABLE",
     "investability_reason": "ETF_OFFICIAL_ETF36_FIXED_PRODUCTION_UNIVERSE",
     "pattern_stage": "TRANSITION",
-    "pattern_score": 83.43,
+    "pattern_score": 78.2,
     "candidate_state": "candidate",
     "flow_state": "FLOW_UNAVAILABLE",
     "market_strength_applicability": "NOT_APPLICABLE",
     "market_strength_status": "NOT_EVALUATED",
     "relative_strength_status": "NOT_EVALUATED",
     "trading_value_state": "TRADING_VALUE_MIXED",
-    "price_as_of": "2026-10-23",
+    "price_as_of": "2026-10-30",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/283580.parquet",
     "sector_name": null,
     "data_quality": {
       "cache_present": true,
       "cache_first_date": "2017-12-13",
-      "cache_last_date": "2026-10-23",
-      "daily_rows_count": 2171,
-      "completed_month_count": 106,
+      "cache_last_date": "2026-10-30",
+      "daily_rows_count": 2176,
+      "completed_month_count": 107,
       "quality_status": "OK",
       "quality_flags": []
     },
-    "source_report": "artifacts/reporting/etf_stock_reports/20261024/json/283580_KODEX 차이나CSI300.json"
+    "source_report": "artifacts/reporting/etf_stock_reports/20261101/json/283580_KODEX 차이나CSI300.json"
   },
   "external_links": {
     "naver_finance": "https://finance.naver.com/item/main.naver?code=283580",

@@ -71,6 +71,30 @@ def _b_select_status_path(root: Path, target_as_of: str) -> Path:
     return root / "artifacts/strategies/b_select_core_v2/production" / target_as_of.replace("-", "") / "status.json"
 
 
+def _pending_has_no_valid_open(
+    ticker: str, isu_cd: str, signal: str, reference_market_date: str, trading_dates: list[str],
+) -> bool:
+    """Verify an older unfilled pending event against the same PIT price authority."""
+    try:
+        intervals, authority_dates, _ = b_select_status_web.pattern_b_source._load_authorities(ROOT)
+        if list(authority_dates) != list(trading_dates):
+            return False
+        observed_sessions = [day for day in trading_dates if signal < day <= reference_market_date]
+        if not observed_sessions or any(
+            not b_select_status_web._identity_active_on(intervals, ticker, isu_cd, day)
+            for day in observed_sessions
+        ):
+            return False
+        repository = b_select_status_web.build_production_repository_v2(ROOT, end=reference_market_date)
+        _, schedule = b_select_status_web._first_valid_open_schedule(
+            repository=repository, ticker=ticker, isu_cd=isu_cd, signal_dates={signal},
+            intervals=intervals, trading_dates=trading_dates, reference_market_date=reference_market_date,
+        )
+        return signal in schedule and schedule[signal] is None
+    except Exception as exc:
+        raise Phase4DError(f"PHASE4D_PENDING_OPEN_AUTHORITY_FAILED:{ticker}") from exc
+
+
 def _write_json(path: Path, value: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8")
@@ -719,7 +743,9 @@ def validate_staging(
     trading_dates = {day.strftime("%Y-%m-%d") for day in calendar.trading_dates}
     from trend_scanner.strategies.b_select_core_v2 import exact_month_end_sessions, next_exact_session
 
-    month_end_dates = set(exact_month_end_sessions(sorted(trading_dates)))
+    month_end_dates = set(exact_month_end_sessions(
+        sorted(trading_dates), certified_through=calendar.metadata.get("certified_through")
+    ))
     item_history_rows: list[dict[str, Any]] = []
     v1_source_rows = 0
     excluded_entry_rows = 0
@@ -785,6 +811,8 @@ def validate_staging(
             month_internal_entries += 1
         if signal_date not in trading_dates or execution_date not in trading_dates:
             exact_session_violations += 1
+        if signal_date > reference_market_date or execution_date > reference_market_date:
+            raise Phase4DError("PHASE4D_B_SELECT_FUTURE_HISTORY_ENTRY")
         exit_signal = str(trade.get("exit_signal_date") or "")[:10]
         exit_execution = str(trade.get("exit_execution_date") or "")[:10]
         if trade.get("trade_status") == "REALIZED":
@@ -792,6 +820,8 @@ def validate_staging(
                 non_normal_exits += 1
             if exit_signal not in trading_dates or exit_execution not in trading_dates:
                 exact_session_violations += 1
+            if exit_signal > reference_market_date or exit_execution > reference_market_date:
+                raise Phase4DError("PHASE4D_B_SELECT_FUTURE_HISTORY_EXIT")
     monitor_history = strategy_by_id[B_SELECT_ID].get("trade_history")
     def _history_signature(row: dict[str, Any], *, monitor_row: bool) -> tuple[Any, ...]:
         price_key = "entry_price" if monitor_row else "entry_open"
@@ -1012,6 +1042,53 @@ def validate_staging(
             or sorted(pending_signatures) != sorted(monitor_pending_signatures)
         ):
             raise Phase4DError("PHASE4D_B_SELECT_MONITOR_CANONICAL_PENDING_EVENTS_MISMATCH")
+        seen_pending_identities: set[tuple[str, str]] = set()
+        open_identity_sequences = {
+            (str(row.get("ticker", "")).zfill(6), str(row.get("isu_cd", "")).upper(),
+             int(row.get("trade_sequence") or 0))
+            for row in expected_open_rows
+        }
+        item_by_identity = {
+            (str(row.get("ticker", "")).zfill(6), str(row.get("isu_cd", "")).upper()): row
+            for row in b_status.get("items", [])
+        }
+        for ticker, isu_cd, sequence, kind, signal, execution, lineage in pending_signatures:
+            pair = (ticker, isu_cd)
+            next_day = next_exact_session(signal, sorted(trading_dates)) if signal else None
+            item = item_by_identity.get(pair)
+            gap_needs_proof = not execution and next_day is not None and next_day <= reference_market_date
+            gap_proven = False
+            if gap_needs_proof and ticker.isdigit() and len(ticker) == 6 and isu_cd and signal in trading_dates:
+                gap_proven = _pending_has_no_valid_open(
+                    ticker, isu_cd, signal, reference_market_date, sorted(trading_dates),
+                )
+            if (
+                not ticker.isdigit() or len(ticker) != 6 or not isu_cd or sequence < 1
+                or pair in seen_pending_identities or pair in PERMANENT_IDENTITY_EXCLUSIONS
+                or kind not in {"ENTRY", "EXIT"} or lineage != B_SELECT_ID
+                or signal not in trading_dates or signal > reference_market_date
+                or (gap_needs_proof and not gap_proven)
+                or (execution and (execution not in trading_dates or execution <= signal
+                                   or execution <= reference_market_date))
+                or (kind == "ENTRY" and (signal not in month_end_dates
+                    or any(open_ticker == ticker and open_isu == isu_cd
+                           for open_ticker, open_isu, _ in open_identity_sequences)
+                    or any(key[0] == ticker and key[1] == isu_cd and key[2] >= sequence
+                           for key in canonical_trade_keys)
+                    or item is None or item.get("canonical_position") != "FLAT"
+                    or item.get("current_trade") is not None))
+                or (kind == "EXIT" and (ticker, isu_cd, sequence) not in open_identity_sequences)
+                or (kind == "EXIT" and item is not None and (
+                    item.get("canonical_position") != "OPEN"
+                    or not isinstance(item.get("current_trade"), dict)
+                    or int(item["current_trade"].get("trade_sequence") or 0) != sequence))
+            ):
+                raise Phase4DError("PHASE4D_B_SELECT_CANONICAL_PENDING_EVENT_INVALID")
+            seen_pending_identities.add(pair)
+        if any(any(row.get(field) is not None for field in
+                   ("entry_open", "entry_price", "exit_price", "execution_price", "fill_date"))
+               for row in pending_rows):
+            raise Phase4DError("PHASE4D_B_SELECT_PENDING_FILL_LEAK")
         item_pending_signatures = []
         for item in b_status.get("items", []):
             event = item.get("pending_event")
@@ -1021,14 +1098,15 @@ def validate_staging(
             item_pending_signatures.append((
                 str(item.get("ticker", "")).zfill(6),
                 str(item.get("isu_cd", "")).upper(),
-                int((current_trade or {}).get("trade_sequence") or 0)
-                if isinstance(current_trade, dict) else 0,
+                int(event.get("trade_sequence") or (current_trade or {}).get("trade_sequence") or 0),
                 str(event.get("kind") or ""),
                 str(event.get("signal_date") or "")[:10],
                 str(event.get("execution_date") or "")[:10],
                 str(event.get("strategy_id") or B_SELECT_ID),
             ))
-        if not set(item_pending_signatures).issubset(set(pending_signatures)):
+        visible_pending = {signature for signature in pending_signatures
+                           if (signature[0], signature[1]) in item_by_identity}
+        if len(item_pending_signatures) != len(set(item_pending_signatures)) or set(item_pending_signatures) != visible_pending:
             raise Phase4DError("PHASE4D_B_SELECT_ITEM_PENDING_EVENT_NOT_CANONICAL")
     if (
         v1_source_rows != 0

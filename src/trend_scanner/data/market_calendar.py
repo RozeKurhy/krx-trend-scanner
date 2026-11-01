@@ -22,6 +22,8 @@ Ensures unified completed-monthly and completed-weekly period semantics across:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from calendar import monthrange
+from datetime import date
 import json
 from pathlib import Path
 from typing import Any, Sequence
@@ -29,6 +31,15 @@ from typing import Any, Sequence
 import pandas as pd
 
 DEFAULT_CALENDAR_PATH = Path("data/reference/krx_trading_calendar.parquet")
+
+
+def terminal_month_is_certified(last_observed_session: str, certified_through: str | None) -> bool:
+    """Only explicit calendar coverage through the month's last day closes it."""
+    if certified_through is None:
+        return False
+    last = date.fromisoformat(str(last_observed_session)[:10])
+    boundary = date.fromisoformat(str(certified_through)[:10])
+    return boundary >= date(last.year, last.month, monthrange(last.year, last.month)[1])
 
 
 class MarketCalendarUnavailableError(RuntimeError):
@@ -373,12 +384,15 @@ def load_rolling_production_market_calendar(repo_root: Path) -> MarketCalendarAu
 
         raise RollingAuthorityError("MERGED_CALENDAR_FRONTIER_DATE_MISMATCH")
     current_year_month = (trading_dates[-1].year, trading_dates[-1].month)
+    terminal_month_certified = terminal_month_is_certified(
+        trading_dates[-1].strftime("%Y-%m-%d"), manifest.certified_through
+    )
     frame = pd.DataFrame({"dt": trading_dates}, index=trading_dates)
     monthly_groups = frame.groupby([frame.index.year, frame.index.month])
     completed_month_ends = [
         group.index.max()
         for (year, month), group in monthly_groups
-        if (year, month) != current_year_month
+        if (year, month) != current_year_month or terminal_month_certified
     ]
     calendar = MarketCalendarAuthority(
         trading_dates=trading_dates,

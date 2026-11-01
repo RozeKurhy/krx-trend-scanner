@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
+import pandas as pd
 import pytest
 
 from scripts import run_daily_update_phase4d_v01 as phase4d
@@ -92,8 +94,8 @@ def _health_validation_fixture(
     overall_status: str = "NORMAL",
     fundamentals_status: str = "NORMAL",
     integrity: dict[str, int] | None = None,
+    target: str = "2026-09-17",
 ) -> tuple[Path, dict[str, dict]]:
-    target = "2026-09-17"
     stage = tmp_path / "stage"
     stocks_dir = stage / "stocks"
     stocks_dir.mkdir(parents=True)
@@ -220,6 +222,98 @@ def _health_validation_fixture(
     (stocks_dir / "000001.json").touch()
     (stage / phase4d.B_SELECT_STATUS_STAGING_NAME).touch()
     return stage, documents
+
+
+def test_validate_staging_preserves_certified_monthend_pending_entry(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    target = "2026-10-30"
+    stage, documents = _health_validation_fixture(tmp_path, target=target)
+    status = documents[phase4d.B_SELECT_STATUS_STAGING_NAME]
+    item = status["items"][0]
+    event = {"kind": "ENTRY", "signal_date": target, "execution_date": None,
+             "trade_sequence": 2, "strategy_id": phase4d.B_SELECT_ID}
+    item.update({"bucket": "entry", "action": "ENTER_NEXT_OPEN", "strategy_state": "ENTRY_PENDING",
+                 "canonical_position": "FLAT", "current_trade": None, "pending_event": event})
+    canonical = {**event, "ticker": item["ticker"], "isu_cd": item["isu_cd"]}
+    counts = {"entry": 1, "hold": 0, "exit": 0, "watch": 0, "unavailable": 0}
+    status.update({"counts": counts, "canonical_trade_history": [], "canonical_trade_history_row_count": 0,
+                   "canonical_current_open_positions": [], "canonical_current_open_position_count": 0,
+                   "canonical_pending_events": [canonical], "canonical_pending_event_count": 1,
+                   "historical_only_identity_count": 0})
+    monitor = documents["strategy-monitor.json"]["strategies"][1]
+    monitor.update({"counts": counts, "items": [{key: value for key, value in item.items() if key != "trade_history"}],
+                    "trade_history": [], "canonical_current_open_positions": [],
+                    "canonical_current_open_position_count": 0,
+                    "canonical_pending_events": [dict(canonical)], "canonical_pending_event_count": 1})
+    (stage / "identity-report-routes.json").touch()
+    documents["identity-report-routes.json"] = {"requested_as_of": target, "reference_market_date": target}
+    monkeypatch.setattr(phase4d.identity_reports_web, "validate_identity_routes", lambda *_: {})
+    monkeypatch.setattr(phase4d, "_read_json", lambda path: documents[path.relative_to(stage).as_posix()])
+    monkeypatch.setattr(phase4d, "load_rolling_production_market_calendar", lambda _: SimpleNamespace(
+        trading_dates=pd.to_datetime(["2026-09-30", "2026-10-01", "2026-10-29", target]),
+        metadata={"certified_through": "2026-11-01"},
+    ))
+    assert phase4d.validate_staging(stage, target, target)["stock_report_count"] == 1
+
+    monitor["canonical_pending_events"][0]["trade_sequence"] = 3
+    with pytest.raises(phase4d.Phase4DError, match="MONITOR_CANONICAL_PENDING_EVENTS_MISMATCH"):
+        phase4d.validate_staging(stage, target, target)
+    monitor["canonical_pending_events"][0]["trade_sequence"] = 2
+
+    event["signal_date"] = canonical["signal_date"] = monitor["canonical_pending_events"][0]["signal_date"] = "2026-09-30"
+    with pytest.raises(phase4d.Phase4DError, match="CANONICAL_PENDING_EVENT_INVALID"):
+        phase4d.validate_staging(stage, target, target)
+    event["signal_date"] = canonical["signal_date"] = monitor["canonical_pending_events"][0]["signal_date"] = target
+
+    canonical["entry_open"] = 100.0
+    with pytest.raises(phase4d.Phase4DError, match="PENDING_FILL_LEAK"):
+        phase4d.validate_staging(stage, target, target)
+    del canonical["entry_open"]
+
+    status["canonical_pending_events"].append(dict(canonical))
+    monitor["canonical_pending_events"].append(dict(canonical))
+    status["canonical_pending_event_count"] = monitor["canonical_pending_event_count"] = 2
+    with pytest.raises(phase4d.Phase4DError, match="MONITOR_CANONICAL_PENDING_EVENTS_MISMATCH"):
+        phase4d.validate_staging(stage, target, target)
+
+
+def test_validate_staging_preserves_unobserved_pending_exit(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    target = "2026-10-30"
+    stage, documents = _health_validation_fixture(tmp_path, target=target)
+    status = documents[phase4d.B_SELECT_STATUS_STAGING_NAME]
+    item = status["items"][0]
+    trade = {"trade_sequence": 1, "entry_signal_date": "2026-09-30", "entry_execution_date": "2026-10-01",
+             "entry_open": 100.0, "exit_signal_date": target, "exit_execution_date": None, "exit_price": None,
+             "trade_status": "OPEN_AT_REFERENCE", "strategy_id": phase4d.B_SELECT_ID}
+    event = {"kind": "EXIT", "signal_date": target, "execution_date": None,
+             "trade_sequence": 1, "strategy_id": phase4d.B_SELECT_ID}
+    item.update({"bucket": "exit", "action": "EXIT", "strategy_state": "EXIT_PENDING",
+                 "canonical_position": "OPEN", "current_trade": dict(trade),
+                 "trade_history": [dict(trade)], "pending_event": event})
+    canonical_trade = {**trade, "ticker": item["ticker"], "isu_cd": item["isu_cd"]}
+    canonical_event = {**event, "ticker": item["ticker"], "isu_cd": item["isu_cd"]}
+    monitor_trade = {**canonical_trade, "entry_price": canonical_trade["entry_open"]}
+    counts = {"entry": 0, "hold": 0, "exit": 1, "watch": 0, "unavailable": 0}
+    status.update({"counts": counts, "canonical_trade_history": [canonical_trade], "canonical_trade_history_row_count": 1,
+                   "canonical_current_open_positions": [canonical_trade], "canonical_current_open_position_count": 1,
+                   "canonical_pending_events": [canonical_event], "canonical_pending_event_count": 1,
+                   "historical_only_identity_count": 0})
+    monitor = documents["strategy-monitor.json"]["strategies"][1]
+    monitor.update({"counts": counts, "items": [{key: value for key, value in item.items() if key != "trade_history"}],
+                    "trade_history": [monitor_trade], "canonical_current_open_positions": [monitor_trade],
+                    "canonical_current_open_position_count": 1,
+                    "canonical_pending_events": [dict(canonical_event)], "canonical_pending_event_count": 1})
+    (stage / "identity-report-routes.json").touch()
+    documents["identity-report-routes.json"] = {"requested_as_of": target, "reference_market_date": target}
+    monkeypatch.setattr(phase4d.identity_reports_web, "validate_identity_routes", lambda *_: {})
+    monkeypatch.setattr(phase4d, "_read_json", lambda path: documents[path.relative_to(stage).as_posix()])
+    monkeypatch.setattr(phase4d, "load_rolling_production_market_calendar", lambda _: SimpleNamespace(
+        trading_dates=pd.to_datetime(["2026-09-30", "2026-10-01", "2026-10-29", target]),
+        metadata={"certified_through": "2026-11-01"},
+    ))
+    assert phase4d.validate_staging(stage, target, target)["stock_report_count"] == 1
+    item["current_trade"]["trade_sequence"] = 2
+    with pytest.raises(phase4d.Phase4DError, match="CANONICAL_PENDING_EVENT_INVALID"):
+        phase4d.validate_staging(stage, target, target)
 
 
 def test_validate_staging_rejects_non_normal_health(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
@@ -775,3 +869,58 @@ def test_phase4d_passes_periodic_sector_membership_snapshot_to_foreign_export(mo
         "effective_date": "2026-09-17",
         "path": str(selected_path),
     }
+
+
+def test_staging_retains_prior_pending_only_with_proven_absent_opens(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    target = '2026-10-30'
+    stage, documents = _health_validation_fixture(tmp_path, target=target)
+    status = documents[phase4d.B_SELECT_STATUS_STAGING_NAME]
+    item = status['items'][0]
+    event = {'kind': 'ENTRY', 'signal_date': '2026-09-30', 'execution_date': None,
+             'trade_sequence': 2, 'strategy_id': phase4d.B_SELECT_ID}
+    item.update({'bucket': 'unavailable', 'action': 'ENTER_NEXT_OPEN', 'strategy_state': 'ENTRY_PENDING',
+                 'data_status': 'UNAVAILABLE', 'canonical_position': 'FLAT',
+                 'current_trade': None, 'pending_event': event})
+    canonical = {**event, 'ticker': item['ticker'], 'isu_cd': item['isu_cd']}
+    counts = {'entry': 0, 'hold': 0, 'exit': 0, 'watch': 0, 'unavailable': 1}
+    status.update({'counts': counts, 'canonical_trade_history': [], 'canonical_trade_history_row_count': 0,
+                   'canonical_current_open_positions': [], 'canonical_current_open_position_count': 0,
+                   'canonical_pending_events': [canonical], 'canonical_pending_event_count': 1,
+                   'historical_only_identity_count': 0})
+    monitor = documents['strategy-monitor.json']['strategies'][1]
+    monitor.update({'counts': counts, 'items': [{k: v for k, v in item.items() if k != 'trade_history'}],
+                    'trade_history': [], 'canonical_current_open_positions': [],
+                    'canonical_current_open_position_count': 0,
+                    'canonical_pending_events': [dict(canonical)], 'canonical_pending_event_count': 1})
+    (stage / 'identity-report-routes.json').touch()
+    documents['identity-report-routes.json'] = {'requested_as_of': target, 'reference_market_date': target}
+    monkeypatch.setattr(phase4d.identity_reports_web, 'validate_identity_routes', lambda *_: {})
+    monkeypatch.setattr(phase4d, '_read_json', lambda path: documents[path.relative_to(stage).as_posix()])
+    monkeypatch.setattr(phase4d, 'load_rolling_production_market_calendar', lambda _: SimpleNamespace(
+        trading_dates=pd.to_datetime(['2026-09-30', '2026-10-01', '2026-10-29', target]),
+        metadata={'certified_through': '2026-11-01'},
+    ))
+    monkeypatch.setattr(phase4d, '_pending_has_no_valid_open', lambda *args, **kwargs: True, raising=False)
+    assert phase4d.validate_staging(stage, target, target)['stock_report_count'] == 1
+    monkeypatch.setattr(phase4d, '_pending_has_no_valid_open', lambda *args, **kwargs: False)
+    with pytest.raises(phase4d.Phase4DError, match='CANONICAL_PENDING_EVENT_INVALID'):
+        phase4d.validate_staging(stage, target, target)
+
+
+def test_pending_gap_proof_requires_matching_identity_and_no_valid_open(monkeypatch: pytest.MonkeyPatch):
+    dates = ['2026-09-30', '2026-10-01', '2026-10-02']
+    intervals = [{'ticker': '123456', 'isu_cd': 'KR7123456000', 'state': 'COMMON',
+                  'effective_from': '2020-01-01', 'effective_to': '2026-10-02'}]
+    builder = phase4d.b_select_status_web
+    monkeypatch.setattr(builder.pattern_b_source, '_load_authorities', lambda _: (intervals, dates, {}))
+    monkeypatch.setattr(builder, 'build_production_repository_v2', lambda *args, **kwargs: object())
+    monkeypatch.setattr(builder, '_first_valid_open_schedule', lambda **kwargs: ({}, {'2026-09-30': None}))
+    assert phase4d._pending_has_no_valid_open('123456', 'KR7123456000', '2026-09-30', '2026-10-02', dates)
+    assert not phase4d._pending_has_no_valid_open('123456', 'KR7999999000', '2026-09-30', '2026-10-02', dates)
+    monkeypatch.setattr(builder, '_first_valid_open_schedule', lambda **kwargs: ({'2026-10-02': 100.0}, {'2026-09-30': '2026-10-02'}))
+    assert not phase4d._pending_has_no_valid_open('123456', 'KR7123456000', '2026-09-30', '2026-10-02', dates)
+    def invalid_authority(**kwargs):
+        raise ValueError('projection mismatch')
+    monkeypatch.setattr(builder, '_first_valid_open_schedule', invalid_authority)
+    with pytest.raises(phase4d.Phase4DError, match='PENDING_OPEN_AUTHORITY_FAILED'):
+        phase4d._pending_has_no_valid_open('123456', 'KR7123456000', '2026-09-30', '2026-10-02', dates)

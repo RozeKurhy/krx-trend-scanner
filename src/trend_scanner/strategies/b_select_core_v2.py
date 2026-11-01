@@ -8,6 +8,7 @@ as Pattern B NORMAL, filled at the next exact session's valid open.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+import math
 from typing import Any
 
 from trend_scanner.strategies.b_select_core_v1 import (
@@ -44,6 +45,7 @@ def replay_lifecycle(
     initial_pending: Mapping[str, Any] | None = None,
     initial_trade_sequence: int = 0,
     execution_by_signal_date: Mapping[str, str] | None = None,
+    certified_through: str | None = None,
 ) -> dict[str, Any]:
     """Replay one identity's exact-session lifecycle through the reference.
 
@@ -58,7 +60,7 @@ def replay_lifecycle(
     reference = str(reference_market_date)[:10]
     calendar = sorted({str(day)[:10] for day in trading_dates})
     calendar_set = set(calendar)
-    month_end_sessions = exact_month_end_sessions(calendar)
+    month_end_sessions = exact_month_end_sessions(calendar, certified_through=certified_through)
     if reference not in calendar_set:
         raise BSelectLifecycleError("REFERENCE_NOT_EXACT_KRX_SESSION")
     if any(str(row.get("date", ""))[:10] > reference for row in observations):
@@ -100,6 +102,19 @@ def replay_lifecycle(
             raise BSelectLifecycleError("PENDING_ENTRY_SIGNAL_NOT_MONTH_END_EXACT_KRX_SESSION")
         if pending_kind not in {"ENTRY", "EXIT"}:
             raise BSelectLifecycleError("PENDING_EVENT_KIND_INVALID")
+        if pending_day > reference:
+            raise BSelectLifecycleError("FUTURE_PENDING_SIGNAL")
+        if pending.get("strategy_id") not in {None, STRATEGY_ID}:
+            raise BSelectLifecycleError("PENDING_STRATEGY_LINEAGE_INVALID")
+        if pending_kind == "ENTRY" and (position is not None or int(pending.get("sequence") or 0) < 1):
+            raise BSelectLifecycleError("PENDING_ENTRY_POSITION_OR_SEQUENCE_INVALID")
+        if pending_kind == "EXIT" and position is None:
+            raise BSelectLifecycleError("PENDING_EXIT_POSITION_MISSING")
+        if pending_kind == "EXIT" and position is not None and (
+            pending.get("sequence") is not None
+            and int(pending["sequence"]) != int(position.get("trade_sequence") or 0)
+        ):
+            raise BSelectLifecycleError("PENDING_EXIT_SEQUENCE_MISMATCH")
         if pending_execution and (
             pending_execution not in calendar_set
             or pending_execution <= pending_day
@@ -120,9 +135,12 @@ def replay_lifecycle(
             scheduled = str(scheduled)[:10]
             if scheduled not in calendar_set or scheduled <= signal_day:
                 raise BSelectLifecycleError("EXECUTION_SCHEDULE_NOT_AFTER_SIGNAL")
+            next_day = next_exact_session(signal_day, calendar)
+            if scheduled > reference and next_day is not None and next_day <= reference:
+                raise BSelectLifecycleError("MISSING_OBSERVED_VALID_OPEN")
             if scheduled <= reference:
                 price = exact_opens.get(scheduled)
-                if price is None or float(price) <= 0:
+                if price is None or not math.isfinite(float(price)) or float(price) <= 0:
                     raise BSelectLifecycleError(f"MISSING_EXACT_SCHEDULED_OPEN:{scheduled}")
             return scheduled
         return next_exact_session(signal_day, calendar)
@@ -136,7 +154,7 @@ def replay_lifecycle(
         if day not in calendar_set:
             raise BSelectLifecycleError(f"EXECUTION_NOT_EXACT_KRX_SESSION:{day}")
         price = exact_opens.get(day)
-        if price is None or float(price) <= 0:
+        if price is None or not math.isfinite(float(price)) or float(price) <= 0:
             raise BSelectLifecycleError(f"MISSING_EXACT_NEXT_OPEN:{day}")
         if pending["kind"] == "ENTRY":
             sequence_number = pending["sequence"]
@@ -173,6 +191,15 @@ def replay_lifecycle(
                 completed_trades.append(completed_trade)
             position = None
         pending = None
+
+    if pending:
+        next_day = next_exact_session(str(pending["signal_date"])[:10], calendar)
+        pending_day = str(pending.get("execution_date") or "")[:10]
+        if next_day is not None and next_day <= reference:
+            scheduled_day = execution_after(str(pending["signal_date"])[:10])
+            if pending_day and pending_day <= reference and pending_day != scheduled_day:
+                raise BSelectLifecycleError("PENDING_EXECUTION_SCHEDULE_MISMATCH")
+            pending["execution_date"] = scheduled_day
 
     event_days = set(by_date) | set(signal_by_date)
     if pending and pending.get("execution_date") and str(pending["execution_date"])[:10] <= reference:
