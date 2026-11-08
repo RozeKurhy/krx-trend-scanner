@@ -38,6 +38,7 @@ from trend_scanner.data.market_calendar import resolve_reference_market_date
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 from trend_scanner.validation.pattern_a_fast_core_v02_reentry import (
     ExecutionPriceUnavailableError,
+    _completed_monthly_observations,
     simulate_ticker_core_v02_reentry,
 )
 from trend_scanner.validation.pattern_a_fast_alignment_mcap_500b import (
@@ -56,6 +57,23 @@ logger = logging.getLogger(__name__)
 _VALID_METADATA_PROVENANCE_MODES = ("CURRENT_VERIFIED", "HISTORICAL_LEGACY_RESEARCH", "DATA_UNAVAILABLE")
 OPERATIONAL_REPLAY_MODE = "OPERATIONAL"
 HISTORICAL_ALIGNMENT_REPLAY_MODE = "FULL_HISTORY_ALIGNMENT_WEB"
+
+
+def _exit_signal_observed_as_of(
+    signal_date: str | None,
+    exit_type: str | None,
+    requested_as_of: pd.Timestamp,
+    market_calendar: MarketCalendarAuthority | None,
+) -> bool:
+    if not signal_date:
+        return False
+    label = pd.Timestamp(signal_date).normalize()
+    requested = pd.Timestamp(requested_as_of).normalize()
+    if label <= requested:
+        return True
+    if not label.is_month_end or not str(exit_type or "").startswith(("EXIT3_", "EXIT4_")):
+        return False
+    return bool(_completed_monthly_observations(pd.DatetimeIndex([label]), label, requested, market_calendar))
 
 
 def build_a_fast_core_section(
@@ -372,7 +390,7 @@ def _build_a_fast_core_section_impl(
             is_position_open = True
             active_trade = last_trade
         # Or if exit signal triggered on or before requested_as_of, but execution date is after requested_as_of
-        elif last_trade.exit_signal_date is not None and pd.Timestamp(last_trade.exit_signal_date) <= requested_as_of:
+        elif _exit_signal_observed_as_of(last_trade.exit_signal_date, last_trade.exit_type, requested_as_of, market_calendar):
             if last_trade.exit_execution_date is None or pd.Timestamp(last_trade.exit_execution_date) > requested_as_of:
                 is_position_open = True
                 active_trade = last_trade
@@ -420,17 +438,20 @@ def _build_a_fast_core_section_impl(
 
             # Compute PROGRESSED HWM score up to requested_as_of
             monthly_bars = to_monthly(daily_as_of)
-            prog_m_dates = [m for m in monthly_bars.index if f_prog_d and m >= pd.Timestamp(f_prog_d) and m <= requested_as_of]
-            for m in prog_m_dates:
+            prog_m_dates = _completed_monthly_observations(
+                monthly_bars.index, pd.Timestamp(f_prog_d), requested_as_of, market_calendar,
+            ) if f_prog_d else []
+            for m, evaluation_date in prog_m_dates:
                 try:
-                    m_snap = build_historical_snapshot(ticker, name, daily_as_of[daily_as_of.index <= m], m, include_incomplete_periods=False, market_calendar=market_calendar)
+                    m_snap = build_historical_snapshot(ticker, name, daily_as_of[daily_as_of.index <= evaluation_date], evaluation_date, include_incomplete_periods=False, market_calendar=market_calendar)
                     m_eval = evaluate_pattern_a(m_snap)
                     if m_eval.score is not None:
                         sc = float(round(m_eval.score, 2))
                         if prog_hwm_score is None or sc > prog_hwm_score:
                             prog_hwm_score = sc
                 except Exception:
-                    pass
+                    if historical_alignment_replay:
+                        raise
 
             if prog_hwm_score is not None and cur_pa_score is not None:
                 score_dd_from_hwm = round(prog_hwm_score - cur_pa_score, 2)
@@ -472,7 +493,7 @@ def _build_a_fast_core_section_impl(
         )
 
         # Check pending exit
-        if active_trade.exit_signal_date is not None and pd.Timestamp(active_trade.exit_signal_date) <= requested_as_of:
+        if _exit_signal_observed_as_of(active_trade.exit_signal_date, active_trade.exit_type, requested_as_of, market_calendar):
             strategy_state = "EXIT"
             action = "EXIT_NEXT_OPEN"
             execution_timing = "NEXT_LOCAL_TRADING_DAY_OPEN"

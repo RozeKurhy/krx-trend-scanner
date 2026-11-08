@@ -22,8 +22,8 @@
     "flow_state": "FLOW_UNAVAILABLE"
   },
   "price_trend": {
-    "latest_close": 15090.0,
-    "latest_close_as_of": "2026-10-30",
+    "latest_close": 13405.0,
+    "latest_close_as_of": "2026-11-06",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/102970.parquet",
     "score_trend": {
@@ -38,12 +38,12 @@
       "change_12m": -24.53
     },
     "trading_value_state": "TRADING_VALUE_WEAKENING",
-    "trading_value_explanation": "최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(49.02억원)이 20일 평균(77.43억원) 및 60일 평균(111.03억원)을 밑돌고 있습니다.",
-    "avg_trading_value_1d_eok": 42.35,
-    "avg_trading_value_5d_eok": 49.02,
-    "avg_trading_value_10d_eok": 52.65,
-    "avg_trading_value_20d_eok": 77.43,
-    "avg_trading_value_60d_eok": 111.03
+    "trading_value_explanation": "최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(69.99억원)이 20일 평균(76.68억원) 및 60일 평균(91.09억원)을 밑돌고 있습니다.",
+    "avg_trading_value_1d_eok": 134.38,
+    "avg_trading_value_5d_eok": 69.99,
+    "avg_trading_value_10d_eok": 59.5,
+    "avg_trading_value_20d_eok": 76.68,
+    "avg_trading_value_60d_eok": 91.09
   },
   "pattern": {
     "official_stage": "PROGRESSED",
@@ -405,7 +405,7 @@
     "status": "NOT_APPLICABLE",
     "applicability": "NOT_APPLICABLE",
     "reason": "ASSET_TYPE_NOT_APPLICABLE",
-    "requested_as_of": "2026-11-01",
+    "requested_as_of": "2026-11-08",
     "company_family": null,
     "currency": "KRW",
     "filter_status": "NOT_APPLICABLE",
@@ -461,17 +461,17 @@
       }
     ],
     "eligibility": {
-      "as_of": "2026-10-30",
+      "as_of": "2026-11-06",
       "official_etf36_membership": true,
       "listing_date": "2008-05-29",
       "listing_age_pass": true,
-      "raw_close_krw": 15090.0,
+      "raw_close_krw": 13405.0,
       "minimum_raw_close_krw": 1000,
       "raw_close_pass": true,
-      "avg_volume_20d_shares": 495412.95,
+      "avg_volume_20d_shares": 514295.4,
       "volume_window_sessions": 20,
-      "volume_window_start": "2026-10-01",
-      "volume_window_end": "2026-10-30",
+      "volume_window_start": "2026-10-12",
+      "volume_window_end": "2026-11-06",
       "volume_window_includes_signal_date": true,
       "minimum_avg_volume_20d_shares": 10000,
       "volume_pass": true,
@@ -485,8 +485,8 @@
     }
   },
   "technical_details": {
-    "requested_as_of": "2026-11-01",
-    "reference_market_date": "2026-10-30",
+    "requested_as_of": "2026-11-08",
+    "reference_market_date": "2026-11-06",
     "report_version": "0.6",
     "report_status": "PARTIAL",
     "asset_type": "ETF",
@@ -500,20 +500,20 @@
     "market_strength_status": "NOT_EVALUATED",
     "relative_strength_status": "NOT_EVALUATED",
     "trading_value_state": "TRADING_VALUE_WEAKENING",
-    "price_as_of": "2026-10-30",
+    "price_as_of": "2026-11-06",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/102970.parquet",
     "sector_name": null,
     "data_quality": {
       "cache_present": true,
       "cache_first_date": "2014-01-02",
-      "cache_last_date": "2026-10-30",
-      "daily_rows_count": 3147,
+      "cache_last_date": "2026-11-06",
+      "daily_rows_count": 3152,
       "completed_month_count": 154,
       "quality_status": "OK",
       "quality_flags": []
     },
-    "source_report": "artifacts/reporting/etf_stock_reports/20261101/json/102970_KODEX 증권.json"
+    "source_report": "artifacts/reporting/etf_stock_reports/20261108/json/102970_KODEX 증권.json"
   },
   "external_links": {
     "naver_finance": "https://finance.naver.com/item/main.naver?code=102970",

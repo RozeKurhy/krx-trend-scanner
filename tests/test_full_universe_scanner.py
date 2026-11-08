@@ -16,6 +16,7 @@ Validates:
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 import tempfile
 from types import SimpleNamespace
@@ -332,6 +333,113 @@ def test_requested_as_of_and_reference_market_date_role_separation(mock_scanner_
     # 요청 기준일을 기준 시장일로 다시 기록하지 않는다.
     assert res.summary.requested_as_of == requested_as_of
     assert res.summary.reference_market_date == reference_market_date
+
+
+def test_market_feature_evaluations_use_reference_date_for_trading_and_weekend_requests(
+    mock_scanner_env, monkeypatch
+):
+    """10/16 요청과 10/18 요청은 시장 평가값을 공유하고 요청일 metadata만 달라야 한다."""
+    requested_dates = ["2026-10-16", "2026-10-18"]
+    reference_market_date = "2026-10-16"
+    daily = _create_mock_daily("2020-01-02", reference_market_date, 50000.0)
+    mock_scanner_env["cache"].save("005930", daily)
+    calendar = MarketCalendarAuthority.from_dates(
+        pd.DatetimeIndex(daily.index), last_completed_month="2026-09"
+    )
+    mcap_calls: list[str] = []
+    rs_calls: list[str] = []
+
+    def fake_load_mcap_snapshot(*, repo_root, as_of):
+        mcap_calls.append(as_of)
+        return pd.DataFrame([{"ticker": "005930", "market_cap": 1_000_000_000_000.0}]), "fixture-hash"
+
+    def fake_resolve_market_rs(_repository, *, ticker, as_of, market_code, market_index_df):
+        rs_calls.append(as_of)
+        return SimpleNamespace(stock_df=daily, reason=None)
+
+    original_evaluate = scanner_module.evaluate_pattern_a
+
+    def force_candidate(snapshot):
+        result = original_evaluate(snapshot)
+        return replace(result, candidate_state=PatternACandidateState.CANDIDATE)
+
+    monkeypatch.setattr(scanner_module, "_default_production_market_calendar", lambda _root: calendar)
+    monkeypatch.setattr(scanner_module, "load_canonical_mcap_snapshot", fake_load_mcap_snapshot)
+    monkeypatch.setattr(scanner_module, "resolve_market_rs_repository_input", fake_resolve_market_rs)
+    monkeypatch.setattr(scanner_module, "evaluate_pattern_a", force_candidate)
+
+    flow_dates = pd.bdate_range(end=reference_market_date, periods=60)
+    flow_df = pd.DataFrame(
+        {
+            "date": flow_dates.strftime("%Y-%m-%d"),
+            "ticker": "005930",
+            "foreign_net_buy_value": 1_000_000.0,
+        }
+    )
+    sector_dates = pd.bdate_range(end=reference_market_date, periods=320)
+    sector_index = pd.DataFrame(
+        {
+            "date": sector_dates.strftime("%Y-%m-%d"),
+            "index_code": "ELEC",
+            "close": 50.0 + np.linspace(0.0, 15.0, len(sector_dates)),
+        }
+    )
+    market_index = _create_mock_market_index(reference_market_date)
+
+    rows_by_request = {}
+    for requested_as_of in requested_dates:
+        result = scan_pattern_a_universe(
+            cache=mock_scanner_env["cache"],
+            as_of=requested_as_of,
+            reference_market_date=reference_market_date,
+            universe_securities=[UniverseSecurity("005930", "삼성전자", MarketType.KOSPI)],
+            target_tickers=["005930"],
+            flow_df=flow_df,
+            market_index_df=market_index,
+            sector_index_df=sector_index,
+            sector_mapping={
+                "005930": ("ELEC", "전기전자", reference_market_date, "MAPPED")
+            },
+            sector_mapping_snapshot_date=reference_market_date,
+            market_rs_repository=object(),
+        )
+        assert result.summary.requested_as_of == requested_as_of
+        assert result.summary.reference_market_date == reference_market_date
+        assert result.summary.scanner_error_count == 0
+        rows_by_request[requested_as_of] = result.rows[0]
+
+    market_fields = (
+        "investability_status",
+        "market_cap",
+        "avg_trading_value_20d",
+        "market_cap_effective_date",
+        "close_effective_date",
+        "tv20_last_observation_date",
+        "foreign_flow_data_status",
+        "foreign_flow_last_observation_date",
+        "foreign_net_buy_value_5d",
+        "market_rs_data_status",
+        "market_benchmark_last_observation_date",
+        "market_rs_3m",
+        "sector_rs_data_status",
+        "sector_benchmark_last_observation_date",
+        "sector_rs_3m",
+    )
+    trading_day_row = rows_by_request["2026-10-16"]
+    weekend_row = rows_by_request["2026-10-18"]
+    assert trading_day_row.requested_as_of == pd.Timestamp("2026-10-16")
+    assert weekend_row.requested_as_of == pd.Timestamp("2026-10-18")
+    assert all(getattr(trading_day_row, field) == getattr(weekend_row, field) for field in market_fields)
+    assert trading_day_row.investability_status == InvestabilityStatus.INVESTABLE
+    assert trading_day_row.foreign_flow_data_status == "READY"
+    assert trading_day_row.market_rs_data_status == "READY"
+    assert trading_day_row.sector_rs_data_status == "READY"
+    assert trading_day_row.close_effective_date == reference_market_date
+    assert trading_day_row.foreign_flow_last_observation_date == reference_market_date
+    assert trading_day_row.market_benchmark_last_observation_date == reference_market_date
+    assert trading_day_row.sector_benchmark_last_observation_date == reference_market_date
+    assert mcap_calls == [reference_market_date, reference_market_date]
+    assert rs_calls == [reference_market_date, reference_market_date]
 
 
 def test_scanner_uses_reference_date_for_snapshot_completion_without_rewriting_requested_date(

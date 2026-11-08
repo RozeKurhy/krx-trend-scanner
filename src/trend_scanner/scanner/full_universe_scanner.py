@@ -35,12 +35,10 @@ import numpy as np
 import pandas as pd
 
 from trend_scanner.data.cache import ParquetCache
-from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.index_store import IndexStore, MARKET_INDEX_FAMILY
-from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.data.market_calendar import MarketCalendarAuthority, load_rolling_production_market_calendar
 from trend_scanner.data.repository_v2 import MarketDataRepositoryV2
-from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader
+from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader, build_production_repository_v2
 from trend_scanner.backtest.snapshot_context import (
     PrecomputedTickerContext,
     build_historical_snapshot_from_context,
@@ -110,23 +108,17 @@ logger = logging.getLogger(__name__)
 # isolation or alternate stores.
 _DEFAULT_MARKET_RS_REPOSITORIES: dict[tuple[str, str], MarketDataRepositoryV2] = {}
 
-def _default_market_rs_repository(repo_root: Path) -> MarketDataRepositoryV2:
+def _default_market_rs_repository(repo_root: Path, *, end: str | pd.Timestamp) -> MarketDataRepositoryV2:
     # PRODUCTION_ROLLING_MODE (directive ROLLING_MARKET_DATA_AUTHORITY_FINALIZATION_V01 section 7):
     # this repository backs live Market RS feature calculation, so the rolling certified boundary
     # must be enforced unconditionally, never opt-in.
-    from trend_scanner.data.rolling_market_data_refresh import DEFAULT_ROLLING_AUTHORITY_DIR
-
     key = (
         str((repo_root / "data/market/adjusted/stocks").resolve()),
         str((repo_root / "data/market/raw/krx_stocks/v01").resolve()),
     )
     repository = _DEFAULT_MARKET_RS_REPOSITORIES.get(key)
     if repository is None:
-        repository = MarketDataRepositoryV2(
-            AdjustedPriceStore(key[0]),
-            KrxRawStockStore(key[1]),
-            rolling_authority_dir=repo_root / DEFAULT_ROLLING_AUTHORITY_DIR,
-        )
+        repository = build_production_repository_v2(repo_root, end=end)
         _DEFAULT_MARKET_RS_REPOSITORIES[key] = repository
     return repository
 
@@ -937,18 +929,19 @@ def scan_pattern_a_universe(
 
     req_as_of = pd.Timestamp(as_of_str)
     req_as_of_str = req_as_of.strftime("%Y-%m-%d")
+    ref_market_date = (
+        str(reference_market_date).strip() if reference_market_date else req_as_of.strftime("%Y-%m-%d")
+    )
+    market_data_as_of = pd.Timestamp(ref_market_date)
+    market_data_as_of_str = market_data_as_of.strftime("%Y-%m-%d")
     repository_loader: RepositoryV2DailyLoader | None = None
     if repository is not None:
-        repository_loader = RepositoryV2DailyLoader(repository, end=req_as_of)
+        repository_loader = RepositoryV2DailyLoader(repository, end=market_data_as_of)
         parquet_cache = None
     else:
         # Explicit cache injection remains available to isolated historical
         # fixtures. Production callers pass ``repository`` above.
         parquet_cache = cache if isinstance(cache, ParquetCache) else ParquetCache(base_dir=cache)
-    ref_market_date = (
-        str(reference_market_date).strip() if reference_market_date else req_as_of.strftime("%Y-%m-%d")
-    )
-
     # 2. Authoritative Universe 로딩 및 COMMON 종목 필터링
     repo_root = Path(__file__).resolve().parent.parent.parent.parent
     production_market_calendar = _default_production_market_calendar(repo_root)
@@ -1057,21 +1050,21 @@ def scan_pattern_a_universe(
 
     scan_target_count = len(scan_targets)
 
-    # 3.0 Market Cap PIT Snapshot 로드 (반드시 requested as_of 기준)
+    # 3.0 Market Cap PIT Snapshot 로드 (공식 reference market date 기준)
     repo_root = Path(__file__).resolve().parent.parent.parent.parent
     exact_sector_snapshot = (
         enrich_sector_rs_cross_section if require_exact_sector_snapshot is None else require_exact_sector_snapshot
     )
     try:
-        df_mcap_snap, _ = load_canonical_mcap_snapshot(repo_root=repo_root, as_of=req_as_of_str)
+        df_mcap_snap, _ = load_canonical_mcap_snapshot(repo_root=repo_root, as_of=market_data_as_of_str)
         mcap_dict = {
             str(row["ticker"]).strip().zfill(6): float(row["market_cap"])
             for _, row in df_mcap_snap.iterrows()
             if pd.notna(row.get("market_cap"))
         }
-        mcap_effective_date = req_as_of_str
+        mcap_effective_date = market_data_as_of_str
     except Exception as exc:
-        logger.warning("Failed to load canonical market cap snapshot for %s: %s", req_as_of_str, exc)
+        logger.warning("Failed to load canonical market cap snapshot for %s: %s", market_data_as_of_str, exc)
         mcap_dict = {}
         mcap_effective_date = None
 
@@ -1102,7 +1095,7 @@ def scan_pattern_a_universe(
                 repo_root / "data/market/index/v01"
             ).load_family(
                 MARKET_INDEX_FAMILY,
-                end=req_as_of_str,
+                end=market_data_as_of_str,
                 index_codes=("1001", "2001"),
             )
     except Exception as exc:
@@ -1129,27 +1122,27 @@ def scan_pattern_a_universe(
         if exact_sector_snapshot and sector_mapping_path is None and sector_mapping is None:
             try:
                 sector_map_loaded = load_sector_mapping_exact_snapshot(
-                    req_as_of_str,
+                    market_data_as_of_str,
                     repo_root=repo_root,
                 )
-                loaded_sector_snapshot_date = req_as_of_str
+                loaded_sector_snapshot_date = market_data_as_of_str
             except SectorMembershipSnapshotUnavailable as exc:
                 logger.warning("Exact frozen sector membership unavailable: %s", exc)
                 sector_map_loaded = None
                 loaded_sector_snapshot_date = None
         elif exact_sector_snapshot and sector_mapping_path is not None:
             sector_map_loaded = load_sector_mapping_exact_snapshot(
-                req_as_of_str,
+                market_data_as_of_str,
                 path=sector_mapping_path,
                 repo_root=repo_root,
             )
-            loaded_sector_snapshot_date = req_as_of_str
+            loaded_sector_snapshot_date = market_data_as_of_str
         elif sector_mapping is not None:
             valid_map = {}
             for k, v in sector_mapping.items():
                 if isinstance(v, (tuple, list)) and len(v) >= 3:
                     sc, sn, eff = v[0], v[1], str(v[2]).strip()
-                    if eff <= req_as_of_str and sc is not None and not pd.isna(sc):
+                    if eff <= market_data_as_of_str and sc is not None and not pd.isna(sc):
                         status = str(v[3]).strip().upper() if len(v) >= 4 else "MAPPED"
                         valid_map[str(k).zfill(6)] = (str(sc), str(sn), eff, status)
                 # Provenance-less 2-tuples are strictly rejected in production evaluation
@@ -1160,8 +1153,8 @@ def scan_pattern_a_universe(
                 df_sm = pd.read_csv(p)
                 df_sm["ticker"] = df_sm["ticker"].astype(str).str.zfill(6)
                 if "effective_date" in df_sm.columns:
-                    # Strict PIT enforcement: only use mappings with effective_date <= requested_as_of
-                    df_sm_pit = df_sm[df_sm["effective_date"].astype(str) <= req_as_of_str]
+                    # Strict PIT enforcement: only use mappings available by the reference market date.
+                    df_sm_pit = df_sm[df_sm["effective_date"].astype(str) <= market_data_as_of_str]
                     if not df_sm_pit.empty:
                         sector_map_loaded = {
                             row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]), str(row["effective_date"]))
@@ -1169,12 +1162,12 @@ def scan_pattern_a_universe(
                         }
                 # Missing effective_date column results in sector_map_loaded = None (Fail-Closed)
         else:
-            def_p = repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/source" / f"sector_mapping_{req_as_of.strftime('%Y%m%d')}.csv"
+            def_p = repo_root / "artifacts/patterns/pattern_a/validation/relative_strength/source" / f"sector_mapping_{market_data_as_of.strftime('%Y%m%d')}.csv"
             if def_p.exists():
                 df_sm = pd.read_csv(def_p)
                 df_sm["ticker"] = df_sm["ticker"].astype(str).str.zfill(6)
                 if "effective_date" in df_sm.columns:
-                    df_sm_pit = df_sm[df_sm["effective_date"].astype(str) <= req_as_of_str]
+                    df_sm_pit = df_sm[df_sm["effective_date"].astype(str) <= market_data_as_of_str]
                     if not df_sm_pit.empty:
                         sector_map_loaded = {
                             row["ticker"]: (str(row["sector_code"]), str(row["sector_name"]), str(row["effective_date"]))
@@ -1221,7 +1214,7 @@ def scan_pattern_a_universe(
         if repository is not None:
             market_rs_repository = repository
         elif market_index_df_loaded is not None and not market_index_df_loaded.empty:
-            market_rs_repository = _default_market_rs_repository(repo_root)
+            market_rs_repository = _default_market_rs_repository(repo_root, end=req_as_of)
 
     # 3. Ticker별 순차 평가 (One Cache Load -> One daily_as_of Slice -> Shared Context)
     rows: list[PatternAUniverseScanRow] = []
@@ -1241,7 +1234,7 @@ def scan_pattern_a_universe(
 
             # 3.2 Single Temporal Context 생성 (Lookahead 배제 & FUTURE_DATE 방지)
             if has_raw_cache and raw_daily is not None:
-                daily_as_of = raw_daily.loc[raw_daily.index <= req_as_of]
+                daily_as_of = raw_daily.loc[raw_daily.index <= market_data_as_of]
             else:
                 daily_as_of = pd.DataFrame()
 
@@ -1277,11 +1270,11 @@ def scan_pattern_a_universe(
             stage_ready = quality_record.stage_ready
             evaluator_ready = quality_record.evaluator_ready
 
-            # 3.3.1 Downstream Investability Evaluation (PIT requested as_of)
+            # 3.3.1 Downstream Investability Evaluation (PIT reference market date)
             mcap_val = mcap_dict.get(ticker)
             inv_eval: InvestabilityEvaluationResult = evaluate_investability(
                 ticker=ticker,
-                as_of=req_as_of,
+                as_of=market_data_as_of,
                 daily=daily_as_of if (has_raw_cache and not daily_as_of.empty) else None,
                 market_cap=mcap_val,
                 market_cap_effective_date=mcap_effective_date if mcap_val is not None else None,
@@ -1343,13 +1336,13 @@ def scan_pattern_a_universe(
                     repository_input = resolve_market_rs_repository_input(
                         market_rs_repository,
                         ticker=ticker,
-                        as_of=req_as_of_str,
+                        as_of=market_data_as_of_str,
                         market_code=market_code,
                         market_index_df=market_index_df_loaded,
                     )
                     unavailable_rs = compute_relative_strength_features(
                         ticker=ticker,
-                        as_of=req_as_of_str,
+                        as_of=market_data_as_of_str,
                         stock_df=repository_input.stock_df,
                         market_index_df=market_index_df_loaded,
                         market=market,
@@ -1452,14 +1445,14 @@ def scan_pattern_a_universe(
             ):
                 flow_res: ForeignFlowFeatureResult = compute_foreign_flow_features(
                     ticker=ticker,
-                    as_of=req_as_of_str,
+                    as_of=market_data_as_of_str,
                     flow_df=flow_df_loaded,
                     price_df=daily_as_of if (has_raw_cache and not daily_as_of.empty) else None,
                 )
             else:
                 flow_res = ForeignFlowFeatureResult(
                     ticker=ticker,
-                    as_of=req_as_of_str,
+                    as_of=market_data_as_of_str,
                     data_status=FlowDataStatus.NOT_EVALUATED,
                     foreign_flow_last_observation_date=None,
                     foreign_flow_first_observation_date=None,
@@ -1504,14 +1497,14 @@ def scan_pattern_a_universe(
                 repository_input = resolve_market_rs_repository_input(
                     market_rs_repository,
                     ticker=ticker,
-                    as_of=req_as_of_str,
+                    as_of=market_data_as_of_str,
                     market_code=market_code,
                     market_index_df=market_index_df_loaded,
                 )
                 market_rs_input_reason = repository_input.reason
                 rs_res: RelativeStrengthFeatureResult = compute_relative_strength_features(
                     ticker=ticker,
-                    as_of=req_as_of_str,
+                    as_of=market_data_as_of_str,
                     stock_df=repository_input.stock_df,
                     market_index_df=market_index_df_loaded,
                     market=market,
@@ -1523,7 +1516,7 @@ def scan_pattern_a_universe(
             else:
                 rs_res = RelativeStrengthFeatureResult(
                     ticker=ticker,
-                    as_of=req_as_of_str,
+                    as_of=market_data_as_of_str,
                     market_rs_data_status=RelativeStrengthDataStatus.NOT_EVALUATED,
                     market_benchmark_name=None,
                     market_benchmark_code=None,

@@ -136,12 +136,12 @@ def run_phase4a(
     if not resolved_output_dir.is_absolute():
         resolved_output_dir = root / resolved_output_dir
 
-    repository = build_production_repository_v2(root, end=target_as_of)
     production_calendar = load_rolling_production_market_calendar(root)
     reference_market_date = resolve_reference_market_date(target_as_of, production_calendar)
+    repository = build_production_repository_v2(root, end=reference_market_date)
 
     _, membership_effective_date, membership_path, _ = (
-        resolve_sector_membership_snapshot_for_target(target_as_of, repo_root=root)
+        resolve_sector_membership_snapshot_for_target(reference_market_date, repo_root=root)
     )
     sector_mapping = load_sector_mapping_exact_snapshot(
         membership_effective_date,

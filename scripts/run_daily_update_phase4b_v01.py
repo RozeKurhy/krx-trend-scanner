@@ -45,14 +45,19 @@ import re
 import shutil
 import tempfile
 import time
+from calendar import monthrange
 from collections import Counter
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from trend_scanner.data.repository_v2_loader import build_production_repository_v2
+from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
+from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
 from trend_scanner.data.rolling_market_data_refresh import (
     DEFAULT_ROLLING_AUTHORITY_DIR,
     load_rolling_authority,
@@ -79,6 +84,10 @@ EXPECTED_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02"
 PROMOTED_STRATEGY_ID = "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
 ALLOWED_FAST_STRATEGY_IDS = {EXPECTED_STRATEGY_ID, PROMOTED_STRATEGY_ID}
 FULL_HISTORY_ALIGNMENT_WEB = HISTORICAL_ALIGNMENT_REPLAY_MODE
+FATAL_REPLAY_ACTION_REASONS = frozenset({
+    "EVALUATOR_EXECUTION_FAILED", "EXECUTION_PRICE_UNRESOLVED", "CONTRACTS_UNAVAILABLE",
+    "MARKET_CALENDAR_UNAVAILABLE", "FAST_EVALUATOR_UNAVAILABLE",
+})
 EXPECTED_REPORT_VERSION = "0.7"
 SUPPORTED_PREVIOUS_REPORT_VERSIONS = {"0.5", EXPECTED_REPORT_VERSION}
 LATEST_QUARTER_OPERATING_PROFIT_POSITIVE = "POSITIVE"
@@ -136,6 +145,8 @@ def _full_history_replay_scope(
         core = report.get("a_fast_core") or {}
         if core.get("strategy_id") != PROMOTED_STRATEGY_ID or core.get("strategy_replay_mode") != FULL_HISTORY_ALIGNMENT_WEB:
             raise Phase4BError(f"PHASE4B_FAST_REPLAY_MODE_OR_STRATEGY_MISMATCH: {ticker}")
+        if core.get("action_reason") in FATAL_REPLAY_ACTION_REASONS:
+            raise Phase4BError(f"PHASE4B_FAST_REPLAY_{core['action_reason']}: {ticker}")
         if core.get("activation_intervals") or core.get("promotion_gate_status") not in (None, "") or core.get("effective_signal_date") not in (None, ""):
             raise Phase4BError(f"PHASE4B_FAST_REPLAY_OPERATIONAL_METADATA_PRESENT: {ticker}")
         history = core.get("trade_history") or []
@@ -257,6 +268,8 @@ def validate_full_history_alignment_corpus(
         core = report.get("a_fast_core") or {}
         if core.get("strategy_id") != PROMOTED_STRATEGY_ID or core.get("strategy_replay_mode") != FULL_HISTORY_ALIGNMENT_WEB:
             reasons.append("STRATEGY_ID_OR_REPLAY_MODE_MISMATCH")
+        if core.get("action_reason") in FATAL_REPLAY_ACTION_REASONS:
+            reasons.append(str(core["action_reason"]))
         if core.get("activation_intervals") or core.get("promotion_gate_status") not in (None, "") or core.get("effective_signal_date") not in (None, ""):
             reasons.append("OPERATIONAL_ACTIVATION_METADATA_PRESENT")
         digest = core.get("strategy_replay_digest")
@@ -330,6 +343,272 @@ def validate_full_history_alignment_corpus(
         "trade_count": trade_count,
         "current_open_position_count": open_count,
     }
+
+
+def validate_prior_trade_continuity(
+    previous_dir: Path,
+    staging_dir: Path,
+    *,
+    reference_market_date: str,
+    market_calendar: Any,
+    identity_resolver: Any,
+    adjusted_open_resolver: Any,
+) -> dict[str, Any]:
+    """Fail closed if a previously published trade is lost or illegally changed."""
+    sessions = [str(day)[:10] for day in market_calendar.trading_dates]
+    if sessions != sorted(set(sessions)):
+        raise Phase4BError("PHASE4B_CONTINUITY_CALENDAR_INVALID")
+    if reference_market_date not in sessions:
+        raise Phase4BError("PHASE4B_CONTINUITY_REFERENCE_NOT_CERTIFIED")
+    by_ticker: dict[str, dict[str, Any]] = {}
+    for path in sorted((Path(staging_dir) / "json").glob("*.json")):
+        report = json.loads(path.read_text(encoding="utf-8"))
+        if report.get("asset_type") != "COMMON":
+            continue
+        ticker = str(report.get("ticker") or "").strip().upper().zfill(6)
+        if not _TICKER_RE.fullmatch(ticker) or ticker in by_ticker:
+            raise Phase4BError(f"PHASE4B_CONTINUITY_CURRENT_IDENTITY_INVALID:{ticker}")
+        by_ticker[ticker] = report
+
+    counts = {
+        "prior_realized_count": 0, "prior_open_count": 0, "open_to_realized_count": 0,
+        "prior_open_still_open_count": 0, "new_trade_count": 0,
+        "lost_trade_count": 0, "changed_realized_count": 0,
+    }
+
+    def trade_index(ticker: str, rows: Any) -> dict[str, dict[str, Any]]:
+        if not isinstance(rows, list):
+            raise Phase4BError(f"PHASE4B_CONTINUITY_HISTORY_INVALID:{ticker}")
+        indexed: dict[str, dict[str, Any]] = {}
+        sequences: set[int] = set()
+        for row in rows:
+            if not isinstance(row, dict):
+                raise Phase4BError(f"PHASE4B_CONTINUITY_TRADE_INVALID:{ticker}")
+            try:
+                sequence = int(row.get("trade_sequence") or 0)
+            except (TypeError, ValueError) as exc:
+                raise Phase4BError(f"PHASE4B_CONTINUITY_SEQUENCE_INVALID:{ticker}") from exc
+            trade_id = str(row.get("trade_id") or "")
+            if (sequence < 1 or trade_id != f"{ticker}_{sequence:02d}" or trade_id in indexed
+                    or sequence in sequences or row.get("trade_status") not in {"REALIZED", "OPEN_AT_CUTOFF"}):
+                raise Phase4BError(f"PHASE4B_CONTINUITY_TRADE_KEY_INVALID:{ticker}")
+            indexed[trade_id] = row
+            sequences.add(sequence)
+        return indexed
+
+    def observed_month_session(value: str, row: dict[str, Any]) -> str | None:
+        try:
+            label = date.fromisoformat(value)
+        except ValueError:
+            return None
+        if label.day != monthrange(label.year, label.month)[1] or not str(row.get("exit_type") or "").startswith(("EXIT3_", "EXIT4_")):
+            return None
+        actual = market_calendar.get_actual_month_end(label.year, label.month)
+        actual_day = str(actual)[:10] if actual is not None else ""
+        same_month = [day for day in sessions if day[:7] == value[:7]]
+        if not same_month or actual_day != same_month[-1] or actual_day > reference_market_date:
+            return None
+        return actual_day
+
+    for report in by_ticker.values():
+        ticker = str(report.get("ticker") or "").strip().upper().zfill(6)
+        current = trade_index(ticker, (report.get("a_fast_core") or {}).get("trade_history") or [])
+        counts["new_trade_count"] += len(current)
+        for row in current.values():
+            for field in ("entry_signal_date", "entry_execution_date", "exit_signal_date", "exit_execution_date"):
+                value = row.get(field)
+                if value and (not re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(value)) or (
+                    str(value) > reference_market_date and not (
+                        field == "exit_signal_date" and observed_month_session(str(value), row) is not None
+                    )
+                )):
+                    raise Phase4BError(f"PHASE4B_CONTINUITY_FUTURE_OR_INVALID_DATE:{ticker}:{field}")
+
+    for path in sorted((Path(previous_dir) / "json").glob("*.json")):
+        previous = json.loads(path.read_text(encoding="utf-8"))
+        if previous.get("asset_type") != "COMMON":
+            continue
+        ticker = str(previous.get("ticker") or "").strip().upper().zfill(6)
+        old_core = previous.get("a_fast_core") or {}
+        old = trade_index(ticker, old_core.get("trade_history") or [])
+        if old_core.get("canonical_position") == "OPEN" and sum(
+            row.get("trade_status") == "OPEN_AT_CUTOFF" for row in old.values()
+        ) != 1:
+            raise Phase4BError(f"PHASE4B_CONTINUITY_PRIOR_OPEN_INVALID:{ticker}")
+        if not old:
+            continue
+        current_report = by_ticker.get(ticker)
+        if current_report is None:
+            raise Phase4BError(f"PHASE4B_CONTINUITY_PRIOR_TICKER_LOST:{ticker}")
+        current = trade_index(ticker, (current_report.get("a_fast_core") or {}).get("trade_history") or [])
+        prior_reference = str(previous.get("reference_market_date") or (previous.get("header") or {}).get("reference_market_date") or "")[:10]
+        if prior_reference not in sessions or prior_reference > reference_market_date:
+            raise Phase4BError(f"PHASE4B_CONTINUITY_PRIOR_REFERENCE_INVALID:{ticker}")
+        try:
+            prior_identity = identity_resolver(ticker, prior_reference)
+            current_identity = identity_resolver(ticker, reference_market_date)
+        except Exception as exc:
+            raise Phase4BError(f"PHASE4B_CONTINUITY_IDENTITY_UNAVAILABLE:{ticker}") from exc
+        if not prior_identity or prior_identity != current_identity:
+            raise Phase4BError(f"PHASE4B_CONTINUITY_IDENTITY_CHANGED:{ticker}")
+        if not set(old).issubset(current):
+            raise Phase4BError(f"PHASE4B_CONTINUITY_PRIOR_TRADE_LOST:{ticker}")
+        counts["new_trade_count"] -= len(old)
+        for key, before in old.items():
+            after = current[key]
+            if before["trade_status"] == "REALIZED":
+                counts["prior_realized_count"] += 1
+                if before != after:
+                    raise Phase4BError(f"PHASE4B_CONTINUITY_REALIZED_CHANGED:{ticker}:{key}")
+                continue
+            counts["prior_open_count"] += 1
+            for field in ("trade_id", "trade_sequence", "entry_signal_date", "entry_execution_date", "entry_open",
+                          "entry_pattern_a_stage", "previous_exit_type", "strategy_id", "entry_strategy_id", "exit_strategy_id"):
+                if before.get(field) != after.get(field):
+                    raise Phase4BError(f"PHASE4B_CONTINUITY_OPEN_ENTRY_CHANGED:{ticker}:{field}")
+            prior_signal = str(before.get("exit_signal_date") or "")[:10]
+            signal = str(after.get("exit_signal_date") or "")[:10]
+            if prior_signal and (signal != prior_signal or before.get("exit_type") != after.get("exit_type")):
+                raise Phase4BError(f"PHASE4B_CONTINUITY_PRIOR_EXIT_SIGNAL_CHANGED:{ticker}")
+            if any(before.get(field) != PROMOTED_STRATEGY_ID for field in ("strategy_id", "entry_strategy_id", "exit_strategy_id")):
+                raise Phase4BError(f"PHASE4B_CONTINUITY_EXIT_STRATEGY_INVALID:{ticker}")
+            first_fill: tuple[str, float] | None = None
+            if signal:
+                signal_session = signal if signal in sessions and signal <= reference_market_date else observed_month_session(signal, after)
+                if signal_session is None:
+                    raise Phase4BError(f"PHASE4B_CONTINUITY_EXIT_SESSION_INVALID:{ticker}")
+                if signal_session != signal:
+                    pending = old_core.get("current_trade") or {}
+                    if (not prior_signal or old_core.get("strategy_id") != PROMOTED_STRATEGY_ID
+                            or old_core.get("action") != "EXIT_NEXT_OPEN"
+                            or pending.get("trade_id") != key or pending.get("trade_status") != "OPEN"
+                            or pending.get("pending_exit_signal_date") != signal
+                            or pending.get("pending_exit_type") != after.get("exit_type")
+                            or any(pending.get(field) != PROMOTED_STRATEGY_ID for field in (
+                                "strategy_id", "entry_strategy_id", "exit_strategy_id"))):
+                        raise Phase4BError(f"PHASE4B_CONTINUITY_MONTHLY_SIGNAL_UNPROVEN:{ticker}")
+                if ((prior_signal and signal_session > prior_reference)
+                        or (not prior_signal and signal_session <= prior_reference)
+                        or signal_session <= str(before.get("entry_execution_date") or "")[:10]):
+                    raise Phase4BError(f"PHASE4B_CONTINUITY_EXIT_SESSION_INVALID:{ticker}")
+                try:
+                    if identity_resolver(ticker, signal_session) != prior_identity:
+                        raise Phase4BError(f"PHASE4B_CONTINUITY_EXIT_IDENTITY_CHANGED:{ticker}")
+                    observed_signal_open = adjusted_open_resolver(ticker, signal_session)
+                    if observed_signal_open is None or not math.isfinite(float(observed_signal_open)) or float(observed_signal_open) <= 0:
+                        raise Phase4BError(f"PHASE4B_CONTINUITY_SIGNAL_OBSERVATION_MISSING:{ticker}")
+                    for day in sessions:
+                        if day <= signal_session:
+                            continue
+                        if day > reference_market_date:
+                            break
+                        if identity_resolver(ticker, day) != prior_identity:
+                            raise Phase4BError(f"PHASE4B_CONTINUITY_EXIT_IDENTITY_CHANGED:{ticker}")
+                        observed_open = adjusted_open_resolver(ticker, day)
+                        if observed_open is None:
+                            continue
+                        price = float(observed_open)
+                        if not math.isfinite(price) or price <= 0:
+                            raise Phase4BError(f"PHASE4B_CONTINUITY_EXIT_OPEN_UNAVAILABLE:{ticker}")
+                        first_fill = (day, price)
+                        break
+                except Phase4BError:
+                    raise
+                except Exception as exc:
+                    raise Phase4BError(f"PHASE4B_CONTINUITY_EXIT_OPEN_UNAVAILABLE:{ticker}") from exc
+            if after["trade_status"] == "OPEN_AT_CUTOFF":
+                if after.get("exit_execution_date") is not None or after.get("exit_price") is not None:
+                    raise Phase4BError(f"PHASE4B_CONTINUITY_OPEN_HAS_FILL:{ticker}")
+                if signal and first_fill is not None:
+                    raise Phase4BError(f"PHASE4B_CONTINUITY_PRIOR_EXIT_NOT_SETTLED:{ticker}")
+                counts["prior_open_still_open_count"] += 1
+                continue
+            execution = str(after.get("exit_execution_date") or "")[:10]
+            if not signal or first_fill is None or execution != first_fill[0] or execution > reference_market_date:
+                raise Phase4BError(f"PHASE4B_CONTINUITY_EXIT_SESSION_INVALID:{ticker}")
+            try:
+                expected_open = first_fill[1]
+                exit_price = float(after.get("exit_price"))
+                entry_price = float(after.get("entry_open"))
+                actual_return = float(after.get("return_pct"))
+            except Phase4BError:
+                raise
+            except Exception as exc:
+                raise Phase4BError(f"PHASE4B_CONTINUITY_EXIT_OPEN_UNAVAILABLE:{ticker}") from exc
+            if (not all(math.isfinite(value) for value in (expected_open, exit_price, entry_price, actual_return))
+                    or expected_open <= 0 or entry_price <= 0 or not math.isclose(exit_price, expected_open, abs_tol=1e-8)
+                    or not math.isclose(actual_return, round((exit_price / entry_price - 1.0) * 100, 2), abs_tol=0.005)):
+                raise Phase4BError(f"PHASE4B_CONTINUITY_EXIT_PRICE_OR_RETURN_MISMATCH:{ticker}")
+            counts["open_to_realized_count"] += 1
+    return {"status": "PASS", **counts}
+
+
+def _validate_production_trade_continuity(
+    root: Path, previous_dir: Path, staging_dir: Path, reference_market_date: str,
+) -> dict[str, Any]:
+    authority_dir = Path(root) / DEFAULT_ROLLING_AUTHORITY_DIR
+    manifest = load_rolling_authority(authority_dir)
+    pit, payload = validate_merged_authority_coherence(manifest, authority_dir)
+    calendar = load_rolling_production_market_calendar(Path(root))
+    if (calendar is None or reference_market_date > manifest.certified_through
+            or [str(day)[:10] for day in calendar.trading_dates] != payload.get("trading_dates")):
+        raise Phase4BError("PHASE4B_CONTINUITY_CALENDAR_AUTHORITY_MISMATCH")
+    intervals: dict[str, list[dict[str, Any]]] = {}
+    for row in pit.get("intervals", []):
+        if str(row.get("state") or "").upper() == "COMMON":
+            intervals.setdefault(str(row.get("ticker") or "").zfill(6), []).append(row)
+
+    def identity(ticker: str, day: str) -> str:
+        matches = {str(row.get("isu_cd") or "").upper() for row in intervals.get(ticker, [])
+                   if str(row.get("effective_from") or "")[:10] <= day <= str(row.get("effective_to") or "")[:10]}
+        if len(matches) != 1 or not next(iter(matches)):
+            raise Phase4BError(f"PHASE4B_CONTINUITY_IDENTITY_AMBIGUOUS:{ticker}:{day}")
+        return next(iter(matches))
+
+    raw = KrxRawStockStore(Path(root) / "data/market/raw/krx_stocks/v01")
+    repository: Any = None
+    checked_sessions: set[str] = set()
+    observations: dict[tuple[str, str], float | None] = {}
+
+    def verified_open(ticker: str, day: str) -> float | None:
+        nonlocal repository
+        key = (ticker, day)
+        if key in observations:
+            return observations[key]
+        if day not in checked_sessions:
+            for market in ("KOSPI", "KOSDAQ"):
+                result = raw.verify_snapshot(market, day)
+                if not result.get("valid") or result.get("status") != "COMPLETE":
+                    raise Phase4BError(f"PHASE4B_CONTINUITY_RAW_SESSION_UNAVAILABLE:{market}:{day}")
+            checked_sessions.add(day)
+        if repository is None:
+            repository = build_production_repository_v2(Path(root), end=reference_market_date)
+        frame = repository.get_daily(ticker, day, day)
+        raw_frame = repository.get_raw_daily(ticker, day, day)
+        if frame.empty and raw_frame.empty:
+            observations[key] = None
+            return None
+        if frame.empty and len(raw_frame) == 1 and str(raw_frame.index[0])[:10] == day:
+            placeholder = raw_frame.iloc[0]
+            if (all(float(placeholder[field]) == 0 for field in ("open", "high", "low", "volume", "trading_value"))
+                    and math.isfinite(float(placeholder["close"])) and float(placeholder["close"]) > 0):
+                observations[key] = None
+                return None
+        if (len(frame) != 1 or len(raw_frame) != 1 or str(frame.index[0])[:10] != day
+                or str(raw_frame.index[0])[:10] != day):
+            raise Phase4BError(f"PHASE4B_CONTINUITY_EXACT_OPEN_UNAVAILABLE:{ticker}:{day}")
+        raw_open, raw_volume = float(raw_frame.iloc[0]["open"]), float(raw_frame.iloc[0]["volume"])
+        price, volume = float(frame.iloc[0]["open"]), float(frame.iloc[0]["volume"])
+        if (not all(math.isfinite(value) and value > 0 for value in (raw_open, raw_volume, price, volume))
+                or volume != raw_volume):
+            raise Phase4BError(f"PHASE4B_CONTINUITY_EXACT_OPEN_INVALID:{ticker}:{day}")
+        observations[key] = price
+        return price
+
+    return validate_prior_trade_continuity(
+        previous_dir, staging_dir, reference_market_date=reference_market_date,
+        market_calendar=calendar, identity_resolver=identity, adjusted_open_resolver=verified_open,
+    )
 
 
 def _scanner_paths(root: Path, target_as_of: str) -> tuple[Path, Path]:
@@ -937,6 +1216,17 @@ def promote_staging(staging_dir: Path, canonical_dir: Path) -> None:
         new_dir.rename(canonical_dir)
 
 
+@contextmanager
+def _retained_staging_directory(parent: Path):
+    """Keep newly created staging if generation or validation is interrupted."""
+    directory = tempfile.mkdtemp(prefix=".phase4b-staging-", dir=str(parent))
+    try:
+        yield directory
+    except BaseException:
+        logger.error("Phase 4B interrupted; staging retained: %s", directory)
+        raise
+
+
 def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -> dict[str, Any]:
     phase4b_started = time.perf_counter()
     rows, summary = load_and_validate_scanner_input(root, target_as_of)
@@ -991,9 +1281,11 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
     staging_parent = canonical_dir.parent
     staging_parent.mkdir(parents=True, exist_ok=True)
 
-    with tempfile.TemporaryDirectory(prefix=".phase4b-staging-", dir=str(staging_parent)) as temp_name:
+    # Failed/interrupted staging is evidence and must remain available for audit.
+    with _retained_staging_directory(staging_parent) as temp_name:
         staging_dir = Path(temp_name) / canonical_dir.name
         staging_dir.mkdir(parents=True, exist_ok=True)
+        logger.info("Phase 4B isolated staging: %s", staging_dir)
 
         outcomes = generate_candidate_reports(
             target_tickers,
@@ -1009,8 +1301,12 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
         errors = [o for o in outcomes if o.status == "ERROR"]
 
         replay_finalization: dict[str, Any] | None = None
+        trade_continuity: dict[str, Any] | None = None
         if not errors:
             try:
+                trade_continuity = _validate_production_trade_continuity(
+                    root, previous_dir, staging_dir, reference_market_date,
+                )
                 replay_finalization = finalize_full_history_alignment_reports(
                     staging_dir,
                     target_ticker_set,
@@ -1041,12 +1337,16 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
             and corpus["date_mismatch_count"] == 0
             and corpus["full_history_alignment_replay_valid"] is True
             and replay_finalization is not None
+            and trade_continuity is not None and trade_continuity.get("status") == "PASS"
         )
         if success:
             promote_staging(staging_dir, canonical_dir)
             promoted = True
         else:
-            logger.error("Phase 4B validation failed; canonical directory NOT promoted (staging discarded).")
+            logger.error("Phase 4B validation failed; canonical directory NOT promoted; staging retained: %s", staging_dir)
+
+    if promoted:
+        shutil.rmtree(temp_name)
 
     phase4b_runtime_seconds = time.perf_counter() - phase4b_started
     result = {
@@ -1078,8 +1378,10 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
         ),
         "promoted": promoted,
         "canonical_dir": str(canonical_dir) if promoted else None,
+        "failed_staging_dir": None if promoted else str(staging_dir),
         "full_history_alignment_replay_finalization": replay_finalization,
         "full_history_alignment_replay": corpus["full_history_alignment_replay"],
+        "prior_trade_continuity": trade_continuity,
     }
     return result
 

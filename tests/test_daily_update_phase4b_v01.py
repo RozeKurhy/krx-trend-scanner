@@ -240,6 +240,7 @@ def patched_runner(monkeypatch):
     monkeypatch.setattr(phase4b, "generate_stock_report", _fake_generate_stock_report)
     monkeypatch.setattr(phase4b, "build_production_repository_v2", lambda root, end: "FAKE_REPOSITORY_V2")
     monkeypatch.setattr(phase4b, "validate_replay_reference_authority", lambda root, reference: None)
+    monkeypatch.setattr(phase4b, "_validate_production_trade_continuity", lambda *_args: {"status": "PASS"})
     monkeypatch.setattr(phase4b, "get_historical_alignment_replay_gate", lambda root: "FAKE_ALIGNMENT_GATE")
     return monkeypatch
 
@@ -443,6 +444,44 @@ def test_stale_partial_staging_is_not_reused_or_promoted(tmp_path, patched_runne
     assert {p.stem for p in canonical_dir.glob("*.md")} == {"000050"}
     assert stale_json.exists()
     assert stale_json.read_text(encoding="utf-8") == json.dumps({"ticker": "999999"})
+
+
+def test_failed_evaluator_keeps_new_staging_and_never_promotes(tmp_path, patched_runner):
+    _default_previous_corpus(tmp_path)
+    _write_scanner_artifacts(tmp_path, TARGET, _candidate_rows(["000050"]))
+    _write_fundamentals_artifact(tmp_path, TARGET, "000050")
+
+    def failed_report(**kwargs):
+        result = _fake_generate_stock_report(**kwargs)
+        path = result[1]
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload["a_fast_core"]["action_reason"] = "EVALUATOR_EXECUTION_FAILED"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        return result
+
+    patched_runner.setattr(phase4b, "generate_stock_report", failed_report)
+    result = phase4b.run_phase4b(TARGET, root=tmp_path)
+    assert result["promoted"] is False
+    assert result["canonical_dir"] is None
+    assert (Path(result["failed_staging_dir"]) / "json/000050.json").is_file()
+    assert not (tmp_path / "artifacts/reporting/stock_reports" / TARGET.replace("-", "")).exists()
+
+
+def test_interrupted_generation_retains_its_isolated_staging(tmp_path, patched_runner):
+    _default_previous_corpus(tmp_path)
+    _write_scanner_artifacts(tmp_path, TARGET, _candidate_rows(["000050"]))
+    _write_fundamentals_artifact(tmp_path, TARGET, "000050")
+
+    def interrupted(*_args, **kwargs):
+        (kwargs["staging_dir"] / "partial.txt").write_text("partial", encoding="utf-8")
+        raise RuntimeError("INTERRUPTED_FIXTURE")
+
+    patched_runner.setattr(phase4b, "generate_candidate_reports", interrupted)
+    with pytest.raises(RuntimeError, match="INTERRUPTED_FIXTURE"):
+        phase4b.run_phase4b(TARGET, root=tmp_path)
+    stage_roots = list((tmp_path / "artifacts/reporting/stock_reports").glob(".phase4b-staging-*"))
+    assert len(stage_roots) == 1
+    assert (stage_roots[0] / TARGET.replace("-", "") / "partial.txt").read_text() == "partial"
 
 
 # --- F. fundamentals missing/mismatch → fail --------------------------------------

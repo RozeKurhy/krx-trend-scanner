@@ -55,6 +55,43 @@ def _last_trading_date_on_or_before(index: pd.DatetimeIndex, date: pd.Timestamp)
     return index[position].normalize() if position >= 0 else None
 
 
+def _completed_monthly_observations(
+    monthly_labels: pd.DatetimeIndex,
+    start: pd.Timestamp,
+    cutoff: pd.Timestamp,
+    market_calendar: MarketCalendarAuthority | None,
+) -> list[tuple[pd.Timestamp, pd.Timestamp]]:
+    """Map each completed monthly label to its authorized evaluation session.
+
+    The label is retained for lifecycle/report semantics.  The market session,
+    not the label or an individual ticker's last price date, bounds the data
+    available when evaluating that completed month.
+    """
+    start = pd.Timestamp(start).normalize()
+    cutoff = pd.Timestamp(cutoff).normalize()
+    if market_calendar is None:
+        # Preserve the frozen-calendar research interface for existing callers.
+        return [(pd.Timestamp(m), pd.Timestamp(m)) for m in monthly_labels if start <= m <= cutoff]
+    sessions = pd.DatetimeIndex(market_calendar.trading_dates).normalize()
+    if sessions.empty or sessions.has_duplicates or not sessions.is_monotonic_increasing:
+        raise MarketCalendarUnavailableError("MARKET_CALENDAR_SESSIONS_INVALID")
+    last_by_month = {(day.year, day.month): day for day in sessions}
+    result: list[tuple[pd.Timestamp, pd.Timestamp]] = []
+    for value in monthly_labels:
+        label = pd.Timestamp(value).normalize()
+        if label < start:
+            continue
+        actual = market_calendar.get_actual_month_end(label.year, label.month)
+        if actual is None:
+            continue
+        actual = pd.Timestamp(actual).normalize()
+        if last_by_month.get((label.year, label.month)) != actual:
+            raise MarketCalendarUnavailableError("COMPLETED_MONTH_SESSION_AUTHORITY_MISMATCH")
+        if actual <= cutoff:
+            result.append((label, actual))
+    return result
+
+
 def _next_execution_open(
     signal_date: pd.Timestamp,
     daily: pd.DataFrame,
@@ -478,18 +515,17 @@ def simulate_ticker_core_v02_reentry(
 
         # Monthly snapshots use completed observations through the signal cutoff;
         # the separate execution-support session is never an evaluation signal.
-        m_dates = [
-            m for m in monthly_bars.index
-            if m >= found_signal_w and m <= signal_cutoff
-        ]
+        m_dates = _completed_monthly_observations(
+            monthly_bars.index, found_signal_w, signal_cutoff, market_calendar,
+        )
 
         monthly_snapshots: list[dict[str, Any]] = []
-        for m in m_dates:
+        for m, evaluation_date in m_dates:
             try:
                 if use_precomputed_context:
                     snap = build_historical_snapshot_from_context(
                         snapshot_context,
-                        m,
+                        evaluation_date,
                         include_incomplete_periods=False,
                         market_calendar=market_calendar,
                     )
@@ -497,17 +533,17 @@ def simulate_ticker_core_v02_reentry(
                     snap = build_historical_snapshot(
                         ticker,
                         name,
-                        daily[daily.index <= m],
-                        m,
+                        daily[daily.index <= evaluation_date],
+                        evaluation_date,
                         include_incomplete_periods=False,
                         market_calendar=market_calendar,
                     )
                 eval_res = evaluate_pattern_a(snap)
                 st = eval_res.stage.value.upper() if eval_res.stage else "UNAVAILABLE"
                 sc = float(round(eval_res.score, 2)) if eval_res.score is not None else None
-                effective_date = _last_trading_date_on_or_before(daily.index, m)
+                effective_date = _last_trading_date_on_or_before(daily.index, evaluation_date)
                 if effective_date is None:
-                    effective_date = m
+                    effective_date = evaluation_date
                 monthly_snapshots.append({"date": m, "effective_trading_date": effective_date, "stage": st, "score": sc})
             except Exception:
                 if strict_errors:

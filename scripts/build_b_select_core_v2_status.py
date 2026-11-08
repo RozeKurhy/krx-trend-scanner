@@ -985,6 +985,185 @@ def _build_exact_session_contexts(
     return contexts
 
 
+def _inherit_prior_pending_entry_context(
+    *,
+    prior_status: Mapping[str, Any],
+    prior_item: Mapping[str, Any],
+    identity: Mapping[str, str],
+    intervals: list[dict[str, Any]],
+    interval_components: Mapping[Any, str],
+    trading_dates: list[str],
+    month_end_sessions: set[str] | frozenset[str],
+    reference_market_date: str,
+    candidate_rows: list[dict[str, Any]],
+    report: Mapping[str, Any],
+    root: Path,
+    target_as_of: str,
+    repository: Any,
+) -> dict[str, str]:
+    """Carry a prior pending entry only after binding every signal authority."""
+    ticker = str(identity.get("ticker") or "").zfill(6)
+    isu_cd = str(identity.get("isu_cd") or "").upper()
+    component = str(identity.get("component_id") or "")
+    pending = prior_item.get("pending_event")
+    if (prior_status.get("status") != "PASS" or prior_status.get("strategy_id") != STRATEGY_ID
+            or not isinstance(pending, Mapping) or pending.get("kind") != "ENTRY"
+            or pending.get("strategy_id") != STRATEGY_ID or prior_item.get("canonical_position") != "FLAT"
+            or prior_item.get("action") not in {"ENTRY", "ENTER_NEXT_OPEN"}
+            or prior_item.get("strategy_state") != "ENTRY_PENDING"
+            or prior_item.get("current_trade") is not None or not _is_new_entry_allowed(ticker, isu_cd)):
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_INVALID:{ticker}")
+    signal = _date_text(pending.get("signal_date"))
+    sequence = pending.get("trade_sequence")
+    prior_reference = _date_text(prior_status.get("reference_market_date"))
+    if (isinstance(sequence, bool) or not isinstance(sequence, int) or sequence < 1
+            or trading_dates != sorted(set(trading_dates)) or reference_market_date not in trading_dates
+            or prior_reference not in trading_dates or signal not in month_end_sessions
+            or not signal or not (signal <= prior_reference < reference_market_date)):
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_DATE_OR_SEQUENCE_INVALID:{ticker}")
+    execution = _date_text(pending.get("execution_date"))
+    if execution and (execution not in trading_dates or execution <= prior_reference or execution <= signal):
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_EXECUTION_INVALID:{ticker}")
+    pair = (ticker, isu_cd)
+    if (str(prior_item.get("ticker") or "").zfill(6), str(prior_item.get("isu_cd") or "").upper()) != pair:
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_IDENTITY_MISMATCH:{ticker}")
+    items = prior_status.get("items")
+    if not isinstance(items, list):
+        raise BSelectStatusError("B_SELECT_PRIOR_ITEMS_INVALID")
+    matches = [row for row in items if isinstance(row, Mapping)
+               and (str(row.get("ticker") or "").zfill(6), str(row.get("isu_cd") or "").upper()) == pair]
+    if len(matches) != 1 or matches[0] != prior_item:
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_ITEM_MISMATCH:{ticker}")
+    events = prior_status.get("canonical_pending_events")
+    if not isinstance(events, list) or prior_status.get("canonical_pending_event_count") != len(events):
+        raise BSelectStatusError("B_SELECT_PRIOR_CANONICAL_PENDING_COUNT_MISMATCH")
+    event_matches = [row for row in events if isinstance(row, Mapping)
+                     and (str(row.get("ticker") or "").zfill(6), str(row.get("isu_cd") or "").upper()) == pair]
+    if len(event_matches) != 1 or any(event_matches[0].get(field) != pending.get(field) for field in (
+        "kind", "signal_date", "execution_date", "trade_sequence", "strategy_id",
+    )):
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_EVENT_MISMATCH:{ticker}")
+    history = prior_status.get("canonical_trade_history")
+    if not isinstance(history, list):
+        raise BSelectStatusError("B_SELECT_PRIOR_CANONICAL_HISTORY_INVALID")
+    for trade in history:
+        if not isinstance(trade, Mapping):
+            raise BSelectStatusError("B_SELECT_PRIOR_CANONICAL_HISTORY_INVALID")
+        if (str(trade.get("ticker") or "").zfill(6), str(trade.get("isu_cd") or "").upper()) == pair:
+            prior_sequence = trade.get("trade_sequence")
+            if isinstance(prior_sequence, bool) or not isinstance(prior_sequence, int) or prior_sequence >= sequence:
+                raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_SEQUENCE_DUPLICATE:{ticker}")
+
+    key = (ticker, isu_cd, component, signal)
+    raw_authorities = prior_status.get("catchup_entry_pattern_a_authorities")
+    if not isinstance(raw_authorities, list):
+        raise BSelectStatusError("B_SELECT_PRIOR_ENTRY_PATTERN_A_AUTHORITIES_INVALID")
+    related = [row for row in raw_authorities if isinstance(row, Mapping)
+               and str(row.get("ticker") or "").zfill(6) == ticker
+               and str(row.get("isu_cd") or "").upper() == isu_cd
+               and _date_text(row.get("entry_signal_date")) == signal]
+    if len(related) != 1 or str(related[0].get("component_id") or "") != component:
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_AUTHORITY_MISMATCH:{ticker}:{signal}")
+    inherited, _ = _carry_forward_active_entry_stage_authorities(
+        prior_status, [dict(prior_item)], current_catchup_authority_keys=set(),
+    )
+    authority = inherited.get(key)
+    active = _active_entry_key_and_context(prior_item)
+    if authority is None or active is None or active[0] != key:
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_AUTHORITY_MISSING:{ticker}:{signal}")
+    context = active[1]
+    previous = _date_text(context.get("entry_previous_pattern_a_stage_date"))
+    if (context.get("entry_pattern_a_stage") != "PROGRESSED"
+            or context.get("entry_previous_pattern_a_stage") not in ALLOWED_PREVIOUS_STAGES
+            or previous not in trading_dates or previous >= signal):
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_STAGE_INVALID:{ticker}:{signal}")
+    identity_days = {previous, *(day for day in trading_dates if signal <= day <= reference_market_date)}
+    for day in sorted(identity_days):
+        exact_identity = [row for row in intervals
+                          if str(row.get("ticker") or "").zfill(6) == ticker
+                          and str(row.get("state") or "").upper() == ASSET_TYPE
+                          and str(row.get("effective_from") or "")[:10] <= day <= str(row.get("effective_to") or "")[:10]]
+        if (len(exact_identity) != 1 or str(exact_identity[0].get("isu_cd") or "").upper() != isu_cd
+                or interval_components.get(pattern_b_source.interval_key(exact_identity[0])) != component):
+            raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_PIT_MISMATCH:{ticker}:{day}")
+    candidates = [row for row in candidate_rows if str(row.get("ticker") or "").zfill(6) == ticker
+                  and str(row.get("isu_cd") or "").upper() == isu_cd
+                  and _date_text(row.get("entry_signal_date")) == signal]
+    if len(candidates) > 1 or (candidates and str(candidates[0].get("component_id") or "") != component):
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_CANDIDATE_AMBIGUOUS:{ticker}:{signal}")
+    if candidates and _entry_pattern_a_context(candidates, ticker=ticker, isu_cd=isu_cd,
+                                               component_id=component, entry_signal_date=signal) != context:
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_CANDIDATE_CONFLICT:{ticker}:{signal}")
+
+    report_identity = report.get("identity") or {}
+    technical = report.get("technical_details") or {}
+    relative = technical.get("source_report")
+    if (str(report_identity.get("ticker") or "").zfill(6) != ticker
+            or str(report_identity.get("isu_cd") or "").upper() != isu_cd
+            or not isinstance(relative, str) or not relative):
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_REPORT_INVALID:{ticker}")
+    source_path = (Path(root) / relative).resolve()
+    source_dir = (Path(root) / "artifacts/reporting/stock_reports" / target_as_of.replace("-", "") / "json").resolve()
+    if source_path.parent != source_dir or not source_path.name.startswith(f"{ticker}_"):
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_SOURCE_PATH_INVALID:{ticker}")
+    try:
+        source = _read_json(source_path)
+    except (OSError, UnicodeError, ValueError) as exc:
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_SOURCE_UNAVAILABLE:{ticker}") from exc
+    if (str(source.get("ticker") or "").zfill(6) != ticker or source.get("asset_type") != ASSET_TYPE
+            or source.get("requested_as_of") != target_as_of or source.get("reference_market_date") != reference_market_date):
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_SOURCE_INVALID:{ticker}")
+    source_history = (source.get("monthly_history") or {}).get("full_monthly_history")
+    if not isinstance(source_history, list):
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_SOURCE_HISTORY_INVALID:{ticker}")
+    source_rows = {}
+    for day, stage in ((signal, "PROGRESSED"), (previous, context["entry_previous_pattern_a_stage"])):
+        rows = [row for row in source_history if isinstance(row, Mapping) and _date_text(row.get("as_of")) == day]
+        if len(rows) != 1 or rows[0].get("stage") != stage:
+            raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_SOURCE_STAGE_MISMATCH:{ticker}:{day}")
+        score = rows[0].get("score")
+        score_valid = isinstance(score, (int, float)) and not isinstance(score, bool) and math.isfinite(float(score))
+        if rows[0].get("data_available") is not score_valid:
+            raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_SCORE_AVAILABILITY_INVALID:{ticker}:{day}")
+        source_rows[day] = rows[0]
+    daily = repository.get_daily(ticker, signal, signal)
+    raw = repository.get_raw_daily(ticker, signal, signal)
+    if not isinstance(daily, pd.DataFrame) or not isinstance(raw, pd.DataFrame):
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_OBSERVATION_INVALID:{ticker}:{signal}")
+    audit = daily.attrs.get("session_projection_audit") or {}
+    if (len(daily) != 1 or len(raw) != 1 or not isinstance(daily.index, pd.DatetimeIndex)
+            or not isinstance(raw.index, pd.DatetimeIndex) or _date_text(daily.index[0]) != signal
+            or _date_text(raw.index[0]) != signal or audit.get("projected_date_set_exact_match") is not True
+            or audit.get("silent_inner_drop_count") != 0 or audit.get("unexplained_adjusted_only_dates")
+            or audit.get("rejected_raw_only_dates")):
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_OBSERVATION_INVALID:{ticker}:{signal}")
+    daily_open, daily_close, daily_volume = (_safe_float(daily.iloc[0].get(field)) for field in ("open", "close", "volume"))
+    raw_open, raw_volume = (_safe_float(raw.iloc[0].get(field)) for field in ("open", "volume"))
+    source_close = _safe_float(source_rows[signal].get("close"))
+    if (any(value is None or not math.isfinite(value) or value <= 0 for value in
+            (daily_open, daily_close, daily_volume, raw_open, raw_volume, source_close))
+            or daily_volume != raw_volume or not math.isclose(daily_close, source_close, rel_tol=0.0, abs_tol=1e-8)):
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_OBSERVATION_MISMATCH:{ticker}:{signal}")
+    evaluated = _build_exact_session_contexts(
+        root=Path(root), ticker=ticker, name=str(prior_item.get("name") or ticker), identity=identity,
+        intervals=intervals, trading_dates=trading_dates, session_dates=[signal],
+        report_pattern_history=source_history, repository=repository,
+        pattern_a_evaluation_dates={signal}, pattern_a_only_if_pattern_b_depressed=True,
+    )
+    if (len(evaluated) != 1 or evaluated[0].get("date") != signal
+            or evaluated[0].get("exact_session_observed") is not True
+            or evaluated[0].get("pattern_b_evaluation_status") != "READY"
+            or evaluated[0].get("pattern_b_state") != "DEPRESSED"
+            or evaluated[0].get("pattern_a_stage") != context["entry_pattern_a_stage"]
+            or evaluated[0].get("previous_pattern_a_stage") != context["entry_previous_pattern_a_stage"]
+            or _date_text(evaluated[0].get("previous_pattern_a_stage_date")) != previous
+            or _safe_float(evaluated[0].get("observed_close")) != daily_close):
+        raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_SIGNAL_MISMATCH:{ticker}:{signal}")
+    return {field: str(context[field]) for field in (
+        "entry_pattern_a_stage", "entry_previous_pattern_a_stage", "entry_previous_pattern_a_stage_date",
+    )}
+
+
 def _feature_boundary_sessions(
     trading_dates: list[str],
     start_date: str,
@@ -1969,6 +2148,14 @@ def build_b_select_status(
         for item in prior_status.get("items", []):
             if isinstance(item, dict):
                 prior_by_identity[(str(item.get("ticker", "")).zfill(6), str(item.get("isu_cd", "")).upper())] = item
+        for event in prior_status.get("canonical_pending_events", []):
+            if event.get("kind") != "ENTRY":
+                continue
+            pair = (str(event.get("ticker", "")).zfill(6), str(event.get("isu_cd", "")).upper())
+            active = identity_by_ticker.get(pair[0])
+            if (pair not in prior_by_identity or pair[0] not in current_common_tickers or active is None
+                    or str(active.get("isu_cd", "")).upper() != pair[1]):
+                raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_ENTRY_CURRENT_SOURCE_MISSING:{pair[0]}")
     reentry_prior_items: list[dict[str, Any]] = []
     if prior_status is not None:
         for index_item in common_rows:
@@ -2314,6 +2501,14 @@ def build_b_select_status(
                     sequence = prior_trade.get("trade_sequence")
                 if sequence is None or int(sequence) < 1:
                     raise BSelectStatusError(f"B_SELECT_PRIOR_PENDING_SEQUENCE_MISSING:{ticker}")
+                if kind == "ENTRY":
+                    entry_context_by_signal_date[signal_day] = _inherit_prior_pending_entry_context(
+                        prior_status=prior_status, prior_item=prior_item, identity=identity,
+                        intervals=intervals, interval_components=interval_components, trading_dates=trading_dates,
+                        month_end_sessions=month_end_sessions, reference_market_date=reference_market_date,
+                        candidate_rows=candidate_rows, report=report, root=root, target_as_of=target_as_of,
+                        repository=repo,
+                    )
                 initial_pending = {
                     "kind": kind,
                     "signal_date": signal_day,

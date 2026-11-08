@@ -107,6 +107,7 @@ def test_runner_wires_selected_phase3_membership_and_repository_v2(
     repository = object()
     sector_mapping = {"005930": ("1001", "전기전자", "2026-09-17", "MAPPED")}
     captured: dict[str, object] = {}
+    reference_market_date = "2026-09-23"
 
     monkeypatch.setattr(
         module,
@@ -122,16 +123,30 @@ def test_runner_wires_selected_phase3_membership_and_repository_v2(
         ),
     )
     monkeypatch.setattr(module, "logger", Mock())
-    monkeypatch.setattr(module, "build_production_repository_v2", lambda root, *, end: repository)
+    def fake_build_repository(root: Path, *, end: str):
+        captured["repository_end"] = end
+        return repository
+
+    monkeypatch.setattr(module, "build_production_repository_v2", fake_build_repository)
     monkeypatch.setattr(
         module,
         "load_rolling_production_market_calendar",
-        lambda _root: SimpleNamespace(trading_dates=pd.DatetimeIndex(["2026-09-23"])),
+        lambda _root: SimpleNamespace(trading_dates=pd.DatetimeIndex([reference_market_date])),
     )
+
+    def fake_resolve_membership(as_of: str, *, repo_root: Path):
+        captured["membership_target_as_of"] = as_of
+        return (
+            pd.DataFrame(),
+            "2026-09-17",
+            selected_path,
+            {"snapshot_effective_date": "2026-09-17"},
+        )
+
     monkeypatch.setattr(
         module,
         "resolve_sector_membership_snapshot_for_target",
-        lambda as_of, *, repo_root: (pd.DataFrame(), "2026-09-17", selected_path, {"snapshot_effective_date": "2026-09-17"}),
+        fake_resolve_membership,
     )
 
     def fake_mapping(as_of: str, *, path: Path, repo_root: Path):
@@ -153,7 +168,9 @@ def test_runner_wires_selected_phase3_membership_and_repository_v2(
     module.main()
 
     assert captured["as_of"] == target
-    assert captured["reference_market_date"] == "2026-09-23"
+    assert captured["reference_market_date"] == reference_market_date
+    assert captured["repository_end"] == reference_market_date
+    assert captured["membership_target_as_of"] == reference_market_date
     assert captured["repository"] is repository
     assert captured["sector_mapping"] == sector_mapping
     assert captured["sector_mapping_snapshot_date"] == "2026-09-17"
