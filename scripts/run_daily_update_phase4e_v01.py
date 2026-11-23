@@ -356,12 +356,30 @@ def _phase4b_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
 
     rows, summary = phase4b.load_and_validate_scanner_input(root, target_as_of)
     reference_market_date = str(summary["reference_market_date"])
+    ledger_manifest = canonical_dir / phase4b.fast_ledger.INCREMENTAL_MANIFEST
+    incremental = ledger_manifest.is_file()
     previous_dir = phase4b.find_previous_canonical_report_dir(root, target_as_of)
+    prior_ledger = None
+    if incremental:
+        source = phase4b.fast_ledger.read_json(ledger_manifest)["scope"]["prior_canonical"]
+        prior_ledger = phase4b.fast_ledger._sealed_prior(
+            root, source["requested_as_of"], source["reference_market_date"], source["strategy_replay_digest"],
+        )
+        previous_dir = root / "artifacts/reporting/stock_reports" / source["requested_as_of"].replace("-", "")
+    else:
+        for path in json_paths:
+            try:
+                core = phase4b.fast_ledger.read_json(path).get("a_fast_core") or {}
+            except (OSError, ValueError):
+                continue
+            if core.get("strategy_replay_mode") == phase4b.CANONICAL_LEDGER_INCREMENTAL_V01:
+                raise Phase4EError("PHASE4E_INCREMENTAL_MANIFEST_MISSING")
     previous_audit = phase4b.audit_previous_corpus(previous_dir)
+    retained = prior_ledger.retained_tickers if prior_ledger is not None else previous_audit.open_tickers
     existing_report_target = set(
         phase4b.compute_report_target(
             previous_common=previous_audit.common,
-            previous_open=previous_audit.open_tickers,
+            previous_open=retained,
             current_common=phase4b.compute_current_common(rows),
             current_candidates=set(phase4b.select_candidate_tickers(rows)),
         )
@@ -372,7 +390,7 @@ def _phase4b_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
     }
     target_tickers, _fundamentals_filter = phase4b.filter_report_target_by_fundamentals(
         existing_report_target=existing_report_target,
-        previous_open=previous_audit.open_tickers,
+        previous_open=retained,
         statuses=fundamentals_statuses,
     )
     target_ticker_set = set(target_tickers)
@@ -382,12 +400,15 @@ def _phase4b_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
             target_ticker_set,
             target_as_of,
             reference_market_date,
+            **({"root": root} if incremental else {}),
         )
     except (OSError, UnicodeError, ValueError, json.JSONDecodeError):
         # A malformed derived report is recoverable: do not treat the
         # canonical cache as an authority failure, and let Phase 4B rebuild
         # the complete staging corpus.  Authority/input validation above
         # remains fail-closed.
+        if incremental:
+            raise Phase4EError("PHASE4E_INCREMENTAL_CORPUS_INVALID")
         return None
     valid = (
         corpus["json_count"] == len(target_ticker_set)
@@ -401,9 +422,11 @@ def _phase4b_noop_precheck(target_as_of: str, *, root: Path) -> dict[str, Any] |
         and corpus["report_version_mismatch_count"] == 0
         and corpus["strategy_id_mismatch_count"] == 0
         and corpus["date_mismatch_count"] == 0
-        and corpus.get("full_history_alignment_replay_valid") is True
+        and corpus.get("canonical_fast_ledger_valid" if incremental else "full_history_alignment_replay_valid") is True
     )
     if not valid:
+        if incremental:
+            raise Phase4EError("PHASE4E_INCREMENTAL_CORPUS_INVALID")
         # A stale or partial canonical corpus is a regeneration signal, not a
         # phase failure.  Let Phase 4B build a complete isolated staging
         # corpus and promote it only after its own full validation.  Returning
@@ -435,11 +458,11 @@ def _canonical_fast_replay_provenance(
     if not common_tickers:
         return None
     try:
-        validation = phase4b.validate_full_history_alignment_corpus(
+        validation = phase4b.validate_fast_canonical_corpus(
             report_dir,
             target_as_of,
             reference_market_date,
-            common_tickers,
+            common_tickers, root=root,
         )
     except (OSError, UnicodeError, ValueError, phase4b.Phase4BError):
         return None
@@ -467,11 +490,11 @@ def _published_monitor_matches_canonical_fast_replay(
     scope = canonical.get("strategy_replay_scope")
     digest = canonical.get("strategy_replay_digest")
     return bool(
-        monitor.get("strategy_replay_mode") == phase4b.FULL_HISTORY_ALIGNMENT_WEB
+        monitor.get("strategy_replay_mode") == canonical.get("strategy_replay_mode")
         and monitor.get("strategy_replay_digest") == digest
         and monitor.get("strategy_replay_scope") == scope
         and len(fast_rows) == 1
-        and fast_rows[0].get("strategy_replay_mode") == phase4b.FULL_HISTORY_ALIGNMENT_WEB
+        and fast_rows[0].get("strategy_replay_mode") == canonical.get("strategy_replay_mode")
         and fast_rows[0].get("strategy_replay_digest") == digest
         and fast_rows[0].get("strategy_replay_scope") == scope
         and monitor.get("requested_as_of") == target_as_of

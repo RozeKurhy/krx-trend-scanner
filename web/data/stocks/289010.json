@@ -14,8 +14,8 @@
   "decision": {
     "action": "NONE",
     "strategy_state": "DATA_UNAVAILABLE",
-    "canonical_position": "DATA_UNAVAILABLE",
-    "action_reason": "CURRENT_SESSION_PRICE_UNAVAILABLE",
+    "canonical_position": "FLAT",
+    "action_reason": "CERTIFIED_PERIOD_CLOSE_UNAVAILABLE",
     "is_investable": false
   },
   "summary": {
@@ -363,9 +363,9 @@
     "applicability": "APPLICABLE",
     "evaluation_status": "READY",
     "pattern_b_state": "DEEP_DEPRESSED",
-    "as_of": "2026-11-06",
+    "as_of": "2026-11-20",
     "freshness_status": "STALE",
-    "expected_weekly_bar": "2026-11-06",
+    "expected_weekly_bar": "2026-11-20",
     "range_36m": 0.0017903645833333333,
     "monthly_ma24_distance": -0.70837656498582,
     "range_52w": 0.007124352331606218,
@@ -485,7 +485,7 @@
         "weekly_last_bar": "2026-10-23"
       },
       {
-        "as_of": "2026-11-06",
+        "as_of": "2026-11-20",
         "evaluation_status": "READY",
         "pattern_b_state": "DEEP_DEPRESSED",
         "range_36m": 0.0017903645833333333,
@@ -737,7 +737,7 @@
         "weekly_last_bar": "2026-10-23"
       },
       {
-        "as_of": "2026-11-06",
+        "as_of": "2026-11-20",
         "evaluation_status": "READY",
         "pattern_b_state": "DEEP_DEPRESSED",
         "range_36m": 0.0017903645833333333,
@@ -806,7 +806,7 @@
     "status": "DATA_UNAVAILABLE",
     "applicability": "APPLICABLE",
     "reason": "F4_DATA_UNAVAILABLE",
-    "requested_as_of": "2026-11-08",
+    "requested_as_of": "2026-11-22",
     "company_family": "NON_FINANCIAL",
     "currency": "KRW",
     "filter_status": "DATA_UNAVAILABLE",
@@ -816,7 +816,7 @@
     ],
     "summary": {
       "latest_fy": "2025",
-      "latest_quarter": "2026Q2",
+      "latest_quarter": "2026Q3",
       "latest_fy_revenue_krw": 91587213109,
       "latest_4q_avg_revenue_krw": null,
       "ttm_revenue_krw": null,
@@ -827,7 +827,7 @@
       "ttm_net_margin_pct": null,
       "ttm_operating_cash_flow_margin_pct": null,
       "ttm_roe_pct": null,
-      "latest_debt_ratio_pct": null,
+      "latest_debt_ratio_pct": 38.464944871582404,
       "filter_status": "DATA_UNAVAILABLE",
       "filter_passed": false,
       "filter_reasons": [
@@ -835,20 +835,6 @@
       ]
     },
     "quarterly": [
-      {
-        "quarter": "2023Q3",
-        "status": "PERIOD_AMBIGUOUS",
-        "reason": "MULTIPLE_CURRENT_INSTANT_CONTEXTS",
-        "revenue_krw": 28118559981,
-        "revenue_yoy_pct": -10.879587564427057,
-        "operating_income_krw": -2551561711,
-        "operating_income_yoy_pct": null,
-        "operating_margin_pct": -9.074297235434946,
-        "net_income_krw": -3025279677,
-        "net_margin_pct": -10.75901354494758,
-        "operating_cash_flow_krw": -7245925984,
-        "operating_income_yoy_status": "TURNED_TO_LOSS"
-      },
       {
         "quarter": "2023Q4",
         "status": "DERIVATION_UNAVAILABLE",
@@ -949,17 +935,17 @@
       },
       {
         "quarter": "2025Q3",
-        "status": "READY",
-        "reason": null,
+        "status": "PERIOD_AMBIGUOUS",
+        "reason": "AUTHORITY_SIGNATURE_CONFLICT:assets:INSTANT/CFS/KRW,INSTANT/OFS/KRW;AUTHORITY_SIGNATURE_CONFLICT:liabilities:INSTANT/CFS/KRW,INSTANT/OFS/KRW;AUTHORITY_SIGNATURE_CONFLICT:net_income:STANDALONE_QUARTER/CFS/KRW,STANDALONE_QUARTER/OFS/KRW;AUTHORITY_SIGNATURE_CONFLICT:operating_cash_flow:STANDALONE_QUARTER/CFS/KRW,STANDALONE_QUARTER/OFS/KRW;AUTHORITY_SIGNATURE_CONFLICT:operating_income:STANDALONE_QUARTER/CFS/KRW,STANDALONE_QUARTER/OFS/KRW;AUTHORITY_SIGNATURE_CONFLICT:revenue:STANDALONE_QUARTER/CFS/KRW,STANDALONE_QUARTER/OFS/KRW",
         "revenue_krw": 20957806069,
-        "revenue_yoy_pct": -24.84763715120937,
+        "revenue_yoy_pct": null,
         "operating_income_krw": 1001424858,
-        "operating_income_yoy_pct": -32.310540526999986,
+        "operating_income_yoy_pct": null,
         "operating_margin_pct": 4.778290507617923,
         "net_income_krw": -1516537868,
         "net_margin_pct": -7.236148015718142,
         "operating_cash_flow_krw": 2944758173,
-        "operating_income_yoy_status": "PERCENT"
+        "operating_income_yoy_status": "UNAVAILABLE"
       },
       {
         "quarter": "2025Q4",
@@ -1001,6 +987,20 @@
         "net_income_krw": 1785005181,
         "net_margin_pct": 9.25569265091159,
         "operating_cash_flow_krw": 543387165,
+        "operating_income_yoy_status": "PERCENT"
+      },
+      {
+        "quarter": "2026Q3",
+        "status": "READY",
+        "reason": null,
+        "revenue_krw": 18493443079,
+        "revenue_yoy_pct": -11.758687822029202,
+        "operating_income_krw": 978697916,
+        "operating_income_yoy_pct": -2.269460540992483,
+        "operating_margin_pct": 5.292134686976425,
+        "net_income_krw": 180096637,
+        "net_margin_pct": 0.973840491630823,
+        "operating_cash_flow_krw": 3717002687,
         "operating_income_yoy_status": "PERCENT"
       }
     ],
@@ -1085,33 +1085,50 @@
   "strategy": {
     "action": "NONE",
     "state": "DATA_UNAVAILABLE",
-    "position": "DATA_UNAVAILABLE",
-    "reason": "CURRENT_SESSION_PRICE_UNAVAILABLE",
-    "interpretation": "기준 거래일 2026-11-06의 유효 일봉이 없어 FAST Alignment 500B 현재 진입 상태를 판정할 수 없습니다.",
+    "position": "FLAT",
+    "reason": "CERTIFIED_PERIOD_CLOSE_UNAVAILABLE",
+    "interpretation": "현재 진입 평가에 필요한 데이터가 부족합니다.",
     "history": [],
     "id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
     "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
     "strategy_name": "A FAST Core V2 Alignment 500B",
-    "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+    "strategy_replay_mode": "CANONICAL_LEDGER_INCREMENTAL_V01",
     "strategy_replay_scope": {
       "type": "PUBLISHED_COMMON_REPORTS",
-      "report_count": 1432,
-      "requested_as_of": "2026-11-08",
-      "reference_market_date": "2026-11-06",
-      "first_v2_candidate_signal_date": "2012-12-28",
-      "last_v2_candidate_signal_date": "2026-11-06",
-      "first_alignment_gate_pass_signal_date": "2015-01-02",
-      "base_candidate_signal_count": 19256,
-      "alignment_gate_pass_count": 413,
-      "output_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+      "report_count": 1248,
+      "requested_as_of": "2026-11-22",
+      "reference_market_date": "2026-11-20",
+      "output_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+      "prior_canonical": {
+        "requested_as_of": "2026-11-08",
+        "reference_market_date": "2026-11-06",
+        "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+        "strategy_replay_digest": "47b51ac1778327c9658efe769b49ff117b706ba9a82da2533c97b503de739d7c",
+        "report_files_sha256": "19af234c939d6f74d9f8aad71836d4fb0da66b4cac65b1db56786f9243ce139f",
+        "report_count": 1432
+      },
+      "new_sessions": [
+        "2026-11-09",
+        "2026-11-10",
+        "2026-11-11",
+        "2026-11-12",
+        "2026-11-13",
+        "2026-11-16",
+        "2026-11-17",
+        "2026-11-18",
+        "2026-11-19",
+        "2026-11-20"
+      ],
+      "event_count": 4,
+      "events_sha256": "ef924831e81191a8be8d6410f4ed7aa3cc8d31d093d46e445cd83a06e38b2e5b"
     },
-    "strategy_replay_digest": "47b51ac1778327c9658efe769b49ff117b706ba9a82da2533c97b503de739d7c",
+    "strategy_replay_digest": "57682d5489569063286b2ba705da2a8823dcda092eb5b29a9fd43d01e98d0af5",
     "research_group_id": "ALIGNMENT_MCAP_500B",
     "promotion_gate_audit": []
   },
   "technical_details": {
-    "requested_as_of": "2026-11-08",
-    "reference_market_date": "2026-11-06",
+    "requested_as_of": "2026-11-22",
+    "reference_market_date": "2026-11-20",
     "report_version": "0.7",
     "report_status": "PARTIAL",
     "asset_type": "COMMON",
@@ -1138,7 +1155,7 @@
       "quality_status": "OK",
       "quality_flags": []
     },
-    "source_report": "artifacts/reporting/stock_reports/20261108/json/289010_아이스크림에듀.json"
+    "source_report": "artifacts/reporting/stock_reports/20261122/json/289010_아이스크림에듀.json"
   },
   "external_links": {
     "naver_finance": "https://finance.naver.com/item/main.naver?code=289010",

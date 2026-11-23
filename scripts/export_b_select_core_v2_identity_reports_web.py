@@ -76,7 +76,20 @@ def _exact_close(ticker: str, reference_date: str) -> tuple[float | None, str | 
         return None, None
 
 
-def _public_trade(row: Mapping[str, Any]) -> dict[str, Any]:
+def _open_positions_with_incomparable_returns(monitor: Mapping[str, Any]) -> set[tuple[str, str]]:
+    strategy = next(
+        (row for row in monitor.get("strategies", []) if row.get("id") == "PATTERN_B_SELECT_CORE_V02"),
+        {},
+    )
+    return {
+        (str(row["ticker"]).zfill(6), str(row["isu_cd"]).upper())
+        for row in strategy.get("canonical_current_open_positions", [])
+        if row.get("current_return_unavailable_reason") == "ENTRY_PRICE_BASIS_MISMATCH"
+    }
+
+
+def _public_trade(row: Mapping[str, Any], *, incomparable_return: bool = False) -> dict[str, Any]:
+    unvalued_open = incomparable_return and row.get("trade_status") == "OPEN_AT_REFERENCE"
     return {
         "trade_sequence": row.get("trade_sequence"),
         "entry_signal_date": row.get("entry_signal_date"),
@@ -86,7 +99,8 @@ def _public_trade(row: Mapping[str, Any]) -> dict[str, Any]:
         "exit_execution_date": row.get("exit_execution_date"),
         "exit_price": row.get("exit_price"),
         "trade_status": row.get("trade_status"),
-        "return_pct": row.get("return_pct"),
+        "return_pct": None if unvalued_open else row.get("return_pct"),
+        **({"current_return_unavailable_reason": "ENTRY_PRICE_BASIS_MISMATCH"} if unvalued_open else {}),
         "exit_reason": row.get("exit_reason"),
         "isu_cd": row.get("isu_cd"),
     }
@@ -100,6 +114,7 @@ def _identity_only_report(
     market: str,
     current_common: bool,
     reference_date: str,
+    incomparable_return: bool = False,
 ) -> dict[str, Any]:
     ticker, isu_cd = identity
     exact_close, close_source = _exact_close(ticker, reference_date) if current_common else (None, None)
@@ -107,7 +122,7 @@ def _identity_only_report(
         "CURRENT_COMMON_OUTSIDE_PUBLISHED_REPORT_SCOPE"
         if current_common else "HISTORICAL / NOT_CURRENT_COMMON"
     )
-    history = [_public_trade(row) for row in trade_rows]
+    history = [_public_trade(row, incomparable_return=incomparable_return) for row in trade_rows]
     return {
         "schema_version": 1,
         "identity": {
@@ -240,6 +255,7 @@ def build_identity_routes(
     }
     if not isinstance(monitor_history, list) or len(monitor_history) != len(history) or monitor_pairs != set(trades_by_identity):
         raise ValueError("Strategy Monitor identity set differs from canonical history")
+    unvalued_open = _open_positions_with_incomparable_returns(monitor)
     current_hold_pairs = {
         (str(row.get("ticker", "")).zfill(6), str(row.get("isu_cd", "")).upper())
         for row in strategy.get("items", [])
@@ -300,6 +316,7 @@ def build_identity_routes(
             report = _identity_only_report(
                 identity, rows, name=name, market=market,
                 current_common=is_current_common, reference_date=reference_date,
+                incomparable_return=identity in unvalued_open,
             )
             _write(supplemental_path, report)
             supplemental_paths.add(supplemental_path)
@@ -365,6 +382,8 @@ def validate_identity_routes(
     actual: dict[tuple[str, str], dict[str, Any]] = {}
     urls: set[str] = set()
     supplemental_count = 0
+    monitor_path = data_root / "strategy-monitor.json"
+    unvalued_open = _open_positions_with_incomparable_returns(_read(monitor_path)) if monitor_path.is_file() else set()
     current_hold_pairs = {
         (str(row.get("ticker", "")).zfill(6), str(row.get("isu_cd", "")).upper())
         for row in expected_status.get("items", [])
@@ -416,7 +435,9 @@ def validate_identity_routes(
                 availability.get("report_status") != "PARTIAL_IDENTITY_ONLY"
                 or decision.get("action") != "NONE"
                 or strategy.get("state") != "NOT_APPLICABLE"
-                or strategy.get("history") != [_public_trade(row) for row in by_identity[identity]]
+                or strategy.get("history") != [
+                    _public_trade(row, incomparable_return=identity in unvalued_open) for row in by_identity[identity]
+                ]
             ):
                 raise ValueError(f"B Select identity-only report history or signal contract mismatch: {url}")
         urls.add(url)

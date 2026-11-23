@@ -34,8 +34,10 @@ from trend_scanner.research.pattern_a_fast_weekly_features import compute_weekly
 from trend_scanner.backtest.snapshot_context import (
     PrecomputedTickerContext,
     build_historical_snapshot_from_context,
+    build_precomputed_ticker_context,
 )
 from trend_scanner.data.market_calendar import MarketCalendarAuthority
+from trend_scanner.data.period_close_availability import PERIOD_CLOSE_AVAILABILITY, gaps_in_window
 from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 
 
@@ -200,6 +202,8 @@ def evaluate_pattern_a_fast(
     ``build_historical_snapshot``/``build_historical_snapshot_from_context`` 호출에
     그대로 전달된다. 생략하면 canonical(frozen) calendar authority로 fallback한다.
     """
+    if context is None and PERIOD_CLOSE_AVAILABILITY in daily.attrs:
+        context = build_precomputed_ticker_context(ticker, name, daily)
     if context is not None:
         snapshot = build_historical_snapshot_from_context(
             context, weekly_date, include_incomplete_periods=False, market_calendar=market_calendar
@@ -212,11 +216,24 @@ def evaluate_pattern_a_fast(
         daily_up_to = daily[daily.index <= weekly_date]
     if snapshot.weekly_as_of != weekly_date:
         raise ValueError(f"incomplete weekly date passed to evaluator: {ticker} {weekly_date}")
-    features: dict[str, float] = {}
-    features.update(compute_monthly_regime_features(snapshot.monthly))
-    features.update(compute_weekly_trigger_features(snapshot.weekly))
-    features.update(compute_daily_timing_features(daily_up_to))
+    availability = context.period_closes if context is not None else None
+    blocked = ()
+    if availability is not None:
+        # The longest inputs include the 36-month range and the 200-week MA
+        # plus its one-bar slope offset. A missing bar cannot be filled.
+        blocked = (
+            gaps_in_window(snapshot.monthly, availability.monthly, weekly_date, 36)
+            + gaps_in_window(snapshot.weekly, availability.weekly, weekly_date, 201)
+        )
+    features: dict[str, float] = compute_daily_timing_features(daily_up_to)
+    if not blocked and (availability is None or availability.calendar_available):
+        features.update(compute_monthly_regime_features(snapshot.monthly))
+        features.update(compute_weekly_trigger_features(snapshot.weekly))
     fast = evaluate_fast_contract(features, score, stage)
+    if blocked:
+        fast["period_close_unavailable"] = [str(gap) for gap in blocked]
+    elif availability is not None and not availability.calendar_available:
+        fast["period_close_unavailable"] = ["CERTIFIED_CALENDAR_UNAVAILABLE"]
     pattern = evaluate_pattern_a(snapshot)
     pattern_stage = pattern.stage.value if pattern.stage else None
     pattern_active = pattern.candidate_state.value == "candidate"

@@ -19,6 +19,8 @@ import sys
 import tempfile
 from datetime import date
 from pathlib import Path
+
+from trend_scanner.reporting.a_fast_canonical_ledger import PUBLISHED_FAST_LEDGER_MODES, valid_published_fast_scope
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -101,7 +103,8 @@ def _validate_fast_strategy_monitor(
     fast_strategy_id = fast_rows[0]["id"]
     fast_gate_status = fast_rows[0].get("promotion_gate_status")
     fast_effective_signal_date = fast_rows[0].get("effective_signal_date")
-    historical_replay = strategy_monitor.get("strategy_replay_mode") == FULL_HISTORY_ALIGNMENT_WEB
+    ledger_mode = strategy_monitor.get("strategy_replay_mode")
+    historical_replay = ledger_mode in PUBLISHED_FAST_LEDGER_MODES
     if historical_replay:
         digest = strategy_monitor.get("strategy_replay_digest")
         scope = strategy_monitor.get("strategy_replay_scope")
@@ -111,7 +114,8 @@ def _validate_fast_strategy_monitor(
             or len(digest) != 64
             or any(character not in "0123456789abcdef" for character in digest)
             or not isinstance(scope, dict)
-            or fast_rows[0].get("strategy_replay_mode") != FULL_HISTORY_ALIGNMENT_WEB
+            or not valid_published_fast_scope(ledger_mode, scope)
+            or fast_rows[0].get("strategy_replay_mode") != ledger_mode
             or fast_rows[0].get("strategy_replay_digest") != digest
             or fast_rows[0].get("strategy_replay_scope") != scope
             or scope.get("report_count") != report_json_count
@@ -161,7 +165,8 @@ def validate_fast_full_history_projection(
     fast_strategy_id: str,
 ) -> dict[str, int]:
     """Compare every source trade and OPEN position with the monitor projection."""
-    if strategy_monitor.get("strategy_replay_mode") != FULL_HISTORY_ALIGNMENT_WEB:
+    ledger_mode = strategy_monitor.get("strategy_replay_mode")
+    if ledger_mode not in PUBLISHED_FAST_LEDGER_MODES:
         return {"source_trade_count": 0, "monitor_trade_count": 0, "trade_mismatch_count": 0, "open_mismatch_count": 0}
     row = next(
         item for item in strategy_monitor.get("strategies", [])
@@ -174,7 +179,7 @@ def validate_fast_full_history_projection(
             continue
         strategy = report.get("strategy") or {}
         if (
-            strategy.get("strategy_replay_mode") != FULL_HISTORY_ALIGNMENT_WEB
+            strategy.get("strategy_replay_mode") != ledger_mode
             or strategy.get("strategy_id") != fast_strategy_id
             or strategy.get("strategy_replay_digest") != strategy_monitor.get("strategy_replay_digest")
             or strategy.get("strategy_replay_scope") != strategy_monitor.get("strategy_replay_scope")

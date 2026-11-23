@@ -16,6 +16,7 @@ import pandas as pd
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
+from trend_scanner.data.period_close_availability import PERIOD_CLOSE_AVAILABILITY
 from trend_scanner.data.repository_v2 import MarketDataRepositoryV2
 
 
@@ -96,6 +97,8 @@ class RepositoryV2DailyLoader:
         result.attrs["requested_start"] = self.start
         result.attrs["requested_end"] = self.end
         result.attrs["effective_as_of"] = result.index.max().strftime("%Y-%m-%d")
+        if PERIOD_CLOSE_AVAILABILITY in frame.attrs:
+            result.attrs[PERIOD_CLOSE_AVAILABILITY] = frame.attrs[PERIOD_CLOSE_AVAILABILITY]
         return result
 
     def load_ancillary(self, ticker: str) -> pd.DataFrame | None:

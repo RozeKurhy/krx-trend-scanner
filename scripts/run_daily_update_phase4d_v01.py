@@ -272,7 +272,7 @@ def _canonical_full_history_alignment_provenance(
             common_tickers.add(ticker)
         core = report.get("a_fast_core")
         if isinstance(core, dict) and (
-            core.get("strategy_replay_mode") == phase4b.FULL_HISTORY_ALIGNMENT_WEB
+            core.get("strategy_replay_mode") in phase4b.PUBLISHED_FAST_LEDGER_MODES
             or core.get("strategy_id") == PROMOTED_STRATEGY_ID
         ):
             declares_alignment = True
@@ -282,11 +282,11 @@ def _canonical_full_history_alignment_provenance(
     if parse_errors:
         raise Phase4DError("PHASE4D_CANONICAL_FULL_HISTORY_ALIGNMENT_INVALID: REPORT_JSON_INVALID")
     try:
-        validation = phase4b.validate_full_history_alignment_corpus(
+        validation = phase4b.validate_fast_canonical_corpus(
             report_dir,
             target_as_of,
             reference_market_date,
-            common_tickers,
+            common_tickers, root=root,
         )
     except (OSError, UnicodeError, ValueError, phase4b.Phase4BError) as exc:
         raise Phase4DError(f"PHASE4D_CANONICAL_FULL_HISTORY_ALIGNMENT_INVALID: {exc}") from exc
@@ -294,7 +294,7 @@ def _canonical_full_history_alignment_provenance(
     if (
         validation.get("valid") is not True
         or validation.get("strategy_id") != PROMOTED_STRATEGY_ID
-        or validation.get("strategy_replay_mode") != phase4b.FULL_HISTORY_ALIGNMENT_WEB
+        or validation.get("strategy_replay_mode") not in phase4b.PUBLISHED_FAST_LEDGER_MODES
         or not isinstance(validation.get("strategy_replay_digest"), str)
         or not isinstance(scope, dict)
         or scope.get("requested_as_of") != target_as_of
@@ -331,10 +331,10 @@ def _published_monitor_matches_canonical_full_history_alignment(
     scope = canonical.get("strategy_replay_scope")
     return bool(
         fast_row.get("id") == PROMOTED_STRATEGY_ID
-        and monitor.get("strategy_replay_mode") == phase4b.FULL_HISTORY_ALIGNMENT_WEB
+        and monitor.get("strategy_replay_mode") == canonical.get("strategy_replay_mode")
         and monitor.get("strategy_replay_digest") == digest
         and monitor.get("strategy_replay_scope") == scope
-        and fast_row.get("strategy_replay_mode") == phase4b.FULL_HISTORY_ALIGNMENT_WEB
+        and fast_row.get("strategy_replay_mode") == canonical.get("strategy_replay_mode")
         and fast_row.get("strategy_replay_digest") == digest
         and fast_row.get("strategy_replay_scope") == scope
         and monitor.get("requested_as_of") == target_as_of
@@ -622,7 +622,8 @@ def validate_staging(
     if report_fast_strategy_ids and report_fast_strategy_ids != {fast_strategy_id}:
         raise Phase4DError("PHASE4D_FAST_REPORT_MONITOR_STRATEGY_MISMATCH")
     fast_row = fast_rows[0]
-    historical_alignment_replay = strategy.get("strategy_replay_mode") == "FULL_HISTORY_ALIGNMENT_WEB"
+    ledger_mode = strategy.get("strategy_replay_mode")
+    historical_alignment_replay = ledger_mode in phase4b.PUBLISHED_FAST_LEDGER_MODES
     gate_status = fast_row.get("promotion_gate_status")
     effective_signal_date = fast_row.get("effective_signal_date")
     if gate_status is not None and gate_status not in {
@@ -637,7 +638,8 @@ def validate_staging(
             or not isinstance(replay_digest, str)
             or not re.fullmatch(r"[0-9a-f]{64}", replay_digest)
             or not isinstance(replay_scope, dict)
-            or fast_row.get("strategy_replay_mode") != "FULL_HISTORY_ALIGNMENT_WEB"
+            or not phase4b.valid_published_fast_scope(ledger_mode, replay_scope)
+            or fast_row.get("strategy_replay_mode") != ledger_mode
             or fast_row.get("strategy_replay_digest") != replay_digest
             or fast_row.get("strategy_replay_scope") != replay_scope
             or replay_scope.get("report_count") != len(common_tickers)
@@ -1877,7 +1879,7 @@ def _daily_alignment_stage_proof(
         canonical is None
         or canonical.get("valid") is not True
         or canonical.get("strategy_id") != PROMOTED_STRATEGY_ID
-        or canonical.get("strategy_replay_mode") != "FULL_HISTORY_ALIGNMENT_WEB"
+        or canonical.get("strategy_replay_mode") not in phase4b.PUBLISHED_FAST_LEDGER_MODES
         or not isinstance(canonical_digest, str)
         or not re.fullmatch(r"[0-9a-f]{64}", canonical_digest)
         or canonical.get("computed_strategy_replay_digest") != canonical_digest
@@ -1893,7 +1895,7 @@ def _daily_alignment_stage_proof(
         or monitor.get("requested_as_of") != target_as_of
         or monitor.get("reference_market_date") != reference_market_date
         or monitor.get("default_strategy_id") != PROMOTED_STRATEGY_ID
-        or monitor.get("strategy_replay_mode") != "FULL_HISTORY_ALIGNMENT_WEB"
+        or monitor.get("strategy_replay_mode") != canonical.get("strategy_replay_mode")
         or monitor.get("strategy_replay_digest") != canonical_digest
         or monitor.get("strategy_replay_scope") != canonical_scope
     ):
@@ -1990,7 +1992,7 @@ def _create_daily_alignment_promotion_context(
     monitor_path = Path(stage_data) / "strategy-monitor.json"
     if not monitor_path.is_file():
         return None
-    if _read_json(monitor_path).get("strategy_replay_mode") != "FULL_HISTORY_ALIGNMENT_WEB":
+    if _read_json(monitor_path).get("strategy_replay_mode") not in phase4b.PUBLISHED_FAST_LEDGER_MODES:
         return None
     proof = _daily_alignment_stage_proof(
         stage_data,

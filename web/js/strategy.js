@@ -119,6 +119,11 @@
     return `${sign}${formatNumber(Math.abs(number), 2)}%`;
   }
 
+  function formatTradeReturn(trade) {
+    if (trade?.current_return_unavailable_reason === "ENTRY_PRICE_BASIS_MISMATCH") return "평가 불가";
+    return formatReturn(trade?.return_pct);
+  }
+
   function formatOneDecimal(value) {
     if (value == null || value === "" || !Number.isFinite(Number(value))) return "미상";
     return new Intl.NumberFormat("ko-KR", {
@@ -393,7 +398,7 @@
     const returnClass = trade && Number(trade.return_pct) > 0 ? "detail-value-positive" : trade && Number(trade.return_pct) < 0 ? "detail-value-negative" : "";
     const returnField = createField(
       "수익률",
-      trade ? formatReturn(trade.return_pct) : "—",
+      formatTradeReturn(trade),
       [returnClass, "strategy-item-return"].filter(Boolean).join(" "),
     );
     const holdingAge = isOpenHolding
@@ -455,6 +460,7 @@
           entry_execution_date: position.entry_execution_date,
           entry_open: position.entry_price ?? sourceTrade.entry_open,
           return_pct: position.current_return_pct,
+          current_return_unavailable_reason: position.current_return_unavailable_reason,
         },
         holding_age_sessions: position.holding_age_sessions,
         peak_drawdown_pct: position.peak_drawdown_pct,
@@ -527,7 +533,7 @@
       createField("매수가", formatPrice(trade.entry_price)),
       createField("매도 체결일", isOpenTrade(trade) ? "—" : formatDate(trade.exit_execution_date)),
       createField("매도가", isOpenTrade(trade) ? "—" : formatPrice(trade.exit_price)),
-      createField("수익률", formatReturn(trade.return_pct), returnClass),
+      createField("수익률", formatTradeReturn(trade), returnClass),
     ];
     if (bSelect) {
       fields.push(
@@ -879,7 +885,7 @@
       || !/^\d{4}-\d{2}-\d{2}$/.test(value.reference_market_date || "")
       || value.reference_market_date > value.requested_as_of
       || !Array.isArray(value.strategies)
-      || (value.strategy_replay_mode != null && value.strategy_replay_mode !== "FULL_HISTORY_ALIGNMENT_WEB")
+      || (value.strategy_replay_mode != null && !["FULL_HISTORY_ALIGNMENT_WEB", "CANONICAL_LEDGER_INCREMENTAL_V01"].includes(value.strategy_replay_mode))
     ) return false;
     const byId = new Map(value.strategies.map((strategy) => [strategy && strategy.id, strategy]));
     const fastIds = Array.from(FAST_STRATEGY_IDS).filter((id) => byId.has(id));
@@ -915,7 +921,8 @@
         const effectiveDate = strategy.effective_signal_date;
         const activationIntervals = strategy.activation_intervals == null ? [] : strategy.activation_intervals;
         const replayMode = strategy.strategy_replay_mode;
-        const historicalAlignmentReplay = replayMode === "FULL_HISTORY_ALIGNMENT_WEB";
+        const incremental = replayMode === "CANONICAL_LEDGER_INCREMENTAL_V01";
+        const historicalAlignmentReplay = replayMode === "FULL_HISTORY_ALIGNMENT_WEB" || incremental;
         if (!Array.isArray(activationIntervals)) return false;
         const activationIds = new Set();
         let previousEnd = null;
@@ -949,6 +956,19 @@
             || scope.requested_as_of !== value.requested_as_of
             || scope.reference_market_date !== value.reference_market_date
           ) return false;
+          if (incremental && (
+            !scope.prior_canonical || parseSortableDate(scope.prior_canonical.reference_market_date) == null
+            || !/^[0-9a-f]{64}$/.test(scope.prior_canonical.strategy_replay_digest || "")
+            || !/^[0-9a-f]{64}$/.test(scope.prior_canonical.report_files_sha256 || "")
+            || !/^[0-9a-f]{64}$/.test(scope.events_sha256 || "")
+            || !Number.isInteger(scope.event_count) || scope.event_count < 0
+            || !Array.isArray(scope.new_sessions) || scope.new_sessions.length === 0
+            || scope.new_sessions.at(-1) !== scope.reference_market_date
+            || scope.new_sessions.some((day, index) => (
+              parseSortableDate(day) == null
+              || day <= (index === 0 ? scope.prior_canonical.reference_market_date : scope.new_sessions[index - 1])
+            ))
+          )) return false;
         } else if (
           (replayMode != null)
           || (gateStatus != null && !["INACTIVE_PENDING_USER_APPROVAL", "SCHEDULED_INACTIVE", "ACTIVE"].includes(gateStatus))
@@ -996,10 +1016,14 @@
           || (trade.entry_signal_date && !/^\d{4}-\d{2}-\d{2}$/.test(trade.entry_signal_date))
           || (trade.exit_execution_date && !/^\d{4}-\d{2}-\d{2}$/.test(trade.exit_execution_date))
           || (trade.return_pct != null && !Number.isFinite(Number(trade.return_pct)))
+          || (trade.current_return_unavailable_reason != null && (
+            id !== B_SELECT_STRATEGY_ID || trade.trade_status !== "OPEN_AT_REFERENCE"
+            || trade.current_return_unavailable_reason !== "ENTRY_PRICE_BASIS_MISMATCH" || trade.return_pct !== null
+          ))
         ) return false;
         const sourceId = trade.strategy_id || id;
         const activationIntervals = strategy.activation_intervals || [];
-        const historicalAlignmentReplay = strategy.strategy_replay_mode === "FULL_HISTORY_ALIGNMENT_WEB";
+        const historicalAlignmentReplay = ["FULL_HISTORY_ALIGNMENT_WEB", "CANONICAL_LEDGER_INCREMENTAL_V01"].includes(strategy.strategy_replay_mode);
         const allowedSourceIds = FAST_STRATEGY_IDS.has(id) && activationIntervals.length > 0
           ? FAST_STRATEGY_IDS
           : new Set([id]);
@@ -1041,6 +1065,7 @@
         const declaredOpen = new Set(strategy.canonical_current_open_positions.map(positionKey));
         const expectedOpenIdentities = new Set(historyOpen.map(identityKey));
         const declaredOpenIdentities = new Set(strategy.canonical_current_open_positions.map(identityKey));
+        const unvaluedOpen = new Set(historyOpen.filter((trade) => trade.current_return_unavailable_reason).map(positionKey));
         if (
           expectedOpen.size !== historyOpen.length
           || declaredOpen.size !== strategy.canonical_current_open_positions.length
@@ -1053,6 +1078,13 @@
           || strategy.canonical_current_open_positions.some((position) => (
             !/^\d{6}$/.test(position.ticker || "")
             || !/^[0-9A-Z]+$/.test(position.isu_cd || "")
+            || (position.current_return_unavailable_reason != null) !== unvaluedOpen.has(positionKey(position))
+            || (position.current_return_unavailable_reason != null && (
+              position.current_return_unavailable_reason !== "ENTRY_PRICE_BASIS_MISMATCH"
+              || position.current_return_pct !== null
+              || position.latest_close_as_of !== value.reference_market_date
+              || !Number.isFinite(position.latest_close) || position.latest_close <= 0
+            ))
           ))
           || strategy.canonical_current_open_position_count !== expectedOpen.size
         ) return false;

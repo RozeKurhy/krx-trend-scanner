@@ -24,6 +24,7 @@ import pandas as pd
 from trend_scanner.backtest.snapshot_context import PrecomputedTickerContext
 from trend_scanner.data.resampler import to_weekly
 from trend_scanner.data.market_calendar import MarketCalendarAuthority
+from trend_scanner.data.period_close_availability import PERIOD_CLOSE_AVAILABILITY
 from trend_scanner.patterns.pattern_a_fast_evaluator import evaluate_pattern_a_fast
 from trend_scanner.reporting.models import (
     PatternAFastCurrentSignal,
@@ -140,10 +141,27 @@ def build_pattern_a_fast_section(
     daily_sorted = daily_slice.sort_index()
     lookback_start = as_of - WEEKLY_HISTORY_LOOKBACK
     all_weekly_labels = context.weekly_labels if context is not None else to_weekly(daily_sorted).index
-    weekly_labels = [label for label in all_weekly_labels if lookback_start <= label <= as_of]
+    availability = context.period_closes if context is not None else daily_slice.attrs.get(PERIOD_CLOSE_AVAILABILITY)
+    unavailable = {gap.label for gap in availability.weekly if gap.session <= as_of} if availability else set()
+    weekly_labels = sorted({
+        label for label in set(all_weekly_labels) | unavailable if lookback_start <= label <= as_of
+    })
 
     observations: list[PatternAFastWeeklyObservation] = []
     for week_label in weekly_labels:
+        if week_label in unavailable:
+            observations.append(PatternAFastWeeklyObservation(
+                week_ending=week_label.strftime("%Y-%m-%d"),
+                close=None,
+                fast_score=None,
+                score_availability="UNAVAILABLE",
+                fast_stage=None,
+                stage_availability="UNAVAILABLE",
+                monthly_regime=None,
+                daily_risk=None,
+                interpretation=_INTERPRETATION_UNAVAILABLE,
+            ))
+            continue
         week_daily = daily_sorted[daily_sorted.index <= week_label]
         # Phase 13 completed-week contract: 해당 주의 마지막 거래일이 곧 주봉 label과
         # 일치해야만 완료된 주봉으로 인정한다 (미완료 현재 주는 제외).

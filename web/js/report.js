@@ -393,7 +393,8 @@
   function validateFullHistoryAlignmentStrategy(value, ticker) {
     const strategy = value.strategy;
     if (strategy.strategy_replay_mode == null) return true;
-    if (strategy.strategy_replay_mode !== "FULL_HISTORY_ALIGNMENT_WEB") return false;
+    const incremental = strategy.strategy_replay_mode === "CANONICAL_LEDGER_INCREMENTAL_V01";
+    if (!incremental && strategy.strategy_replay_mode !== "FULL_HISTORY_ALIGNMENT_WEB") return false;
 
     const strategyId = "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B";
     const scope = strategy.strategy_replay_scope;
@@ -405,9 +406,11 @@
       !scope || typeof scope !== "object" || Array.isArray(scope) ||
       scope.type !== "PUBLISHED_COMMON_REPORTS" ||
       !Number.isInteger(scope.report_count) || scope.report_count <= 0 ||
-      !Number.isInteger(scope.base_candidate_signal_count) || scope.base_candidate_signal_count < 0 ||
-      !Number.isInteger(scope.alignment_gate_pass_count) || scope.alignment_gate_pass_count < 0 ||
-      scope.alignment_gate_pass_count > scope.base_candidate_signal_count ||
+      (!incremental && (
+        !Number.isInteger(scope.base_candidate_signal_count) || scope.base_candidate_signal_count < 0 ||
+        !Number.isInteger(scope.alignment_gate_pass_count) || scope.alignment_gate_pass_count < 0 ||
+        scope.alignment_gate_pass_count > scope.base_candidate_signal_count
+      )) ||
       scope.output_strategy_id !== strategyId ||
       scope.requested_as_of !== technical.requested_as_of ||
       scope.reference_market_date !== technical.reference_market_date ||
@@ -417,6 +420,19 @@
       Object.prototype.hasOwnProperty.call(strategy, "effective_signal_date") ||
       !Array.isArray(strategy.history)
     ) return false;
+
+    if (incremental && (
+      !scope.prior_canonical || !isExactIsoDate(scope.prior_canonical.reference_market_date) ||
+      !/^[0-9a-f]{64}$/.test(scope.prior_canonical.strategy_replay_digest || "") ||
+      !/^[0-9a-f]{64}$/.test(scope.prior_canonical.report_files_sha256 || "") ||
+      !/^[0-9a-f]{64}$/.test(scope.events_sha256 || "") ||
+      !Number.isInteger(scope.event_count) || scope.event_count < 0 ||
+      !Array.isArray(scope.new_sessions) || scope.new_sessions.length === 0 ||
+      scope.new_sessions.at(-1) !== scope.reference_market_date ||
+      scope.new_sessions.some((day, index) => (
+        !isExactIsoDate(day) || day <= (index === 0 ? scope.prior_canonical.reference_market_date : scope.new_sessions[index - 1])
+      ))
+    )) return false;
 
     return strategy.history.every((trade) => (
       trade && typeof trade === "object" &&
@@ -1511,7 +1527,10 @@
       formatPrice(trade.entry_open ?? trade.entry_price),
       formatDate(trade.exit_execution_date),
       formatPrice(trade.exit_price),
-      { value: formatSignedPercentPoints(trade.return_pct), className: signedValueClass(trade.return_pct) },
+      {
+        value: trade.current_return_unavailable_reason === "ENTRY_PRICE_BASIS_MISMATCH" ? "평가 불가" : formatSignedPercentPoints(trade.return_pct),
+        className: signedValueClass(trade.return_pct),
+      },
       tradeStatusLabel(trade.trade_status),
       exitTypeLabel(trade.exit_type || trade.exit_reason),
     ]);

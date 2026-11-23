@@ -193,6 +193,96 @@ def test_b_select_open_display_uses_canonical_identities_and_exact_report_routes
     assert "displayItemsForStrategy(selected).filter((item) => item.bucket === category && itemMatches(item))" in strategy_js
 
 
+@pytest.mark.parametrize(
+    ("entry_open", "carried", "current_available", "expected_return"),
+    [(116.0, False, True, -50.0), (112.0, True, True, None), (112.0, False, True, None), (112.0, True, False, None)],
+)
+def test_b_select_open_return_requires_comparable_price_basis(
+    tmp_path, monkeypatch, entry_open, carried, current_available, expected_return,
+):
+    from types import SimpleNamespace
+
+    import pandas as pd
+    from trend_scanner.data import market_calendar, repository_v2_loader, rolling_market_data_refresh
+
+    exporter = _load_exporter()
+    dates = ["2026-11-17", "2026-11-18", "2026-11-19", "2026-11-20"]
+    authority = tmp_path / "data/market/rolling_authority"
+    authority.mkdir(parents=True)
+    for name in ("manifest.json", "merged_pit_intervals.json", "merged_trading_calendar.json"):
+        (authority / name).touch()
+    intervals = [{
+        "ticker": "000001", "isu_cd": "KR7000001000", "state": "COMMON",
+        "effective_from": dates[0], "effective_to": dates[-1],
+    }]
+    monkeypatch.setattr(rolling_market_data_refresh, "load_rolling_authority",
+                        lambda _: SimpleNamespace(merged_calendar_frontier=dates[-1]))
+    monkeypatch.setattr(rolling_market_data_refresh, "validate_merged_authority_coherence",
+                        lambda *_: ({"intervals": intervals, "pit_frontier": dates[-1]}, {"trading_dates": dates}))
+    monkeypatch.setattr(market_calendar, "load_rolling_production_market_calendar",
+                        lambda _: SimpleNamespace(trading_dates=pd.DatetimeIndex(dates)))
+    daily = pd.DataFrame(
+        {"open": [130.0, entry_open, 64.0, 60.0], "high": [131.0, 117.0, 66.0, 62.0],
+         "low": [128.0, 110.0, 61.0, 57.0], "close": [129.0, 112.0, 63.0, 58.0]},
+        index=pd.DatetimeIndex(dates),
+    )
+    if not current_available:
+        daily = daily.iloc[:-1]
+
+    def get_daily(_ticker, start, end):
+        frame = daily.loc[start:end].copy()
+        observed = frame.index.strftime("%Y-%m-%d").tolist()
+        frame.attrs["session_projection_audit"] = {
+            "projected_date_set_exact_match": True, "adjusted_dates": observed, "raw_dates": observed,
+        }
+        return frame
+
+    monkeypatch.setattr(repository_v2_loader, "build_production_repository_v2",
+                        lambda *args, **kwargs: SimpleNamespace(get_daily=get_daily))
+    trade = {
+        "ticker": "000001", "isu_cd": "KR7000001000", "trade_status": "OPEN_AT_REFERENCE",
+        "trade_sequence": 1, "entry_signal_date": dates[0], "entry_execution_date": dates[1],
+        "entry_price": 116.0, "return_pct": -50.0,
+    }
+    earlier = Path("artifacts/strategies/b_select_core_v2/production/20261119/status.json")
+    (tmp_path / earlier).parent.mkdir(parents=True)
+    (tmp_path / earlier).write_text(json.dumps({
+        "status": "PASS", "strategy_id": exporter.B_SELECT_ID, "reference_market_date": dates[2],
+        "canonical_current_open_position_count": 1,
+        "canonical_current_open_positions": [{**trade, "entry_open": trade["entry_price"]}],
+    }))
+    status = {
+        "strategy_id": exporter.B_SELECT_ID, "reference_market_date": dates[-1],
+        "canonical_history": {"status": "INCREMENTAL_CONTINUITY"},
+        "catchup_audit": {"prior_artifact_path": str(earlier), "prior_reference_market_date": dates[2]},
+    }
+    prior_prices = exporter._carried_b_open_entry_prices(tmp_path, status) if carried else {}
+    row = exporter._select_core_history_path_metrics(
+        tmp_path, [trade], [], dates[-1], carried_open_entry_prices=prior_prices,
+    )[0]
+    assert row["entry_price"] == 116.0 and row["trade_status"] == trade["trade_status"]
+    assert trade["return_pct"] == -50.0 and row["holding_age_sessions"] == 3
+    if not current_available or (entry_open != trade["entry_price"] and not carried):
+        assert "latest_close" not in row and "current_return_unavailable_reason" not in row
+    else:
+        assert row["latest_close_as_of"] == dates[-1] and row["latest_close"] == 58.0
+        assert row["current_return_pct"] == expected_return
+        if expected_return is None:
+            assert row["return_pct"] is None
+            assert row["current_return_unavailable_reason"] == "ENTRY_PRICE_BASIS_MISMATCH"
+
+
+def test_b_select_identity_history_preserves_realized_returns_when_open_basis_changes():
+    from scripts.export_b_select_core_v2_identity_reports_web import _public_trade
+
+    assert _public_trade(
+        {"trade_status": "REALIZED", "return_pct": 12.5}, incomparable_return=True,
+    )["return_pct"] == 12.5
+    opened = _public_trade({"trade_status": "OPEN_AT_REFERENCE", "return_pct": -50.0}, incomparable_return=True)
+    assert opened["return_pct"] is None
+    assert opened["current_return_unavailable_reason"] == "ENTRY_PRICE_BASIS_MISMATCH"
+
+
 def test_b_select_open_entry_pattern_a_context_matches_exact_authority():
     exporter = _load_exporter()
     monitor = _load_monitor()
@@ -432,12 +522,12 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
     strategy_js = (ROOT / "web/js/strategy.js").read_text(encoding="utf-8")
     css = (ROOT / "web/css/app.css").read_text(encoding="utf-8")
 
-    strategy_asset_version = "web-strategy-price-order-history-age-v01"
+    strategy_logic_version = "canonical-fast-ledger-v01"
     assert 'data-strategy-id="PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"' in strategy_html
     assert '<span class="strategy-option-name">A FAST Core V2 Alignment 500B</span>' in strategy_html
     assert '<span class="strategy-option-detail">현재 공식 전략 · COMMON</span>' in strategy_html
-    assert strategy_html.count(strategy_asset_version) == 3
-    assert f'src="./js/strategy.js?v={strategy_asset_version}"' in strategy_html
+    assert strategy_html.count("web-strategy-price-order-history-age-v01") == 2
+    assert f'src="./js/strategy.js?v={strategy_logic_version}"' in strategy_html
     assert '<label id="strategy-fundamental-filter-label">진입 펀더멘탈</label>' in strategy_html
     assert '<details id="strategy-fundamental-filter" class="strategy-multi-select" aria-labelledby="strategy-fundamental-filter-label">' in strategy_html
     assert '<label id="history-fundamental-filter-label">진입 펀더멘탈</label>' in strategy_html
@@ -453,11 +543,11 @@ def test_strategy_page_is_connected_and_uses_page_specific_cache_version():
         if urlsplit(url).path == "./js/strategy.js"
     ]
     assert len(strategy_scripts) == 1
-    assert strategy_scripts[0].query == f"v={strategy_asset_version}"
+    assert strategy_scripts[0].query == f"v={strategy_logic_version}"
     assert (ROOT / "web" / strategy_scripts[0].path.removeprefix("./")).is_file()
     assert 'src="./js/app.js?v=web-fear-fix02-4"' in index_html
     assert 'EXIT: "다음 시가 청산 대기"' in strategy_js
-    assert 'src="./js/report.js?v=web-ui-chevron-v03"' in report_html
+    assert f'src="./js/report.js?v={strategy_logic_version}"' in report_html
     assert 'href="./strategy.html"' in index_html
     assert 'href="./strategy.html"' in report_html
     assert 'class="nav-item is-active" href="./strategy.html"' in strategy_html

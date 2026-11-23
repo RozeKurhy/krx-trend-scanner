@@ -35,9 +35,11 @@ from trend_scanner.reporting.models import (
 from trend_scanner.universe.models import AssetType
 from trend_scanner.data.market_calendar import MarketCalendarAuthority
 from trend_scanner.data.market_calendar import resolve_reference_market_date
-from trend_scanner.validation.historical_snapshot import build_historical_snapshot
+from trend_scanner.backtest.snapshot_context import build_period_aware_snapshot as build_historical_snapshot
+from trend_scanner.data.period_close_availability import PERIOD_CLOSE_AVAILABILITY
 from trend_scanner.validation.pattern_a_fast_core_v02_reentry import (
     ExecutionPriceUnavailableError,
+    LifecyclePeriodCloseUnavailableError,
     _completed_monthly_observations,
     simulate_ticker_core_v02_reentry,
 )
@@ -55,6 +57,109 @@ logger = logging.getLogger(__name__)
 
 
 _VALID_METADATA_PROVENANCE_MODES = ("CURRENT_VERIFIED", "HISTORICAL_LEGACY_RESEARCH", "DATA_UNAVAILABLE")
+OPEN_EVALUATION_UNAVAILABLE = "OPEN_EVALUATION_UNAVAILABLE"
+
+
+def build_unavailable_open_section(
+    prior_report: dict[str, Any],
+    daily: pd.DataFrame,
+    *,
+    ticker: str,
+    market: str,
+    requested_as_of: pd.Timestamp,
+    reference_market_date: str,
+    market_calendar: MarketCalendarAuthority,
+) -> AFastCoreSection:
+    """Carry a trusted OPEN forward when the new window proves no due exit."""
+    prior = prior_report["a_fast_core"]
+    if (
+        prior_report["ticker"] != ticker
+        or prior_report["market"] != market
+        or prior_report["asset_type"] != "COMMON"
+        or prior["strategy_id"] != PROMOTED_STRATEGY_ID
+        or prior["strategy_replay_mode"] != HISTORICAL_ALIGNMENT_REPLAY_MODE
+        or prior["canonical_position"] != "OPEN"
+    ):
+        raise AlignmentGateIntegrityError("PRIOR_OPEN_AUTHORITY_MISMATCH")
+    current = AFastCoreCurrentTrade(**prior["current_trade"])
+    protection = AFastCoreProtectionState(**prior["protection_state"])
+    history = [AFastCoreTradeHistoryItem(**row) for row in prior["trade_history"]]
+    open_rows = [row for row in history if row.trade_status == "OPEN_AT_CUTOFF"]
+    if len(open_rows) != 1 or current.trade_status != "OPEN":
+        raise AlignmentGateIntegrityError("PRIOR_OPEN_LEDGER_MISMATCH")
+    row = open_rows[0]
+    if any(
+        getattr(current, field) != getattr(row, field)
+        for field in ("trade_id", "trade_sequence", "entry_signal_date", "entry_execution_date", "entry_open", "strategy_id")
+    ):
+        raise AlignmentGateIntegrityError("PRIOR_OPEN_LEDGER_MISMATCH")
+    if not np.isfinite(current.entry_open) or current.entry_open <= 0:
+        raise AlignmentGateIntegrityError("PRIOR_OPEN_ENTRY_PRICE_INVALID")
+    if (
+        prior["action"] not in {"HOLD", "NONE"}
+        or current.pending_exit_type or current.pending_exit_signal_date
+        or row.exit_signal_date or row.exit_execution_date or row.exit_price is not None
+    ):
+        raise AlignmentGateIntegrityError("PRIOR_OPEN_EXIT_REQUIRES_PROCESSING")
+
+    prior_day = pd.Timestamp(prior_report["reference_market_date"])
+    reference = pd.Timestamp(reference_market_date)
+    entered = pd.Timestamp(current.entry_execution_date)
+    if not (
+        entered <= prior_day < reference <= requested_as_of
+        and all(market_calendar.is_trading_day(day) for day in (entered, prior_day, reference))
+    ):
+        raise AlignmentGateIntegrityError("PRIOR_OPEN_CONTINUATION_WINDOW_INVALID")
+    if any(day > prior_day for day in market_calendar.get_month_ends(reference)):
+        raise AlignmentGateIntegrityError("PRIOR_OPEN_NEW_MONTH_END_REQUIRES_EXIT_EVALUATION")
+    sessions = market_calendar.trading_dates[(market_calendar.trading_dates > prior_day) & (market_calendar.trading_dates <= reference)]
+    closes = pd.to_numeric(daily.loc[(daily.index > prior_day) & (daily.index <= reference), "close"], errors="coerce")
+    if not closes.index.equals(sessions) or not np.isfinite(closes.to_numpy()).all() or (closes <= 0).any():
+        raise AlignmentGateIntegrityError("PRIOR_OPEN_EXACT_CONTINUATION_CLOSE_MISSING")
+
+    if protection.phase == "PROGRESSED" and protection.loss_guard_state == "INACTIVE":
+        progressed = pd.Timestamp(protection.first_progressed_effective_trading_date)
+        if (
+            not entered <= progressed <= prior_day
+            or not market_calendar.is_trading_day(progressed)
+            or current.first_progressed_effective_trading_date != protection.first_progressed_effective_trading_date
+        ):
+            raise AlignmentGateIntegrityError("PRIOR_OPEN_PROGRESSED_AUTHORITY_MISMATCH")
+    elif protection.phase == "PRE_PROGRESSED" and protection.loss_guard_state == "ACTIVE":
+        if protection.loss_guard_threshold_pct != -15.0:
+            raise AlignmentGateIntegrityError("PRIOR_OPEN_LOSS_GUARD_AUTHORITY_MISMATCH")
+        if ((closes / current.entry_open - 1.0) <= protection.loss_guard_threshold_pct / 100).any():
+            raise AlignmentGateIntegrityError("PRIOR_OPEN_NEW_LOSS_GUARD_SIGNAL")
+    else:
+        raise AlignmentGateIntegrityError("PRIOR_OPEN_PROTECTION_AUTHORITY_MISMATCH")
+
+    current.current_close = float(closes.loc[reference])
+    current.current_return_pct = round((current.current_close / current.entry_open - 1.0) * 100, 2)
+    protection.current_pattern_a_score = None
+    protection.score_drawdown_from_hwm_pt = None
+    return AFastCoreSection(
+        **{
+            **prior,
+            "as_of": requested_as_of.date().isoformat(),
+            "strategy_state": "DATA_UNAVAILABLE",
+            "action": "NONE",
+            "action_reason": OPEN_EVALUATION_UNAVAILABLE,
+            "execution_timing": None,
+            "entry_conditions": None,
+            "current_trade": current,
+            "protection_state": protection,
+            "reentry_state": AFastCoreReentryState(**prior["reentry_state"]),
+            "trade_history": history,
+            "interpretation": (
+                "현재 Pattern A Stage·Score 평가를 보류하고 기존 포지션을 유지합니다. "
+                f"{prior_day.date()} 기준 보호 이력은 {protection.phase}, "
+                f"Exit 3 {protection.exit3_state}, Exit 4 {protection.exit4_state}입니다."
+            ),
+            "provenance": AFastCoreProvenance(**prior["provenance"]),
+            "strategy_replay_scope": None,
+            "strategy_replay_digest": None,
+        },
+    )
 OPERATIONAL_REPLAY_MODE = "OPERATIONAL"
 HISTORICAL_ALIGNMENT_REPLAY_MODE = "FULL_HISTORY_ALIGNMENT_WEB"
 
@@ -320,7 +425,7 @@ def _build_a_fast_core_section_impl(
             strict_errors=historical_alignment_replay,
             entry_signal_filter=entry_signal_allowed if promotion_filter_active else None,
         )
-    except AlignmentGateIntegrityError:
+    except (AlignmentGateIntegrityError, LifecyclePeriodCloseUnavailableError):
         raise
     except ExecutionPriceUnavailableError as exc:
         logger.warning("Execution price unresolved for %s on %s: %s", ticker, as_of_str, exc)
@@ -667,6 +772,27 @@ def _build_a_fast_core_section_impl(
             w for w in weekly_bars.index
             if daily_as_of[daily_as_of.index <= w].index.max().normalize() == w.normalize()
         ]
+        availability = daily_as_of.attrs.get(PERIOD_CLOSE_AVAILABILITY)
+        unavailable_weeks = [
+            gap for gap in availability.weekly
+            if gap.label <= requested_as_of and gap.session <= requested_as_of
+            and (not valid_weeks or gap.label >= valid_weeks[-1])
+        ] if availability is not None else []
+        if unavailable_weeks:
+            return AFastCoreSection(
+                as_of=as_of_str,
+                applicability="APPLICABLE",
+                strategy_state="DATA_UNAVAILABLE",
+                canonical_position="DATA_UNAVAILABLE",
+                action="NONE",
+                action_reason="CERTIFIED_PERIOD_CLOSE_UNAVAILABLE",
+                execution_timing=None,
+                reentry_state=reentry_state,
+                trade_history=trade_history_items,
+                promotion_gate_audit=list(alignment_gate_audit.values()),
+                interpretation=f"인증된 마지막 주봉 종가를 사용할 수 없어 진입 조건을 평가할 수 없습니다. {unavailable_weeks[-1]}",
+                provenance=AFastCoreProvenance(),
+            )
 
         if valid_weeks:
             latest_w = valid_weeks[-1]

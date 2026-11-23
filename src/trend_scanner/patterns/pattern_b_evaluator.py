@@ -22,7 +22,15 @@ from enum import Enum
 
 import pandas as pd
 
+from trend_scanner.data.period_close_availability import (
+    PERIOD_CLOSE_AVAILABILITY,
+    PeriodCloseAvailability,
+    gaps_in_window,
+    mask_unavailable_closes,
+)
+from trend_scanner.patterns import pattern_b_features_v01 as feature_contract
 from trend_scanner.patterns.pattern_b_features_v01 import (
+    FeatureValue,
     STATUS_OK,
     compute_pattern_b_features_v01,
 )
@@ -65,10 +73,46 @@ def _date(value: pd.Timestamp | None) -> str | None:
     return None if value is None else value.date().isoformat()
 
 
+def _certified_state_inputs(
+    daily: pd.DataFrame, as_of: pd.Timestamp, availability: PeriodCloseAvailability,
+) -> tuple[dict[str, FeatureValue], pd.Timestamp | None, pd.Timestamp | None]:
+    """Check period availability before calling the frozen V01 formulas."""
+    frame = feature_contract._validated_daily(daily, as_of)
+    monthly = mask_unavailable_closes(
+        feature_contract.completed_bars(frame, pd.offsets.MonthEnd(), as_of),
+        availability.monthly, as_of, completed_labels_only=True,
+    )
+    weekly = mask_unavailable_closes(
+        feature_contract.completed_bars(frame, "W-FRI", as_of),
+        availability.weekly, as_of, completed_labels_only=True,
+    )
+    windows = (
+        (RANGE_36M, monthly, availability.monthly, feature_contract.MONTHLY_RANGE_BARS, feature_contract._range_position),
+        (MA24_DISTANCE, monthly, availability.monthly, feature_contract.MONTHLY_MA_BARS, feature_contract._ma_distance),
+        (RANGE_52W, weekly, availability.weekly, feature_contract.WEEKLY_RANGE_BARS, feature_contract._range_position),
+    )
+    used = {}
+    for name, bars, gaps, window, compute in windows:
+        unavailable = gaps_in_window(bars, gaps, as_of, window)
+        if not availability.calendar_available:
+            used[name] = FeatureValue(None, "PERIOD_CLOSE_UNAVAILABLE", "certified calendar unavailable")
+        elif unavailable:
+            used[name] = FeatureValue(None, "PERIOD_CLOSE_UNAVAILABLE", ", ".join(map(str, unavailable)))
+        else:
+            used[name] = compute(bars, window)
+    return used, monthly.index[-1] if len(monthly) else None, weekly.index[-1] if len(weekly) else None
+
+
 def evaluate_pattern_b(ticker: str, daily: pd.DataFrame, as_of, name: str = "") -> PatternBEvaluationResult:
     """Pattern B evaluation for one ticker as of one date."""
-    computed = compute_pattern_b_features_v01(daily, as_of)
-    used = {f: computed.features[f] for f in FEATURES}
+    availability = daily.attrs.get(PERIOD_CLOSE_AVAILABILITY)
+    as_of = pd.Timestamp(as_of).normalize()
+    if availability is None:
+        computed = compute_pattern_b_features_v01(daily, as_of)
+        used = {f: computed.features[f] for f in FEATURES}
+        monthly_last, weekly_last = computed.monthly_last_bar, computed.weekly_last_bar
+    else:
+        used, monthly_last, weekly_last = _certified_state_inputs(daily, as_of, availability)
     missing = [f for f in FEATURES if used[f].status != STATUS_OK]
     if missing:
         status, state = PatternBEvaluationStatus.UNAVAILABLE, None
@@ -78,7 +122,7 @@ def evaluate_pattern_b(ticker: str, daily: pd.DataFrame, as_of, name: str = "") 
     return PatternBEvaluationResult(
         ticker=ticker,
         name=name,
-        as_of=_date(computed.as_of),
+        as_of=_date(as_of),
         evaluation_status=status,
         pattern_b_state=state,
         reason_codes=tuple(f"{f}:{used[f].status}" for f in missing),
@@ -86,6 +130,6 @@ def evaluate_pattern_b(ticker: str, daily: pd.DataFrame, as_of, name: str = "") 
         range_36m=used[RANGE_36M].value,
         monthly_ma24_distance=used[MA24_DISTANCE].value,
         range_52w=used[RANGE_52W].value,
-        monthly_last_bar=_date(computed.monthly_last_bar),
-        weekly_last_bar=_date(computed.weekly_last_bar),
+        monthly_last_bar=_date(monthly_last),
+        weekly_last_bar=_date(weekly_last),
     )

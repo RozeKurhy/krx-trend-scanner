@@ -49,6 +49,10 @@ class ExecutionPriceUnavailableError(RuntimeError):
         )
 
 
+class LifecyclePeriodCloseUnavailableError(RuntimeError):
+    """An active position needs a certified Pattern A observation."""
+
+
 def _last_trading_date_on_or_before(index: pd.DatetimeIndex, date: pd.Timestamp) -> pd.Timestamp | None:
     """Return the last index date no later than ``date`` using a binary search."""
     position = index.searchsorted(pd.Timestamp(date).normalize(), side="right") - 1
@@ -237,6 +241,11 @@ def _simulate_causal_lifecycle(
         effective_date = pd.Timestamp(row.get("effective_trading_date", m)).normalize()
         if stop_date is not None and effective_date > pd.Timestamp(stop_date).normalize():
             break
+        unavailable = row.get("period_close_unavailable", ())
+        if unavailable:
+            raise LifecyclePeriodCloseUnavailableError(
+                f"FAST_OPEN_POSITION_PERIOD_CLOSE_UNAVAILABLE:{effective_date.date()}: {', '.join(unavailable)}"
+            )
         st = str(row.get("stage") or "UNAVAILABLE").upper()
         sc = row.get("score")
         sc = float(sc) if sc is not None and not pd.isna(sc) else None
@@ -322,6 +331,21 @@ def _simulate_causal_lifecycle(
         "exit_signal_date": e2_sig_d,
         "exit_type": e2_exit_type,
     }
+
+
+def is_v02_entry_signal(point: Mapping[str, Any]) -> bool:
+    """The V02 weekly setup shared by replay and live ledger evaluation."""
+    stage = point.get("pattern_a_stage")
+    return (
+        point["fast_machine_stage"] == "TRIGGER"
+        and point["fast_machine_stage_status"] == "READY"
+        and point["fast_monthly_permission_state"] == "PERMITTED_REGIME"
+        and point["fast_daily_risk_state"] in {"NORMAL", "ELEVATED"}
+        and point["fast_score_status"] in {"READY", "PARTIAL"}
+        and stage is not None
+        and not pd.isna(stage)
+        and str(stage).upper() in {"TRANSITION", "EARLY_TREND"}
+    )
 
 
 def simulate_ticker_core_v02_reentry(
@@ -449,16 +473,7 @@ def simulate_ticker_core_v02_reentry(
                         stage_contract,
                         market_calendar=market_calendar,
                     )
-                is_trigger = (res["fast_machine_stage"] == "TRIGGER" and res["fast_machine_stage_status"] == "READY")
-                is_permitted = (res["fast_monthly_permission_state"] == "PERMITTED_REGIME")
-                is_non_extreme = (res["fast_daily_risk_state"] in {"NORMAL", "ELEVATED"})
-                is_score_ok = (res["fast_score_status"] in {"READY", "PARTIAL"})
-                is_fast = bool(is_trigger and is_permitted and is_non_extreme and is_score_ok)
-
-                raw_stage = res.get("pattern_a_stage")
-                pa_stage = str(raw_stage).upper() if (raw_stage is not None and not pd.isna(raw_stage)) else "UNAVAILABLE"
-
-                if is_fast and pa_stage in {"TRANSITION", "EARLY_TREND"}:
+                if is_v02_entry_signal(res):
                     found_signal_w = w
                     found_signal_res = res
                     break
@@ -541,10 +556,16 @@ def simulate_ticker_core_v02_reentry(
                 eval_res = evaluate_pattern_a(snap)
                 st = eval_res.stage.value.upper() if eval_res.stage else "UNAVAILABLE"
                 sc = float(round(eval_res.score, 2)) if eval_res.score is not None else None
-                effective_date = _last_trading_date_on_or_before(daily.index, evaluation_date)
+                unavailable = snapshot_context.pattern_a_unavailable_closes(
+                    snap.weekly, snap.monthly, evaluation_date,
+                ) if getattr(snapshot_context, "period_closes", None) is not None else ()
+                effective_date = evaluation_date if unavailable else _last_trading_date_on_or_before(daily.index, evaluation_date)
                 if effective_date is None:
                     effective_date = evaluation_date
-                monthly_snapshots.append({"date": m, "effective_trading_date": effective_date, "stage": st, "score": sc})
+                monthly_snapshots.append({
+                    "date": m, "effective_trading_date": effective_date, "stage": st, "score": sc,
+                    "period_close_unavailable": unavailable,
+                })
             except Exception:
                 if strict_errors:
                     raise

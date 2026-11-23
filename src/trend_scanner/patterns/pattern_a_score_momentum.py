@@ -215,9 +215,14 @@ def compute_pattern_a_score_momentum(
     # [Major 1]: req_ts를 전달하여 HistoricalSnapshot과 동일한 completed month contract 유지
     if context is None:
         raw_monthly = to_monthly(sliced_daily)
+        valid_monthly = raw_monthly.dropna(subset=["close"])
     else:
         raw_monthly = context.monthly_up_to(req_ts)
-    valid_monthly = raw_monthly.dropna(subset=["close"])
+        gaps = context.period_closes.monthly if context.period_closes is not None else ()
+        unavailable_labels = [gap.label for gap in gaps if gap.session <= req_ts]
+        valid_monthly = raw_monthly.loc[
+            raw_monthly["close"].notna() | raw_monthly.index.isin(unavailable_labels)
+        ]
     completion_as_of = req_ts if market_calendar_as_of is None else pd.Timestamp(market_calendar_as_of)
     completed_monthly = _drop_incomplete_current_month(
         valid_monthly,

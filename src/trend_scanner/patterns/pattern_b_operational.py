@@ -23,6 +23,7 @@ from typing import Iterable, Mapping, Sequence
 
 import pandas as pd
 
+from trend_scanner.data.period_close_availability import PERIOD_CLOSE_AVAILABILITY, PeriodCloseAvailability
 from trend_scanner.data.repository_v2_loader import RepositoryV2DailyLoader
 
 TRANSFER_MARKETS = frozenset({"KOSPI", "KOSDAQ"})
@@ -132,6 +133,12 @@ def stitch_frames(pieces: Sequence[tuple[HistorySegment, pd.DataFrame]], target_
     if not stitched.index.is_monotonic_increasing:
         raise PatternBHistoryError("stitched history is not in date order")
     stitched.attrs = {"data_authority": "MarketDataRepositoryV2"}
+    availability = [frame.attrs.get(PERIOD_CLOSE_AVAILABILITY) for frame in checked]
+    certified = [segment for segment in availability if segment is not None]
+    if certified:
+        if len(certified) != len(checked):
+            raise PatternBHistoryError("missing period close authority for a history segment")
+        stitched.attrs[PERIOD_CLOSE_AVAILABILITY] = PeriodCloseAvailability.stitch(certified)
     return stitched
 
 

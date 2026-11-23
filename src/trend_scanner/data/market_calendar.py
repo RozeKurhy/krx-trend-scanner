@@ -372,6 +372,16 @@ def load_rolling_production_market_calendar(repo_root: Path) -> MarketCalendarAu
     if cached is not None:
         return cached
 
+    calendar = market_calendar_from_validated_rolling_payload(manifest, payload)
+    if calendar is not None:
+        _ROLLING_PRODUCTION_CALENDAR_CACHE[key] = calendar
+    return calendar
+
+
+def market_calendar_from_validated_rolling_payload(
+    manifest: Any, payload: dict[str, Any],
+) -> MarketCalendarAuthority | None:
+    """Build calendar periods from the same validated manifest and session payload."""
     trading_dates = pd.DatetimeIndex(pd.to_datetime(payload["trading_dates"])).normalize()
     if len(trading_dates) == 0:
         return None
@@ -394,7 +404,7 @@ def load_rolling_production_market_calendar(repo_root: Path) -> MarketCalendarAu
         for (year, month), group in monthly_groups
         if (year, month) != current_year_month or terminal_month_certified
     ]
-    calendar = MarketCalendarAuthority(
+    return MarketCalendarAuthority(
         trading_dates=trading_dates,
         completed_month_ends=completed_month_ends,
         source_name="ROLLING_AUTHORITY_MERGED_CALENDAR_V01",
@@ -406,8 +416,6 @@ def load_rolling_production_market_calendar(repo_root: Path) -> MarketCalendarAu
             "calendar_built_against_certified_through": payload.get("built_against_certified_through"),
         },
     )
-    _ROLLING_PRODUCTION_CALENDAR_CACHE[key] = calendar
-    return calendar
 
 
 def resolve_reference_market_date(

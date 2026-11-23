@@ -17,6 +17,8 @@ from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.errors import MarketDataError
 from trend_scanner.data.krx_raw_stock_provider import RAW_COLUMNS, is_valid_krx_short_code
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
+from trend_scanner.data.market_calendar import MarketCalendarAuthority, market_calendar_from_validated_rolling_payload
+from trend_scanner.data.period_close_availability import PERIOD_CLOSE_AVAILABILITY, PeriodCloseCalendar
 from trend_scanner.data.repository_v2_session_authority import (
     ADJUSTED_ANALYTICALLY_NONUSABLE_DATES,
     SOURCE_CLOSURE_CHECKPOINT_SHA256,
@@ -619,6 +621,8 @@ class MarketDataRepositoryV2:
         # DATA_UNAVAILABLE case and silently swallowed by a consumer's except
         # MarketDataError handler).
         self._rolling_authority_dir = None if rolling_authority_dir is None else Path(rolling_authority_dir)
+        self._period_calendar: PeriodCloseCalendar | None = None
+        self._period_calendar_manifest: str | None = None
         self._raw_index = (
             _IndexedRawTickerReader(raw_stock_store)
             if isinstance(raw_stock_store, KrxRawStockStore)
@@ -795,7 +799,13 @@ class MarketDataRepositoryV2:
         )
 
         manifest = load_rolling_authority(self._rolling_authority_dir)
-        pit_payload, _cal_payload = validate_merged_authority_coherence(manifest, self._rolling_authority_dir)
+        pit_payload, cal_payload = validate_merged_authority_coherence(manifest, self._rolling_authority_dir)
+        if self._period_calendar_manifest != manifest.manifest_sha256:
+            calendar = market_calendar_from_validated_rolling_payload(manifest, cal_payload)
+            if calendar is None:
+                calendar = MarketCalendarAuthority(pd.DatetimeIndex([]))
+            self._period_calendar = PeriodCloseCalendar.from_market_calendar(calendar)
+            self._period_calendar_manifest = manifest.manifest_sha256
         intervals_by_ticker: dict[str, list[dict[str, Any]]] = {}
         for iv in pit_payload.get("intervals", []):
             t = iv.get("ticker")
@@ -848,12 +858,14 @@ class MarketDataRepositoryV2:
         discard valid pre-transfer price history.
         """
         end = self._clamp_to_certified_boundary(end)
-        return self._get_daily_for_ticker(ticker, str(start)[:10], str(end)[:10])
+        return self._get_daily_for_ticker(ticker, str(start)[:10], str(end)[:10], include_period_closes=False)
 
-    def _get_daily_for_ticker(self, ticker: str, start: str, end: str) -> pd.DataFrame:
+    def _get_daily_for_ticker(
+        self, ticker: str, start: str, end: str, *, include_period_closes: bool = True,
+    ) -> pd.DataFrame:
         key = str(ticker).zfill(6)
         try:
-            result = self._get_daily(key, start, end)
+            result = self._get_daily(key, start, end, include_period_closes=include_period_closes)
         except MarketDataError as exc:
             self._query_audit[key] = {
                 "status": "EXPLICIT_DATA_UNAVAILABLE" if (
@@ -870,7 +882,7 @@ class MarketDataRepositoryV2:
         }
         return result
 
-    def _get_daily(self, ticker: str, start: str, end: str) -> pd.DataFrame:
+    def _get_daily(self, ticker: str, start: str, end: str, *, include_period_closes: bool = True) -> pd.DataFrame:
         start_ts, end_ts = _date_range(start, end)
         adjusted_ticker = self._adjusted_ticker(ticker)
         adjusted = self._load_adjusted(adjusted_ticker, start_ts, end_ts)
@@ -883,16 +895,15 @@ class MarketDataRepositoryV2:
         if raw.empty:
             raise MarketDataError("DATA_UNAVAILABLE: RAW_MISSING")
 
-        adjusted = adjusted.sort_index()
-        adjusted, raw, projection = _project_analytic_sessions(adjusted, raw)
-        if adjusted.empty and raw.empty:
+        adjusted, projected_raw, projection = _project_analytic_sessions(adjusted.sort_index(), raw)
+        if adjusted.empty and projected_raw.empty:
             return _empty_frame(DAILY_COLUMNS)
-        if adjusted.empty or raw.empty:
+        if adjusted.empty or projected_raw.empty:
             raise MarketDataError("REPOSITORY_V2_TRADING_SESSION_MISMATCH")
         result = pd.concat(
             [
                 adjusted.loc[:, list(ADJUSTED_OHLC_COLUMNS)],
-                raw.loc[:, ["volume", "trading_value"]],
+                projected_raw.loc[:, ["volume", "trading_value"]],
             ],
             axis=1,
         )
@@ -902,6 +913,16 @@ class MarketDataRepositoryV2:
             for key, value in projection.items()
             if key not in {"projected_adjusted", "projected_raw"}
         }
+        if include_period_closes and self._period_calendar is not None:
+            result.attrs[PERIOD_CLOSE_AVAILABILITY] = self._period_calendar.availability(
+                start_ts, end_ts, raw, adjusted.index,
+                exclusions={
+                    "ADJUSTED_OHLC_INVALID": projection["adjusted_analytic_invalid_dates"],
+                    "ADJUSTED_SOURCE_NONUSABLE": projection["adjusted_source_nonusable_dates"],
+                    "ADJUSTED_SOURCE_GAP": projection["known_adjusted_gap_dates"],
+                },
+                outside_lifecycle=projection["outside_identity_lifecycle_dates"],
+            )
         # Validation uses pandas column-wise ``apply``.  Pandas deep-copies
         # DataFrame.attrs for each temporary Series, so validating while the
         # full row-level session audit is attached causes an O(rows * audit)

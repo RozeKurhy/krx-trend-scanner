@@ -19,6 +19,8 @@ from typing import Any, Callable, Mapping
 
 import pandas as pd
 
+from trend_scanner.data.period_close_availability import PERIOD_CLOSE_AVAILABILITY
+
 from trend_scanner.data.adjusted_price_store import AdjustedPriceStore
 from trend_scanner.data.krx_raw_stock_store import (
     DEFAULT_RAW_STOCK_ROOT,
@@ -263,10 +265,23 @@ def monthly_alignment_decision(daily: pd.DataFrame, signal_date: Any) -> GateDec
     if pd.isna(signal_close) or not math.isfinite(float(signal_close)) or float(signal_close) <= 0:
         return GateDecision(False, "REJECT_MA_UNAVAILABLE", {"cause": "SIGNAL_DATE_CLOSE_INVALID"})
 
+    expected = pd.period_range(end=signal.to_period("M") - 1, periods=60, freq="M")
+    period_closes = daily.attrs.get(PERIOD_CLOSE_AVAILABILITY)
+    if period_closes is not None:
+        unavailable = [
+            str(gap) for gap in period_closes.monthly
+            if gap.label.to_period("M") in expected and gap.session < signal
+        ]
+        uncertified = [str(month) for month in expected if month not in period_closes.certified_months]
+        if unavailable or uncertified:
+            return GateDecision(False, "REJECT_MA_UNAVAILABLE", {
+                "cause": "PRIOR_CERTIFIED_MONTH_CLOSE_UNAVAILABLE",
+                "unavailable_month_closes": unavailable,
+                "uncertified_months": uncertified,
+            })
     prior = frame.loc[frame.index < signal.to_period("M").start_time, "close"]
     prior = pd.to_numeric(prior, errors="coerce").dropna()
     monthly = prior.groupby(prior.index.to_period("M"), sort=True).last().sort_index()
-    expected = pd.period_range(end=signal.to_period("M") - 1, periods=60, freq="M")
     missing = expected.difference(monthly.index)
     if len(missing) or len(monthly.index.intersection(expected)) != 60:
         return GateDecision(False, "REJECT_MA_UNAVAILABLE", {
@@ -419,6 +434,10 @@ class AlignmentMcap500BGate:
         historical replay must take the market from the PIT interval active on
         that signal date before it opens the exact-date raw partition.
         """
+        component = self.resolve_common_pit_component(ticker, signal_date)
+        return (component["isu_cd"], component["market"]) if component is not None else None
+
+    def resolve_common_pit_component(self, ticker: str, signal_date: str) -> dict[str, Any] | None:
         if self._pit_frontier is not None and signal_date > self._pit_frontier:
             return None
         matches = [
@@ -427,9 +446,7 @@ class AlignmentMcap500BGate:
         ]
         if len(matches) > 1:
             raise AlignmentGateIntegrityError(f"PIT_IDENTITY_OVERLAP:{ticker}:{signal_date}")
-        if not matches:
-            return None
-        return matches[0]["isu_cd"], matches[0]["market"]
+        return matches[0] if matches else None
 
     def _load_historical_transition_daily(
         self,
@@ -625,6 +642,18 @@ class AlignmentMcap500BGate:
             return decision
         alignment_daily = daily
         if historical_market_resolution and identity_market != requested_market:
+            if PERIOD_CLOSE_AVAILABILITY in daily.attrs:
+                # The current component read has no authority for this older
+                # component. The adjusted-only legacy replay source cannot
+                # prove execution-session activity or certified period closes.
+                decision = GateDecision(False, "REJECT_MA_UNAVAILABLE", {
+                    "cause": "HISTORICAL_COMPONENT_PERIOD_CLOSE_AUTHORITY_UNAVAILABLE",
+                    "signal_date": signal_str,
+                    "resolved_market": identity_market,
+                    "isu_cd": isu_cd,
+                })
+                self._decision_cache[cache_key] = decision
+                return decision
             alignment_daily = self._load_historical_transition_daily(ticker, daily, signal_str)
         alignment = monthly_alignment_decision(alignment_daily, signal)
         if not alignment.allowed:

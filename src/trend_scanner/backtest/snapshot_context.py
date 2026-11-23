@@ -36,6 +36,12 @@ from typing import Callable
 import pandas as pd
 
 from trend_scanner.data.market_calendar import MarketCalendarAuthority, is_completed_market_month
+from trend_scanner.data.period_close_availability import (
+    PERIOD_CLOSE_AVAILABILITY,
+    PeriodCloseAvailability,
+    gaps_in_window,
+    mask_unavailable_closes,
+)
 from trend_scanner.data.resampler import to_monthly, to_weekly
 from trend_scanner.validation.feature_report import build_feature_row
 from trend_scanner.validation.historical_snapshot import (
@@ -43,6 +49,7 @@ from trend_scanner.validation.historical_snapshot import (
     _drop_incomplete_current_month,
     _drop_incomplete_weekly,
     _last_or_none,
+    build_historical_snapshot,
 )
 
 
@@ -72,6 +79,22 @@ class PrecomputedTickerContext:
     full_monthly: pd.DataFrame
     weekly_labels: list[pd.Timestamp]
     monthly_labels: list[pd.Timestamp]
+    period_closes: PeriodCloseAvailability | None = None
+
+    def pattern_a_unavailable_closes(
+        self, weekly: pd.DataFrame, monthly: pd.DataFrame, as_of: pd.Timestamp,
+    ) -> tuple[str, ...]:
+        if self.period_closes is None:
+            return ()
+        if not self.period_closes.calendar_available:
+            return ("CERTIFIED_CALENDAR_UNAVAILABLE",)
+        # Pattern A requires the 36-month range and a weekly MA12 slope
+        # comparing the latest MA to the MA from four bars earlier.
+        gaps = (
+            gaps_in_window(monthly, self.period_closes.monthly, as_of, 36)
+            + gaps_in_window(weekly, self.period_closes.weekly, as_of, 16)
+        )
+        return tuple(map(str, gaps))
 
     def slice_daily_up_to(self, requested: pd.Timestamp) -> pd.DataFrame:
         """searchsorted-based equivalent of ``daily[daily.index <= requested]``
@@ -105,14 +128,20 @@ class PrecomputedTickerContext:
         effective_as_of, _ = _effective_as_of_position(self, pd.Timestamp(cutoff_date))
         if effective_as_of is None:
             return self.full_weekly.iloc[0:0]
-        return _reconstruct_period_frame(self.full_weekly, self.weekly_labels, self.daily, effective_as_of, to_weekly)
+        weekly = _reconstruct_period_frame(self.full_weekly, self.weekly_labels, self.daily, effective_as_of, to_weekly)
+        if self.period_closes is not None:
+            weekly = mask_unavailable_closes(weekly, self.period_closes.weekly, pd.Timestamp(cutoff_date))
+        return weekly
 
     def monthly_up_to(self, cutoff_date: pd.Timestamp) -> pd.DataFrame:
         """Equivalent to ``to_monthly(daily[daily.index <= cutoff_date])``."""
         effective_as_of, _ = _effective_as_of_position(self, pd.Timestamp(cutoff_date))
         if effective_as_of is None:
             return self.full_monthly.iloc[0:0]
-        return _reconstruct_period_frame(self.full_monthly, self.monthly_labels, self.daily, effective_as_of, to_monthly)
+        monthly = _reconstruct_period_frame(self.full_monthly, self.monthly_labels, self.daily, effective_as_of, to_monthly)
+        if self.period_closes is not None:
+            monthly = mask_unavailable_closes(monthly, self.period_closes.monthly, pd.Timestamp(cutoff_date))
+        return monthly
 
     def valid_weeks_up_to(self, cutoff_date: pd.Timestamp, weekly_frame: pd.DataFrame | None = None) -> list[pd.Timestamp]:
         """Equivalent to the ``[w for w in to_weekly(daily_cutoff).index if
@@ -136,6 +165,7 @@ def build_precomputed_ticker_context(ticker: str, name: str, daily: pd.DataFrame
     repeatedly with the SAME daily frame (idempotent), but callers should
     build this once per ticker per process and reuse it across all
     snapshot dates for that ticker."""
+    period_closes = daily.attrs.get(PERIOD_CLOSE_AVAILABILITY)
     daily_sorted = daily.sort_index()
     full_weekly = to_weekly(daily_sorted)
     full_monthly = to_monthly(daily_sorted)
@@ -148,6 +178,27 @@ def build_precomputed_ticker_context(ticker: str, name: str, daily: pd.DataFrame
         full_monthly=full_monthly,
         weekly_labels=list(full_weekly.index),
         monthly_labels=list(full_monthly.index),
+        period_closes=period_closes,
+    )
+
+
+def build_period_aware_snapshot(
+    ticker: str,
+    name: str,
+    daily: pd.DataFrame,
+    snapshot_date: str | pd.Timestamp,
+    include_incomplete_periods: bool = True,
+    market_calendar: MarketCalendarAuthority | None = None,
+    market_calendar_as_of: str | pd.Timestamp | None = None,
+) -> HistoricalSnapshot:
+    """Use certified close availability on production reads and keep legacy fixtures unchanged."""
+    if PERIOD_CLOSE_AVAILABILITY in daily.attrs:
+        return build_historical_snapshot_from_context(
+            build_precomputed_ticker_context(ticker, name, daily), snapshot_date,
+            include_incomplete_periods, market_calendar, market_calendar_as_of,
+        )
+    return build_historical_snapshot(
+        ticker, name, daily, snapshot_date, include_incomplete_periods, market_calendar, market_calendar_as_of,
     )
 
 
@@ -273,7 +324,16 @@ def build_historical_snapshot_from_context(
         weekly = _drop_incomplete_weekly(weekly, effective_as_of)
 
     sliced_daily = context.daily.iloc[: pos + 1] if pos >= 0 else context.daily.iloc[0:0]
-    features = build_feature_row(context.ticker, context.name, sliced_daily, weekly, monthly)
+    feature_weekly, feature_monthly = weekly, monthly
+    if context.period_closes is not None:
+        cutoff = min(requested, completion_as_of)
+        weekly = mask_unavailable_closes(weekly, context.period_closes.weekly, cutoff)
+        monthly = mask_unavailable_closes(monthly, context.period_closes.monthly, cutoff)
+        feature_weekly, feature_monthly = weekly, monthly
+        # Keep the labels on the snapshot and use the frozen insufficient-input path.
+        if context.pattern_a_unavailable_closes(weekly, monthly, cutoff):
+            feature_weekly, feature_monthly = weekly.iloc[:0], monthly.iloc[:0]
+    features = build_feature_row(context.ticker, context.name, sliced_daily, feature_weekly, feature_monthly)
 
     return HistoricalSnapshot(
         requested_snapshot_date=requested,

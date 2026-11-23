@@ -36,11 +36,11 @@ from trend_scanner.data.repository_v2_loader import (
 )
 from trend_scanner.backtest.snapshot_context import (
     build_historical_snapshot_from_context,
+    build_period_aware_snapshot as build_historical_snapshot,
     build_precomputed_ticker_context,
 )
 from trend_scanner.patterns.pattern_a_stage import classify_pattern_a_stage
 from trend_scanner.universe.permanent_identity_exclusions import PERMANENT_IDENTITY_EXCLUSIONS
-from trend_scanner.validation.historical_snapshot import build_historical_snapshot
 from trend_scanner.data.market_calendar import (
     MarketCalendarAuthority,
     load_rolling_production_market_calendar,

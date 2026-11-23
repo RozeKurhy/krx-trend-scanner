@@ -19,6 +19,8 @@ import tempfile
 from functools import lru_cache
 from typing import Any
 
+from trend_scanner.reporting.a_fast_canonical_ledger import PUBLISHED_FAST_LEDGER_MODES, valid_published_fast_scope
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SUPPORTED_STOCK_REPORT_VERSIONS = {"0.5", "0.6", "0.7"}
@@ -282,7 +284,7 @@ def _compact_trade_history(strategy: dict[str, Any]) -> list[dict[str, Any]]:
     default_strategy_id = str(strategy.get("strategy_id") or strategy.get("id") or "PATTERN_A_FAST_FINAL_STRATEGY_V02")
     promoted = default_strategy_id == "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
     replay_mode = strategy.get("strategy_replay_mode")
-    full_history_alignment = replay_mode == "FULL_HISTORY_ALIGNMENT_WEB"
+    full_history_alignment = replay_mode in PUBLISHED_FAST_LEDGER_MODES
     if full_history_alignment and not promoted:
         raise ValueError("historical Alignment replay must use the promoted A FAST strategy ID")
     activation_intervals = strategy.get("activation_intervals") or []
@@ -495,12 +497,14 @@ def _compact_report(
                 "strategy_name": strategy.get("strategy_alias"),
                 "activation_intervals": copy.deepcopy(strategy.get("activation_intervals")),
             })
-        if strategy.get("strategy_replay_mode") == "FULL_HISTORY_ALIGNMENT_WEB":
+        if strategy.get("strategy_replay_mode") in PUBLISHED_FAST_LEDGER_MODES:
+            if not valid_published_fast_scope(strategy["strategy_replay_mode"], strategy.get("strategy_replay_scope")):
+                raise ValueError("invalid canonical A FAST ledger scope")
             strategy_public.update({
                 "id": strategy.get("strategy_id"),
                 "strategy_id": strategy.get("strategy_id"),
                 "strategy_name": strategy.get("strategy_alias"),
-                "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+                "strategy_replay_mode": strategy["strategy_replay_mode"],
                 "strategy_replay_scope": copy.deepcopy(strategy.get("strategy_replay_scope")),
                 "strategy_replay_digest": strategy.get("strategy_replay_digest"),
                 "research_group_id": strategy.get("research_group_id") or "ALIGNMENT_MCAP_500B",
@@ -513,7 +517,7 @@ def _compact_report(
                 "research_group_id": strategy.get("research_group_id"),
                 "promotion_gate_audit": copy.deepcopy(strategy.get("promotion_gate_audit") or []),
             })
-            if strategy.get("strategy_replay_mode") != "FULL_HISTORY_ALIGNMENT_WEB":
+            if strategy.get("strategy_replay_mode") not in PUBLISHED_FAST_LEDGER_MODES:
                 strategy_public.update({
                     "promotion_gate_status": strategy.get("promotion_gate_status"),
                     "effective_signal_date": strategy.get("effective_signal_date"),

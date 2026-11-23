@@ -30,10 +30,9 @@ from trend_scanner.universe.models import (
     UniverseSecurity,
 )
 from trend_scanner.data.market_calendar import MarketCalendarAuthority
-from trend_scanner.validation.historical_snapshot import (
-    _drop_incomplete_current_month,
-    build_historical_snapshot,
-)
+from trend_scanner.data.period_close_availability import PERIOD_CLOSE_AVAILABILITY
+from trend_scanner.backtest.snapshot_context import build_period_aware_snapshot
+from trend_scanner.validation.historical_snapshot import _drop_incomplete_current_month
 
 # Pattern A Feature 및 Stage Classifier가 요구하는 최소 완성 월봉 수 (36 completed monthly bars)
 MIN_HISTORY_MONTHS: int = 36
@@ -244,11 +243,11 @@ def audit_ticker_quality(
 
     if raw_data_ready and required_history_sufficient:
         try:
-            snapshot = build_historical_snapshot(
+            snapshot = build_period_aware_snapshot(
                 ticker=clean_ticker,
                 name=clean_name,
                 daily=daily,
-                snapshot_date=last_date_str,
+                snapshot_date=ref_ts if ref_ts is not None and PERIOD_CLOSE_AVAILABILITY in daily.attrs else last_date_str,
                 include_incomplete_periods=False,
                 market_calendar=market_calendar,
             )

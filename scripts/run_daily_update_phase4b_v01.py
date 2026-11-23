@@ -55,6 +55,12 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from scripts import fast_ledger_provenance as fast_ledger
+from trend_scanner.reporting.a_fast_canonical_ledger import (
+    CANONICAL_LEDGER_INCREMENTAL_V01,
+    PUBLISHED_FAST_LEDGER_MODES,
+    valid_published_fast_scope,
+)
 from trend_scanner.data.repository_v2_loader import build_production_repository_v2
 from trend_scanner.data.krx_raw_stock_store import KrxRawStockStore
 from trend_scanner.data.market_calendar import load_rolling_production_market_calendar
@@ -479,7 +485,19 @@ def validate_prior_trade_continuity(
                     raise Phase4BError(f"PHASE4B_CONTINUITY_EXIT_SESSION_INVALID:{ticker}")
                 if signal_session != signal:
                     pending = old_core.get("current_trade") or {}
-                    if (not prior_signal or old_core.get("strategy_id") != PROMOTED_STRATEGY_ID
+                    current_core = current_report["a_fast_core"]
+                    exact_observation = next((
+                        row for row in (current_report.get("monthly_history") or {}).get("full_monthly_history", [])
+                        if row.get("as_of") == signal_session
+                    ), None)
+                    certified_new_month = (
+                        current_core.get("strategy_replay_mode") == CANONICAL_LEDGER_INCREMENTAL_V01
+                        and not prior_signal and exact_observation is not None
+                        and exact_observation.get("data_available") is True
+                        and exact_observation.get("close") is not None
+                        and exact_observation.get("stage") != "UNAVAILABLE"
+                    )
+                    if not certified_new_month and (not prior_signal or old_core.get("strategy_id") != PROMOTED_STRATEGY_ID
                             or old_core.get("action") != "EXIT_NEXT_OPEN"
                             or pending.get("trade_id") != key or pending.get("trade_status") != "OPEN"
                             or pending.get("pending_exit_signal_date") != signal
@@ -569,6 +587,7 @@ def _validate_production_trade_continuity(
     repository: Any = None
     checked_sessions: set[str] = set()
     observations: dict[tuple[str, str], float | None] = {}
+    closes: dict[tuple[str, str], float] = {}
 
     def verified_open(ticker: str, day: str) -> float | None:
         nonlocal repository
@@ -603,12 +622,61 @@ def _validate_production_trade_continuity(
                 or volume != raw_volume):
             raise Phase4BError(f"PHASE4B_CONTINUITY_EXACT_OPEN_INVALID:{ticker}:{day}")
         observations[key] = price
+        closes[key] = float(frame.iloc[0]["close"])
         return price
 
-    return validate_prior_trade_continuity(
+    result = validate_prior_trade_continuity(
         previous_dir, staging_dir, reference_market_date=reference_market_date,
         market_calendar=calendar, identity_resolver=identity, adjusted_open_resolver=verified_open,
     )
+    ledger_path = staging_dir / fast_ledger.INCREMENTAL_MANIFEST
+    if not ledger_path.is_file():
+        return result
+    incremental = fast_ledger.read_json(ledger_path)
+    reports = fast_ledger.load_common_reports(staging_dir)
+    sessions = list(payload["trading_dates"])
+    from bisect import bisect_right
+    for event in incremental["events"]:
+        ticker, label = event["ticker"], event["signal_date"]
+        signal = label
+        reason = event.get("reason") or ""
+        if reason.startswith(("EXIT3_", "EXIT4_")):
+            date_label = date.fromisoformat(label)
+            month_end = calendar.get_actual_month_end(date_label.year, date_label.month)
+            if month_end is not None:
+                signal = str(month_end)[:10]
+        prior_market = incremental["scope"]["prior_canonical"]["reference_market_date"]
+        if signal not in sessions or signal > reference_market_date or (
+            signal < prior_market and event["kind"] == "ENTRY"
+        ):
+            raise Phase4BError(f"FAST_LEDGER_EVENT_SIGNAL_NOT_CERTIFIED:{ticker}:{label}")
+        source_isu = identity(ticker, signal)
+        kind, core = event["kind"], reports[ticker][1]["a_fast_core"]
+        if verified_open(ticker, signal) is None:
+            raise Phase4BError(f"FAST_LEDGER_EVENT_SIGNAL_PRICE_UNAVAILABLE:{ticker}:{label}")
+        if kind.startswith("ENTRY") and not any(
+            audit.get("signal_date") == signal and audit.get("allowed") is True
+            and audit.get("reason_code") == "PASS_ALIGNMENT_MCAP_500B"
+            and (audit.get("details") or {}).get("isu_cd") == source_isu
+            for audit in core["promotion_gate_audit"]
+        ):
+            raise Phase4BError(f"FAST_LEDGER_ENTRY_GATE_PROOF_MISSING:{ticker}:{label}")
+        if reason == "LOSS_GUARD_CLOSE_LE_NEG_15":
+            trade = next(t for t in core["trade_history"] if t["trade_id"] == event["trade_id"])
+            if closes[ticker, signal] / trade["entry_open"] - 1.0 > -0.15:
+                raise Phase4BError(f"FAST_LEDGER_LOSS_GUARD_SIGNAL_MISMATCH:{ticker}:{label}")
+        at = bisect_right(sessions, signal)
+        next_day = sessions[at] if at < len(sessions) else None
+        if kind.endswith("_PENDING"):
+            if next_day and next_day <= reference_market_date:
+                raise Phase4BError(f"FAST_LEDGER_PENDING_FILL_MISSING:{ticker}:{label}")
+            continue
+        if (
+            not next_day or next_day != event["execution_date"] or identity(ticker, next_day) != source_isu
+            or not math.isclose(verified_open(ticker, next_day) or 0, event["price"], abs_tol=1e-8)
+        ):
+            raise Phase4BError(f"FAST_LEDGER_EXECUTION_DATE_OR_PRICE_MISMATCH:{ticker}:{label}")
+    return {**result, "incremental_events_verified": len(incremental["events"])}
 
 
 def _scanner_paths(root: Path, target_as_of: str) -> tuple[Path, Path]:
@@ -1013,6 +1081,8 @@ def _generate_one(
     ticker: str, *, target_as_of: str, reference_market_date: str, repository: Any, root: Path, staging_dir: Path,
     instrument_metadata_resolver: Any | None = None,
     promotion_gate: AlignmentMcap500BGate | None = None,
+    prior_market_date: str | None = None,
+    prior_report_path: Path | None = None,
 ) -> GenerationOutcome:
     try:
         fundamentals_section = load_fundamentals_section_from_production_artifact(
@@ -1030,6 +1100,12 @@ def _generate_one(
             "a_fast_replay_mode": FULL_HISTORY_ALIGNMENT_WEB,
             "promotion_gate": promotion_gate,
         }
+        if prior_market_date is not None:
+            report_kwargs.update(
+                a_fast_replay_mode=CANONICAL_LEDGER_INCREMENTAL_V01,
+                a_fast_prior_market_date=prior_market_date,
+                a_fast_prior_report=fast_ledger.read_json(prior_report_path) if prior_report_path is not None else None,
+            )
         if (
             instrument_metadata_resolver is not None
             and "instrument_metadata_resolver" in inspect.signature(generate_stock_report).parameters
@@ -1063,7 +1139,10 @@ def _pool_worker_init(root_str: str, target_as_of: str, staging_dir_str: str) ->
     _POOL_STATE["promotion_gate"] = get_historical_alignment_replay_gate(str(root.resolve()))
 
 
-def _pool_worker_generate(ticker: str, target_as_of: str, reference_market_date: str) -> GenerationOutcome:
+def _pool_worker_generate(
+    ticker: str, target_as_of: str, reference_market_date: str,
+    prior_market_date: str | None = None, prior_report_path: Path | None = None,
+) -> GenerationOutcome:
     return _generate_one(
         ticker,
         target_as_of=target_as_of,
@@ -1073,6 +1152,8 @@ def _pool_worker_generate(ticker: str, target_as_of: str, reference_market_date:
         staging_dir=_POOL_STATE["staging_dir"],
         instrument_metadata_resolver=resolve_target_instrument_metadata,
         promotion_gate=_POOL_STATE["promotion_gate"],
+        prior_market_date=prior_market_date,
+        prior_report_path=prior_report_path,
     )
 
 
@@ -1087,6 +1168,7 @@ def generate_candidate_reports(
     max_workers: int = 1,
     instrument_metadata_resolver: Any | None = None,
     promotion_gate: AlignmentMcap500BGate | None = None,
+    prior_ledger: fast_ledger.PriorCanonicalLedger | None = None,
 ) -> list[GenerationOutcome]:
     """staging_dir에 후보별 COMMON Stock Report v0.7을 생성한다. 개별 실패는 수집해 계속 진행하고
     (전체 생성 -> 전체 검증 -> promote 흐름을 위해), 최종 승격 여부는 호출자가 판단한다.
@@ -1098,6 +1180,8 @@ def generate_candidate_reports(
     완전히 독립적인 계산을 별도 프로세스에 분산한다.
     """
     total = len(candidate_tickers)
+    previous_market = prior_ledger.proof["reference_market_date"] if prior_ledger is not None else None
+    previous_paths = {ticker: pair[0] for ticker, pair in prior_ledger.reports.items()} if prior_ledger is not None else {}
     if max_workers <= 1:
         outcomes: list[GenerationOutcome] = []
         for i, ticker in enumerate(candidate_tickers, start=1):
@@ -1107,6 +1191,7 @@ def generate_candidate_reports(
                     repository=repository, root=root, staging_dir=staging_dir,
                     instrument_metadata_resolver=instrument_metadata_resolver,
                     promotion_gate=promotion_gate,
+                    prior_market_date=previous_market, prior_report_path=previous_paths.get(ticker),
                 )
             )
             if i % 25 == 0 or i == total:
@@ -1121,7 +1206,8 @@ def generate_candidate_reports(
         initargs=(str(root), target_as_of, str(staging_dir)),
     ) as executor:
         futures = {
-            executor.submit(_pool_worker_generate, ticker, target_as_of, reference_market_date): ticker
+            executor.submit(_pool_worker_generate, ticker, target_as_of, reference_market_date,
+                            previous_market, previous_paths.get(ticker)): ticker
             for ticker in candidate_tickers
         }
         for future in as_completed(futures):
@@ -1143,6 +1229,8 @@ def validate_corpus(
     candidate_tickers: set[str],
     target_as_of: str,
     reference_market_date: str,
+    *,
+    root: Path | None = None,
 ) -> dict[str, Any]:
     """staging_dir에 실제로 쓰여진 JSON/Markdown을 대상으로 전체 결과를 검증한다."""
     json_paths = sorted((staging_dir / "json").glob("*.json"))
@@ -1171,11 +1259,16 @@ def validate_corpus(
     if len(strategy_ids_seen) > 1:
         strategy_id_mismatches.extend(sorted(json_tickers))
 
-    replay_validation = validate_full_history_alignment_corpus(
+    replay_validation = validate_fast_canonical_corpus(
         staging_dir,
         target_as_of,
         reference_market_date,
         candidate_tickers,
+        root=root,
+    )
+    validation_key = (
+        "canonical_fast_ledger" if (staging_dir / fast_ledger.INCREMENTAL_MANIFEST).is_file()
+        else "full_history_alignment_replay"
     )
     return {
         "json_count": len(json_paths),
@@ -1190,9 +1283,22 @@ def validate_corpus(
         "strategy_id_mismatch_count": len(strategy_id_mismatches),
         "strategy_ids": sorted(strategy_ids_seen),
         "date_mismatch_count": len(date_mismatches),
-        "full_history_alignment_replay_valid": replay_validation["valid"],
-        "full_history_alignment_replay": replay_validation,
+        f"{validation_key}_valid": replay_validation["valid"],
+        validation_key: replay_validation,
     }
+
+
+def validate_fast_canonical_corpus(
+    directory: Path, requested: str, market: str, expected_common_tickers: set[str] | None = None,
+    *, root: Path | None = None,
+) -> dict:
+    if (directory / fast_ledger.INCREMENTAL_MANIFEST).exists():
+        if root is None:
+            raise Phase4BError("FAST_LEDGER_INCREMENTAL_REPO_ROOT_REQUIRED")
+        return fast_ledger.validate_incremental_alignment_corpus(
+            directory, requested, market, root=root, expected_common_tickers=expected_common_tickers,
+        )
+    return validate_full_history_alignment_corpus(directory, requested, market, expected_common_tickers)
 
 
 def promote_staging(staging_dir: Path, canonical_dir: Path) -> None:
@@ -1227,7 +1333,9 @@ def _retained_staging_directory(parent: Path):
         raise
 
 
-def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -> dict[str, Any]:
+def run_phase4b(
+    target_as_of: str, root: Path = ROOT, *, max_workers: int = 1, incremental_ledger: bool = False,
+) -> dict[str, Any]:
     phase4b_started = time.perf_counter()
     rows, summary = load_and_validate_scanner_input(root, target_as_of)
     reference_market_date = str(summary["reference_market_date"])
@@ -1236,12 +1344,17 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
     current_common = compute_current_common(rows)
     current_candidates = set(select_candidate_tickers(rows))
 
-    previous_dir = find_previous_canonical_report_dir(root, target_as_of)
+    prior_ledger = fast_ledger.load_published_prior(root, target_as_of, reference_market_date) if incremental_ledger else None
+    if prior_ledger is not None:
+        previous_dir = root / "artifacts/reporting/stock_reports" / prior_ledger.proof["requested_as_of"].replace("-", "")
+    else:
+        previous_dir = find_previous_canonical_report_dir(root, target_as_of)
     previous_audit = audit_previous_corpus(previous_dir)
+    retained = prior_ledger.retained_tickers if prior_ledger is not None else previous_audit.open_tickers
 
     existing_report_target = set(compute_report_target(
         previous_common=previous_audit.common,
-        previous_open=previous_audit.open_tickers,
+        previous_open=retained,
         current_common=current_common,
         current_candidates=current_candidates,
     ))
@@ -1251,7 +1364,7 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
     }
     target_tickers, fundamentals_filter = filter_report_target_by_fundamentals(
         existing_report_target=existing_report_target,
-        previous_open=previous_audit.open_tickers,
+        previous_open=retained,
         statuses=fundamentals_statuses,
     )
     target_ticker_set = set(target_tickers)
@@ -1297,30 +1410,39 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
             max_workers=max_workers,
             instrument_metadata_resolver=resolve_target_instrument_metadata,
             promotion_gate=promotion_gate,
+            **({"prior_ledger": prior_ledger} if prior_ledger is not None else {}),
         )
         errors = [o for o in outcomes if o.status == "ERROR"]
 
-        replay_finalization: dict[str, Any] | None = None
+        ledger_finalization: dict[str, Any] | None = None
         trade_continuity: dict[str, Any] | None = None
         if not errors:
             try:
-                trade_continuity = _validate_production_trade_continuity(
-                    root, previous_dir, staging_dir, reference_market_date,
-                )
-                replay_finalization = finalize_full_history_alignment_reports(
-                    staging_dir,
-                    target_ticker_set,
-                    target_as_of,
-                    reference_market_date,
-                )
+                if prior_ledger is not None:
+                    ledger_finalization = fast_ledger.finalize_incremental_alignment_reports(
+                        staging_dir, target_as_of, reference_market_date, prior_ledger, root,
+                    )
+                else:
+                    ledger_finalization = finalize_full_history_alignment_reports(
+                        staging_dir, target_ticker_set, target_as_of, reference_market_date,
+                    )
+                trade_continuity = _validate_production_trade_continuity(root, previous_dir, staging_dir, reference_market_date)
             except Exception as exc:  # noqa: BLE001 -- no promotion without complete provenance
-                errors.append(GenerationOutcome(
-                    ticker="*", status="ERROR", error=f"FAST_REPLAY_FINALIZATION_FAILED: {exc}",
-                ))
+                reason = "FAST_LEDGER_FINALIZATION_FAILED" if incremental_ledger else "FAST_REPLAY_FINALIZATION_FAILED"
+                errors.append(GenerationOutcome(ticker="*", status="ERROR", error=f"{reason}: {exc}"))
 
-        corpus = validate_corpus(staging_dir, target_ticker_set, target_as_of, reference_market_date)
+        corpus = validate_corpus(
+            staging_dir, target_ticker_set, target_as_of, reference_market_date,
+            **({"root": root} if prior_ledger is not None else {}),
+        )
         positions = summarize_corpus_positions(staging_dir)
 
+        validation_key = "canonical_fast_ledger" if incremental_ledger else "full_history_alignment_replay"
+        if incremental_ledger and validation_key not in corpus:
+            corpus.pop("full_history_alignment_replay_valid", None)
+            corpus.pop("full_history_alignment_replay", None)
+            corpus[f"{validation_key}_valid"] = False
+            corpus[validation_key] = {"valid": False, "reason_codes": ["FAST_LEDGER_INCREMENTAL_MANIFEST_MISSING"]}
         promoted = False
         success = (
             not errors
@@ -1335,8 +1457,8 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
             and corpus["report_version_mismatch_count"] == 0
             and corpus["strategy_id_mismatch_count"] == 0
             and corpus["date_mismatch_count"] == 0
-            and corpus["full_history_alignment_replay_valid"] is True
-            and replay_finalization is not None
+            and corpus[f"{validation_key}_valid"] is True
+            and ledger_finalization is not None
             and trade_continuity is not None and trade_continuity.get("status") == "PASS"
         )
         if success:
@@ -1379,8 +1501,7 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
         "promoted": promoted,
         "canonical_dir": str(canonical_dir) if promoted else None,
         "failed_staging_dir": None if promoted else str(staging_dir),
-        "full_history_alignment_replay_finalization": replay_finalization,
-        "full_history_alignment_replay": corpus["full_history_alignment_replay"],
+        f"{validation_key}_finalization": ledger_finalization,
         "prior_trade_continuity": trade_continuity,
     }
     return result
@@ -1389,6 +1510,7 @@ def run_phase4b(target_as_of: str, root: Path = ROOT, *, max_workers: int = 1) -
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target-as-of", required=True, help="explicit YYYY-MM-DD target (no default)")
+    parser.add_argument("--incremental-ledger", action="store_true", help="continue the published A FAST ledger")
     parser.add_argument(
         "--max-workers", type=int, default=5,
         help=(
@@ -1406,7 +1528,7 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    result = run_phase4b(args.target_as_of, max_workers=args.max_workers)
+    result = run_phase4b(args.target_as_of, max_workers=args.max_workers, incremental_ledger=args.incremental_ledger)
     print(json.dumps(result, ensure_ascii=False, sort_keys=True, indent=2, default=str))
     return 0 if result["promoted"] else 1
 

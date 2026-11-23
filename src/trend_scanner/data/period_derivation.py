@@ -22,6 +22,7 @@ from dataclasses import dataclass
 import pandas as pd
 
 from trend_scanner.data.market_calendar import MarketCalendarAuthority
+from trend_scanner.data.period_close_availability import PERIOD_CLOSE_AVAILABILITY, mask_unavailable_closes
 from trend_scanner.data.resampler import to_monthly, to_weekly
 
 COMPLETE = "COMPLETE"
@@ -153,11 +154,24 @@ def derive_periods(
             reason="MONTHLY_AUTHORITY_UNAVAILABLE: CALENDAR_NOT_PROVIDED",
         )
 
+    availability = daily.attrs.get(PERIOD_CLOSE_AVAILABILITY)
     try:
         weekly = to_weekly(sliced)
         monthly = to_monthly(sliced)
+        if availability is not None:
+            weekly = mask_unavailable_closes(weekly, availability.weekly, target)
+            monthly = mask_unavailable_closes(monthly, availability.monthly, target)
         weekly_status = _weekly_status(weekly, target)
         monthly_status = _monthly_status(monthly, target, calendar)
+        latest_gaps = []
+        for bars, gaps in (
+            (weekly, availability.weekly if availability else ()),
+            (monthly, availability.monthly if availability else ()),
+        ):
+            latest_gaps.extend(
+                str(gap) for gap in gaps
+                if not bars.empty and gap.session <= target and gap.label == bars.index[-1]
+            )
     except Exception as exc:  # noqa: BLE001 - 예상치 못한 구현 오류만 FAILED로 변환한다.
         return PeriodDerivationResult(
             target_as_of=target_str,
@@ -177,8 +191,8 @@ def derive_periods(
         monthly=monthly,
         weekly_status=weekly_status,
         monthly_status=monthly_status,
-        final_status=PASS,
-        reason=None,
+        final_status=BLOCKED if latest_gaps else PASS,
+        reason="CERTIFIED_PERIOD_CLOSE_UNAVAILABLE: " + ", ".join(latest_gaps) if latest_gaps else None,
     )
 
 

@@ -16,6 +16,8 @@ import hashlib
 import json
 import math
 from pathlib import Path
+
+from trend_scanner.reporting.a_fast_canonical_ledger import PUBLISHED_FAST_LEDGER_MODES, valid_published_fast_scope
 from typing import Any
 
 from trend_scanner.strategies.b_select_core_fundamental_status import (
@@ -46,6 +48,7 @@ PROMOTED_STRATEGY_LABEL = "A FAST Core V2 Alignment 500B"
 FAST_STRATEGY_IDS = {STRATEGY_ID, PROMOTED_STRATEGY_ID}
 B_SELECT_ID = "PATTERN_B_SELECT_CORE_V02"
 B_SELECT_LABEL = "B Select Core V2"
+B_OPEN_ENTRY_PRICE_BASIS_MISMATCH = "ENTRY_PRICE_BASIS_MISMATCH"
 LEGACY_B_SELECT_ID = "PATTERN_B_SELECT_CORE_V01"
 JULIA_ID = "JULIA_ETF_STRATEGY_V01"
 JULIA_LABEL = "Julia V1"
@@ -74,11 +77,53 @@ def _date_set(values: Any) -> set[str]:
     return {str(value)[:10] for value in values if value is not None}
 
 
+def _b_open_trade_key(row: dict[str, Any]) -> tuple:
+    return (
+        str(row.get("ticker") or "").zfill(6), str(row.get("isu_cd") or "").upper(),
+        row.get("trade_sequence"), row.get("entry_signal_date"), row.get("entry_execution_date"),
+    )
+
+
+def _carried_b_open_entry_prices(repo_root: Path, status: dict[str, Any]) -> dict[tuple, float]:
+    """Read entry prices from the earlier canonical book named by B's catch-up audit."""
+    history = status.get("canonical_history") or {}
+    catchup = status.get("catchup_audit") or {}
+    path = catchup.get("prior_artifact_path")
+    prior_reference = catchup.get("prior_reference_market_date")
+    if (
+        status.get("strategy_id") != B_SELECT_ID or history.get("status") != "INCREMENTAL_CONTINUITY"
+        or not isinstance(path, str) or not isinstance(prior_reference, str)
+        or prior_reference >= status["reference_market_date"]
+    ):
+        return {}
+    root = (repo_root / "artifacts/strategies/b_select_core_v2/production").resolve()
+    prior_path = (repo_root / path).resolve()
+    if prior_path.parent.parent != root or prior_path.name != "status.json" or not prior_path.is_file():
+        return {}
+    prior = _read_json(prior_path)
+    if (
+        prior.get("status") != "PASS" or prior.get("strategy_id") != B_SELECT_ID
+        or prior.get("reference_market_date") != prior_reference
+    ):
+        return {}
+    rows = prior.get("canonical_current_open_positions")
+    if not isinstance(rows, list) or len(rows) != prior.get("canonical_current_open_position_count"):
+        return {}
+    entries = {
+        _b_open_trade_key(row): price for row in rows
+        if row.get("trade_status") == "OPEN_AT_REFERENCE"
+        and (price := _finite_positive(row.get("entry_open"))) is not None
+    }
+    return entries if len(entries) == len(rows) else {}
+
+
 def _select_core_history_path_metrics(
     repo_root: Path,
     trades: list[dict[str, Any]],
     items: list[dict[str, Any]],
     reference_market_date: str,
+    *,
+    carried_open_entry_prices: dict[tuple, float] | None = None,
 ) -> list[dict[str, Any]]:
     """Add display-only exact-session age and causal peak drawdown to B history.
 
@@ -356,15 +401,10 @@ def _select_core_history_path_metrics(
                 current_rows[reference_market_date].get("close")
             )
             entry_price = _finite_positive(trade.get("entry_price"))
-            if reference_close is None:
+            if reference_close is None or entry_price is None or entry_open is None:
                 continue
-            if (
-                entry_price is None
-                or entry_open is None
-                or not math.isclose(
-                    entry_open, entry_price, rel_tol=1e-10, abs_tol=1e-7
-                )
-            ):
+            matching_basis = math.isclose(entry_open, entry_price, rel_tol=1e-10, abs_tol=1e-7)
+            if not matching_basis and (carried_open_entry_prices or {}).get(_b_open_trade_key(trade)) != entry_price:
                 continue
 
             published_items = items_by_identity.get((ticker, isu_cd), [])
@@ -389,9 +429,12 @@ def _select_core_history_path_metrics(
 
             trade["latest_close"] = reference_close
             trade["latest_close_as_of"] = reference_market_date
-            trade["current_return_pct"] = (
-                reference_close / entry_price - 1.0
-            ) * 100.0
+            if matching_basis:
+                trade["current_return_pct"] = (reference_close / entry_price - 1.0) * 100.0
+            else:
+                trade["return_pct"] = None
+                trade["current_return_pct"] = None
+                trade["current_return_unavailable_reason"] = B_OPEN_ENTRY_PRICE_BASIS_MISMATCH
 
     return result
 
@@ -689,7 +732,7 @@ def _validate_history_identities(
     activation_intervals: list[dict[str, Any]] | None = None,
     strategy_replay_mode: str | None = None,
 ) -> None:
-    historical_alignment_replay = strategy_replay_mode == FULL_HISTORY_ALIGNMENT_WEB
+    historical_alignment_replay = strategy_replay_mode in PUBLISHED_FAST_LEDGER_MODES
     if strategy_replay_mode is not None and not historical_alignment_replay:
         raise ValueError(f"unsupported A FAST strategy replay mode: {strategy_replay_mode}")
     if historical_alignment_replay and (
@@ -878,6 +921,16 @@ def _project_item(index_item: dict[str, Any], report: dict[str, Any]) -> dict[st
         data_status = "CHECK_REQUIRED"
     if not action or not strategy_state or not canonical_position:
         data_status = "CHECK_REQUIRED"
+    if decision.get("action_reason") == "OPEN_EVALUATION_UNAVAILABLE":
+        if (
+            data_status != "READY"
+            or canonical_position != "OPEN"
+            or strategy_state != "DATA_UNAVAILABLE"
+            or action != "NONE"
+            or (pattern.get("official_stage") != "UNAVAILABLE" and pattern.get("score") is not None)
+        ):
+            raise ValueError(f"invalid carried OPEN evaluation: {ticker}")
+        data_status = "UNAVAILABLE"
 
     item = {
         "ticker": ticker,
@@ -970,7 +1023,7 @@ def build_strategy_monitor(
                     raise ValueError(f"invalid A FAST promotion gate status: {gate_status}")
                 fast_gate_statuses.add(gate_status)
                 fast_effective_signal_dates.add(effective_signal_date)
-            elif replay_mode == FULL_HISTORY_ALIGNMENT_WEB:
+            elif replay_mode in PUBLISHED_FAST_LEDGER_MODES:
                 fast_replay_modes.add(replay_mode)
                 digest = fast_source.get("strategy_replay_digest")
                 scope = fast_source.get("strategy_replay_scope")
@@ -980,6 +1033,7 @@ def build_strategy_monitor(
                     or len(digest) != 64
                     or any(character not in "0123456789abcdef" for character in digest)
                     or not isinstance(scope, dict)
+                    or not valid_published_fast_scope(replay_mode, scope)
                 ):
                     raise ValueError(f"A FAST historical replay provenance is invalid: {ticker}")
                 fast_replay_digests.add(digest)
@@ -1002,9 +1056,9 @@ def build_strategy_monitor(
                     name=str(index_item.get("name") or ticker),
                     market=str(index_item.get("market") or ""),
                     asset_type="COMMON",
-                    preserve_cutoff_exit_reason=(replay_mode == FULL_HISTORY_ALIGNMENT_WEB),
+                    preserve_cutoff_exit_reason=(replay_mode in PUBLISHED_FAST_LEDGER_MODES),
                 )
-                if replay_mode == FULL_HISTORY_ALIGNMENT_WEB:
+                if replay_mode in PUBLISHED_FAST_LEDGER_MODES:
                     expected_trade_id = f"{ticker}_{int(normalized_trade['trade_sequence']):02d}"
                     if trade.get("trade_id") != expected_trade_id:
                         raise ValueError(f"A FAST replay trade ID does not match ticker/sequence: {ticker}")
@@ -1168,7 +1222,8 @@ def build_strategy_monitor(
     fast_strategy_id = next(iter(fast_strategy_ids), STRATEGY_ID)
     if len(fast_replay_modes) > 1:
         raise ValueError("mixed A FAST operational and historical replay modes in report corpus")
-    historical_alignment_replay = fast_replay_modes == {FULL_HISTORY_ALIGNMENT_WEB}
+    historical_alignment_replay = len(fast_replay_modes) == 1 and fast_replay_modes <= PUBLISHED_FAST_LEDGER_MODES
+    published_fast_mode = next(iter(fast_replay_modes)) if historical_alignment_replay else None
     if not historical_alignment_replay and (
         len(fast_gate_statuses) > 1 or len(fast_effective_signal_dates) > 1
         or len(fast_activation_history_json) > 1
@@ -1235,7 +1290,7 @@ def build_strategy_monitor(
         allowed_source_ids=(FAST_STRATEGY_IDS if fast_activation_intervals or fast_strategy_id == PROMOTED_STRATEGY_ID else {STRATEGY_ID}),
         effective_signal_date=(fast_effective_signal_date if fast_strategy_id == PROMOTED_STRATEGY_ID else None),
         activation_intervals=fast_activation_intervals,
-        strategy_replay_mode=(FULL_HISTORY_ALIGNMENT_WEB if historical_alignment_replay else None),
+        strategy_replay_mode=published_fast_mode,
     )
     _validate_history_identities(
         b_select_strategy_id,
@@ -1265,6 +1320,7 @@ def build_strategy_monitor(
         b_history,
         b_current_items,
         resolved_reference,
+        carried_open_entry_prices=_carried_b_open_entry_prices(repo_root, b_select_status),
     )
     b_canonical_open_positions = [
         trade for trade in b_history
@@ -1276,8 +1332,11 @@ def build_strategy_monitor(
         if (
             _finite_positive(trade.get("latest_close")) is None
             or str(trade.get("latest_close_as_of", ""))[:10] != resolved_reference
-            or trade.get("current_return_pct") is None
-            or not math.isfinite(float(trade.get("current_return_pct")))
+            or (
+                trade.get("current_return_pct") is not None
+                if trade.get("current_return_unavailable_reason") == B_OPEN_ENTRY_PRICE_BASIS_MISMATCH
+                else trade.get("current_return_pct") is None or not math.isfinite(float(trade["current_return_pct"]))
+            )
             or not isinstance(trade.get("holding_age_sessions"), int)
             or trade.get("holding_age_sessions", 0) < 1
         )
@@ -1329,7 +1388,7 @@ def build_strategy_monitor(
             **(
                 {
                     "research_group_id": "ALIGNMENT_MCAP_500B",
-                    "strategy_replay_mode": FULL_HISTORY_ALIGNMENT_WEB,
+                    "strategy_replay_mode": published_fast_mode,
                     "strategy_replay_digest": fast_replay_digest,
                     "strategy_replay_scope": fast_replay_scope,
                 }
@@ -1389,7 +1448,7 @@ def build_strategy_monitor(
         "default_strategy_id": fast_strategy_id,
         **(
             {
-                "strategy_replay_mode": FULL_HISTORY_ALIGNMENT_WEB,
+                "strategy_replay_mode": published_fast_mode,
                 "strategy_replay_digest": fast_replay_digest,
                 "strategy_replay_scope": fast_replay_scope,
             }

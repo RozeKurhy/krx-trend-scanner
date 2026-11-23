@@ -12,10 +12,10 @@
     "report_status": "READY"
   },
   "decision": {
-    "action": "WAIT",
-    "strategy_state": "WAIT",
+    "action": "NONE",
+    "strategy_state": "DATA_UNAVAILABLE",
     "canonical_position": "FLAT",
-    "action_reason": "ENTRY_CONDITIONS_NOT_MET",
+    "action_reason": "CERTIFIED_PERIOD_CLOSE_UNAVAILABLE",
     "is_investable": true
   },
   "summary": {
@@ -23,8 +23,8 @@
     "flow_state": "FLOW_MIXED"
   },
   "price_trend": {
-    "latest_close": 82300.0,
-    "latest_close_as_of": "2026-11-06",
+    "latest_close": 65800.0,
+    "latest_close_as_of": "2026-11-20",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/000880.parquet",
     "score_trend": {
@@ -38,13 +38,13 @@
       "change_6m": 0.0,
       "change_12m": 0.0
     },
-    "trading_value_state": "TRADING_VALUE_WEAKENING",
-    "trading_value_explanation": "최근 거래대금이 지속 감소(둔화)하는 흐름입니다. 5일 평균 거래대금(90.39억원)이 20일 평균(97.61억원) 및 60일 평균(185.63억원)을 밑돌고 있습니다.",
-    "avg_trading_value_1d_eok": 78.12,
-    "avg_trading_value_5d_eok": 90.39,
-    "avg_trading_value_10d_eok": 75.4,
-    "avg_trading_value_20d_eok": 97.61,
-    "avg_trading_value_60d_eok": 185.63
+    "trading_value_state": "TRADING_VALUE_MIXED",
+    "trading_value_explanation": "최근 거래대금이 특정 방향성 없이 기간별로 혼조세를 나타내고 있습니다. (5일: 103.19억원, 20일: 86.59억원, 60일: 176.72억원)",
+    "avg_trading_value_1d_eok": 79.24,
+    "avg_trading_value_5d_eok": 103.19,
+    "avg_trading_value_10d_eok": 97.78,
+    "avg_trading_value_20d_eok": 86.59,
+    "avg_trading_value_60d_eok": 176.72
   },
   "pattern": {
     "official_stage": "UNAVAILABLE",
@@ -363,14 +363,14 @@
     "applicability": "APPLICABLE",
     "evaluation_status": "READY",
     "pattern_b_state": "NORMAL",
-    "as_of": "2026-11-06",
+    "as_of": "2026-11-20",
     "freshness_status": "CURRENT",
-    "expected_weekly_bar": "2026-11-06",
+    "expected_weekly_bar": "2026-11-20",
     "range_36m": 0.34990664146275197,
     "monthly_ma24_distance": -0.13175041056618975,
-    "range_52w": 0.041612611068954544,
+    "range_52w": 0.005198315745698394,
     "monthly_last_bar": "2026-10-31",
-    "weekly_last_bar": "2026-11-06",
+    "weekly_last_bar": "2026-11-20",
     "reason_codes": [],
     "reason_details": [],
     "monthly_history": [
@@ -485,14 +485,14 @@
         "weekly_last_bar": "2026-10-30"
       },
       {
-        "as_of": "2026-11-06",
+        "as_of": "2026-11-20",
         "evaluation_status": "READY",
         "pattern_b_state": "NORMAL",
         "range_36m": 0.34990664146275197,
         "monthly_ma24_distance": -0.13175041056618975,
-        "range_52w": 0.041612611068954544,
+        "range_52w": 0.005198315745698394,
         "monthly_last_bar": "2026-10-31",
-        "weekly_last_bar": "2026-11-06"
+        "weekly_last_bar": "2026-11-20"
       }
     ],
     "monthly_history_24m": [
@@ -737,14 +737,14 @@
         "weekly_last_bar": "2026-10-30"
       },
       {
-        "as_of": "2026-11-06",
+        "as_of": "2026-11-20",
         "evaluation_status": "READY",
         "pattern_b_state": "NORMAL",
         "range_36m": 0.34990664146275197,
         "monthly_ma24_distance": -0.13175041056618975,
-        "range_52w": 0.041612611068954544,
+        "range_52w": 0.005198315745698394,
         "monthly_last_bar": "2026-10-31",
-        "weekly_last_bar": "2026-11-06"
+        "weekly_last_bar": "2026-11-20"
       }
     ],
     "provenance": {
@@ -764,49 +764,49 @@
     "applicability": "APPLICABLE",
     "data_status": "DATA_UNAVAILABLE",
     "benchmark_name": "코스피",
-    "benchmark_last_observation_date": "2026-11-06",
-    "stock_return_2w": -0.11600429645542432,
-    "stock_return_1m": -0.30313293818797626,
+    "benchmark_last_observation_date": "2026-11-20",
+    "stock_return_2w": -0.2004860267314702,
+    "stock_return_1m": -0.32094943240454077,
     "stock_return_3m": null,
-    "stock_return_6m": -0.48608431214601955,
-    "stock_return_12m": -0.36048363910452164,
-    "market_rs_2w": -0.030288149395820918,
-    "market_rs_1m": -0.06290428823449101,
+    "stock_return_6m": -0.5656765676567657,
+    "stock_return_12m": -0.4175135441379555,
+    "market_rs_2w": -0.16933756018385215,
+    "market_rs_1m": -0.2283900361722222,
     "market_rs_3m": null,
-    "market_rs_6m": -0.3297488946735875,
-    "market_rs_12m": -0.4890090244028652,
-    "percentile_2w": 19.664758789860997,
-    "percentile_1m": 13.563501849568436,
+    "market_rs_6m": -0.3296880692184241,
+    "market_rs_12m": -0.5128076757354241,
+    "percentile_2w": 7.238714924766166,
+    "percentile_1m": 6.234618539786711,
     "percentile_3m": null,
-    "percentile_6m": 14.081455805892547,
-    "percentile_12m": 14.303797468354432,
+    "percentile_6m": 11.224489795918368,
+    "percentile_12m": 12.62668918918919,
     "explanation": "일부 기간의 시장 상대강도 데이터가 없어 전체 기간 흐름은 제한적으로 해석됩니다."
   },
   "flow": {
     "data_status": "READY",
     "state": "FLOW_MIXED",
-    "net_buy_value_1d_krw": -2099766550.0,
-    "net_buy_value_5d_krw": -5730038500.0,
-    "net_buy_value_10d_krw": -3718228850.0,
-    "net_buy_value_20d_krw": -2841117600.0,
-    "net_buy_value_60d_krw": 54086125550.0,
-    "intensity_1d": -0.2688,
-    "intensity_5d": -0.1268,
-    "intensity_10d": -0.0493,
-    "intensity_20d": -0.0146,
-    "intensity_60d": 0.0486,
+    "net_buy_value_1d_krw": -1344318950.0,
+    "net_buy_value_5d_krw": -5731779100.0,
+    "net_buy_value_10d_krw": -9506125450.0,
+    "net_buy_value_20d_krw": -13224354300.0,
+    "net_buy_value_60d_krw": 48290780650.0,
+    "intensity_1d": -0.1696,
+    "intensity_5d": -0.1111,
+    "intensity_10d": -0.0972,
+    "intensity_20d": -0.0764,
+    "intensity_60d": 0.0455,
     "positive_days_1d": 0,
-    "positive_days_5d": 1,
-    "positive_days_10d": 5,
-    "positive_days_20d": 9,
-    "positive_days_60d": 36,
-    "explanation": "외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: -12.68%)."
+    "positive_days_5d": 0,
+    "positive_days_10d": 2,
+    "positive_days_20d": 7,
+    "positive_days_60d": 35,
+    "explanation": "외국인 수급이 기간별로 엇갈리는 혼조세 흐름입니다 (5일 순매수 강도: -11.11%)."
   },
   "fundamentals": {
     "status": "PARTIAL",
     "applicability": "APPLICABLE",
     "reason": "DISPLAY_WINDOW_PARTIAL",
-    "requested_as_of": "2026-11-08",
+    "requested_as_of": "2026-11-22",
     "company_family": "NON_FINANCIAL",
     "currency": "KRW",
     "filter_status": "PASS",
@@ -814,37 +814,23 @@
     "filter_reasons": [],
     "summary": {
       "latest_fy": "2025",
-      "latest_quarter": "2026Q2",
+      "latest_quarter": "2026Q3",
       "latest_fy_revenue_krw": 74785440000000,
-      "latest_4q_avg_revenue_krw": 22247467000000.0,
-      "ttm_revenue_krw": 88989868000000,
-      "ttm_operating_income_krw": 5414693000000,
-      "ttm_net_income_krw": 3854030000000,
-      "ttm_operating_cash_flow_krw": 6939747000000,
-      "ttm_operating_margin_pct": 6.084617408354847,
-      "ttm_net_margin_pct": 4.3308638237332815,
-      "ttm_operating_cash_flow_margin_pct": 7.798356325239183,
-      "ttm_roe_pct": null,
-      "latest_debt_ratio_pct": null,
+      "latest_4q_avg_revenue_krw": 21992961000000.0,
+      "ttm_revenue_krw": 87971844000000,
+      "ttm_operating_income_krw": 4438721000000,
+      "ttm_net_income_krw": 3049369000000,
+      "ttm_operating_cash_flow_krw": 3886427000000,
+      "ttm_operating_margin_pct": 5.04561550397875,
+      "ttm_net_margin_pct": 3.466301104248764,
+      "ttm_operating_cash_flow_margin_pct": 4.417807815873451,
+      "ttm_roe_pct": 6.387721590877669,
+      "latest_debt_ratio_pct": 471.441823072817,
       "filter_status": "PASS",
       "filter_passed": true,
       "filter_reasons": []
     },
     "quarterly": [
-      {
-        "quarter": "2023Q3",
-        "status": "READY",
-        "reason": null,
-        "revenue_krw": 11919663000000,
-        "revenue_yoy_pct": -19.073584966379965,
-        "operating_income_krw": 382281000000,
-        "operating_income_yoy_pct": -68.62841161438355,
-        "operating_margin_pct": 3.2071460409577015,
-        "net_income_krw": 118806000000,
-        "net_margin_pct": 0.9967228100324648,
-        "operating_cash_flow_krw": 1061295000000,
-        "operating_income_yoy_status": "PERCENT"
-      },
       {
         "quarter": "2023Q4",
         "status": "DERIVATION_UNAVAILABLE",
@@ -945,16 +931,16 @@
       },
       {
         "quarter": "2025Q3",
-        "status": "READY",
-        "reason": null,
-        "revenue_krw": 17786617000000,
-        "revenue_yoy_pct": 45.57402308331389,
-        "operating_income_krw": 1344206000000,
-        "operating_income_yoy_pct": 155.82872759938488,
-        "operating_margin_pct": 7.557401162908045,
-        "net_income_krw": 1025766000000,
-        "net_margin_pct": 5.7670663285772665,
-        "operating_cash_flow_krw": 1460068000000,
+        "status": "PERIOD_AMBIGUOUS",
+        "reason": "DIRECT_DERIVED_CONFLICT_DIRECT_AUTHORITY;MULTIPLE_CURRENT_INSTANT_CONTEXTS;NON_STANDARD_FISCAL_PERIOD",
+        "revenue_krw": 16286414000000,
+        "revenue_yoy_pct": 33.29565749239479,
+        "operating_income_krw": 1268124000000,
+        "operating_income_yoy_pct": 141.34883296030696,
+        "operating_margin_pct": 7.786391774149914,
+        "net_income_krw": 1012949000000,
+        "net_margin_pct": 6.219595056345737,
+        "operating_cash_flow_krw": 1868360000000,
         "operating_income_yoy_status": "PERCENT"
       },
       {
@@ -997,6 +983,20 @@
         "net_income_krw": 1821109000000,
         "net_margin_pct": 6.359099296752252,
         "operating_cash_flow_krw": 1178616000000,
+        "operating_income_yoy_status": "PERCENT"
+      },
+      {
+        "quarter": "2026Q3",
+        "status": "READY",
+        "reason": null,
+        "revenue_krw": 16768593000000,
+        "revenue_yoy_pct": 2.960621042790635,
+        "operating_income_krw": 368234000000,
+        "operating_income_yoy_pct": -70.96230337096372,
+        "operating_margin_pct": 2.1959743432260534,
+        "net_income_krw": 221105000000,
+        "net_margin_pct": 1.3185662029008636,
+        "operating_cash_flow_krw": -1593252000000,
         "operating_income_yoy_status": "PERCENT"
       }
     ],
@@ -1079,11 +1079,11 @@
     ]
   },
   "strategy": {
-    "action": "WAIT",
-    "state": "WAIT",
+    "action": "NONE",
+    "state": "DATA_UNAVAILABLE",
     "position": "FLAT",
-    "reason": "ENTRY_CONDITIONS_NOT_MET",
-    "interpretation": "패스트 코어 V2 관망(WAIT) 상태입니다. 진입 미충족 조건: PATTERN_A_STAGE_NOT_ELIGIBLE, FAST_NOT_TRIGGER_READY, DAILY_RISK_EXTREME.",
+    "reason": "CERTIFIED_PERIOD_CLOSE_UNAVAILABLE",
+    "interpretation": "현재 진입 평가에 필요한 데이터가 부족합니다.",
     "history": [
       {
         "trade_id": "000880_01",
@@ -1125,341 +1125,43 @@
     "id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
     "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
     "strategy_name": "A FAST Core V2 Alignment 500B",
-    "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+    "strategy_replay_mode": "CANONICAL_LEDGER_INCREMENTAL_V01",
     "strategy_replay_scope": {
       "type": "PUBLISHED_COMMON_REPORTS",
-      "report_count": 1432,
-      "requested_as_of": "2026-11-08",
-      "reference_market_date": "2026-11-06",
-      "first_v2_candidate_signal_date": "2012-12-28",
-      "last_v2_candidate_signal_date": "2026-11-06",
-      "first_alignment_gate_pass_signal_date": "2015-01-02",
-      "base_candidate_signal_count": 19256,
-      "alignment_gate_pass_count": 413,
-      "output_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B"
+      "report_count": 1248,
+      "requested_as_of": "2026-11-22",
+      "reference_market_date": "2026-11-20",
+      "output_strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
+      "prior_canonical": {
+        "requested_as_of": "2026-11-08",
+        "reference_market_date": "2026-11-06",
+        "strategy_replay_mode": "FULL_HISTORY_ALIGNMENT_WEB",
+        "strategy_replay_digest": "47b51ac1778327c9658efe769b49ff117b706ba9a82da2533c97b503de739d7c",
+        "report_files_sha256": "19af234c939d6f74d9f8aad71836d4fb0da66b4cac65b1db56786f9243ce139f",
+        "report_count": 1432
+      },
+      "new_sessions": [
+        "2026-11-09",
+        "2026-11-10",
+        "2026-11-11",
+        "2026-11-12",
+        "2026-11-13",
+        "2026-11-16",
+        "2026-11-17",
+        "2026-11-18",
+        "2026-11-19",
+        "2026-11-20"
+      ],
+      "event_count": 4,
+      "events_sha256": "ef924831e81191a8be8d6410f4ed7aa3cc8d31d093d46e445cd83a06e38b2e5b"
     },
-    "strategy_replay_digest": "47b51ac1778327c9658efe769b49ff117b706ba9a82da2533c97b503de739d7c",
+    "strategy_replay_digest": "57682d5489569063286b2ba705da2a8823dcda092eb5b29a9fd43d01e98d0af5",
     "research_group_id": "ALIGNMENT_MCAP_500B",
-    "promotion_gate_audit": [
-      {
-        "signal_date": "2013-10-04",
-        "allowed": false,
-        "reason_code": "REJECT_MA_UNAVAILABLE",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "cause": "PRIOR_COMPLETED_MONTHS_INSUFFICIENT_OR_GAPPED",
-          "required_months": 60,
-          "available_months": 45,
-          "missing_months": [
-            "2008-10",
-            "2008-11",
-            "2008-12",
-            "2009-01",
-            "2009-02"
-          ]
-        }
-      },
-      {
-        "signal_date": "2013-10-11",
-        "allowed": false,
-        "reason_code": "REJECT_MA_UNAVAILABLE",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "cause": "PRIOR_COMPLETED_MONTHS_INSUFFICIENT_OR_GAPPED",
-          "required_months": 60,
-          "available_months": 45,
-          "missing_months": [
-            "2008-10",
-            "2008-11",
-            "2008-12",
-            "2009-01",
-            "2009-02"
-          ]
-        }
-      },
-      {
-        "signal_date": "2013-10-18",
-        "allowed": false,
-        "reason_code": "REJECT_MA_UNAVAILABLE",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "cause": "PRIOR_COMPLETED_MONTHS_INSUFFICIENT_OR_GAPPED",
-          "required_months": 60,
-          "available_months": 45,
-          "missing_months": [
-            "2008-10",
-            "2008-11",
-            "2008-12",
-            "2009-01",
-            "2009-02"
-          ]
-        }
-      },
-      {
-        "signal_date": "2013-10-25",
-        "allowed": false,
-        "reason_code": "REJECT_MA_UNAVAILABLE",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "cause": "PRIOR_COMPLETED_MONTHS_INSUFFICIENT_OR_GAPPED",
-          "required_months": 60,
-          "available_months": 45,
-          "missing_months": [
-            "2008-10",
-            "2008-11",
-            "2008-12",
-            "2009-01",
-            "2009-02"
-          ]
-        }
-      },
-      {
-        "signal_date": "2014-01-03",
-        "allowed": false,
-        "reason_code": "REJECT_MA_UNAVAILABLE",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "cause": "PRIOR_COMPLETED_MONTHS_INSUFFICIENT_OR_GAPPED",
-          "required_months": 60,
-          "available_months": 48,
-          "missing_months": [
-            "2009-01",
-            "2009-02",
-            "2009-03",
-            "2009-04",
-            "2009-05"
-          ]
-        }
-      },
-      {
-        "signal_date": "2015-04-03",
-        "allowed": false,
-        "reason_code": "REJECT_MA_ALIGNMENT",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 41806.0,
-          "ma20_prior_completed_months": 37865.0,
-          "ma60_prior_completed_months": 42101.01666666667,
-          "last_completed_month": "2015-03"
-        }
-      },
-      {
-        "signal_date": "2015-04-10",
-        "allowed": false,
-        "reason_code": "REJECT_MA_ALIGNMENT",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 47003.0,
-          "ma20_prior_completed_months": 37865.0,
-          "ma60_prior_completed_months": 42101.01666666667,
-          "last_completed_month": "2015-03"
-        }
-      },
-      {
-        "signal_date": "2015-04-17",
-        "allowed": false,
-        "reason_code": "REJECT_MA_ALIGNMENT",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 47937.0,
-          "ma20_prior_completed_months": 37865.0,
-          "ma60_prior_completed_months": 42101.01666666667,
-          "last_completed_month": "2015-03"
-        }
-      },
-      {
-        "signal_date": "2015-04-24",
-        "allowed": false,
-        "reason_code": "REJECT_MA_ALIGNMENT",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 49164.0,
-          "ma20_prior_completed_months": 37865.0,
-          "ma60_prior_completed_months": 42101.01666666667,
-          "last_completed_month": "2015-03"
-        }
-      },
-      {
-        "signal_date": "2015-05-29",
-        "allowed": false,
-        "reason_code": "REJECT_MA_ALIGNMENT",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 50448.0,
-          "ma20_prior_completed_months": 38428.45,
-          "ma60_prior_completed_months": 42118.51666666667,
-          "last_completed_month": "2015-04"
-        }
-      },
-      {
-        "signal_date": "2015-06-12",
-        "allowed": false,
-        "reason_code": "REJECT_MA_ALIGNMENT",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 49456.0,
-          "ma20_prior_completed_months": 38737.9,
-          "ma60_prior_completed_months": 42288.816666666666,
-          "last_completed_month": "2015-05"
-        }
-      },
-      {
-        "signal_date": "2015-06-19",
-        "allowed": false,
-        "reason_code": "REJECT_MA_ALIGNMENT",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 53776.0,
-          "ma20_prior_completed_months": 38737.9,
-          "ma60_prior_completed_months": 42288.816666666666,
-          "last_completed_month": "2015-05"
-        }
-      },
-      {
-        "signal_date": "2015-06-26",
-        "allowed": false,
-        "reason_code": "REJECT_MA_ALIGNMENT",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 55528.0,
-          "ma20_prior_completed_months": 38737.9,
-          "ma60_prior_completed_months": 42288.816666666666,
-          "last_completed_month": "2015-05"
-        }
-      },
-      {
-        "signal_date": "2017-04-28",
-        "allowed": true,
-        "reason_code": "PASS_ALIGNMENT_MCAP_500B",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 47959.0,
-          "ma20_prior_completed_months": 43349.45,
-          "ma60_prior_completed_months": 40390.85,
-          "last_completed_month": "2017-03",
-          "ticker": "000880",
-          "isu_cd": "KR7000880005",
-          "market": "KOSPI",
-          "signal_date": "2017-04-28",
-          "market_cap_krw": 2994601463250,
-          "market_cap_threshold_krw": 500000000000,
-          "market_cap_partition": {
-            "market": "KOSPI",
-            "date": "2017-04-28"
-          }
-        }
-      },
-      {
-        "signal_date": "2020-09-04",
-        "allowed": false,
-        "reason_code": "REJECT_MA_ALIGNMENT",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 38655.0,
-          "ma20_prior_completed_months": 29975.45,
-          "ma60_prior_completed_months": 40208.73333333333,
-          "last_completed_month": "2020-08"
-        }
-      },
-      {
-        "signal_date": "2021-08-27",
-        "allowed": false,
-        "reason_code": "REJECT_MA_ALIGNMENT",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 42136.0,
-          "ma20_prior_completed_months": 31115.95,
-          "ma60_prior_completed_months": 38730.95,
-          "last_completed_month": "2021-07"
-        }
-      },
-      {
-        "signal_date": "2023-06-02",
-        "allowed": true,
-        "reason_code": "PASS_ALIGNMENT_MCAP_500B",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 36854.0,
-          "ma20_prior_completed_months": 34453.2,
-          "ma60_prior_completed_months": 33626.916666666664,
-          "last_completed_month": "2023-05",
-          "ticker": "000880",
-          "isu_cd": "KR7000880005",
-          "market": "KOSPI",
-          "signal_date": "2023-06-02",
-          "market_cap_krw": 2301233164500,
-          "market_cap_threshold_krw": 500000000000,
-          "market_cap_partition": {
-            "market": "KOSPI",
-            "date": "2023-06-02"
-          }
-        }
-      },
-      {
-        "signal_date": "2024-02-02",
-        "allowed": false,
-        "reason_code": "REJECT_MA_ALIGNMENT",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 37334.0,
-          "ma20_prior_completed_months": 32379.4,
-          "ma60_prior_completed_months": 32778.583333333336,
-          "last_completed_month": "2024-01"
-        }
-      },
-      {
-        "signal_date": "2024-02-16",
-        "allowed": false,
-        "reason_code": "REJECT_MA_ALIGNMENT",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 35474.0,
-          "ma20_prior_completed_months": 32379.4,
-          "ma60_prior_completed_months": 32778.583333333336,
-          "last_completed_month": "2024-01"
-        }
-      },
-      {
-        "signal_date": "2024-02-23",
-        "allowed": false,
-        "reason_code": "REJECT_MA_ALIGNMENT",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 35294.0,
-          "ma20_prior_completed_months": 32379.4,
-          "ma60_prior_completed_months": 32778.583333333336,
-          "last_completed_month": "2024-01"
-        }
-      },
-      {
-        "signal_date": "2024-03-08",
-        "allowed": false,
-        "reason_code": "REJECT_MA_ALIGNMENT",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 35594.0,
-          "ma20_prior_completed_months": 32592.5,
-          "ma60_prior_completed_months": 32723.566666666666,
-          "last_completed_month": "2024-02"
-        }
-      },
-      {
-        "signal_date": "2025-02-14",
-        "allowed": false,
-        "reason_code": "REJECT_MA_ALIGNMENT",
-        "strategy_id": "PATTERN_A_FAST_FINAL_STRATEGY_V02_ALIGNMENT_MCAP_500B",
-        "details": {
-          "signal_close_adjusted": 51260.0,
-          "ma20_prior_completed_months": 33177.65,
-          "ma60_prior_completed_months": 33361.78333333333,
-          "last_completed_month": "2025-01"
-        }
-      }
-    ]
+    "promotion_gate_audit": []
   },
   "technical_details": {
-    "requested_as_of": "2026-11-08",
-    "reference_market_date": "2026-11-06",
+    "requested_as_of": "2026-11-22",
+    "reference_market_date": "2026-11-20",
     "report_version": "0.7",
     "report_status": "READY",
     "asset_type": "COMMON",
@@ -1472,21 +1174,21 @@
     "market_strength_applicability": "APPLICABLE",
     "market_strength_status": "DATA_UNAVAILABLE",
     "relative_strength_status": "DATA_UNAVAILABLE",
-    "trading_value_state": "TRADING_VALUE_WEAKENING",
-    "price_as_of": "2026-11-06",
+    "trading_value_state": "TRADING_VALUE_MIXED",
+    "price_as_of": "2026-11-20",
     "price_status": "AVAILABLE",
     "price_source": "data/market/adjusted/stocks/000880.parquet",
     "sector_name": null,
     "data_quality": {
       "cache_present": true,
       "cache_first_date": "2010-01-04",
-      "cache_last_date": "2026-11-06",
-      "daily_rows_count": 4128,
+      "cache_last_date": "2026-11-20",
+      "daily_rows_count": 4138,
       "completed_month_count": 202,
       "quality_status": "OK",
       "quality_flags": []
     },
-    "source_report": "artifacts/reporting/stock_reports/20261108/json/000880_한화.json"
+    "source_report": "artifacts/reporting/stock_reports/20261122/json/000880_한화.json"
   },
   "external_links": {
     "naver_finance": "https://finance.naver.com/item/main.naver?code=000880",
